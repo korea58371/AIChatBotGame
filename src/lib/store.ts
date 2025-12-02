@@ -106,7 +106,7 @@ export interface Item {
 export const useGameStore = create<GameState>()(
   persist(
     (set) => ({
-      apiKey: '',
+      apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '',
       setApiKey: (key) => set({ apiKey: key }),
 
       chatHistory: [],
@@ -250,6 +250,11 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: 'vn-game-storage',
+      partialize: (state) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { apiKey, ...rest } = state;
+        return rest;
+      },
     }
   )
 );
