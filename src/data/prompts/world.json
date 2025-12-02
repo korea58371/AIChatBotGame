@@ -1,0 +1,10 @@
+{
+    "locations": {
+        "집": "현준이 다인과 같이 살고 있는 집",
+        "역삼중": " 현준이 다니게 된 명문 중학교. 재벌가 아가씨, 아이돌 지망생, 방송인 등 예체능반과 로열클라스가 존재하며, 현준은 예체능반에 입학한다."
+    },
+    "items": {
+        "potion": "A red liquid that restores health.",
+        "sword": "A standard issue hunter sword."
+    }
+}
