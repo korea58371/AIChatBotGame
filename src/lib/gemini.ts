@@ -171,8 +171,18 @@ export async function generateGameLogic(
                         "description": string,
                         "secrets": [ string ]
                     }
-                ]
+                ],
+                "newMood": "daily" | "combat" | "romance" | "comic" | "tension" | "erotic" | null
             }
+
+            **Mood Detection Rules:**
+            - **combat**: Physical conflict, fighting, or immediate threat of violence.
+            - **romance**: Emotional intimacy, confession, or romantic tension.
+            - **comic**: Funny situations, jokes, or lighthearted banter.
+            - **tension**: Suspense, mystery, or ominous atmosphere.
+            - **erotic**: Sexual acts or high sexual tension (within safety guidelines).
+            - **daily**: Default state, casual conversation, or none of the above.
+            - If the mood changes, return the new mood string. If it stays the same, return null.
             `;
 
             const result = await model.generateContent(prompt);

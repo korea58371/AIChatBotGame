@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { ScriptSegment } from '@/lib/script-parser';
 import initialCharacterData from '@/data/prompts/characters.json';
 import initialWorldData from '@/data/prompts/world.json';
+import { MoodType } from '@/data/prompts/moods';
 
 export interface Message {
   role: 'user' | 'model';
@@ -38,6 +39,8 @@ interface GameState {
   setScenarioSummary: (summary: string) => void;
   currentEvent: string;
   setCurrentEvent: (event: string) => void;
+  currentMood: MoodType;
+  setMood: (mood: MoodType) => void;
 
   // Dynamic Character Data
   characterData: Record<string, any>;
@@ -132,7 +135,7 @@ export const useGameStore = create<GameState>()(
       characterExpression: 'normal',
       setCharacterExpression: (expr) => set({ characterExpression: expr }),
 
-      playerName: 'Player',
+      playerName: '김현준',
       setPlayerName: (name) => set({ playerName: name }),
 
       // Lore State Init
@@ -144,6 +147,8 @@ export const useGameStore = create<GameState>()(
       setScenarioSummary: (summary) => set({ scenarioSummary: summary }),
       currentEvent: '',
       setCurrentEvent: (event) => set({ currentEvent: event }),
+      currentMood: 'daily',
+      setMood: (mood) => set({ currentMood: mood }),
 
       // Dynamic Character Data Init
       characterData: initialCharacterData,
@@ -230,6 +235,7 @@ export const useGameStore = create<GameState>()(
         currentLocation: 'home',
         scenarioSummary: '',
         currentEvent: '',
+        currentMood: 'daily',
         playerStats: {
           hp: 100, maxHp: 100,
           mp: 50, maxMp: 50,

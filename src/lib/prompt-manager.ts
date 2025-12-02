@@ -1,4 +1,5 @@
 import { SYSTEM_PROMPT_TEMPLATE } from '../data/prompts/system';
+import { MOOD_PROMPTS, MoodType } from '@/data/prompts/moods';
 
 interface GameState {
     activeCharacters: string[]; // IDs of characters currently in the scene
@@ -12,11 +13,17 @@ interface GameState {
     };
     playerStats: any;
     inventory: any[];
+    currentMood: MoodType;
+    playerName: string;
 }
 
 export class PromptManager {
     static generateSystemPrompt(state: GameState, language: 'ko' | 'en' | null, userMessage?: string): string {
         let prompt = SYSTEM_PROMPT_TEMPLATE;
+
+        // Inject Player Name
+        const playerName = state.playerName || "김현준";
+        prompt = prompt.replace(/{{PLAYER_NAME}}/g, playerName);
 
         // 0. Player Stats Injection
         const stats = state.playerStats;
@@ -24,7 +31,7 @@ export class PromptManager {
         const inventoryList = state.inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ') || "None";
 
         const playerStatus = `
-- Name: ${state.playerStats.playerName || "Player"}
+- Name: ${playerName}
 - Level: ${stats.level} (EXP: ${stats.exp})
 - HP: ${stats.hp}/${stats.maxHp}, MP: ${stats.mp}/${stats.maxMp}
 - Gold: ${stats.gold}
@@ -121,10 +128,24 @@ export class PromptManager {
 
         // 8. Available Character Images Injection
         const AVAILABLE_CHARACTER_IMAGES = [
-            "강시아_기본", "김다인_기본", "김현준_기본", "박진수_기본", "원정민_기본",
+            "강시아_기본", "김다인_기본", "주인공_기본", "박진수_기본", "원정민_기본",
             "유민우_기본", "윤서영_기본", "이하은_기본", "최선우_기본", "한별_기본"
         ];
         prompt = prompt.replace('{{AVAILABLE_CHARACTER_IMAGES}}', AVAILABLE_CHARACTER_IMAGES.join(', '));
+
+        // CRITICAL: Instruct AI to use '주인공' tag for the player
+        prompt += `\n\n**IMPORTANT IMAGE RULE**: For the protagonist '${playerName}', ALWAYS use the image tag starting with '주인공_' (e.g., '주인공_기본', '주인공_happy'). Do NOT use '${playerName}' as the image tag prefix.`;
+
+        // 9. Mood Injection
+        const currentMood = state.currentMood || 'daily';
+        let moodPrompt = MOOD_PROMPTS[currentMood] || MOOD_PROMPTS['daily'];
+
+        // Special handling for Combat: Inject detailed stats for comparison
+        if (currentMood === 'combat') {
+            moodPrompt += `\n\n[Combat Stats Analysis]\nPlayer Stats: STR ${stats.str}, AGI ${stats.agi}, INT ${stats.int}, VIT ${stats.vit}, LUK ${stats.luk}\nSkills: ${stats.skills.join(', ') || "None"}\n\nCompare these stats with the opponent's estimated stats to determine the outcome of the exchange.`;
+        }
+
+        prompt += `\n\n${moodPrompt}`;
 
         // 5. Language Instruction
         if (language === 'ko') {

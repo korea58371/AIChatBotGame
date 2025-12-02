@@ -135,8 +135,15 @@ export default function VisualNovelUI() {
         setChoices,
         language,
         setLanguage,
-        scenarioSummary
+        scenarioSummary,
+        playerName // Add playerName from hook
     } = useGameStore();
+
+    // Hydration Fix
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     // VN State
     const [isProcessing, setIsProcessing] = useState(false);
@@ -560,6 +567,16 @@ export default function VisualNovelUI() {
                 }
             });
         }
+
+        // Mood Update
+        if (logicResult.newMood) {
+            const currentMood = useGameStore.getState().currentMood;
+            if (currentMood !== logicResult.newMood) {
+                useGameStore.getState().setMood(logicResult.newMood);
+                addToast(`Mood Changed: ${logicResult.newMood.toUpperCase()}`, 'info');
+                console.log(`Mood changed from ${currentMood} to ${logicResult.newMood}`);
+            }
+        }
     };
 
     return (
@@ -606,10 +623,18 @@ export default function VisualNovelUI() {
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform"
                             onClick={() => setShowCharacterInfo(true)}>
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${useGameStore.getState().playerName}`} alt="Avatar" />
+                            {/* Hydration Safe Image */}
+                            {isMounted ? (
+                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" />
+                            ) : (
+                                <div className="w-full h-full bg-gray-600 animate-pulse" />
+                            )}
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-yellow-400">{useGameStore.getState().playerName}</h1>
+                            {/* Hydration Safe Name */}
+                            <h1 className="text-xl font-bold text-yellow-400">
+                                {isMounted ? playerName : "Loading..."}
+                            </h1>
                             <div className="text-xs text-gray-300">Lv.{playerStats.level} ({t.exp} {playerStats.exp})</div>
                         </div>
                     </div>
@@ -728,6 +753,18 @@ export default function VisualNovelUI() {
                             <div className="bg-black/80 p-12 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center">
                                 <h1 className="text-4xl font-bold text-yellow-400 mb-2">Game Title</h1>
                                 <p className="text-gray-300 text-lg">Welcome to the interactive story.</p>
+
+                                <div className="flex flex-col gap-2 w-full max-w-xs">
+                                    <label className="text-yellow-500 text-sm font-bold text-left">Player Name</label>
+                                    <input
+                                        type="text"
+                                        className="bg-gray-800 border border-yellow-600 text-white px-4 py-2 rounded focus:outline-none focus:border-yellow-400 text-center"
+                                        placeholder="김현준"
+                                        onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
+                                        defaultValue={useGameStore.getState().playerName}
+                                    />
+                                </div>
+
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleStartGame(); }}
                                     className="px-8 py-4 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-black text-xl shadow-[0_0_20px_rgba(234,179,8,0.5)] hover:scale-105 transition-transform animate-pulse"
