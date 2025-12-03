@@ -139,10 +139,18 @@ export default function VisualNovelUI() {
         playerName // Add playerName from hook
     } = useGameStore();
 
-    // Hydration Fix
+    // Hydration Fix & Asset Loading
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => {
         setIsMounted(true);
+
+        // Load Assets dynamically
+        import('@/app/actions/assets').then(({ getAssetFiles }) => {
+            getAssetFiles().then(({ backgrounds, characters }) => {
+                useGameStore.getState().setAvailableAssets(backgrounds, characters);
+                console.log("Loaded Assets:", { backgrounds, characters });
+            });
+        });
     }, []);
 
     // VN State
@@ -577,6 +585,12 @@ export default function VisualNovelUI() {
                 console.log(`Mood changed from ${currentMood} to ${logicResult.newMood}`);
             }
         }
+
+        // Active Characters Update
+        if (logicResult.activeCharacters) {
+            useGameStore.getState().setActiveCharacters(logicResult.activeCharacters);
+            console.log("Active Characters Updated:", logicResult.activeCharacters);
+        }
     };
 
     return (
@@ -759,7 +773,7 @@ export default function VisualNovelUI() {
                                     <input
                                         type="text"
                                         className="bg-gray-800 border border-yellow-600 text-white px-4 py-2 rounded focus:outline-none focus:border-yellow-400 text-center"
-                                        placeholder="김현준"
+                                        placeholder="주인공"
                                         onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
                                         defaultValue={useGameStore.getState().playerName}
                                     />
@@ -805,18 +819,18 @@ export default function VisualNovelUI() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
-                        className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-auto w-full max-w-4xl rounded-xl border-2 p-6 shadow-2xl backdrop-blur-md min-h-[150px] flex flex-col justify-center z-20
+                        className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-auto w-full max-w-6xl rounded-xl border-2 p-8 shadow-2xl backdrop-blur-md min-h-[220px] flex flex-col justify-center z-20
                             ${currentSegment.type === 'narration'
                                 ? 'bg-black/60 border-gray-500 text-center italic text-gray-200'
                                 : 'bg-black/80 border-yellow-500 text-left'
                             }`}
                     >
                         {currentSegment.type === 'dialogue' && (
-                            <div className="text-yellow-400 font-bold text-xl mb-2">
+                            <div className="text-yellow-400 font-bold text-[30px] mb-3">
                                 {currentSegment.character}
                             </div>
                         )}
-                        <div className="text-lg leading-relaxed text-white">
+                        <div className="text-[28px] leading-relaxed text-white">
                             {currentSegment.content}
                         </div>
                         {scriptQueue.length > 0 && (

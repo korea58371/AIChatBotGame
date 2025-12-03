@@ -15,6 +15,8 @@ interface GameState {
     inventory: any[];
     currentMood: MoodType;
     playerName: string;
+    availableBackgrounds?: string[];
+    availableCharacterImages?: string[];
 }
 
 export class PromptManager {
@@ -22,7 +24,7 @@ export class PromptManager {
         let prompt = SYSTEM_PROMPT_TEMPLATE;
 
         // Inject Player Name
-        const playerName = state.playerName || "김현준";
+        const playerName = state.playerName || "주인공";
         prompt = prompt.replace(/{{PLAYER_NAME}}/g, playerName);
 
         // 0. Player Stats Injection
@@ -98,11 +100,45 @@ export class PromptManager {
             const char = charsData[charId];
             if (!char) return null;
 
-            let charInfo = `Name: ${char.name}\nDescription: ${char.description}\nPersonality: ${char.personality}\nTrauma: ${char.trauma}\nDefault Expression: ${char.default_expression}`;
+            let charInfo = `Name: ${char.name} (${char.role || 'Unknown'})`;
+            if (char.title) charInfo += `\nTitle: ${char.title}`;
+            if (char.quote) charInfo += `\nQuote: "${char.quote}"`;
 
-            if (char.memories && char.memories.length > 0) {
-                charInfo += `\nMemories/Secrets: ${char.memories.join(', ')}`;
+            if (char.profile) {
+                charInfo += `\nProfile: ${JSON.stringify(char.profile)}`;
             }
+            if (char.appearance) {
+                charInfo += `\nAppearance: ${JSON.stringify(char.appearance)}`;
+            }
+            if (char.job) {
+                charInfo += `\nJob/Abilities: ${JSON.stringify(char.job)}`;
+            }
+
+            const desc = char.description || (char.appearance && char.appearance['전체적 인상']) || char.title || "No description available.";
+            charInfo += `\nDescription: ${desc}`;
+
+            if (char.personality) {
+                if (typeof char.personality === 'string') {
+                    charInfo += `\nPersonality: ${char.personality}`;
+                } else {
+                    charInfo += `\nPersonality: ${JSON.stringify(char.personality)}`;
+                }
+            }
+
+            if (char.preferences) {
+                charInfo += `\nPreferences: ${JSON.stringify(char.preferences)}`;
+            }
+
+            // Secret is only shown if explicitly unlocked or for AI context
+            if (char.secret) {
+                if (typeof char.secret === 'string') {
+                    charInfo += `\nSecret: ${char.secret}`;
+                } else {
+                    charInfo += `\nSecret (NSFW/Private): ${JSON.stringify(char.secret)}`;
+                }
+            }
+
+            charInfo += `\nDefault Expression: ${char.default_expression}`;
 
             return charInfo;
         }).filter(Boolean).join('\n\n');
@@ -111,26 +147,24 @@ export class PromptManager {
 
         // 6. Available Characters Summary (for AI to pick from)
         const availableCharsSummary = Object.values(charsData).map((c: any) => {
-            return `- ${c.name} (${c.role || 'Unknown'}): ${c.description.substring(0, 50)}...`;
+            const desc = c.description || c.title || (c.appearance && c.appearance['전체적 인상']) || "Unknown";
+            return `- ${c.name} (${c.role || 'Unknown'}): ${desc.substring(0, 50)}...`;
         }).join('\n');
 
         prompt = prompt.replace('{{AVAILABLE_CHARACTERS}}', availableCharsSummary || "None");
 
         // 7. Available Backgrounds Injection
-        const AVAILABLE_BACKGROUNDS = [
-            "마을_거리", "집_거실", "집_누나방", "집_주인공방", "집_화장실",
-            "학교_계단", "학교_교실_수업중", "학교_교실_쉬는시간", "학교_교실_한적",
-            "학교_도서실", "학교_매점", "학교_미술실", "학교_보건실",
-            "학교_복도_쉬는시간", "학교_복도_조용", "학교_옥상", "학교_잔디밭",
-            "학교_정문", "학교_체육창고", "학교_탈의실", "학교_학생식당"
-        ];
+        const AVAILABLE_BACKGROUNDS = state.availableBackgrounds && state.availableBackgrounds.length > 0
+            ? state.availableBackgrounds
+            : ["마을_거리", "집_거실", "집_누나방", "집_주인공방", "집_화장실", "학교_교실_수업중", "학교_복도_쉬는시간", "학교_정문"]; // Fallback
+
         prompt = prompt.replace('{{AVAILABLE_BACKGROUNDS}}', AVAILABLE_BACKGROUNDS.join(', '));
 
         // 8. Available Character Images Injection
-        const AVAILABLE_CHARACTER_IMAGES = [
-            "강시아_기본", "김다인_기본", "주인공_기본", "박진수_기본", "원정민_기본",
-            "유민우_기본", "윤서영_기본", "이하은_기본", "최선우_기본", "한별_기본"
-        ];
+        const AVAILABLE_CHARACTER_IMAGES = state.availableCharacterImages && state.availableCharacterImages.length > 0
+            ? state.availableCharacterImages
+            : ["강시아_기본", "김다인_기본", "주인공_기본"]; // Fallback
+
         prompt = prompt.replace('{{AVAILABLE_CHARACTER_IMAGES}}', AVAILABLE_CHARACTER_IMAGES.join(', '));
 
         // CRITICAL: Instruct AI to use '주인공' tag for the player

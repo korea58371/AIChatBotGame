@@ -42,6 +42,11 @@ interface GameState {
   currentMood: MoodType;
   setMood: (mood: MoodType) => void;
 
+  // Asset Lists
+  availableBackgrounds: string[];
+  availableCharacterImages: string[];
+  setAvailableAssets: (backgrounds: string[], characters: string[]) => void;
+
   // Dynamic Character Data
   characterData: Record<string, any>;
   updateCharacter: (id: string, data: any) => void;
@@ -135,7 +140,7 @@ export const useGameStore = create<GameState>()(
       characterExpression: 'normal',
       setCharacterExpression: (expr) => set({ characterExpression: expr }),
 
-      playerName: '김현준',
+      playerName: '주인공',
       setPlayerName: (name) => set({ playerName: name }),
 
       // Lore State Init
@@ -149,6 +154,13 @@ export const useGameStore = create<GameState>()(
       setCurrentEvent: (event) => set({ currentEvent: event }),
       currentMood: 'daily',
       setMood: (mood) => set({ currentMood: mood }),
+
+      availableBackgrounds: [],
+      availableCharacterImages: [],
+      setAvailableAssets: (backgrounds, characters) => set({
+        availableBackgrounds: backgrounds,
+        availableCharacterImages: characters
+      }),
 
       // Dynamic Character Data Init
       characterData: initialCharacterData,

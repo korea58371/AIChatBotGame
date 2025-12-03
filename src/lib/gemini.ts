@@ -1,8 +1,27 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { Message } from './store';
 import { PromptManager } from './prompt-manager';
 
 // Removed static SYSTEM_PROMPT in favor of dynamic generation
+
+const safetySettings = [
+    {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+];
 
 export async function generateResponse(
     apiKey: string,
@@ -31,7 +50,10 @@ export async function generateResponse(
         try {
             console.log(`Trying story model: ${modelName}`);
 
-            const modelConfig: any = { model: modelName };
+            const modelConfig: any = {
+                model: modelName,
+                safetySettings
+            };
             modelConfig.systemInstruction = systemPrompt;
 
             const model = genAI.getGenerativeModel(modelConfig);
@@ -77,7 +99,8 @@ export async function generateGameLogic(
             console.log(`Trying logic model: ${modelName}`);
             const model = genAI.getGenerativeModel({
                 model: modelName,
-                generationConfig: { responseMimeType: "application/json" }
+                generationConfig: { responseMimeType: "application/json" },
+                safetySettings
             });
 
             // Extract character data from currentStats if available, or use default
@@ -159,9 +182,6 @@ export async function generateGameLogic(
                         "id": string, 
                         "name": string, 
                         "description": string, 
-                        "personality": string, 
-                        "trauma": string, 
-                        "default_expression": string,
                         "memories": [ string ] 
                     } 
                 ],
@@ -172,7 +192,8 @@ export async function generateGameLogic(
                         "secrets": [ string ]
                     }
                 ],
-                "newMood": "daily" | "combat" | "romance" | "comic" | "tension" | "erotic" | null
+                "newMood": "daily" | "combat" | "romance" | "comic" | "tension" | "erotic" | null,
+                "activeCharacters": [ string ] // List of character IDs currently present in the scene
             }
 
             **Mood Detection Rules:**
@@ -183,6 +204,12 @@ export async function generateGameLogic(
             - **erotic**: Sexual acts or high sexual tension (within safety guidelines).
             - **daily**: Default state, casual conversation, or none of the above.
             - If the mood changes, return the new mood string. If it stays the same, return null.
+
+            **Active Characters Rule:**
+            - Identify ALL characters currently present in the scene based on the narrative.
+            - Return their IDs (e.g., 'kim_dain', 'wang_wei').
+            - If a character leaves, exclude them from this list.
+            - If the player is alone, return an empty list [].
             `;
 
             const result = await model.generateContent(prompt);
