@@ -267,7 +267,7 @@ export const useGameStore = create<GameState>()(
       }),
     }),
     {
-      name: 'vn-game-storage',
+      name: 'vn-game-storage-v1',
       partialize: (state) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { apiKey, ...rest } = state;

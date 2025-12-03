@@ -147,6 +147,7 @@ export default function VisualNovelUI() {
         // Load Assets dynamically
         import('@/app/actions/assets').then(({ getAssetFiles }) => {
             getAssetFiles().then(({ backgrounds, characters }) => {
+                console.log("Loaded Assets (Client):", { backgrounds, characters });
                 useGameStore.getState().setAvailableAssets(backgrounds, characters);
                 console.log("Loaded Assets:", { backgrounds, characters });
             });
@@ -227,6 +228,8 @@ export default function VisualNovelUI() {
     const handleNewGame = () => {
         if (confirm(t.confirmNewGame)) {
             resetGame();
+            // Explicitly clear storage using Zustand's API
+            useGameStore.persist.clearStorage();
             // Force reload to ensure fresh data (JSONs) are loaded if they were changed
             setTimeout(() => {
                 window.location.reload();
