@@ -241,6 +241,7 @@ export const useGameStore = create<GameState>()(
 
       resetGame: () => set({
         chatHistory: [],
+        displayHistory: [],
         currentBackground: 'default',
         characterExpression: 'normal',
         activeCharacters: [],

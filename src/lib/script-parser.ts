@@ -30,22 +30,13 @@ export function parseScript(text: string): ScriptSegment[] {
         if (tagName === '배경') {
             segments.push({ type: 'background', content: content });
         } else if (tagName === '나레이션') {
-            // Split long narration into chunks of max 2 sentences
+            // Split long narration into individual sentences for better readability
             const sentences = content.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g) || [content];
-            let chunk = "";
-            let count = 0;
 
             for (const sentence of sentences) {
-                chunk += sentence;
-                count++;
-                if (count >= 2) {
-                    segments.push({ type: 'narration', content: chunk.trim() });
-                    chunk = "";
-                    count = 0;
+                if (sentence.trim()) {
+                    segments.push({ type: 'narration', content: sentence.trim() });
                 }
-            }
-            if (chunk.trim()) {
-                segments.push({ type: 'narration', content: chunk.trim() });
             }
         } else if (tagName.startsWith('선택지')) {
             const choiceId = parseInt(tagName.replace('선택지', ''));
@@ -59,6 +50,66 @@ export function parseScript(text: string): ScriptSegment[] {
 
                 const [name, expression] = meta.split('_');
 
+                // Heuristic: Check if content has narration attached after the dialogue
+                // Look for: "Dialogue" followed by newlines and then text
+                const splitMatch = dialogue.match(/^"([^"]+)"\s*\n+([\s\S]+)$/);
+
+                let dialogueContent = dialogue;
+                let narrationContent = null;
+
+                if (splitMatch) {
+                    dialogueContent = `"${splitMatch[1]}"`;
+                    narrationContent = splitMatch[2].trim();
+                }
+
+                // Split dialogue into chunks of max 3 sentences
+                const sentences = dialogueContent.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g) || [dialogueContent];
+                let chunk = "";
+                let count = 0;
+
+                for (const sentence of sentences) {
+                    chunk += sentence;
+                    count++;
+                    if (count >= 3) {
+                        segments.push({
+                            type: 'dialogue',
+                            content: chunk.trim(),
+                            character: name,
+                            expression: expression || '기본'
+                        });
+                        chunk = "";
+                        count = 0;
+                    }
+                }
+                if (chunk.trim()) {
+                    segments.push({
+                        type: 'dialogue',
+                        content: chunk.trim(),
+                        character: name,
+                        expression: expression || '기본'
+                    });
+                }
+
+                if (narrationContent) {
+                    segments.push({
+                        type: 'narration',
+                        content: narrationContent
+                    });
+                }
+            } else {
+                // Fallback if format is wrong
+                segments.push({ type: 'dialogue', content: content, character: 'Unknown', expression: '기본' });
+            }
+        } else {
+            // Check if the tag itself looks like "Name_Expression: Content" (AI Error Fallback)
+            // Example: <주인공_기본: 냄새, 좋아.> -> tagName="주인공_기본: 냄새, 좋아."
+            // We need to parse the tagName itself if it contains a colon
+            const colonIndex = tagName.indexOf(':');
+            if (colonIndex !== -1) {
+                const meta = tagName.substring(0, colonIndex).trim();
+                const dialogue = tagName.substring(colonIndex + 1).trim() + (content ? " " + content : ""); // Content might be empty if everything is in the tag
+
+                const [name, expression] = meta.split('_');
                 segments.push({
                     type: 'dialogue',
                     content: dialogue,
@@ -66,13 +117,9 @@ export function parseScript(text: string): ScriptSegment[] {
                     expression: expression || '기본'
                 });
             } else {
-                // Fallback if format is wrong
-                segments.push({ type: 'dialogue', content: content, character: 'Unknown', expression: '기본' });
+                // Unknown tag, treat as narration
+                segments.push({ type: 'narration', content: `[${tagName}] ${content}` });
             }
-        } else {
-            // Unknown tag, treat as narration or ignore? 
-            // For now, treat as narration to be safe
-            segments.push({ type: 'narration', content: `[${tagName}] ${content}` });
         }
     }
 

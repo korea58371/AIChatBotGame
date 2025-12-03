@@ -268,12 +268,12 @@ export default function VisualNovelUI() {
     // Helper Functions
     const getBgUrl = (bg: string) => {
         if (!bg) return '/assets/backgrounds/home.jpg';
-        return bg.startsWith('http') ? bg : `/assets/backgrounds/${bg}.jpg`;
+        return bg.startsWith('http') ? bg : `/assets/backgrounds/${encodeURIComponent(bg)}.jpg`;
     };
 
     const getCharUrl = (char: string) => {
         if (!char) return '';
-        return char.startsWith('http') ? char : `/assets/characters/${char}.png`;
+        return char.startsWith('http') ? char : `/assets/characters/${encodeURIComponent(char)}.png`;
     };
 
     const advanceScript = () => {
@@ -370,20 +370,39 @@ export default function VisualNovelUI() {
             }
 
             // 1. Generate Narrative
-            const response = await generateResponse(
+            const result = await generateResponse(
                 apiKey,
-                currentHistory, // Use potentially truncated history
+                currentHistory,
                 text,
                 currentState,
                 language
             );
-            const segments = parseScript(response);
+
+            // Handle both string (legacy) and object (new) return types
+            const responseText = typeof result === 'string' ? result : result.text;
+            const usageMetadata = typeof result === 'string' ? null : result.usageMetadata;
+
+            if (usageMetadata) {
+                const inputCost = (usageMetadata.promptTokenCount / 1000000) * 0.30;
+                const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * 2.50;
+                const totalCost = inputCost + outputCost;
+                const totalCostKRW = totalCost * 1400;
+
+                console.log("Token Usage (Story):");
+                console.log(`- Input: ${usageMetadata.promptTokenCount} tokens ($${inputCost.toFixed(6)})`);
+                console.log(`- Output: ${usageMetadata.candidatesTokenCount} tokens ($${outputCost.toFixed(6)})`);
+                console.log(`- Total Est. Cost: $${totalCost.toFixed(6)} (approx. ${totalCostKRW.toFixed(2)} KRW)`);
+
+                addToast(`Tokens: In ${usageMetadata.promptTokenCount} / Out ${usageMetadata.candidatesTokenCount}`, 'info');
+            }
+
+            const segments = parseScript(responseText);
 
             // 2. Generate Logic (Async)
             generateGameLogic(
                 apiKey,
                 text,
-                response,
+                responseText,
                 {
                     playerStats: currentState.playerStats,
                     inventory: currentState.inventory,
@@ -391,6 +410,19 @@ export default function VisualNovelUI() {
                     worldData: currentState.worldData
                 }
             ).then(logic => {
+                if (logic && logic._usageMetadata) {
+                    const usageMetadata = logic._usageMetadata;
+                    const inputCost = (usageMetadata.promptTokenCount / 1000000) * 0.30;
+                    const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * 2.50;
+                    const totalCost = inputCost + outputCost;
+                    const totalCostKRW = totalCost * 1400;
+
+                    console.log("Token Usage (Logic):");
+                    console.log(`- Input: ${usageMetadata.promptTokenCount} tokens ($${inputCost.toFixed(6)})`);
+                    console.log(`- Output: ${usageMetadata.candidatesTokenCount} tokens ($${outputCost.toFixed(6)})`);
+                    console.log(`- Total Est. Cost: $${totalCost.toFixed(6)} (approx. ${totalCostKRW.toFixed(2)} KRW)`);
+                }
+
                 if (segments.length === 0) {
                     applyGameLogic(logic);
                 } else {
@@ -399,16 +431,31 @@ export default function VisualNovelUI() {
             });
 
             // 3. Update State
-            addMessage({ role: 'model', text: response });
+            addMessage({ role: 'model', text: responseText });
 
             // Start playing
             if (segments.length > 0) {
-                const first = segments[0];
-                setCurrentSegment(first);
-                setScriptQueue(segments.slice(1));
+                // Skip initial background segments
+                let startIndex = 0;
+                while (startIndex < segments.length && segments[startIndex].type === 'background') {
+                    setBackground(segments[startIndex].content);
+                    startIndex++;
+                }
 
-                if (first.type === 'background') setBackground(first.content);
-                if (first.type === 'dialogue' && first.expression) setCharacterExpression(first.expression);
+                if (startIndex < segments.length) {
+                    const first = segments[startIndex];
+                    setCurrentSegment(first);
+                    setScriptQueue(segments.slice(startIndex + 1));
+
+                    if (first.type === 'dialogue' && first.expression) {
+                        // Combine character name and expression for filename
+                        setCharacterExpression(`${first.character}_${first.expression}`);
+                    }
+                } else {
+                    // All segments were backgrounds
+                    setScriptQueue([]);
+                    setCurrentSegment(null);
+                }
             } else {
                 setScriptQueue([]);
                 setCurrentSegment(null);

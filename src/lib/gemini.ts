@@ -67,7 +67,10 @@ export async function generateResponse(
 
             const result = await chatSession.sendMessage(userMessage);
             const response = result.response;
-            return response.text();
+            return {
+                text: response.text(),
+                usageMetadata: response.usageMetadata
+            };
 
         } catch (error: any) {
             console.warn(`Model ${modelName} failed:`, error.message || error);
@@ -221,6 +224,12 @@ export async function generateGameLogic(
             try {
                 const json = JSON.parse(text);
                 console.log("Parsed Logic JSON:", json); // Debug Log
+
+                // Attach usage metadata if available
+                if (response.usageMetadata) {
+                    json._usageMetadata = response.usageMetadata;
+                }
+
                 return json;
             } catch (e) {
                 console.error("Failed to parse logic JSON:", e);

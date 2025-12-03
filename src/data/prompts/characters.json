@@ -1,5 +1,18 @@
 [
     {
+        "spawnRules": {
+            "locations": [
+                "학교_옥상",
+                "학교_정문",
+                "던전_입구",
+                "오림푸스_길드"
+            ],
+            "relatedCharacters": [
+                "한수진 박사"
+            ],
+            "minFame": 100,
+            "condition": "Event_Chapter1_Clear"
+        },
         "name": "천서윤",
         "englishName": "Cheon Seo-yoon",
         "title": "고결한 전장의 성녀",

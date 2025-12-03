@@ -1,12 +1,35 @@
 import { SYSTEM_PROMPT_TEMPLATE } from '../data/prompts/system';
 import { MOOD_PROMPTS, MoodType } from '@/data/prompts/moods';
 
+interface SpawnRules {
+    locations?: string[];
+    relatedCharacters?: string[];
+    minFame?: number;
+    condition?: string;
+}
+
+interface Character {
+    name: string;
+    role?: string;
+    title?: string;
+    quote?: string;
+    profile?: any;
+    appearance?: any;
+    job?: any;
+    personality?: any;
+    preferences?: any;
+    secret?: any;
+    default_expression?: string;
+    description?: string;
+    spawnRules?: SpawnRules;
+}
+
 interface GameState {
     activeCharacters: string[]; // IDs of characters currently in the scene
     currentLocation: string;
     scenarioSummary: string;
     currentEvent: string;
-    characterData?: Record<string, any>; // Dynamic character data
+    characterData?: Record<string, Character>; // Dynamic character data
     worldData?: {
         locations: Record<string, string | { description: string, secrets: string[] }>;
         items: Record<string, string>;
@@ -145,13 +168,56 @@ export class PromptManager {
 
         prompt = prompt.replace('{{CHARACTER_INFO}}', charInfos || "No other characters are currently present.");
 
-        // 6. Available Characters Summary (for AI to pick from)
-        const availableCharsSummary = Object.values(charsData).map((c: any) => {
-            const desc = c.description || c.title || (c.appearance && c.appearance['전체적 인상']) || "Unknown";
-            return `- ${c.name} (${c.role || 'Unknown'}): ${desc.substring(0, 50)}...`;
-        }).join('\n');
+        // 6. Available Characters Summary (Context-Aware)
+        const availableChars = Object.values(charsData).map((c: any) => {
+            let score = 0;
+            let tags = [];
 
-        prompt = prompt.replace('{{AVAILABLE_CHARACTERS}}', availableCharsSummary || "None");
+            // 1. Location Match (High Priority)
+            if (c.spawnRules?.locations) {
+                const matchesLocation = c.spawnRules.locations.some((loc: string) =>
+                    state.currentLocation.includes(loc) || loc.includes(state.currentLocation)
+                );
+                if (matchesLocation) {
+                    score += 10;
+                    tags.push("[Nearby]");
+                }
+            }
+
+            // 2. Relationship Match (Medium Priority)
+            if (c.spawnRules?.relatedCharacters) {
+                const isRelated = c.spawnRules.relatedCharacters.some((related: string) =>
+                    state.activeCharacters.includes(related) || // ID match
+                    Array.from(activeCharIds).some(id => charsData[id]?.name === related) // Name match
+                );
+                if (isRelated) {
+                    score += 5;
+                    tags.push("[Related]");
+                }
+            }
+
+            // 3. Fame/Condition Check (Hard Filter)
+            if (c.spawnRules?.minFame && (state.playerStats.fame || 0) < c.spawnRules.minFame) {
+                return null; // Exclude if fame too low
+            }
+
+            // 4. Random Base Score (Low Priority)
+            score += Math.random() * 2;
+
+            return { char: c, score, tags };
+        })
+            .filter(item => item !== null)
+            .sort((a, b) => b!.score - a!.score) // Sort by score descending
+            .slice(0, 15) // Limit to top 15 relevant characters
+            .map(item => {
+                const c = item!.char;
+                const desc = c.description || c.title || (c.appearance && c.appearance['전체적 인상']) || "Unknown";
+                const tagStr = item!.tags.length > 0 ? ` ${item!.tags.join(' ')}` : "";
+                return `- ${c.name} (${c.role || 'Unknown'})${tagStr}: ${desc.substring(0, 50)}...`;
+            })
+            .join('\n');
+
+        prompt = prompt.replace('{{AVAILABLE_CHARACTERS}}', availableChars || "None");
 
         // 7. Available Backgrounds Injection
         const AVAILABLE_BACKGROUNDS = state.availableBackgrounds && state.availableBackgrounds.length > 0
