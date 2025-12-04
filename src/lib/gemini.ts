@@ -119,7 +119,8 @@ export async function generateGameLogic(
             AI Response: "${lastAiResponse}"
 
             Reference Data:
-            - Known Characters: ${Object.keys(characterData).join(', ')}
+            - Available Candidates:
+            ${PromptManager.getSpawnCandidates(currentStats)}
             - Valid Locations: ${Object.keys(worldData.locations).join(', ')}
             - Valid Items: ${Object.keys(worldData.items).join(', ')}
 

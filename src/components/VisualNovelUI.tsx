@@ -403,12 +403,7 @@ export default function VisualNovelUI() {
                 apiKey,
                 text,
                 responseText,
-                {
-                    playerStats: currentState.playerStats,
-                    inventory: currentState.inventory,
-                    characterData: currentState.characterData,
-                    worldData: currentState.worldData
-                }
+                currentState // Pass full state for context-aware spawning
             ).then(logic => {
                 if (logic && logic._usageMetadata) {
                     const usageMetadata = logic._usageMetadata;

@@ -169,53 +169,7 @@ export class PromptManager {
         prompt = prompt.replace('{{CHARACTER_INFO}}', charInfos || "No other characters are currently present.");
 
         // 6. Available Characters Summary (Context-Aware)
-        const availableChars = Object.values(charsData).map((c: any) => {
-            let score = 0;
-            let tags = [];
-
-            // 1. Location Match (High Priority)
-            if (c.spawnRules?.locations) {
-                const matchesLocation = c.spawnRules.locations.some((loc: string) =>
-                    state.currentLocation.includes(loc) || loc.includes(state.currentLocation)
-                );
-                if (matchesLocation) {
-                    score += 10;
-                    tags.push("[Nearby]");
-                }
-            }
-
-            // 2. Relationship Match (Medium Priority)
-            if (c.spawnRules?.relatedCharacters) {
-                const isRelated = c.spawnRules.relatedCharacters.some((related: string) =>
-                    state.activeCharacters.includes(related) || // ID match
-                    Array.from(activeCharIds).some(id => charsData[id]?.name === related) // Name match
-                );
-                if (isRelated) {
-                    score += 5;
-                    tags.push("[Related]");
-                }
-            }
-
-            // 3. Fame/Condition Check (Hard Filter)
-            if (c.spawnRules?.minFame && (state.playerStats.fame || 0) < c.spawnRules.minFame) {
-                return null; // Exclude if fame too low
-            }
-
-            // 4. Random Base Score (Low Priority)
-            score += Math.random() * 2;
-
-            return { char: c, score, tags };
-        })
-            .filter(item => item !== null)
-            .sort((a, b) => b!.score - a!.score) // Sort by score descending
-            .slice(0, 15) // Limit to top 15 relevant characters
-            .map(item => {
-                const c = item!.char;
-                const desc = c.description || c.title || (c.appearance && c.appearance['전체적 인상']) || "Unknown";
-                const tagStr = item!.tags.length > 0 ? ` ${item!.tags.join(' ')}` : "";
-                return `- ${c.name} (${c.role || 'Unknown'})${tagStr}: ${desc.substring(0, 50)}...`;
-            })
-            .join('\n');
+        const availableChars = PromptManager.getSpawnCandidates(state);
 
         prompt = prompt.replace('{{AVAILABLE_CHARACTERS}}', availableChars || "None");
 
@@ -256,5 +210,59 @@ export class PromptManager {
 
         console.log("Generated System Prompt:", prompt); // Debug Log
         return prompt;
+    }
+
+    static getSpawnCandidates(state: GameState): string {
+        const charsData = state.characterData || {};
+        const activeCharIds = new Set(state.activeCharacters);
+
+        return Object.values(charsData).map((c: any) => {
+            let score = 0;
+            let tags = [];
+
+            // 1. Relationship Match (Highest Priority: +10)
+            if (c.spawnRules?.relatedCharacters) {
+                const isRelated = c.spawnRules.relatedCharacters.some((related: string) =>
+                    state.activeCharacters.includes(related) || // ID match
+                    Array.from(activeCharIds).some(id => charsData[id]?.name === related) // Name match
+                );
+                if (isRelated) {
+                    score += 10;
+                    tags.push("Rel");
+                }
+            }
+
+            // 2. Location Match (High Priority: +8)
+            if (c.spawnRules?.locations) {
+                const matchesLocation = c.spawnRules.locations.some((loc: string) =>
+                    state.currentLocation.includes(loc) || loc.includes(state.currentLocation)
+                );
+                if (matchesLocation) {
+                    score += 8;
+                    tags.push("Loc");
+                }
+            }
+
+            // 3. Fame Check (Medium Priority: +4)
+            const minFame = c.spawnRules?.minFame || 0;
+            if ((state.playerStats.fame || 0) >= minFame) {
+                score += 4;
+                tags.push("Fame");
+            }
+
+            // 4. Random Factor (Tie-breaker: +0~1)
+            score += Math.random();
+
+            return { char: c, score, tags };
+        })
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 4) // Top 4 Candidates
+            .map(item => {
+                const c = item.char;
+                const desc = c.description || c.title || (c.appearance && c.appearance['전체적 인상']) || "Unknown";
+                const tagStr = item.tags.length > 0 ? `[${item.tags.join('/')}]` : "";
+                return `- ${c.name} (${c.role || 'Unknown'}) (Score: ${item.score.toFixed(1)}) ${tagStr}: ${desc.substring(0, 50)}...`;
+            })
+            .join('\n');
     }
 }
