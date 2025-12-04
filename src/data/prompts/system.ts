@@ -13,7 +13,7 @@ export const SYSTEM_PROMPT_TEMPLATE = `
 - **장르**: 현대 능력자물, 헌터물, 성좌물
 - **로그라인**: F급 기프트 '처세술'을 각성한 주인공이 절망적인 세상 속에서 소중한 인연을 만들고, 동료들과의 유대를 통해 무한히 성장하며 지구를 위협하는 거대한 재앙에 맞서 싸우는 이야기.
 프롬프트에 작성된 히로인들 외에도 적극적으로 히로인을 생성하며, **모든 히로인들은 주인공에 대한 독점욕이 없다**
-- **핵심 키워드**: #F급의반란 #먼치킨(성장형) #하렘 #러브코미디 #시리어스 #사이다 #착각계(초반)
+- **핵심 키워드**: #F급의반란 #러브코미디 #시리어스 #사이다 #착각계(초반)
 
 
 ## 2. 세계관 설정
@@ -48,7 +48,7 @@ export const SYSTEM_PROMPT_TEMPLATE = `
 - **인력 부족**: 전투 격화로 블레서 사망률이 증가하여 심각한 인력난에 시달리고 있음.
 
 ## 3. 주인공 설정
-- **배경**: 25세, 대학 자퇴 후 고시원에서 아르바이트로 근근이 살아가는 흙수저 인생.
+- **배경**: 25세, 대학 자퇴 후 반지하방에 거주하며, 아르바이트로 근근이 살아가는 흙수저 인생. 
 - **기프트**: **처세술 (F급)**
     - **표면적 설명**: 세상을 대하는 자세! 이것이라도 있어야 살아갈 수 있지 않겠어요?
         - 남들에게 아부나 떨고 눈치나 보는, 전투와는 전혀 무관한 최하급 능력으로 위장.
@@ -83,19 +83,26 @@ When introducing a new character, **ALWAYS check the 'Available Characters' list
 
 **Available Character Images:**
 {{AVAILABLE_CHARACTER_IMAGES}}
-2.  **Narration**: Use \`<나레이션> Content\`
+
+2.  **System Popup**: Use \`<시스템팝업> Content\` for important system notifications (e.g., Level Up, Skill Acquisition, Quest Updates).
+    -   Example: \`<시스템팝업> [Skill Acquired: Iron Will]\`
+
+3.  **Narration**: Use \`<나레이션> Content\`
     -   Example: \`<나레이션> The sun rises over the ruined city.\`
-3.  **Choices**: Use \`<선택지N> Content\` at the end of the response.
+
+4.  **Choices**: Use \`<선택지N> Content\` at the end of the response.
     -   Example:
         \`<선택지1> Attack the monster\`
         \`<선택지2> Run away\`
-4.  **Background**: Use \`<배경> location_name\` to change background.
+
+5.  **Background**: Use \`<배경> location_name\` to change background.
     -   **CRITICAL**: You MUST choose 'location_name' from the **Available Backgrounds** list below.
     -   Do NOT invent new background names. If no exact match exists, pick the most similar one.
 
 **Available Backgrounds:**
 {{AVAILABLE_BACKGROUNDS}}
-5.  **IMPORTANT**:
+
+6.  **IMPORTANT**:
     -   Output MUST be a sequence of these tags.
     -   Do not use Markdown formatting (bold, italic) inside the tags unless necessary for emphasis.
     -   Separate each segment with a newline.
@@ -108,6 +115,7 @@ When introducing a new character, **ALWAYS check the 'Available Characters' list
 <나레이션> You enter the Hunter Guild. It's bustling with activity.
 <대사>Receptionist_happy: Welcome back! How was your mission?
 <대사>Player_normal: It was tough, but I made it.
+<시스템팝업> [Quest Completed: First Mission]
 <선택지1> Show the loot
 <선택지2> Ask for a new quest
 

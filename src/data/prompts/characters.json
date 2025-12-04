@@ -8,7 +8,7 @@
                 "오림푸스_길드"
             ],
             "relatedCharacters": [
-                "한수진 박사"
+                "한수진"
             ],
             "minFame": 100,
             "condition": "Event_Chapter1_Clear"
@@ -64,8 +64,8 @@
                 "탕비실"
             ],
             "relatedCharacters": [
-                "오지민 대리",
-                "한수진 박사",
+                "오지민",
+                "한수진",
                 "강지수"
             ],
             "minFame": 150
@@ -251,7 +251,7 @@
             "minFame": 50,
             "condition": null
         },
-        "name": "한수진 박사",
+        "name": "한수진",
         "englishName": "Dr. Han Su-jin",
         "country": "Korea",
         "relationship": "차도희 교수와는 의학/생물학적 자문 관계. 송채윤과는 약물 및 이계종 부산물 연구를 공유하는 사이.",
@@ -365,7 +365,7 @@
             ],
             "relatedCharacters": [
                 "천서윤",
-                "사이온지 미유키",
+                "미유키",
                 "리메이링"
             ],
             "minFame": 200,
@@ -782,7 +782,7 @@
             ],
             "relatedCharacters": [
                 "아나스타샤",
-                "한수진 박사",
+                "한수진",
                 "유화영"
             ],
             "minFame": 200,
@@ -961,9 +961,9 @@
                 "프리미엄 만화 카페"
             ],
             "relatedCharacters": [
-                "한수진 박사",
+                "한수진",
                 "서유나",
-                "오지민 대리"
+                "오지민"
             ],
             "minFame": 50,
             "condition": "Library_Membership"
@@ -1023,7 +1023,7 @@
             "relatedCharacters": [
                 "한가을",
                 "백소미",
-                "오지민 대리"
+                "오지민"
             ],
             "minFame": 0,
             "condition": "Tenant_Contract"
@@ -1081,7 +1081,7 @@
                 "도축장 냉동창고"
             ],
             "relatedCharacters": [
-                "야마다 하나코",
+                "하나코",
                 "엘레나",
                 "마세영"
             ],
@@ -1203,7 +1203,7 @@
                 "고요한 숲"
             ],
             "relatedCharacters": [
-                "사이온지 미유키",
+                "미유키",
                 "백련화",
                 "도예린"
             ],
@@ -1266,7 +1266,7 @@
             "relatedCharacters": [
                 "유화영",
                 "주아인",
-                "오지민 대리"
+                "오지민"
             ],
             "minFame": 100,
             "condition": "Crime_Investigation"
@@ -1388,7 +1388,7 @@
                 "키리",
                 "백소미"
             ],
-            "minFame": 0,
+            "minFame": 100,
             "condition": "Taming_Event"
         },
         "name": "설아",
@@ -1445,7 +1445,7 @@
             ],
             "relatedCharacters": [
                 "은하율",
-                "오지민 대리",
+                "오지민",
                 "고하늘"
             ],
             "minFame": 0,
@@ -1565,13 +1565,13 @@
             ],
             "relatedCharacters": [
                 "유화영",
-                "야마다 하나코",
+                "하나코",
                 "강지수"
             ],
             "minFame": 50,
             "condition": "Association_Registration"
         },
-        "name": "오지민 대리",
+        "name": "오지민",
         "englishName": "Oh Ji-min",
         "country": "Korea",
         "relationship": "유화영은 무서운 직장 상사(팀장). 야마다 하나코와는 일과 술에 찌든 직장인으로서 깊은 유대감을 형성함.",
@@ -1806,7 +1806,7 @@
             "relatedCharacters": [
                 "권세나",
                 "아미라",
-                "오지민 대리"
+                "오지민"
             ],
             "minFame": 300,
             "condition": "Private_Jet_Unlock"
@@ -1864,7 +1864,7 @@
                 "고압 산소 챔버"
             ],
             "relatedCharacters": [
-                "한수진 박사",
+                "한수진",
                 "신유라",
                 "강지수"
             ],
@@ -2044,7 +2044,7 @@
                 "사주&타로 카페"
             ],
             "relatedCharacters": [
-                "한수진 박사",
+                "한수진",
                 "이화연",
                 "차도희"
             ],
@@ -2105,7 +2105,7 @@
             ],
             "relatedCharacters": [
                 "신세아",
-                "오지민 대리",
+                "오지민",
                 "백마리"
             ],
             "minFame": 200,
@@ -2165,7 +2165,7 @@
             ],
             "relatedCharacters": [
                 "천서윤",
-                "오지민 대리",
+                "오지민",
                 "클레어"
             ],
             "minFame": 300,
@@ -2351,7 +2351,7 @@
             "minFame": 400,
             "condition": "International_Exchange"
         },
-        "name": "사이온지 미유키",
+        "name": "미유키",
         "englishName": "Saionji Miyuki",
         "country": "Japan",
         "relationship": "사쿠라코가 모시는 가문의 당주이자 주군. 백련화, 리메이링과는 각국을 대표하는 최강의 검사로서 라이벌 관계.",
@@ -2527,14 +2527,14 @@
                 "오래된 놀이터"
             ],
             "relatedCharacters": [
-                "오지민 대리",
+                "오지민",
                 "아나스타샤",
                 "강지수"
             ],
             "minFame": 50,
             "condition": "Overtime_Work"
         },
-        "name": "야마다 하나코",
+        "name": "하나코",
         "englishName": "Yamada Hanako",
         "country": "Japan",
         "relationship": "오지민 대리와는 격무에 시달리는 회사원으로서 술자리에서 의기투합함. 아나스타샤와는 국경을 초월한 술친구.",
@@ -2768,7 +2768,7 @@
                 "식물원_비오는날"
             ],
             "relatedCharacters": [
-                "사이온지 미유키",
+                "미유키",
                 "백련화",
                 "왕웨이"
             ],
@@ -2825,7 +2825,6 @@
                 "도축장 냉동창고",
                 "길거리 포장마차",
                 "지하철 물품 보관함",
-                "집_현관",
                 "박물관 (미술관_심야 대체)"
             ],
             "relatedCharacters": [
@@ -2833,7 +2832,7 @@
                 "설아",
                 "왕웨이"
             ],
-            "minFame": 0,
+            "minFame": 300,
             "condition": "Coffin_Discovery"
         },
         "name": "링링",

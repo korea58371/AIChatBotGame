@@ -861,36 +861,7 @@ export default function VisualNovelUI() {
                 )
             }
 
-            {/* Bottom: Dialogue Box */}
-            <AnimatePresence mode="wait">
-                {currentSegment && (
-                    <motion.div
-                        key={currentSegment.content}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-auto w-full max-w-6xl rounded-xl border-2 p-8 shadow-2xl backdrop-blur-md min-h-[220px] flex flex-col justify-center z-20
-                            ${currentSegment.type === 'narration'
-                                ? 'bg-black/60 border-gray-500 text-center italic text-gray-200'
-                                : 'bg-black/80 border-yellow-500 text-left'
-                            }`}
-                    >
-                        {currentSegment.type === 'dialogue' && (
-                            <div className="text-yellow-400 font-bold text-[30px] mb-3">
-                                {currentSegment.character}
-                            </div>
-                        )}
-                        <div className="text-[28px] leading-relaxed text-white">
-                            {currentSegment.content}
-                        </div>
-                        {scriptQueue.length > 0 && (
-                            <div className="absolute bottom-4 right-4 animate-bounce text-yellow-500">
-                                ▼
-                            </div>
-                        )}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+
 
             {/* Loading Indicator */}
             <AnimatePresence>
@@ -1288,6 +1259,76 @@ export default function VisualNovelUI() {
                     )
                 }
             </AnimatePresence >
+
+            {/* System Popup Layer */}
+            <AnimatePresence>
+                {currentSegment?.type === 'system_popup' && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="absolute inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            advanceScript();
+                        }}
+                    >
+                        <div className="bg-gradient-to-b from-gray-900 to-black border-2 border-yellow-500 rounded-lg p-8 max-w-4xl w-full shadow-[0_0_50px_rgba(234,179,8,0.3)] text-center relative overflow-hidden">
+                            {/* Decorative Elements */}
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent" />
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent" />
+
+                            <h2 className="text-2xl font-bold text-yellow-400 mb-6 tracking-widest uppercase border-b border-gray-700 pb-4">
+                                SYSTEM NOTIFICATION
+                            </h2>
+
+                            <div className="text-xl text-white leading-relaxed font-medium whitespace-pre-wrap">
+                                {currentSegment.content.replace(/\*\*/g, '')}
+                            </div>
+
+                            <div className="mt-8 text-sm text-gray-500 animate-pulse">
+                                Click to continue
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Dialogue / Narration Layer */}
+            {currentSegment && currentSegment.type !== 'system_popup' && (
+                <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black via-black/80 to-transparent h-[40vh] pointer-events-none">
+                    <div className="w-full max-w-4xl bg-black/80 border border-gray-700 rounded-xl p-6 shadow-2xl backdrop-blur-md pointer-events-auto cursor-pointer hover:border-gray-500 transition-colors relative"
+                        onClick={handleScreenClick}>
+
+                        {/* Name Tag */}
+                        {currentSegment.type === 'dialogue' && (
+                            <div className="absolute -top-5 left-6 bg-gray-900 border border-gray-600 px-6 py-2 rounded-t-lg shadow-lg">
+                                <span className="text-xl font-bold text-yellow-500 tracking-wide">
+                                    {currentSegment.character}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Text Content */}
+                        <div className="text-lg md:text-xl leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap">
+                            {currentSegment.type === 'narration' ? (
+                                <span className="text-gray-300 italic block text-center px-8">
+                                    {currentSegment.content}
+                                </span>
+                            ) : (
+                                <span>
+                                    {currentSegment.content}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Continue Indicator */}
+                        <div className="absolute bottom-4 right-6 animate-bounce text-yellow-500">
+                            ▼
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

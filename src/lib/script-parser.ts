@@ -1,4 +1,4 @@
-export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'unknown';
+export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'unknown';
 
 export interface ScriptSegment {
     type: ScriptType;
@@ -29,6 +29,8 @@ export function parseScript(text: string): ScriptSegment[] {
 
         if (tagName === '배경') {
             segments.push({ type: 'background', content: content });
+        } else if (tagName === '시스템팝업') {
+            segments.push({ type: 'system_popup', content: content });
         } else if (tagName === '나레이션') {
             // Split long narration into individual sentences for better readability
             const sentences = content.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g) || [content];
