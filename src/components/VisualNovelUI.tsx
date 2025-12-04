@@ -425,6 +425,14 @@ export default function VisualNovelUI() {
             const responseText = typeof result === 'string' ? result : result.text;
             const usageMetadata = typeof result === 'string' ? null : result.usageMetadata;
 
+            // Log Story Model Debug Info
+            if (typeof result !== 'string' && (result as any).systemPrompt) {
+                console.log("%c[Story Model Input - System Prompt]", "color: cyan; font-weight: bold;");
+                console.log((result as any).systemPrompt);
+                console.log("%c[Story Model Input - User Message]", "color: cyan; font-weight: bold;");
+                console.log(text);
+            }
+
             if (usageMetadata) {
                 const inputCost = (usageMetadata.promptTokenCount / 1000000) * 0.30;
                 const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * 2.50;
@@ -447,6 +455,18 @@ export default function VisualNovelUI() {
                 responseText,
                 currentState // Pass full state for context-aware spawning
             ).then(logic => {
+                // Log Logic Model Debug Info
+                if (logic) {
+                    if (logic._debug_prompt) {
+                        console.log("%c[Logic Model Input - Prompt]", "color: violet; font-weight: bold;");
+                        console.log(logic._debug_prompt);
+                    }
+                    if (logic._debug_raw_response) {
+                        console.log("%c[Logic Model Output - Raw Response]", "color: violet; font-weight: bold;");
+                        console.log(logic._debug_raw_response);
+                    }
+                }
+
                 if (logic && logic._usageMetadata) {
                     const usageMetadata = logic._usageMetadata;
                     const inputCost = (usageMetadata.promptTokenCount / 1000000) * 0.30;

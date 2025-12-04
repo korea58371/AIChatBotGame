@@ -69,7 +69,8 @@ export async function generateResponse(
             const response = result.response;
             return {
                 text: response.text(),
-                usageMetadata: response.usageMetadata
+                usageMetadata: response.usageMetadata,
+                systemPrompt: systemPrompt
             };
 
         } catch (error: any) {
@@ -238,6 +239,10 @@ export async function generateGameLogic(
                     json._usageMetadata = response.usageMetadata;
                 }
 
+                // Attach debug info
+                json._debug_prompt = prompt;
+                json._debug_raw_response = text;
+
                 return json;
             } catch (e) {
                 console.error("Failed to parse logic JSON:", e);
@@ -247,6 +252,11 @@ export async function generateGameLogic(
                     try {
                         const json = JSON.parse(match[1]);
                         console.log("Parsed Logic JSON (from markdown):", json); // Debug Log
+
+                        // Attach debug info
+                        json._debug_prompt = prompt;
+                        json._debug_raw_response = text;
+
                         return json;
                     } catch (e2) {
                         console.error("Failed to parse extracted JSON:", e2);
