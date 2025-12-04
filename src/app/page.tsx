@@ -13,6 +13,14 @@ export default function Home() {
 
     useEffect(() => {
         const checkUser = async () => {
+            // Check if there is an auth code in the URL (Supabase sometimes redirects to root)
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            if (code) {
+                router.push(`/auth/callback?code=${code}`);
+                return;
+            }
+
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 router.push('/game');
