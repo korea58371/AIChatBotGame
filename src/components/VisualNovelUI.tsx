@@ -671,7 +671,7 @@ export default function VisualNovelUI() {
 
             {/* Character Layer */}
             <AnimatePresence mode="wait">
-                {characterExpression && (
+                {characterExpression && currentSegment?.type === 'dialogue' && (
                     <motion.div
                         key={characterExpression}
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1358,7 +1358,13 @@ export default function VisualNovelUI() {
                             <div className="absolute -top-11 w-full text-center px-2">
                                 <span className="text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                     {(() => {
-                                        const { characterData } = useGameStore.getState();
+                                        const { characterData, playerName } = useGameStore.getState();
+
+                                        // Handle Protagonist Name
+                                        if (currentSegment.character === '주인공') {
+                                            return playerName;
+                                        }
+
                                         const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
                                         const found = charList.find((c: any) => c.englishName === currentSegment.character || c.name === currentSegment.character);
                                         return found ? found.name : currentSegment.character;

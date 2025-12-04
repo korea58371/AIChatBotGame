@@ -192,18 +192,18 @@ export class PromptManager {
         prompt = prompt.replace('{{AVAILABLE_BACKGROUNDS}}', AVAILABLE_BACKGROUNDS.join(', '));
 
         // 8. Available Character Images Injection (Optimized)
-        // Instead of listing all files, we provide a rule and a list of available English names.
-        const availableEnglishNames = Object.values(charsData)
-            .map(c => c.englishName)
+        // Instead of listing all files, we provide a rule.
+        const availableNames = Object.values(charsData)
+            .map(c => c.name)
             .filter(Boolean)
             .join(', ');
 
         const imageRule = `
 **IMAGE RULE**:
-- Character images follow the format: \`[EnglishName]_[Emotion].png\`
-- Standard emotions: \`default\`, \`joy\`, \`sad\`, \`angry\`, \`love\`, \`shy\`, \`panic\`.
-- Example: If EnglishName is 'Alice', use 'Alice_joy' for happy expression.
-- Available Character English Names: ${availableEnglishNames || "None"}
+- Character images follow the format: \`[Name]_[Emotion].png\`
+- Standard emotions: \`기본\`, \`기쁨\`, \`슬픔\`, \`분노\`, \`애정당황\`.
+- Example: If Name is '민소희', use '민소희_기쁨' for happy expression.
+- Available Character Names: ${availableNames || "None"}
 - For the protagonist '${playerName}', ALWAYS use '주인공_[Emotion]'.
 `.trim();
 
