@@ -34,6 +34,21 @@ export default function Login() {
         setLoading(false);
     };
 
+    const handleGuestLogin = async () => {
+        setLoading(true);
+        setMessage(null);
+
+        const { error } = await supabase.auth.signInAnonymously();
+
+        if (error) {
+            setMessage({ text: error.message, type: 'error' });
+            setLoading(false);
+        } else {
+            // Force redirect to game
+            window.location.href = '/game';
+        }
+    };
+
     return (
         <div className="w-full max-w-sm bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
             <h2 className="text-2xl font-bold text-center text-white mb-6">Hunter's Login</h2>
@@ -67,8 +82,25 @@ export default function Login() {
                     {loading ? <Loader2 className="animate-spin" size={18} /> : 'Send Magic Link'}
                 </button>
 
+                <div className="relative my-4">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-600"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-gray-800 text-gray-400">Or</span>
+                    </div>
+                </div>
+
+                <button
+                    onClick={handleGuestLogin}
+                    disabled={loading}
+                    className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded transition disabled:opacity-50 flex justify-center items-center gap-2"
+                >
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : 'Play as Guest'}
+                </button>
+
                 <p className="text-xs text-center text-gray-500 mt-4">
-                    No password needed. We'll send a login link to your email.
+                    Guest accounts are saved on this device.
                 </p>
             </div>
         </div>
