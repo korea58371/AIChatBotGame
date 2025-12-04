@@ -17,7 +17,8 @@ export default function Home() {
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
             if (code) {
-                router.push(`/auth/callback?code=${code}`);
+                // Use window.location.href for a hard redirect to the route handler
+                window.location.href = `/auth/callback?code=${code}`;
                 return;
             }
 
