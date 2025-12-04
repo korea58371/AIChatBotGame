@@ -478,10 +478,23 @@ export default function VisualNovelUI() {
         if (segments.length > 0) advanceScript();
     };
 
+    const lastClickTime = useRef(0);
+
     const handleScreenClick = (e: React.MouseEvent) => {
         if (isProcessing || isInputOpen || isDebugOpen || showHistory || showInventory || showCharacterInfo || showSaveLoad) return;
         if (choices.length > 0) return;
+
+        const now = Date.now();
+        if (now - lastClickTime.current < 500) return; // 500ms Debounce
+        lastClickTime.current = now;
+
         advanceScript();
+    };
+
+    const handleWheel = (e: React.WheelEvent) => {
+        if (e.deltaY < -30 && !showHistory && !isInputOpen && !isDebugOpen && !showInventory && !showCharacterInfo && !showSaveLoad) {
+            setShowHistory(true);
+        }
     };
 
     const handleStartGame = () => {
@@ -644,6 +657,7 @@ export default function VisualNovelUI() {
         <div
             className="relative w-full h-screen bg-black overflow-hidden font-sans select-none"
             onClick={handleScreenClick}
+            onWheel={handleWheel}
         >
             {/* Background Layer */}
             <div
@@ -889,15 +903,45 @@ export default function VisualNovelUI() {
                                 <h2 className="text-xl font-bold text-white">{t.chatHistory}</h2>
                                 <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white">{t.close}</button>
                             </div>
-                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4">
-                                {(useGameStore.getState().displayHistory || chatHistory).map((msg, idx) => (
-                                    <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                        <span className="text-xs text-gray-500 mb-1">{msg.role === 'user' ? t.you : t.system}</span>
-                                        <div className={`p-3 rounded-lg max-w-[90%] whitespace-pre-wrap ${msg.role === 'user' ? 'bg-blue-900/50 text-blue-100' : 'bg-gray-800/50 text-gray-300'}`}>
-                                            {msg.text}
+                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+                                {(useGameStore.getState().displayHistory || chatHistory).map((msg, idx) => {
+                                    const segments = parseScript(msg.text);
+                                    return (
+                                        <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                            <span className="text-sm text-gray-500 mb-2 font-bold">{msg.role === 'user' ? t.you : t.system}</span>
+                                            <div className={`rounded-xl max-w-[95%] overflow-hidden ${msg.role === 'user' ? 'bg-blue-900/30 border border-blue-500/50' : 'bg-gray-800/50 border border-gray-700'}`}>
+                                                {msg.role === 'user' ? (
+                                                    <div className="p-4 text-blue-100 text-lg">{msg.text}</div>
+                                                ) : (
+                                                    <div className="flex flex-col divide-y divide-gray-700/50">
+                                                        {segments.map((seg, sIdx) => (
+                                                            <div key={sIdx} className="p-4">
+                                                                {seg.type === 'dialogue' && (
+                                                                    <div className="mb-1">
+                                                                        <span className="text-yellow-500 font-bold text-lg">{seg.character}</span>
+                                                                    </div>
+                                                                )}
+                                                                {seg.type === 'system_popup' && (
+                                                                    <div className="text-purple-400 font-bold text-center border border-purple-500/30 bg-purple-900/20 p-2 rounded">
+                                                                        [SYSTEM] {seg.content}
+                                                                    </div>
+                                                                )}
+                                                                <div className={`text-lg leading-relaxed ${seg.type === 'narration' ? 'text-gray-400 italic' : 'text-gray-200'}`}>
+                                                                    {seg.content}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {segments.length === 0 && (
+                                                            <div className="p-4 text-gray-400 italic">
+                                                                {msg.text}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -1296,23 +1340,28 @@ export default function VisualNovelUI() {
 
             {/* Dialogue / Narration Layer */}
             {currentSegment && currentSegment.type !== 'system_popup' && (
-                <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black via-black/80 to-transparent h-[40vh] pointer-events-none">
-                    <div className="w-full max-w-4xl bg-black/80 border border-gray-700 rounded-xl p-6 shadow-2xl backdrop-blur-md pointer-events-auto cursor-pointer hover:border-gray-500 transition-colors relative"
+                <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[24vh] pointer-events-none">
+                    <div className="w-full max-w-[96rem] p-6 pointer-events-auto cursor-pointer relative"
                         onClick={handleScreenClick}>
 
                         {/* Name Tag */}
                         {currentSegment.type === 'dialogue' && (
-                            <div className="absolute -top-5 left-6 bg-gray-900 border border-gray-600 px-6 py-2 rounded-t-lg shadow-lg">
-                                <span className="text-xl font-bold text-yellow-500 tracking-wide">
-                                    {currentSegment.character}
+                            <div className="absolute -top-14 w-full text-center px-2">
+                                <span className="text-[32px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                    {(() => {
+                                        const { characterData } = useGameStore.getState();
+                                        const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
+                                        const found = charList.find((c: any) => c.englishName === currentSegment.character || c.name === currentSegment.character);
+                                        return found ? found.name : currentSegment.character;
+                                    })()}
                                 </span>
                             </div>
                         )}
 
                         {/* Text Content */}
-                        <div className="text-lg md:text-xl leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap">
+                        <div className="text-[36px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center">
                             {currentSegment.type === 'narration' ? (
-                                <span className="text-gray-300 italic block text-center px-8">
+                                <span className="text-gray-300 italic block px-8">
                                     {currentSegment.content}
                                 </span>
                             ) : (
@@ -1329,6 +1378,6 @@ export default function VisualNovelUI() {
                     </div>
                 </div>
             )}
-        </div >
+        </div>
     );
 }
