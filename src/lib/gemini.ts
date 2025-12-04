@@ -106,21 +106,23 @@ export async function generateGameLogic(
                 safetySettings
             });
 
-            // Extract character data from currentStats if available, or use default
-            const characterData = currentStats.characterData || {};
+            // Prune currentStats to remove heavy character data (Token Optimization)
+            const { characterData, ...prunedStats } = currentStats;
             const worldData = currentStats.worldData || require('../data/prompts/world.json'); // Fallback to static if missing
+
+            // Get lightweight context for Logic Model
+            const logicContext = PromptManager.getLogicModelContext(currentStats);
 
             const prompt = `
             You are a Game Master (GM) managing the backend logic of a text RPG.
             Analyze the latest interaction and update the player's status, inventory, personality, and relationships.
 
-            Current Stats: ${JSON.stringify(currentStats)}
+            Current Stats: ${JSON.stringify(prunedStats)}
             User Action: "${lastUserMessage}"
             AI Response: "${lastAiResponse}"
 
             Reference Data:
-            - Available Candidates:
-            ${PromptManager.getSpawnCandidates(currentStats)}
+            ${logicContext}
             - Valid Locations: ${Object.keys(worldData.locations).join(', ')}
             - Valid Items: ${Object.keys(worldData.items).join(', ')}
 

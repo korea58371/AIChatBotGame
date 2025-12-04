@@ -22,6 +22,16 @@ interface Character {
     default_expression?: string;
     description?: string;
     spawnRules?: SpawnRules;
+    englishName?: string; // Added for image rule
+}
+
+// Lightweight character structure for Logic Model to save tokens
+interface LightweightCharacter {
+    name: string;
+    englishName?: string;
+    role?: string;
+    spawnRules?: SpawnRules;
+    description?: string; // Short description
 }
 
 interface GameState {
@@ -180,15 +190,23 @@ export class PromptManager {
 
         prompt = prompt.replace('{{AVAILABLE_BACKGROUNDS}}', AVAILABLE_BACKGROUNDS.join(', '));
 
-        // 8. Available Character Images Injection
-        const AVAILABLE_CHARACTER_IMAGES = state.availableCharacterImages && state.availableCharacterImages.length > 0
-            ? state.availableCharacterImages
-            : ["강시아_기본", "김다인_기본", "주인공_기본"]; // Fallback
+        // 8. Available Character Images Injection (Optimized)
+        // Instead of listing all files, we provide a rule and a list of available English names.
+        const availableEnglishNames = Object.values(charsData)
+            .map(c => c.englishName)
+            .filter(Boolean)
+            .join(', ');
 
-        prompt = prompt.replace('{{AVAILABLE_CHARACTER_IMAGES}}', AVAILABLE_CHARACTER_IMAGES.join(', '));
+        const imageRule = `
+**IMAGE RULE**:
+- Character images follow the format: \`[EnglishName]_[Emotion].png\`
+- Standard emotions: \`default\`, \`joy\`, \`sad\`, \`angry\`, \`love\`, \`shy\`, \`panic\`.
+- Example: If EnglishName is 'Alice', use 'Alice_joy' for happy expression.
+- Available Character English Names: ${availableEnglishNames || "None"}
+- For the protagonist '${playerName}', ALWAYS use '주인공_[Emotion]'.
+`.trim();
 
-        // CRITICAL: Instruct AI to use '주인공' tag for the player
-        prompt += `\n\n**IMPORTANT IMAGE RULE**: For the protagonist '${playerName}', ALWAYS use the image tag starting with '주인공_' (e.g., '주인공_기본', '주인공_happy'). Do NOT use '${playerName}' as the image tag prefix.`;
+        prompt = prompt.replace('{{AVAILABLE_CHARACTER_IMAGES}}', imageRule);
 
         // 9. Mood Injection
         const currentMood = state.currentMood || 'daily';
@@ -264,5 +282,27 @@ export class PromptManager {
                 return `- ${c.name} (${c.role || 'Unknown'}) (Score: ${item.score.toFixed(1)}) ${tagStr}: ${desc.substring(0, 50)}...`;
             })
             .join('\n');
+    }
+
+    // New method to get strictly pruned context for Logic Model
+    static getLogicModelContext(state: GameState): string {
+        // 1. Get Spawn Candidates (already filtered top 4)
+        const spawnCandidates = PromptManager.getSpawnCandidates(state);
+
+        // 2. Get Active Characters (Lightweight)
+        const charsData = state.characterData || {};
+        const activeChars = state.activeCharacters.map(id => {
+            const c = charsData[id];
+            if (!c) return null;
+            return `- ${c.name} (${c.role}): Active in scene.`;
+        }).filter(Boolean).join('\n');
+
+        return `
+[Active Characters]
+${activeChars || "None"}
+
+[Available Candidates for Spawning]
+${spawnCandidates || "None"}
+        `.trim();
     }
 }
