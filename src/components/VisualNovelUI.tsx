@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/lib/store';
+import { createClient } from '@/lib/supabase';
 import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary } from '@/app/actions/game';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { Send, Save, RotateCcw, History, SkipForward, Package } from 'lucide-react';
@@ -136,8 +137,30 @@ export default function VisualNovelUI() {
         language,
         setLanguage,
         scenarioSummary,
-        playerName // Add playerName from hook
+        playerName, // Add playerName from hook
+        userCoins,
+        setUserCoins
     } = useGameStore();
+
+    const supabase = createClient();
+
+    // Fetch Coins on Mount
+    useEffect(() => {
+        const fetchCoins = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('coins')
+                    .eq('id', user.id)
+                    .single();
+                if (data) {
+                    setUserCoins(data.coins);
+                }
+            }
+        };
+        fetchCoins();
+    }, []);
 
 
 
@@ -333,6 +356,32 @@ export default function VisualNovelUI() {
 
     const handleSend = async (text: string) => {
         if (!text.trim()) return;
+
+        // Coin Check
+        if (userCoins < 1) {
+            addToast("Not enough coins! Please recharge.", "warning");
+            return;
+        }
+
+        // Deduct Coin
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { error } = await supabase.rpc('decrement_coin', { user_id: user.id });
+            if (error) {
+                // Fallback if RPC not exists (Manual Update - less safe but works for now)
+                const { error: updateError } = await supabase
+                    .from('profiles')
+                    .update({ coins: userCoins - 1 })
+                    .eq('id', user.id);
+
+                if (updateError) {
+                    console.error("Coin update failed:", updateError);
+                    addToast("Transaction failed.", "warning");
+                    return;
+                }
+            }
+            setUserCoins(userCoins - 1);
+        }
 
         setIsProcessing(true);
         addMessage({ role: 'user', text });
@@ -755,6 +804,12 @@ export default function VisualNovelUI() {
                     <button className="p-2 bg-red-600 rounded hover:bg-red-700" onClick={(e) => { e.stopPropagation(); handleNewGame(); }}>
                         <RotateCcw size={20} />
                     </button>
+                </div>
+
+                {/* Coin Display */}
+                <div className="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-yellow-500/30 backdrop-blur-md absolute left-1/2 transform -translate-x-1/2">
+                    <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-yellow-900 font-bold text-xs">C</div>
+                    <span className="text-yellow-400 font-bold font-mono">{userCoins}</span>
                 </div>
             </div>
 

@@ -15,6 +15,11 @@ interface GameState {
 
   chatHistory: Message[]; // Active context for AI (truncated)
   displayHistory: Message[]; // Full history for UI display
+
+  // Meta State
+  userCoins: number;
+  setUserCoins: (coins: number) => void;
+
   addMessage: (message: Message) => void;
   clearHistory: () => void;
   truncateHistory: (keepCount: number) => void;
@@ -118,6 +123,11 @@ export const useGameStore = create<GameState>()(
 
       chatHistory: [],
       displayHistory: [],
+
+      // Meta State
+      userCoins: 0,
+      setUserCoins: (coins) => set({ userCoins: coins }),
+
       addMessage: (message) => set((state) => ({
         chatHistory: [...state.chatHistory, message],
         displayHistory: [...(state.displayHistory || []), message]

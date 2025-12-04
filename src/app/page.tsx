@@ -1,29 +1,43 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Play } from 'lucide-react';
+import { createClient } from '@/lib/supabase';
+import Login from '@/components/Login';
+import { Loader2 } from 'lucide-react';
 
 export default function Home() {
     const router = useRouter();
+    const [loading, setLoading] = useState(true);
+    const supabase = createClient();
 
-    const handleStart = () => {
-        router.push('/game');
-    };
+    useEffect(() => {
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                router.push('/game');
+            } else {
+                setLoading(false);
+            }
+        };
+        checkUser();
+    }, [router, supabase]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-900 flex items-center justify-center text-yellow-500">
+                <Loader2 className="animate-spin" size={48} />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
-            <div className="max-w-md w-full bg-gray-800 p-8 rounded-xl shadow-2xl border border-gray-700">
-                <h1 className="text-4xl font-bold text-center mb-2 text-yellow-500">Hunter's Destiny</h1>
-                <p className="text-center text-gray-400 mb-8">A Visual Novel Chat Adventure</p>
+            <div className="flex flex-col items-center w-full max-w-md">
+                <h1 className="text-5xl font-bold text-center mb-2 text-yellow-500 tracking-tighter">Hunter's Destiny</h1>
+                <p className="text-center text-gray-400 mb-8 text-lg">A Visual Novel Chat Adventure</p>
 
-                <div className="space-y-6">
-                    <button
-                        onClick={handleStart}
-                        className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition transform hover:scale-105"
-                    >
-                        <Play size={20} /> Start Game
-                    </button>
-                </div>
+                <Login />
             </div>
         </div>
     );
