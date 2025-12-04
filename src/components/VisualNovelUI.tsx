@@ -904,8 +904,16 @@ export default function VisualNovelUI() {
                                 <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white">{t.close}</button>
                             </div>
                             <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
-                                {(useGameStore.getState().displayHistory || chatHistory).map((msg, idx) => {
-                                    const segments = parseScript(msg.text);
+                                {(useGameStore.getState().displayHistory || chatHistory).map((msg, idx, arr) => {
+                                    let segments = parseScript(msg.text);
+                                    // Filter future segments if this is the active message
+                                    if (idx === arr.length - 1 && msg.role === 'model') {
+                                        const queueLength = useGameStore.getState().scriptQueue.length;
+                                        if (queueLength > 0) {
+                                            const visibleCount = Math.max(0, segments.length - queueLength);
+                                            segments = segments.slice(0, visibleCount);
+                                        }
+                                    }
                                     return (
                                         <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                                             <span className="text-sm text-gray-500 mb-2 font-bold">{msg.role === 'user' ? t.you : t.system}</span>
@@ -1346,8 +1354,8 @@ export default function VisualNovelUI() {
 
                         {/* Name Tag */}
                         {currentSegment.type === 'dialogue' && (
-                            <div className="absolute -top-14 w-full text-center px-2">
-                                <span className="text-[32px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                            <div className="absolute -top-11 w-full text-center px-2">
+                                <span className="text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                     {(() => {
                                         const { characterData } = useGameStore.getState();
                                         const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);

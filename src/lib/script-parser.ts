@@ -33,7 +33,7 @@ export function parseScript(text: string): ScriptSegment[] {
             segments.push({ type: 'system_popup', content: content });
         } else if (tagName === '나레이션') {
             // Split long narration into individual sentences for better readability
-            const sentences = content.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g) || [content];
+            const sentences = content.match(/[^.!?]+[.!?]+["'”’\]\)]*|[^.!?]+$/g) || [content];
 
             for (const sentence of sentences) {
                 if (sentence.trim()) {
@@ -65,7 +65,7 @@ export function parseScript(text: string): ScriptSegment[] {
                 }
 
                 // Split dialogue into chunks of max 3 sentences
-                const sentences = dialogueContent.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g) || [dialogueContent];
+                const sentences = dialogueContent.match(/[^.!?]+[.!?]+["'”’\]\)]*|[^.!?]+$/g) || [dialogueContent];
                 let chunk = "";
                 let count = 0;
 
