@@ -6,6 +6,7 @@ import { generateResponse, generateGameLogic } from '@/lib/gemini';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { Send, Save, RotateCcw, History, SkipForward, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import assets from '@/data/assets.json';
 
 const translations = {
     en: {
@@ -139,19 +140,15 @@ export default function VisualNovelUI() {
         playerName // Add playerName from hook
     } = useGameStore();
 
+
+
     // Hydration Fix & Asset Loading
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => {
         setIsMounted(true);
-
-        // Load Assets dynamically
-        import('@/app/actions/assets').then(({ getAssetFiles }) => {
-            getAssetFiles().then(({ backgrounds, characters }) => {
-                console.log("Loaded Assets (Client):", { backgrounds, characters });
-                useGameStore.getState().setAvailableAssets(backgrounds, characters);
-                console.log("Loaded Assets:", { backgrounds, characters });
-            });
-        });
+        // Load Assets from static JSON
+        console.log("Loaded Assets (Static):", assets);
+        useGameStore.getState().setAvailableAssets(assets.backgrounds, assets.characters);
     }, []);
 
     // VN State
