@@ -86,6 +86,12 @@ When introducing a new character, **ALWAYS check the 'Available Characters' list
     -   If a character is NOT in the list, use 'Name_기본' (it will just show text).
 
 **Available Character Images:**
+- 기본: 일반적인 상태
+- 슬픔: 눈물을 흘리며 우는 상태
+- 분노: 매우 크게 분노한 상태. 극대노
+- 기쁨: 기쁜 상태
+- 애정당황: 얼굴을 붉히며 크게 당황하는 상태.
+모든 감정은 현재 감정이 크게 과장되어 있으므로, 미묘한 감정 변화에서는 기본 이미지를 사용한다.
 {{AVAILABLE_CHARACTER_IMAGES}}
 
 2.  **System Popup**: Use \`<시스템팝업> Content\` for important system notifications (e.g., Level Up, Skill Acquisition, Quest Updates).
