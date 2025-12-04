@@ -11,8 +11,7 @@ export interface Message {
 }
 
 interface GameState {
-  apiKey: string;
-  setApiKey: (key: string) => void;
+
 
   chatHistory: Message[]; // Active context for AI (truncated)
   displayHistory: Message[]; // Full history for UI display
@@ -115,8 +114,7 @@ export interface Item {
 export const useGameStore = create<GameState>()(
   persist(
     (set) => ({
-      apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || '',
-      setApiKey: (key) => set({ apiKey: key }),
+
 
       chatHistory: [],
       displayHistory: [],
@@ -274,8 +272,7 @@ export const useGameStore = create<GameState>()(
       name: 'vn-game-storage-v1',
       partialize: (state) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { apiKey, ...rest } = state;
-        return rest;
+        return state;
       },
     }
   )

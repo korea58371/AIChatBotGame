@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/lib/store';
-import { generateResponse, generateGameLogic } from '@/lib/gemini';
+import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary } from '@/app/actions/game';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { Send, Save, RotateCcw, History, SkipForward, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -115,7 +115,6 @@ const translations = {
 
 export default function VisualNovelUI() {
     const {
-        apiKey,
         chatHistory,
         addMessage,
         currentBackground,
@@ -352,11 +351,10 @@ export default function VisualNovelUI() {
                 // Summarize everything EXCEPT the last 10 messages
                 const messagesToSummarize = currentHistory.slice(0, -10);
 
-                const newSummary = await import('@/lib/gemini').then(m => m.generateSummary(
-                    apiKey,
+                const newSummary = await serverGenerateSummary(
                     currentState.scenarioSummary,
                     messagesToSummarize
-                ));
+                );
 
                 useGameStore.getState().setScenarioSummary(newSummary);
                 useGameStore.getState().truncateHistory(10); // Keep exactly last 10 messages
@@ -367,8 +365,7 @@ export default function VisualNovelUI() {
             }
 
             // 1. Generate Narrative
-            const result = await generateResponse(
-                apiKey,
+            const result = await serverGenerateResponse(
                 currentHistory,
                 text,
                 currentState,
@@ -396,8 +393,7 @@ export default function VisualNovelUI() {
             const segments = parseScript(responseText);
 
             // 2. Generate Logic (Async)
-            generateGameLogic(
-                apiKey,
+            serverGenerateGameLogic(
                 text,
                 responseText,
                 currentState // Pass full state for context-aware spawning
