@@ -147,11 +147,15 @@ export async function generateGameLogic(
                - Agility/Stealth feat -> Increase AGI (+1)
                - Intellectual feat/Study -> Increase INT (+1)
                - Lucky event -> Increase LUK (+1)
-            6. **Relationships:**
+            6. **Fame System (NEW):**
+               - **Heroic/Notable Deed**: If the player saves someone, defeats a strong enemy, or gains public attention -> Increase fame (+1 to +50).
+               - **Shameful Act**: If the player runs away, commits a crime, or is humiliated -> Decrease fame (-1 to -50).
+               - **Fame Thresholds**: 0 (Nobody), 100 (Known Locally), 500 (City Famous), 1000 (National Hero).
+            7. **Relationships:**
                - If the player helps or compliments a character, increase affinity (+1 to +10).
                - If the player insults or hurts a character, decrease affinity (-1 to -10).
                - Identify characters by their ID (e.g., 'Mina', 'Elara').
-            7. **Character Updates (CRITICAL - MEMORY MANAGEMENT):**
+            8. **Character Updates (CRITICAL - MEMORY MANAGEMENT):**
                - **Memories**: You are the custodian of character memory.
                - **FILTER TRIVIALITY**: DO NOT record mundane actions like eating, walking, sleeping, or minor greetings unless they have significant plot relevance.
                - **CONSOLIDATE**: If a character has multiple memories about the same topic (e.g., "Likes bread", "Ate bread", "Wants bread"), MERGE them into one concise memory (e.g., "Loves bread and feels happy when eating it").
@@ -160,7 +164,7 @@ export async function generateGameLogic(
                - **LIMIT**: Try to keep the memory list under 10 items per character by consolidating.
                - If a NEW character is introduced, add them.
                - ID should be lowercase English (e.g., 'guard_captain').
-            8. **Location Updates:**
+            9. **Location Updates:**
                - If the narrative indicates the player has moved to a new location, return the new location ID in 'newLocation'.
                - **Secrets/Clues**: You can ADD, REMOVE, or UPDATE secrets. Return the **COMPLETE NEW LIST** of secrets for that location.
                - If a secret is resolved (e.g., "Found blood" -> "Discovered it was A's blood"), replace the old entry with the new one or remove it if no longer relevant.
@@ -172,6 +176,7 @@ export async function generateGameLogic(
                 "mpChange": number,
                 "goldChange": number,
                 "expChange": number,
+                "fameChange": number, // Added Fame Change
                 "statChange": { "str": number, "agi": number, "int": number, "vit": number, "luk": number },
                 "newLocation": string | null,
                 "newItems": [ { "id": string, "name": string, "description": string, "quantity": number } ],

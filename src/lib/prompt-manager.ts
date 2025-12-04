@@ -68,6 +68,7 @@ export class PromptManager {
         const playerStatus = `
 - Name: ${playerName}
 - Level: ${stats.level} (EXP: ${stats.exp})
+- Fame: ${stats.fame || 0}
 - HP: ${stats.hp}/${stats.maxHp}, MP: ${stats.mp}/${stats.maxMp}
 - Gold: ${stats.gold}
 - Stats: STR ${stats.str}, AGI ${stats.agi}, INT ${stats.int}, VIT ${stats.vit}, LUK ${stats.luk}
@@ -214,6 +215,7 @@ export class PromptManager {
 
         // Special handling for Combat: Inject detailed stats for comparison
         if (currentMood === 'combat') {
+            const stats = state.playerStats; // Re-declare for local scope if needed
             moodPrompt += `\n\n[Combat Stats Analysis]\nPlayer Stats: STR ${stats.str}, AGI ${stats.agi}, INT ${stats.int}, VIT ${stats.vit}, LUK ${stats.luk}\nSkills: ${stats.skills.join(', ') || "None"}\n\nCompare these stats with the opponent's estimated stats to determine the outcome of the exchange.`;
         }
 

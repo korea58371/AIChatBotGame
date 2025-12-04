@@ -88,6 +88,7 @@ export interface PlayerStats {
   gold: number;
   level: number;
   exp: number;
+  fame: number; // Added Fame
   // Base Stats
   str: number; // Strength
   agi: number; // Agility
@@ -191,6 +192,7 @@ export const useGameStore = create<GameState>()(
         mp: 50, maxMp: 50,
         gold: 0,
         level: 1, exp: 0,
+        fame: 0, // Added Fame
         str: 10, agi: 10, int: 10, vit: 10, luk: 10,
         skills: [],
         personality: { selfishness: 0, heroism: 0, morality: 50 },
@@ -254,6 +256,7 @@ export const useGameStore = create<GameState>()(
           mp: 50, maxMp: 50,
           gold: 0,
           level: 1, exp: 0,
+          fame: 0, // Added Fame
           str: 10, agi: 10, int: 10, vit: 10, luk: 10,
           skills: [],
           personality: { selfishness: 0, heroism: 0, morality: 50 },

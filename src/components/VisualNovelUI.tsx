@@ -512,6 +512,7 @@ export default function VisualNovelUI() {
         if (logicResult.goldChange) newStats.gold = Math.max(0, newStats.gold + logicResult.goldChange);
         if (logicResult.goldChange) newStats.gold = Math.max(0, newStats.gold + logicResult.goldChange);
         if (logicResult.expChange) newStats.exp += logicResult.expChange;
+        if (logicResult.fameChange) newStats.fame = Math.max(0, (newStats.fame || 0) + logicResult.fameChange); // Handle Fame Change
 
         // Base Stats
         if (logicResult.statChange) {
@@ -550,6 +551,7 @@ export default function VisualNovelUI() {
         if (logicResult.hpChange) addToast(`${t.hp} ${logicResult.hpChange > 0 ? '+' : ''}${logicResult.hpChange}`, logicResult.hpChange > 0 ? 'success' : 'warning');
         if (logicResult.mpChange) addToast(`${t.mp} ${logicResult.mpChange > 0 ? '+' : ''}${logicResult.mpChange}`, 'info');
         if (logicResult.goldChange) addToast(`${t.gold} ${logicResult.goldChange > 0 ? '+' : ''}${logicResult.goldChange}`, 'success');
+        if (logicResult.fameChange) addToast(`Fame ${logicResult.fameChange > 0 ? '+' : ''}${logicResult.fameChange}`, logicResult.fameChange > 0 ? 'success' : 'warning');
 
         // Stat Toasts
         if (logicResult.statChange) {
@@ -714,6 +716,9 @@ export default function VisualNovelUI() {
                         </div>
                         <div className="flex items-center text-yellow-300">
                             <span>🪙 {playerStats.gold}</span>
+                        </div>
+                        <div className="flex items-center text-purple-400 font-bold">
+                            <span>👑 Fame: {playerStats.fame}</span>
                         </div>
                     </div>
                 </div>
