@@ -1,46 +1,38 @@
 'use client';
 
 import { useState } from 'react';
+'use client';
+
+import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
-import { Mail, Lock, Loader2 } from 'lucide-react';
+import { Mail, Loader2 } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ text: string, type: 'error' | 'success' } | null>(null);
-    const router = useRouter();
     const supabase = createClient();
 
-    const handleLogin = async () => {
-        setLoading(true);
-        setMessage(null);
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
-        if (error) {
-            setMessage({ text: error.message, type: 'error' });
-            setLoading(false);
-        } else {
-            router.push('/game');
+    const handleMagicLink = async () => {
+        if (!email) {
+            setMessage({ text: "Please enter your email address.", type: 'error' });
+            return;
         }
-    };
-
-    const handleSignUp = async () => {
         setLoading(true);
         setMessage(null);
-        const { error } = await supabase.auth.signUp({
+
+        const { error } = await supabase.auth.signInWithOtp({
             email,
-            password,
+            options: {
+                // Redirect to the game page after clicking the link
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
         });
 
         if (error) {
             setMessage({ text: error.message, type: 'error' });
         } else {
-            setMessage({ text: 'Check your email for the confirmation link!', type: 'success' });
+            setMessage({ text: 'Check your email for the magic link!', type: 'success' });
         }
         setLoading(false);
     };
@@ -64,42 +56,23 @@ export default function Login() {
                     </div>
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-3 text-gray-500" size={18} />
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-600 rounded pl-10 p-2.5 text-white focus:outline-none focus:border-yellow-500"
-                            placeholder="••••••••"
-                        />
-                    </div>
-                </div>
-
                 {message && (
                     <div className={`text-sm p-2 rounded ${message.type === 'error' ? 'bg-red-900/50 text-red-200' : 'bg-green-900/50 text-green-200'}`}>
                         {message.text}
                     </div>
                 )}
 
-                <div className="flex gap-3 pt-2">
-                    <button
-                        onClick={handleLogin}
-                        disabled={loading}
-                        className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-2 rounded transition disabled:opacity-50 flex justify-center items-center"
-                    >
-                        {loading ? <Loader2 className="animate-spin" size={18} /> : 'Login'}
-                    </button>
-                    <button
-                        onClick={handleSignUp}
-                        disabled={loading}
-                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded transition disabled:opacity-50"
-                    >
-                        Sign Up
-                    </button>
-                </div>
+                <button
+                    onClick={handleMagicLink}
+                    disabled={loading}
+                    className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 rounded transition disabled:opacity-50 flex justify-center items-center gap-2"
+                >
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : 'Send Magic Link'}
+                </button>
+
+                <p className="text-xs text-center text-gray-500 mt-4">
+                    No password needed. We'll send a login link to your email.
+                </p>
             </div>
         </div>
     );
