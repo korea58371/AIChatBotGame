@@ -281,7 +281,18 @@ export class PromptManager {
                 const c = item.char;
                 const desc = c.description || c.title || (c.appearance && c.appearance['전체적 인상']) || "Unknown";
                 const tagStr = item.tags.length > 0 ? `[${item.tags.join('/')}]` : "";
-                return `- ${c.name} (${c.role || 'Unknown'}) (Score: ${item.score.toFixed(1)}) ${tagStr}: ${desc.substring(0, 50)}...`;
+
+                // Extract Job
+                let jobStr = "Unknown";
+                if (typeof c.job === 'string') jobStr = c.job;
+                else if (c.job && c.job['직업']) jobStr = c.job['직업'];
+
+                // Extract Personality
+                let personaStr = "Unknown";
+                if (typeof c.personality === 'string') personaStr = c.personality;
+                else if (c.personality && c.personality['표면적 성격']) personaStr = c.personality['표면적 성격'];
+
+                return `- ${c.name} (${c.role || 'Unknown'}) | Job: ${jobStr} | Personality: ${personaStr} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
             })
             .join('\n');
     }

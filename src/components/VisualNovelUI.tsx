@@ -658,6 +658,7 @@ export default function VisualNovelUI() {
             className="relative w-full h-screen bg-black overflow-hidden font-sans select-none"
             onClick={handleScreenClick}
             onWheel={handleWheel}
+            onContextMenu={(e) => e.preventDefault()}
         >
             {/* Background Layer */}
             <div
@@ -1349,7 +1350,7 @@ export default function VisualNovelUI() {
             {/* Dialogue / Narration Layer */}
             {currentSegment && currentSegment.type !== 'system_popup' && (
                 <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[24vh] pointer-events-none">
-                    <div className="w-full max-w-[96rem] p-6 pointer-events-auto cursor-pointer relative"
+                    <div className="w-full max-w-[115rem] p-6 pointer-events-auto cursor-pointer relative flex flex-col items-center"
                         onClick={handleScreenClick}>
 
                         {/* Name Tag */}
@@ -1367,7 +1368,7 @@ export default function VisualNovelUI() {
                         )}
 
                         {/* Text Content */}
-                        <div className="text-[36px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center">
+                        <div className="text-[36px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center w-full">
                             {currentSegment.type === 'narration' ? (
                                 <span className="text-gray-300 italic block px-8">
                                     {currentSegment.content}
@@ -1380,12 +1381,13 @@ export default function VisualNovelUI() {
                         </div>
 
                         {/* Continue Indicator */}
-                        <div className="absolute bottom-4 right-6 animate-bounce text-yellow-500">
+                        <div className="mt-2 animate-bounce text-yellow-500">
                             ▼
                         </div>
                     </div>
                 </div>
             )}
-        </div>
+
+        </div >
     );
 }
