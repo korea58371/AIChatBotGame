@@ -422,26 +422,13 @@ export default function VisualNovelUI() {
             let activeSession = session;
             let currentCoins = userCoins;
 
-            // 1. Ensure Session & Coins
+            // 1. Ensure Session (Use local state)
             if (!activeSession?.user) {
-                console.log("handleSend: Session missing, attempting recovery...");
-                const { data } = await supabase.auth.getSession();
-                if (data.session) {
-                    activeSession = data.session;
-                    setSession(data.session);
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('coins')
-                        .eq('id', data.session.user.id)
-                        .single();
-                    if (profile) {
-                        currentCoins = profile.coins;
-                        setUserCoins(profile.coins);
-                        console.log(`handleSend: Recovered coins: ${currentCoins}`);
-                    }
-                } else {
-                    console.warn("handleSend: No session found after fallback");
-                    addToast("Authentication failed. Please refresh.", "warning");
+                console.warn("handleSend: No session found, but allowing guest/optimistic play if coins > 0");
+                // If strictly required, return here. But we might want to allow guests?
+                // For now, let's assume if he has coins locally, he can play.
+                if (currentCoins < 1) {
+                    addToast("Login required or not enough coins.", "warning");
                     setIsProcessing(false);
                     return;
                 }
@@ -455,23 +442,23 @@ export default function VisualNovelUI() {
                 return;
             }
 
-            // 3. Deduct Coin
-            if (activeSession?.user) {
-                const { error } = await supabase.rpc('decrement_coin', { user_id: activeSession.user.id });
-                if (error) {
-                    const { error: updateError } = await supabase
-                        .from('profiles')
-                        .update({ coins: currentCoins - 1 })
-                        .eq('id', activeSession.user.id);
+            // 3. OPTIMISTIC Deduct Coin
+            const newCoinCount = currentCoins - 1;
+            setUserCoins(newCoinCount);
 
-                    if (updateError) {
-                        console.error("Coin update failed:", updateError);
-                        addToast("Transaction failed.", "warning");
-                        setIsProcessing(false);
-                        return;
-                    }
-                }
-                setUserCoins(currentCoins - 1);
+            // Background DB Sync (Fire-and-forget)
+            if (activeSession?.user) {
+                const userId = activeSession.user.id;
+                supabase.rpc('decrement_coin', { user_id: userId })
+                    .then(({ error }: { error: any }) => {
+                        if (error) {
+                            // Fallback to direct update if RPC fails
+                            supabase.from('profiles').update({ coins: newCoinCount }).eq('id', userId)
+                                .then(({ error: updateError }: { error: any }) => {
+                                    if (updateError) console.error("Coin update failed:", updateError);
+                                });
+                        }
+                    });
             }
 
             addMessage({ role: 'user', text });
