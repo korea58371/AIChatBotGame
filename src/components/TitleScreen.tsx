@@ -53,7 +53,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
 
                     // Fetch Coins (Non-blocking)
                     supabase.from('profiles').select('coins').eq('id', session.user.id).single()
-                        .then(({ data, error }) => {
+                        .then(({ data, error }: { data: any; error: any }) => {
                             if (mounted && data) setCoins(data.coins);
                         });
                 } else {
@@ -79,7 +79,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
         checkUser();
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
             if (!mounted) return;
 
             if (session?.user) {
@@ -381,8 +381,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                             disabled={slot.date === 'Empty'}
                                             onClick={() => handleLoadGame(slot.id)}
                                             className={`flex flex-col text-left p-4 rounded border transition-all ${slot.date === 'Empty'
-                                                    ? 'bg-slate-800/50 border-slate-800 text-gray-600 cursor-not-allowed'
-                                                    : 'bg-slate-800 border-slate-600 hover:bg-slate-700 hover:border-blue-500/50 text-white'
+                                                ? 'bg-slate-800/50 border-slate-800 text-gray-600 cursor-not-allowed'
+                                                : 'bg-slate-800 border-slate-600 hover:bg-slate-700 hover:border-blue-500/50 text-white'
                                                 }`}
                                         >
                                             <div className="flex justify-between w-full mb-1">
