@@ -889,7 +889,7 @@ export default function VisualNovelUI() {
                     </div>
 
                     {/* Coin Display & Recharge */}
-                    <div className="flex items-center gap-2 absolute left-1/2 transform -translate-x-1/2">
+                    <div className="flex items-center gap-2 absolute left-1/2 transform -translate-x-1/2 pointer-events-auto">
                         <div className="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-yellow-500/30 backdrop-blur-md">
                             <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-yellow-900 font-bold text-xs">C</div>
                             <span className="text-yellow-400 font-bold font-mono">{userCoins}</span>
