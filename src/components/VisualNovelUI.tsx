@@ -999,8 +999,15 @@ export default function VisualNovelUI() {
                                 </div>
                                 <span className="text-yellow-400 font-bold font-mono text-sm">{userCoins.toLocaleString()}</span>
                                 <button
-                                    onClick={async (e) => {
+                                    onClick={(e) => {
                                         e.stopPropagation();
+
+                                        /**
+                                         * [SECURITY NOTICE - REAL PAYMENTS]
+                                         * This "Optimistic Update" is for PROTOTYPING & FREE CHARGING only.
+                                         * In production: Integrated PG Window -> Server Webhook -> DB Update.
+                                         * Client should NEVER update coins directly.
+                                         */
 
                                         // 1. Instant Local Auth Check (Using component state)
                                         const currentUser = session?.user;
