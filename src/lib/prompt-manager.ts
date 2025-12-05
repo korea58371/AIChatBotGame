@@ -1,4 +1,4 @@
-import { SYSTEM_PROMPT_TEMPLATE } from '../data/prompts/system';
+import { getSystemPromptTemplate } from '../data/prompts/system';
 import { MOOD_PROMPTS, MoodType } from '@/data/prompts/moods';
 
 interface SpawnRules {
@@ -54,7 +54,7 @@ interface GameState {
 
 export class PromptManager {
     static generateSystemPrompt(state: GameState, language: 'ko' | 'en' | null, userMessage?: string): string {
-        let prompt = SYSTEM_PROMPT_TEMPLATE;
+        let prompt = getSystemPromptTemplate(state);
 
         // Inject Player Name
         const playerName = state.playerName || "주인공";
@@ -76,7 +76,7 @@ export class PromptManager {
 - Inventory: ${inventoryList}
         `.trim();
 
-        prompt = prompt.replace('{{PLAYER_STATS}}', playerStatus);
+
 
         // 1. World Info (Location)
         const worldData = state.worldData || { locations: {}, items: {} };

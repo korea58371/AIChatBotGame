@@ -32,6 +32,8 @@ export async function generateResponse(
 ) {
     if (!apiKey) throw new Error('API Key is missing');
 
+    console.log(`[Gemini] generateResponse called. gameState.playerStats.luk: ${gameState.playerStats?.luk}`);
+
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // Generate dynamic system prompt based on current game state
@@ -138,25 +140,48 @@ export async function generateGameLogic(
             3. **Item Management:**
                - If the player gains an item, add it (use IDs from Valid Items if possible).
                - If the player uses a valid item from inventory, remove it.
-            4. **Personality Shifts:**
-               - Selfish acts -> Increase selfishness (+1 to +5)
-               - Heroic acts -> Increase heroism (+1 to +5)
-               - Immoral acts -> Decrease morality (-1 to -10)
-               - Moral acts -> Increase morality (+1 to +5)
+            4. **Personality Shifts (CRITICAL):**
+               - Analyze the user's action and update the following 9 personality traits (-100 to +100).
+               - **Morality**: Evil/Selfish (-100) <-> Good/Altruistic (+100)
+               - **Courage**: Cowardly/Cautious (-100) <-> Brave/Reckless (+100)
+               - **Energy**: Introverted (-100) <-> Extroverted (+100)
+               - **Decision**: Emotional/Idealistic (-100) <-> Logical/Realistic (+100)
+               - **Lifestyle**: Spontaneous (-100) <-> Planned (+100)
+               - **Openness**: Conservative (-100) <-> Open/Innovative (+100)
+               - **Warmth**: Cold (-100) <-> Warm/Kind (+100)
+               - **Eloquence**: Quiet/Inarticulate (-100) <-> Eloquent/Persuasive (+100)
+               - **Leadership**: Submissive/Follower (-100) <-> Dominant/Leader (+100)
+               - **Change Magnitude**: Small (+/- 1-2), Medium (+/- 3-5), Large (+/- 6-10).
+               - Only update traits that are clearly affected by the user's action.
+
             5. **Base Stat Updates (NEW):**
                - Physical training/feat -> Increase STR or VIT (+1)
                - Agility/Stealth feat -> Increase AGI (+1)
                - Intellectual feat/Study -> Increase INT (+1)
                - Lucky event -> Increase LUK (+1)
-            6. **Fame System (NEW):**
+            6. **Fate Intervention (Luck System) (CRITICAL):**
+               - **Intervention Detection**: Check if the user is trying to FORCE a result (e.g., "I found a legendary sword", "She fell in love with me", "I suddenly became strong") without a corresponding in-game justification or choice.
+               - **Fate Intervention (Cost)**:
+                 - If intervention is detected, calculate a COST (10-100+ depending on impact).
+                 - **Calculate 'fateChange'**:
+                   - If (Current Fate >= Cost): 'fateChange' = -Cost.
+                   - If (Current Fate < Cost):
+                     - 'fateChange' = -Current Fate (consume all Fate to 0).
+                     - **Luck Penalty**: You must ALSO reduce Luck ('luk') by the remaining cost (Cost - Current Fate). Include this in 'statChange.luk' (e.g., -5).
+               - **Fate Accumulation (Misfortune)**:
+                 - If the user suffers damage, humiliation, loss, or bad luck -> INCREASE 'Fate' (+1 to +10).
+                 - Do NOT increase 'Luck' for misfortune.
+               - **Lucky Events**:
+                 - If the user experiences random good luck (finding money, etc.) -> INCREASE 'Luck' (+1 to +5).
+            7. **Fame System (NEW):**
                - **Heroic/Notable Deed**: If the player saves someone, defeats a strong enemy, or gains public attention -> Increase fame (+1 to +50).
                - **Shameful Act**: If the player runs away, commits a crime, or is humiliated -> Decrease fame (-1 to -50).
                - **Fame Thresholds**: 0 (Nobody), 100 (Known Locally), 500 (City Famous), 1000 (National Hero).
-            7. **Relationships:**
+            8. **Relationships:**
                - If the player helps or compliments a character, increase affinity (+1 to +10).
                - If the player insults or hurts a character, decrease affinity (-1 to -10).
                - Identify characters by their ID (e.g., 'Mina', 'Elara').
-            8. **Character Updates (CRITICAL - MEMORY MANAGEMENT):**
+            9. **Character Updates (CRITICAL - MEMORY MANAGEMENT):**
                - **Memories**: You are the custodian of character memory.
                - **FILTER TRIVIALITY**: DO NOT record mundane actions like eating, walking, sleeping, or minor greetings unless they have significant plot relevance.
                - **CONSOLIDATE**: If a character has multiple memories about the same topic (e.g., "Likes bread", "Ate bread", "Wants bread"), MERGE them into one concise memory (e.g., "Loves bread and feels happy when eating it").
@@ -165,7 +190,7 @@ export async function generateGameLogic(
                - **LIMIT**: Try to keep the memory list under 10 items per character by consolidating.
                - If a NEW character is introduced, add them.
                - ID should be lowercase English (e.g., 'guard_captain').
-            9. **Location Updates:**
+            10. **Location Updates:**
                - If the narrative indicates the player has moved to a new location, return the new location ID in 'newLocation'.
                - **Secrets/Clues**: You can ADD, REMOVE, or UPDATE secrets. Return the **COMPLETE NEW LIST** of secrets for that location.
                - If a secret is resolved (e.g., "Found blood" -> "Discovered it was A's blood"), replace the old entry with the new one or remove it if no longer relevant.
@@ -177,15 +202,22 @@ export async function generateGameLogic(
                 "mpChange": number,
                 "goldChange": number,
                 "expChange": number,
-                "fameChange": number, // Added Fame Change
+                "fameChange": number,
+                "fateChange": number, // Added Fate Change (Negative for intervention cost, Positive for misfortune)
                 "statChange": { "str": number, "agi": number, "int": number, "vit": number, "luk": number },
                 "newLocation": string | null,
                 "newItems": [ { "id": string, "name": string, "description": string, "quantity": number } ],
                 "removedItemIds": [ string ],
                 "personalityChange": { 
-                    "selfishness": number, 
-                    "heroism": number, 
-                    "morality": number 
+                    "morality": number,
+                    "courage": number,
+                    "energy": number,
+                    "decision": number,
+                    "lifestyle": number,
+                    "openness": number,
+                    "warmth": number,
+                    "eloquence": number,
+                    "leadership": number
                 },
                 "relationshipChange": [ { "characterId": string, "change": number } ],
                 "newSkills": [ string ],

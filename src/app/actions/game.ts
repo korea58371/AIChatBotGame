@@ -15,6 +15,7 @@ export async function serverGenerateResponse(
     gameState: any,
     language: 'ko' | 'en' | null
 ) {
+    console.log(`[ServerAction] Received gameState. Luk: ${gameState.playerStats?.luk} (${typeof gameState.playerStats?.luk})`);
     if (!API_KEY) throw new Error("Server API Key is missing");
     return generateResponse(API_KEY, history, userMessage, gameState, language);
 }

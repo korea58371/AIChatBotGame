@@ -414,10 +414,30 @@ export default function VisualNovelUI() {
             }
 
             // 1. Generate Narrative
+            console.log(`[VisualNovelUI] Sending state to server. Luk: ${currentState.playerStats.luk} (${typeof currentState.playerStats.luk})`);
+
+            // Sanitize state to remove functions and circular references
+            // Use JSON.parse(JSON.stringify()) to ensure we strip out any proxies or non-serializable data
+            const sanitizedState = JSON.parse(JSON.stringify({
+                chatHistory: currentState.chatHistory,
+                playerStats: currentState.playerStats,
+                inventory: currentState.inventory,
+                currentLocation: currentState.currentLocation,
+                scenarioSummary: currentState.scenarioSummary,
+                currentEvent: currentState.currentEvent,
+                currentMood: currentState.currentMood,
+                playerName: currentState.playerName,
+                activeCharacters: currentState.activeCharacters,
+                characterData: currentState.characterData,
+                worldData: currentState.worldData,
+                availableBackgrounds: currentState.availableBackgrounds,
+                availableCharacterImages: currentState.availableCharacterImages
+            }));
+
             const result = await serverGenerateResponse(
                 currentHistory,
                 text,
-                currentState,
+                sanitizedState,
                 language
             );
 
@@ -578,7 +598,11 @@ export default function VisualNovelUI() {
         const newStats = { ...currentStats };
 
         // Initialize if missing
-        if (!newStats.personality) newStats.personality = { selfishness: 0, heroism: 0, morality: 50 };
+        // Initialize if missing
+        if (!newStats.personality) newStats.personality = {
+            morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
+            openness: 0, warmth: 0, eloquence: 0, leadership: 0
+        };
         if (!newStats.skills) newStats.skills = [];
         if (!newStats.relationships) newStats.relationships = {};
 
@@ -587,7 +611,8 @@ export default function VisualNovelUI() {
         if (logicResult.goldChange) newStats.gold = Math.max(0, newStats.gold + logicResult.goldChange);
         if (logicResult.goldChange) newStats.gold = Math.max(0, newStats.gold + logicResult.goldChange);
         if (logicResult.expChange) newStats.exp += logicResult.expChange;
-        if (logicResult.fameChange) newStats.fame = Math.max(0, (newStats.fame || 0) + logicResult.fameChange); // Handle Fame Change
+        if (logicResult.fameChange) newStats.fame = Math.max(0, (newStats.fame || 0) + logicResult.fameChange);
+        if (logicResult.fateChange) newStats.fate = Math.max(0, (newStats.fate || 0) + logicResult.fateChange); // Handle Fate Change
 
         // Base Stats
         if (logicResult.statChange) {
@@ -600,9 +625,17 @@ export default function VisualNovelUI() {
 
         // Personality
         if (logicResult.personalityChange) {
-            newStats.personality.selfishness += logicResult.personalityChange.selfishness || 0;
-            newStats.personality.heroism += logicResult.personalityChange.heroism || 0;
-            newStats.personality.morality += logicResult.personalityChange.morality || 0;
+            const p = newStats.personality;
+            const c = logicResult.personalityChange;
+            if (c.morality) p.morality = Math.min(100, Math.max(-100, (p.morality || 0) + c.morality));
+            if (c.courage) p.courage = Math.min(100, Math.max(-100, (p.courage || 0) + c.courage));
+            if (c.energy) p.energy = Math.min(100, Math.max(-100, (p.energy || 0) + c.energy));
+            if (c.decision) p.decision = Math.min(100, Math.max(-100, (p.decision || 0) + c.decision));
+            if (c.lifestyle) p.lifestyle = Math.min(100, Math.max(-100, (p.lifestyle || 0) + c.lifestyle));
+            if (c.openness) p.openness = Math.min(100, Math.max(-100, (p.openness || 0) + c.openness));
+            if (c.warmth) p.warmth = Math.min(100, Math.max(-100, (p.warmth || 0) + c.warmth));
+            if (c.eloquence) p.eloquence = Math.min(100, Math.max(-100, (p.eloquence || 0) + c.eloquence));
+            if (c.leadership) p.leadership = Math.min(100, Math.max(-100, (p.leadership || 0) + c.leadership));
         }
 
         // Skills
@@ -627,6 +660,7 @@ export default function VisualNovelUI() {
         if (logicResult.mpChange) addToast(`${t.mp} ${logicResult.mpChange > 0 ? '+' : ''}${logicResult.mpChange}`, 'info');
         if (logicResult.goldChange) addToast(`${t.gold} ${logicResult.goldChange > 0 ? '+' : ''}${logicResult.goldChange}`, 'success');
         if (logicResult.fameChange) addToast(`Fame ${logicResult.fameChange > 0 ? '+' : ''}${logicResult.fameChange}`, logicResult.fameChange > 0 ? 'success' : 'warning');
+        if (logicResult.fateChange) addToast(`Fate ${logicResult.fateChange > 0 ? '+' : ''}${logicResult.fateChange}`, logicResult.fateChange > 0 ? 'info' : 'warning');
 
         // Stat Toasts
         if (logicResult.statChange) {
@@ -720,12 +754,6 @@ export default function VisualNovelUI() {
             className="relative w-full h-screen bg-black overflow-hidden font-sans select-none flex justify-center"
             onClick={(e) => {
                 handleScreenClick(e);
-                // Auto Fullscreen on interaction
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        console.log("Fullscreen blocked:", err);
-                    });
-                }
             }}
             onWheel={handleWheel}
             onContextMenu={(e) => e.preventDefault()}
@@ -827,6 +855,9 @@ export default function VisualNovelUI() {
                             </div>
                             <div className="flex items-center text-purple-400 font-bold">
                                 <span>👑 Fame: {playerStats.fame}</span>
+                            </div>
+                            <div className="flex items-center text-cyan-400 font-bold">
+                                <span>🔮 Fate: {playerStats.fate}</span>
                             </div>
                         </div>
                     </div>
@@ -1209,32 +1240,42 @@ export default function VisualNovelUI() {
                                         </div>
 
                                         {/* Personality Section */}
-                                        <div>
-                                            <div className="flex justify-between mb-1">
-                                                <span className="text-gray-300">{t.heroism}</span>
-                                                <span className="text-blue-400">{playerStats.personality?.heroism || 0}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-700 rounded-full h-2">
-                                                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.min(100, playerStats.personality?.heroism || 0)}%` }}></div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="flex justify-between mb-1">
-                                                <span className="text-gray-300">{t.morality}</span>
-                                                <span className="text-green-400">{playerStats.personality?.morality || 0}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-700 rounded-full h-2">
-                                                <div className="bg-green-600 h-2 rounded-full" style={{ width: `${Math.min(100, playerStats.personality?.morality || 0)}%` }}></div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="flex justify-between mb-1">
-                                                <span className="text-gray-300">{t.selfishness}</span>
-                                                <span className="text-red-400">{playerStats.personality?.selfishness || 0}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-700 rounded-full h-2">
-                                                <div className="bg-red-600 h-2 rounded-full" style={{ width: `${Math.min(100, playerStats.personality?.selfishness || 0)}%` }}></div>
-                                            </div>
+                                        {/* Personality Section */}
+                                        <div className="space-y-2">
+                                            {[
+                                                { key: 'morality', label: '도덕성', color: 'text-green-400', bar: 'bg-green-600' },
+                                                { key: 'courage', label: '용기', color: 'text-red-400', bar: 'bg-red-600' },
+                                                { key: 'energy', label: '에너지', color: 'text-yellow-400', bar: 'bg-yellow-600' },
+                                                { key: 'decision', label: '의사결정', color: 'text-blue-400', bar: 'bg-blue-600' },
+                                                { key: 'lifestyle', label: '생활양식', color: 'text-purple-400', bar: 'bg-purple-600' },
+                                                { key: 'openness', label: '수용성', color: 'text-indigo-400', bar: 'bg-indigo-600' },
+                                                { key: 'warmth', label: '대인온도', color: 'text-pink-400', bar: 'bg-pink-600' },
+                                                { key: 'eloquence', label: '화술', color: 'text-teal-400', bar: 'bg-teal-600' },
+                                                { key: 'leadership', label: '통솔력', color: 'text-orange-400', bar: 'bg-orange-600' },
+                                            ].map((trait) => (
+                                                <div key={trait.key}>
+                                                    <div className="flex justify-between mb-1">
+                                                        <span className="text-gray-300 text-xs">{trait.label}</span>
+                                                        <span className={`text-xs ${trait.color}`}>
+                                                            {/* @ts-ignore */}
+                                                            {playerStats.personality?.[trait.key] || 0}
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-700 rounded-full h-1.5 relative">
+                                                        {/* Center line */}
+                                                        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-500"></div>
+                                                        <div
+                                                            className={`${trait.bar} h-1.5 rounded-full absolute top-0 bottom-0 transition-all duration-500`}
+                                                            style={{
+                                                                /* @ts-ignore */
+                                                                left: (playerStats.personality?.[trait.key] || 0) < 0 ? `${50 + (playerStats.personality?.[trait.key] || 0) / 2}%` : '50%',
+                                                                /* @ts-ignore */
+                                                                width: `${Math.abs((playerStats.personality?.[trait.key] || 0)) / 2}%`
+                                                            }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
 

@@ -93,6 +93,8 @@ export interface PlayerStats {
   level: number;
   exp: number;
   fame: number; // Added Fame
+  fate: number; // Added Fate (Intervention Resource)
+  playerRank: string; // Added Player Rank
   // Base Stats
   str: number; // Strength
   agi: number; // Agility
@@ -102,9 +104,15 @@ export interface PlayerStats {
   // New Stats
   skills: string[];
   personality: {
-    selfishness: number;
-    heroism: number;
     morality: number;
+    courage: number;
+    energy: number;
+    decision: number;
+    lifestyle: number;
+    openness: number;
+    warmth: number;
+    eloquence: number;
+    leadership: number;
   };
   relationships: Record<string, number>; // Character ID -> Affinity (0-100)
 }
@@ -200,10 +208,22 @@ export const useGameStore = create<GameState>()(
         mp: 50, maxMp: 50,
         gold: 0,
         level: 1, exp: 0,
-        fame: 0, // Added Fame
+        fame: 0,
+        fate: 0,
+        playerRank: '일반인',
         str: 10, agi: 10, int: 10, vit: 10, luk: 10,
         skills: [],
-        personality: { selfishness: 0, heroism: 0, morality: 50 },
+        personality: {
+          morality: 0,
+          courage: 0,
+          energy: 0,
+          decision: 0,
+          lifestyle: 0,
+          openness: 0,
+          warmth: 0,
+          eloquence: 0,
+          leadership: 0
+        },
         relationships: {}
       },
       setPlayerStats: (stats) => set((state) => ({
@@ -265,9 +285,21 @@ export const useGameStore = create<GameState>()(
           gold: 0,
           level: 1, exp: 0,
           fame: 0, // Added Fame
+          fate: 0, // Added Fate
+          playerRank: '일반인', // Added Player Rank
           str: 10, agi: 10, int: 10, vit: 10, luk: 10,
           skills: [],
-          personality: { selfishness: 0, heroism: 0, morality: 50 },
+          personality: {
+            morality: 0,
+            courage: 0,
+            energy: 0,
+            decision: 0,
+            lifestyle: 0,
+            openness: 0,
+            warmth: 0,
+            eloquence: 0,
+            leadership: 0
+          },
           relationships: {}
         },
         inventory: [],
