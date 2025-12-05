@@ -1014,21 +1014,36 @@ export default function VisualNovelUI() {
                                 <button
                                     onClick={async (e) => {
                                         e.stopPropagation();
-                                        const { data: { user } } = await supabase.auth.getUser();
-                                        if (!user) {
-                                            console.warn("Coin Charge: No user found.");
-                                            addToast("You must be logged in to charge.", "warning");
-                                            return;
-                                        }
-                                        const newCoins = userCoins + 50;
-                                        const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', user.id);
+                                        // DEBUGGING: Immediate feedback
+                                        console.log("DEBUG: Coin Button Clicked");
+                                        alert("Debug: Click detected! Checking auth...");
 
-                                        if (error) {
-                                            console.error("Coin Charge Failed:", error);
-                                            addToast("Failed to charge coins.", "warning");
-                                        } else {
-                                            setUserCoins(newCoins);
-                                            addToast("Charged 50 Coins!", 'success');
+                                        try {
+                                            const { data: { user }, error: authError } = await supabase.auth.getUser();
+                                            console.log("DEBUG: Auth User:", user);
+                                            console.log("DEBUG: Auth Error:", authError);
+
+                                            if (authError || !user) {
+                                                console.warn("Coin Charge: No user found or Auth Error.");
+                                                addToast("Login failed. Please refresh.", "warning");
+                                                return;
+                                            }
+
+                                            const newCoins = userCoins + 50;
+                                            const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', user.id);
+
+                                            if (error) {
+                                                console.error("Coin Charge Failed (DB Update):", error);
+                                                alert("DB Error: " + error.message);
+                                                addToast("Charge failed: " + error.message, "warning");
+                                            } else {
+                                                console.log("Coin Charge Success!");
+                                                setUserCoins(newCoins);
+                                                addToast("Charged 50 Coins!", 'success');
+                                            }
+                                        } catch (err) {
+                                            console.error("CRITICAL ERROR in Coin Charge:", err);
+                                            alert("Critical Error: " + JSON.stringify(err));
                                         }
                                     }}
                                     className="ml-1 w-5 h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-xs shadow hover:scale-110 transition-transform"
