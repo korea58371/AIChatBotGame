@@ -1014,29 +1014,49 @@ export default function VisualNovelUI() {
                                 <button
                                     onClick={async (e) => {
                                         e.stopPropagation();
-                                        alert("1. Clicked! Checking Auth...");
 
                                         try {
-                                            const { data: { user }, error: authError } = await supabase.auth.getUser();
+                                            // 1. Try robust auth check with timeout
+                                            let currentUser = null;
 
-                                            if (authError || !user) {
-                                                alert("2. Auth Failed: No User or Error\n" + JSON.stringify(authError));
+                                            // Promise Race: getUser vs 2s Timeout
+                                            const getUserPromise = supabase.auth.getUser();
+                                            const timeoutPromise = new Promise<{ data: { user: null }, error: any }>((resolve) =>
+                                                setTimeout(() => resolve({ data: { user: null }, error: 'timeout' }), 2000)
+                                            );
+
+                                            const { data: { user }, error: authError } = await Promise.race([getUserPromise, timeoutPromise]);
+
+                                            if (user) {
+                                                currentUser = user;
+                                            } else {
+                                                // 2. Fallback to cached session if getUser hangs/fails
+                                                console.warn("getUser timed out or failed, trying getSession fallback...");
+                                                const { data: { session } } = await supabase.auth.getSession();
+                                                if (session?.user) {
+                                                    currentUser = session.user;
+                                                }
+                                            }
+
+                                            if (!currentUser) {
+                                                addToast("Login check failed. Please refresh.", "warning");
                                                 return;
                                             }
 
-                                            alert("2. User Found: " + user.email + "\n3. Starting DB Update...");
-
+                                            // 3. Perform Update
                                             const newCoins = userCoins + 50;
-                                            const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', user.id);
+                                            const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', currentUser.id);
 
                                             if (error) {
-                                                alert("4. DB Update FAILED:\n" + error.message + "\nCode: " + error.code);
+                                                console.error("Coin Charge Failed:", error);
+                                                addToast("Failed: " + error.message, "warning");
                                             } else {
-                                                alert("4. DB Update SUCCESS!");
                                                 setUserCoins(newCoins);
+                                                addToast("Charged 50 Coins!", 'success');
                                             }
                                         } catch (err) {
-                                            alert("CRITICAL ERROR:\n" + JSON.stringify(err));
+                                            console.error("Critical Error:", err);
+                                            addToast("Error: " + JSON.stringify(err), "error");
                                         }
                                     }}
                                     className="ml-1 w-5 h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-xs shadow hover:scale-110 transition-transform"
