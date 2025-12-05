@@ -1015,10 +1015,18 @@ export default function VisualNovelUI() {
                                     onClick={async (e) => {
                                         e.stopPropagation();
                                         const { data: { user } } = await supabase.auth.getUser();
-                                        if (!user) return;
+                                        if (!user) {
+                                            console.warn("Coin Charge: No user found.");
+                                            addToast("You must be logged in to charge.", "warning");
+                                            return;
+                                        }
                                         const newCoins = userCoins + 50;
                                         const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', user.id);
-                                        if (!error) {
+
+                                        if (error) {
+                                            console.error("Coin Charge Failed:", error);
+                                            addToast("Failed to charge coins.", "warning");
+                                        } else {
                                             setUserCoins(newCoins);
                                             addToast("Charged 50 Coins!", 'success');
                                         }
