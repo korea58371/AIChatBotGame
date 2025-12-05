@@ -5,7 +5,7 @@ import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary } from '@/app/actions/game';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
-import { Send, Save, RotateCcw, History, SkipForward, Package } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import assets from '@/data/assets.json';
 
@@ -114,6 +114,30 @@ const translations = {
     }
 };
 
+const getKoreanExpression = (expr: string) => {
+    const map: { [key: string]: string } = {
+        'normal': '기본',
+        'neutral': '기본',
+        'default': '기본',
+        'happy': '기쁨',
+        'joy': '기쁨',
+        'smile': '기쁨',
+        'angry': '분노',
+        'rage': '분노',
+        'sad': '슬픔',
+        'sorrow': '슬픔',
+        'crying': '슬픔',
+        'surprised': '애정당황',
+        'shocked': '애정당황',
+        'shy': '애정당황',
+        'blush': '애정당황',
+        'love': '애정당황', // Most chars have 애정당황, not 애정
+        'affection': '애정당황',
+        'like': '애정당황'
+    };
+    return map[expr.toLowerCase()] || expr;
+};
+
 export default function VisualNovelUI() {
     const {
         chatHistory,
@@ -144,24 +168,53 @@ export default function VisualNovelUI() {
 
     const supabase = createClient();
 
-    // Fetch Coins on Mount
+    // Auth State (Event-Based)
+    const [session, setSession] = useState<any>(null);
+
+    // Track Session & Fetch Coins on Mount
     useEffect(() => {
-        const fetchCoins = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data } = await supabase
+        let mounted = true;
+
+        // Initial Fetch (Race condition protected)
+        const fetchInitialSession = async () => {
+            const { data } = await supabase.auth.getSession();
+            if (mounted && data.session) {
+                setSession(data.session);
+                // Fetch coins
+                const { data: profile } = await supabase
                     .from('profiles')
                     .select('coins')
-                    .eq('id', user.id)
+                    .eq('id', data.session.user.id)
                     .single();
-                if (data) {
-                    setUserCoins(data.coins);
-                }
+                if (mounted && profile) setUserCoins(profile.coins);
             }
         };
-        fetchCoins();
+        fetchInitialSession();
+
+        // Listen for changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+            if (mounted) {
+                setSession(currentSession);
+                if (currentSession?.user) {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('coins')
+                        .eq('id', currentSession.user.id)
+                        .single();
+                    if (mounted && profile) setUserCoins(profile.coins);
+                }
+            }
+        });
+
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
+    // ... (Hydration Fix & Asset Loading) ...
+
+    // ... (Rest of component) ...
 
 
     // Hydration Fix & Asset Loading
@@ -350,49 +403,83 @@ export default function VisualNovelUI() {
 
         if (nextSegment.type === 'dialogue' && nextSegment.expression) {
             // Combine character name and expression for filename (e.g., "Mina_happy")
-            setCharacterExpression(`${nextSegment.character}_${nextSegment.expression}`);
+            if (nextSegment.character && nextSegment.expression) {
+                const expr = getKoreanExpression(nextSegment.expression);
+                // Force '주인공' for player character
+                const charName = nextSegment.character === playerName ? '주인공' : nextSegment.character;
+                setCharacterExpression(`${charName}_${expr}`);
+            }
         }
-    };
+    }
 
     const handleSend = async (text: string) => {
         if (!text.trim()) return;
 
-        // Coin Check
-        if (userCoins < 1) {
-            addToast("Not enough coins! Please recharge.", "warning");
-            return;
-        }
+        setIsProcessing(true);
+        console.log(`handleSend: "${text}", coins: ${userCoins}, session: ${!!session}`);
 
-        // Deduct Coin
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            const { error } = await supabase.rpc('decrement_coin', { user_id: user.id });
-            if (error) {
-                // Fallback if RPC not exists (Manual Update - less safe but works for now)
-                const { error: updateError } = await supabase
-                    .from('profiles')
-                    .update({ coins: userCoins - 1 })
-                    .eq('id', user.id);
+        try {
+            let activeSession = session;
+            let currentCoins = userCoins;
 
-                if (updateError) {
-                    console.error("Coin update failed:", updateError);
-                    addToast("Transaction failed.", "warning");
+            // 1. Ensure Session & Coins
+            if (!activeSession?.user) {
+                console.log("handleSend: Session missing, attempting recovery...");
+                const { data } = await supabase.auth.getSession();
+                if (data.session) {
+                    activeSession = data.session;
+                    setSession(data.session);
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('coins')
+                        .eq('id', data.session.user.id)
+                        .single();
+                    if (profile) {
+                        currentCoins = profile.coins;
+                        setUserCoins(profile.coins);
+                        console.log(`handleSend: Recovered coins: ${currentCoins}`);
+                    }
+                } else {
+                    console.warn("handleSend: No session found after fallback");
+                    addToast("Authentication failed. Please refresh.", "warning");
+                    setIsProcessing(false);
                     return;
                 }
             }
-            setUserCoins(userCoins - 1);
-        }
 
-        setIsProcessing(true);
-        addMessage({ role: 'user', text });
-        setChoices([]); // Clear choices
+            // 2. Coin Check
+            if (currentCoins < 1) {
+                console.warn("handleSend: Not enough coins");
+                addToast("Not enough coins! Please recharge.", "warning");
+                setIsProcessing(false);
+                return;
+            }
 
-        try {
+            // 3. Deduct Coin
+            if (activeSession?.user) {
+                const { error } = await supabase.rpc('decrement_coin', { user_id: activeSession.user.id });
+                if (error) {
+                    const { error: updateError } = await supabase
+                        .from('profiles')
+                        .update({ coins: currentCoins - 1 })
+                        .eq('id', activeSession.user.id);
+
+                    if (updateError) {
+                        console.error("Coin update failed:", updateError);
+                        addToast("Transaction failed.", "warning");
+                        setIsProcessing(false);
+                        return;
+                    }
+                }
+                setUserCoins(currentCoins - 1);
+            }
+
+            addMessage({ role: 'user', text });
+            setChoices([]);
+
             const currentState = useGameStore.getState();
             let currentHistory = currentState.chatHistory;
 
-            // Sliding Window Summarization Logic
-            // Trigger when we have 15 messages, summarize the oldest 5, keep the recent 10.
             if (currentHistory.length >= 15) {
                 console.log("Triggering Memory Summarization (Buffer Full)...");
                 addToast("Summarizing old memories...", "info");
@@ -414,10 +501,9 @@ export default function VisualNovelUI() {
             }
 
             // 1. Generate Narrative
-            console.log(`[VisualNovelUI] Sending state to server. Luk: ${currentState.playerStats.luk} (${typeof currentState.playerStats.luk})`);
+            console.log(`[VisualNovelUI] Sending state to server.`);
 
             // Sanitize state to remove functions and circular references
-            // Use JSON.parse(JSON.stringify()) to ensure we strip out any proxies or non-serializable data
             const sanitizedState = JSON.parse(JSON.stringify({
                 chatHistory: currentState.chatHistory,
                 playerStats: currentState.playerStats,
@@ -434,12 +520,16 @@ export default function VisualNovelUI() {
                 availableCharacterImages: currentState.availableCharacterImages
             }));
 
-            const result = await serverGenerateResponse(
+            // Race Condition for Timeout
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 20000));
+            const responsePromise = serverGenerateResponse(
                 currentHistory,
                 text,
                 sanitizedState,
                 language
             );
+
+            const result: any = await Promise.race([responsePromise, timeoutPromise]);
 
             // Handle both string (legacy) and object (new) return types
             const responseText = typeof result === 'string' ? result : result.text;
@@ -520,13 +610,31 @@ export default function VisualNovelUI() {
                 }
 
                 if (startIndex < segments.length) {
-                    const first = segments[startIndex];
-                    setCurrentSegment(first);
-                    setScriptQueue(segments.slice(startIndex + 1));
+                    // Check if the restart point is a CHOICE
+                    if (segments[startIndex].type === 'choice') {
+                        const newChoices = [];
+                        let i = startIndex;
+                        while (i < segments.length && segments[i].type === 'choice') {
+                            newChoices.push(segments[i]);
+                            i++;
+                        }
+                        setChoices(newChoices);
+                        setScriptQueue(segments.slice(i));
+                        setCurrentSegment(null);
+                    } else {
+                        // Normal Segment
+                        const first = segments[startIndex];
+                        setCurrentSegment(first);
+                        setScriptQueue(segments.slice(startIndex + 1));
 
-                    if (first.type === 'dialogue' && first.expression) {
-                        // Combine character name and expression for filename
-                        setCharacterExpression(`${first.character}_${first.expression}`);
+                        if (first.type === 'dialogue' && first.expression) {
+                            if (first.character && first.expression) {
+                                const expr = getKoreanExpression(first.expression);
+                                // Force '주인공' for player character
+                                const charName = first.character === playerName ? '주인공' : first.character;
+                                setCharacterExpression(`${charName}_${expr}`);
+                            }
+                        }
                     }
                 } else {
                     // All segments were backgrounds
@@ -534,6 +642,8 @@ export default function VisualNovelUI() {
                     setCurrentSegment(null);
                 }
             } else {
+                console.warn("handleSend: No segments generated.");
+                addToast("AI returned no content.", "warning");
                 setScriptQueue([]);
                 setCurrentSegment(null);
             }
@@ -763,7 +873,14 @@ export default function VisualNovelUI() {
 
                 {/* Visual Area (Background + Character) */}
                 {/* Visual Area (Background + Character) */}
-                <div className="relative w-full bg-black shrink-0 mx-auto visual-container transition-all duration-300 ease-out">
+                {/* Visual Area (Background + Character) */}
+                <div
+                    className="relative w-full bg-black shrink-0 mx-auto visual-container transition-all duration-500 ease-out"
+                    style={{
+                        filter: choices.length > 0 ? 'blur(8px)' : 'none',
+                        transform: choices.length > 0 ? 'scale(1.02)' : 'scale(1)' // Slight zoom for effect
+                    }}
+                >
                     <style jsx>{`
                         .visual-container {
                             width: 100%;
@@ -815,108 +932,128 @@ export default function VisualNovelUI() {
                 </div>
 
                 {/* UI Layer */}
-                <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-30 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-30 pointer-events-none">
+                    {/* Left: Player Info & Stats */}
                     <div className="pointer-events-auto flex flex-col gap-2">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform"
-                                onClick={() => setShowCharacterInfo(true)}>
-                                {/* Hydration Safe Image */}
+                            {/* Restored Portrait Button */}
+                            <div
+                                className="w-12 h-12 rounded-full border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                                onClick={() => setShowCharacterInfo(true)}
+                            >
                                 {isMounted ? (
-                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" />
+                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" className="w-full h-full object-cover bg-gray-800" />
                                 ) : (
-                                    <div className="w-full h-full bg-gray-600 animate-pulse" />
+                                    <div className="w-full h-full bg-gray-700 animate-pulse" />
                                 )}
                             </div>
-                            <div>
-                                {/* Hydration Safe Name */}
-                                <h1 className="text-xl font-bold text-yellow-400">
-                                    {isMounted ? playerName : "Loading..."}
-                                </h1>
-                                <div className="text-xs text-gray-300">Lv.{playerStats.level} ({t.exp} {playerStats.exp})</div>
-                            </div>
+                            <h1 className="text-3xl font-bold text-white drop-shadow-md tracking-wider">
+                                {isMounted ? playerName : "Loading..."}
+                            </h1>
                         </div>
 
-                        {/* Stats Bar */}
-                        <div className="flex gap-4 text-sm font-mono ml-4">
-                            <div className="flex flex-col">
-                                <span className="text-red-400 font-bold">{t.hp} {playerStats.hp}/{playerStats.maxHp}</span>
-                                <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                    <div className="h-full bg-red-600 transition-all duration-500" style={{ width: `${(playerStats.hp / playerStats.maxHp) * 100}%` }} />
+                        <div className="flex gap-4 mt-1">
+                            {/* HP Bar */}
+                            <div className="relative w-48 h-8 transform -skew-x-12 overflow-hidden rounded-md border border-red-900/50 bg-black/60 backdrop-blur-md opacity-80 shadow-[0_0_10px_rgba(220,38,38,0.3)]">
+                                <div className="absolute inset-0 bg-red-900/20" />
+                                <div
+                                    className="h-full bg-gradient-to-r from-red-700 via-red-600 to-red-500 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(220,38,38,0.6)]"
+                                    style={{ width: `${(playerStats.hp / playerStats.maxHp) * 100}%` }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-12">
+                                    <span className="text-xs font-bold text-red-200 drop-shadow-sm">체력</span>
+                                    <span className="text-xs font-bold text-white drop-shadow-md">{Math.round((playerStats.hp / playerStats.maxHp) * 100)}%</span>
                                 </div>
                             </div>
-                            <div className="flex flex-col">
-                                <span className="text-blue-400 font-bold">{t.mp} {playerStats.mp}/{playerStats.maxMp}</span>
-                                <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${(playerStats.mp / playerStats.maxMp) * 100}%` }} />
+
+                            {/* MP Bar */}
+                            <div className="relative w-48 h-8 transform -skew-x-12 overflow-hidden rounded-md border border-blue-900/50 bg-black/60 backdrop-blur-md opacity-80 shadow-[0_0_10px_rgba(37,99,235,0.3)]">
+                                <div className="absolute inset-0 bg-blue-900/20" />
+                                <div
+                                    className="h-full bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(37,99,235,0.6)]"
+                                    style={{ width: `${(playerStats.mp / playerStats.maxMp) * 100}%` }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-12">
+                                    <span className="text-xs font-bold text-blue-200 drop-shadow-sm">정신력</span>
+                                    <span className="text-xs font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
                                 </div>
-                            </div>
-                            <div className="flex items-center text-yellow-300">
-                                <span>🪙 {playerStats.gold}</span>
-                            </div>
-                            <div className="flex items-center text-purple-400 font-bold">
-                                <span>👑 Fame: {playerStats.fame}</span>
-                            </div>
-                            <div className="flex items-center text-cyan-400 font-bold">
-                                <span>🔮 Fate: {playerStats.fate}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-2 pointer-events-auto">
-                        <button className="p-2 bg-gray-700 rounded hover:bg-gray-600 relative" onClick={(e) => { e.stopPropagation(); setShowInventory(true); }}>
-                            <Package size={20} />
-                            {inventory.length > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                                    {inventory.length}
-                                </span>
-                            )}
-                        </button>
-                        <button className="p-2 bg-gray-700 rounded hover:bg-gray-600" onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}>
-                            <History size={20} />
-                        </button>
-                        <button className="p-2 bg-green-600 rounded hover:bg-green-700 font-bold text-xs" onClick={(e) => { e.stopPropagation(); setIsInputOpen(true); }}>
-                            {t.inputBtn}
-                        </button>
-                        <button className="p-2 bg-purple-600 rounded hover:bg-purple-700 font-bold text-xs" onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}>
-                            {t.debugBtn}
-                        </button>
-                        <button className="p-2 bg-blue-600 rounded hover:bg-blue-700" onClick={(e) => { e.stopPropagation(); setShowSaveLoad(true); }}>
-                            <Save size={20} />
-                        </button>
-                        <button className="p-2 bg-red-600 rounded hover:bg-red-700" onClick={(e) => { e.stopPropagation(); handleNewGame(); }}>
-                            <RotateCcw size={20} />
-                        </button>
-                    </div>
+                    {/* Right: Resources & Settings */}
+                    <div className="pointer-events-auto flex flex-col items-end gap-3">
+                        {/* Resource Container */}
+                        <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 shadow-2xl">
+                            {/* Gold */}
+                            <div className="flex items-center gap-2 border-r border-white/10 pr-4">
+                                <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                                    <span className="text-md">🟡</span>
+                                </div>
+                                <span className="text-yellow-100 font-bold font-mono text-sm">{playerStats.gold.toLocaleString()} G</span>
+                            </div>
 
-                    {/* Coin Display & Recharge */}
-                    <div className="flex items-center gap-2 absolute left-1/2 transform -translate-x-1/2 pointer-events-auto">
-                        <div className="flex items-center gap-2 bg-black/60 px-4 py-2 rounded-full border border-yellow-500/30 backdrop-blur-md">
-                            <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-yellow-900 font-bold text-xs">C</div>
-                            <span className="text-yellow-400 font-bold font-mono">{userCoins}</span>
+                            {/* Fame */}
+                            <div className="flex items-center gap-2 border-r border-white/10 pr-4">
+                                <span className="text-lg drop-shadow-sm">👑</span>
+                                <span className="text-purple-100 font-bold font-mono text-sm">{playerStats.fame}</span>
+                            </div>
+
+                            {/* Fate */}
+                            <div className="flex items-center gap-2 border-r border-white/10 pr-4">
+                                <span className="text-lg drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]">🔮</span>
+                                <span className="text-purple-300 font-bold font-mono text-sm">{playerStats.fate}</span>
+                            </div>
+
+                            {/* Cash (Coins) */}
+                            <div className="flex items-center gap-2 pl-2">
+                                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-[10px] text-black font-extrabold shadow-sm ring-1 ring-yellow-300">
+                                    C
+                                </div>
+                                <span className="text-yellow-400 font-bold font-mono text-sm">{userCoins.toLocaleString()}</span>
+                                <button
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const { data: { user } } = await supabase.auth.getUser();
+                                        if (!user) return;
+                                        const newCoins = userCoins + 50;
+                                        const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', user.id);
+                                        if (!error) {
+                                            setUserCoins(newCoins);
+                                            addToast("Charged 50 Coins!", 'success');
+                                        }
+                                    }}
+                                    className="ml-1 w-5 h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-xs shadow hover:scale-110 transition-transform"
+                                >
+                                    +
+                                </button>
+                            </div>
                         </div>
-                        <button
-                            onClick={async () => {
-                                const { data: { user } } = await supabase.auth.getUser();
-                                if (!user) return;
 
-                                const newCoins = userCoins + 50;
-                                const { error } = await supabase
-                                    .from('profiles')
-                                    .update({ coins: newCoins })
-                                    .eq('id', user.id);
-
-                                if (!error) {
-                                    setUserCoins(newCoins);
-                                    addToast("Charged 50 Coins!", 'success');
-                                } else {
-                                    addToast("Recharge failed.", 'warning');
-                                }
-                            }}
-                            className="w-8 h-8 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center font-bold shadow-lg transition-transform hover:scale-110"
-                            title="Free Recharge (+50)"
-                        >
-                            +
-                        </button>
+                        {/* Top Right Controls */}
+                        <div className="flex gap-2">
+                            <button
+                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
+                                title="Debug"
+                            >
+                                <Bolt size={20} />
+                            </button>
+                            <button
+                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                onClick={(e) => { e.stopPropagation(); setShowInventory(true); }}
+                                title="Inventory"
+                            >
+                                <Package size={20} />
+                            </button>
+                            <button
+                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                onClick={(e) => { e.stopPropagation(); /* Settings logic later */ }}
+                                title="Settings"
+                            >
+                                <Settings size={20} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -948,18 +1085,22 @@ export default function VisualNovelUI() {
                                 {choices.map((choice, idx) => (
                                     <motion.button
                                         key={idx}
-                                        initial={{ opacity: 0, y: 20, skewX: -15 }}
-                                        animate={{ opacity: 1, y: 0, skewX: -15 }}
-                                        whileHover={{ scale: 1.05, skewX: -15 }}
+                                        initial={{ opacity: 0, y: 20, skewX: -12 }}
+                                        animate={{ opacity: 1, y: 0, skewX: -12 }}
+                                        whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
                                         transition={{ delay: idx * 0.1 }}
-                                        className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 px-8 rounded-xl text-xl shadow-lg border-2 border-yellow-400"
+                                        disabled={isProcessing}
+                                        className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold py-6 px-8 text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
+                                            ${isProcessing ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
+                                        `}
                                         onClick={(e) => {
+                                            if (isProcessing) return;
                                             console.log("Choice clicked:", choice.content);
                                             e.stopPropagation();
                                             handleSend(choice.content);
                                         }}
                                     >
-                                        <span className="block transform skew-x-[15deg]">
+                                        <span className="block transform skew-x-12">
                                             {choice.content}
                                         </span>
                                     </motion.button>
@@ -967,17 +1108,17 @@ export default function VisualNovelUI() {
 
                                 {/* Direct Input Option */}
                                 <motion.button
-                                    initial={{ opacity: 0, y: 20, skewX: -15 }}
-                                    animate={{ opacity: 1, y: 0, skewX: -15 }}
-                                    whileHover={{ scale: 1.05, skewX: -15 }}
+                                    initial={{ opacity: 0, y: 20, skewX: -12 }}
+                                    animate={{ opacity: 1, y: 0, skewX: -12 }}
+                                    whileHover={{ scale: 1.05, skewX: -12 }}
                                     transition={{ delay: choices.length * 0.1 }}
-                                    className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-xl text-xl shadow-lg border-2 border-gray-500"
+                                    className="w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold py-6 px-8 text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] hover:bg-white/80 hover:border-white transition-all duration-300"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setIsInputOpen(true);
                                     }}
                                 >
-                                    <span className="block transform skew-x-[15deg]">
+                                    <span className="block transform skew-x-12">
                                         {t.directInput}
                                     </span>
                                 </motion.button>
@@ -1048,7 +1189,7 @@ export default function VisualNovelUI() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/20 flex items-center justify-center z-50 pointer-events-none"
+                            className="absolute inset-0 bg-black/20 flex items-center justify-center z-50 pointer-events-auto"
                         >
                             <div className="flex flex-col items-center gap-2">
                                 <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
@@ -1522,51 +1663,71 @@ export default function VisualNovelUI() {
 
                 {/* Dialogue / Narration Layer */}
                 {currentSegment && currentSegment.type !== 'system_popup' && (
-                    <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[24vh] pointer-events-none">
-                        <div className="w-full max-w-[115rem] p-6 pointer-events-auto cursor-pointer relative flex flex-col items-center"
-                            onClick={handleScreenClick}>
-
-                            {/* Name Tag */}
-                            {currentSegment.type === 'dialogue' && (
-                                <div className="absolute -top-11 w-full text-center px-2">
-                                    <span className="text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
-                                        {(() => {
-                                            const { characterData, playerName } = useGameStore.getState();
-
-                                            // Handle Protagonist Name
-                                            if (currentSegment.character === '주인공') {
-                                                return playerName;
-                                            }
-
-                                            const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
-                                            const found = charList.find((c: any) => c.englishName === currentSegment.character || c.name === currentSegment.character);
-                                            return found ? found.name : currentSegment.character;
-                                        })()}
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Text Content */}
-                            <div className="text-[36px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center w-full">
-                                {currentSegment.type === 'narration' ? (
-                                    <span className="text-gray-300 italic block px-8">
-                                        {currentSegment.content}
-                                    </span>
-                                ) : (
-                                    <span>
-                                        {currentSegment.content}
-                                    </span>
-                                )}
+                    <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[30vh]">
+                        <div className="w-full max-w-5xl pointer-events-auto relative">
+                            {/* Dialogue Control Bar */}
+                            <div className="absolute -top-10 right-0 flex gap-2 z-30">
+                                <button
+                                    className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
+                                    onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
+                                >
+                                    <History size={14} />
+                                    {t.chatHistory}
+                                </button>
+                                <button
+                                    className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
+                                    onClick={(e) => { e.stopPropagation(); setShowSaveLoad(true); }}
+                                >
+                                    <Save size={14} />
+                                    {t.save}
+                                </button>
                             </div>
 
-                            {/* Continue Indicator */}
-                            <div className="mt-2 animate-bounce text-yellow-500">
-                                ▼
+                            <div
+                                className="w-full relative flex flex-col items-center cursor-pointer"
+                                onClick={handleScreenClick}
+                            >
+                                {/* Name Tag */}
+                                {currentSegment.type === 'dialogue' && (
+                                    <div className="absolute -top-12 w-full text-center px-2">
+                                        <span className="text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                            {(() => {
+                                                const { characterData, playerName } = useGameStore.getState();
+
+                                                // Handle Protagonist Name
+                                                if (currentSegment.character === '주인공') {
+                                                    return playerName;
+                                                }
+
+                                                const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
+                                                const found = charList.find((c: any) => c.englishName === currentSegment.character || c.name === currentSegment.character);
+                                                return found ? found.name : currentSegment.character;
+                                            })()}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Text Content */}
+                                <div className="text-[36px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
+                                    {currentSegment.type === 'narration' ? (
+                                        <span className="text-gray-300 italic block px-8">
+                                            {currentSegment.content}
+                                        </span>
+                                    ) : (
+                                        <span>
+                                            {currentSegment.content}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Continue Indicator */}
+                                <div className="mt-2 animate-bounce text-yellow-500">
+                                    ▼
+                                </div>
                             </div>
                         </div>
                     </div>
                 )}
-
             </div>
         </div>
     );

@@ -29,7 +29,7 @@ export function parseScript(text: string): ScriptSegment[] {
 
         if (tagName === '배경') {
             segments.push({ type: 'background', content: content });
-        } else if (tagName === '시스템팝업') {
+        } else if (tagName === '시스템팝업' || tagName === '시스템') {
             segments.push({ type: 'system_popup', content: content });
         } else if (tagName === '나레이션') {
             // Split long narration into individual sentences for better readability
