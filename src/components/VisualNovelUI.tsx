@@ -1014,36 +1014,29 @@ export default function VisualNovelUI() {
                                 <button
                                     onClick={async (e) => {
                                         e.stopPropagation();
-                                        // DEBUGGING: Immediate feedback
-                                        console.log("DEBUG: Coin Button Clicked");
-                                        alert("Debug: Click detected! Checking auth...");
+                                        alert("1. Clicked! Checking Auth...");
 
                                         try {
                                             const { data: { user }, error: authError } = await supabase.auth.getUser();
-                                            console.log("DEBUG: Auth User:", user);
-                                            console.log("DEBUG: Auth Error:", authError);
 
                                             if (authError || !user) {
-                                                console.warn("Coin Charge: No user found or Auth Error.");
-                                                addToast("Login failed. Please refresh.", "warning");
+                                                alert("2. Auth Failed: No User or Error\n" + JSON.stringify(authError));
                                                 return;
                                             }
+
+                                            alert("2. User Found: " + user.email + "\n3. Starting DB Update...");
 
                                             const newCoins = userCoins + 50;
                                             const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', user.id);
 
                                             if (error) {
-                                                console.error("Coin Charge Failed (DB Update):", error);
-                                                alert("DB Error: " + error.message);
-                                                addToast("Charge failed: " + error.message, "warning");
+                                                alert("4. DB Update FAILED:\n" + error.message + "\nCode: " + error.code);
                                             } else {
-                                                console.log("Coin Charge Success!");
+                                                alert("4. DB Update SUCCESS!");
                                                 setUserCoins(newCoins);
-                                                addToast("Charged 50 Coins!", 'success');
                                             }
                                         } catch (err) {
-                                            console.error("CRITICAL ERROR in Coin Charge:", err);
-                                            alert("Critical Error: " + JSON.stringify(err));
+                                            alert("CRITICAL ERROR:\n" + JSON.stringify(err));
                                         }
                                     }}
                                     className="ml-1 w-5 h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-xs shadow hover:scale-110 transition-transform"
