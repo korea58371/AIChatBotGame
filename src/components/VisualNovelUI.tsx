@@ -1673,7 +1673,7 @@ export default function VisualNovelUI() {
                 {/* Dialogue / Narration Layer */}
                 {currentSegment && currentSegment.type !== 'system_popup' && (
                     <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[30vh]">
-                        <div className="w-full max-w-5xl pointer-events-auto relative">
+                        <div className="w-full max-w-7xl pointer-events-auto relative">
                             {/* Dialogue Control Bar */}
                             <div className="absolute -top-10 right-0 flex gap-2 z-30">
                                 <button
