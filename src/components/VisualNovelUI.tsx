@@ -192,7 +192,7 @@ export default function VisualNovelUI() {
         fetchInitialSession();
 
         // Listen for changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, currentSession: any) => {
             if (mounted) {
                 setSession(currentSession);
                 if (currentSession?.user) {
