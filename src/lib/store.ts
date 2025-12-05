@@ -179,14 +179,33 @@ export const useGameStore = create<GameState>()(
         availableCharacterImages: characters
       }),
 
-      // Dynamic Character Data Init
-      characterData: initialCharacterData,
-      updateCharacter: (id, data) => set((state) => ({
-        characterData: {
-          ...state.characterData,
-          [id]: { ...state.characterData[id], ...data }
+      characterData: (Array.isArray(initialCharacterData) ? initialCharacterData : []).reduce((acc: any, char: any) => {
+        // Use Name as ID (User preference)
+        const id = char.name;
+        acc[id] = { ...char, id };
+        return acc;
+      }, {}),
+      updateCharacter: (id, data) => set((state) => {
+        const existingChar = state.characterData[id];
+        let baseChar = existingChar;
+
+        // If character doesn't exist in state, try to find it in static data by Name
+        if (!baseChar) {
+          const staticChar = (initialCharacterData as any[]).find((c: any) => c.name === id);
+          if (staticChar) {
+            baseChar = { ...staticChar, id };
+          } else {
+            baseChar = { id, name: id, ...data }; // Fallback for completely new characters
+          }
         }
-      })),
+
+        return {
+          characterData: {
+            ...state.characterData,
+            [id]: { ...baseChar, ...data }
+          }
+        };
+      }),
 
       // Dynamic World Data Init
       worldData: initialWorldData,

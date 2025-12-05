@@ -1,4 +1,4 @@
-export const getSystemPromptTemplate = (state: any) => {
+export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja' | null = 'ko') => {
     const stats = state.playerStats || {};
     const inventory = state.inventory || [];
 
@@ -274,7 +274,37 @@ export const getSystemPromptTemplate = (state: any) => {
 
 
     // Integrated Status & Inventory
-    const statusDesc = `체력(${stats.hp}/${stats.maxHp}), 마나(${stats.mp}/${stats.maxMp}), 골드(${stats.gold}G)`;
+    let currencySymbol = '원';
+    if (language === 'en') currencySymbol = '$';
+    else if (language === 'ja') currencySymbol = '엔';
+
+    // Helper for Status Descriptions (HP/MP)
+    const getStatusString = (current: number, max: number, type: 'hp' | 'mp') => {
+        const percent = (current / max) * 100;
+        if (type === 'hp') {
+            if (percent >= 100) return "건강함";
+            if (percent >= 80) return "경상";
+            if (percent >= 50) return "중상";
+            if (percent >= 30) return "위급상태";
+            if (percent >= 10) return "빈사상태";
+            return "사망 직전";
+        }
+        if (type === 'mp') {
+            if (percent >= 100) return "의지충만";
+            if (percent >= 80) return "평정심 유지";
+            if (percent >= 60) return "스트레스 누적";
+            if (percent >= 40) return "멘탈 흔들림";
+            if (percent >= 20) return "공황 상태";
+            if (percent > 0) return "정신 붕괴 직전";
+            return "삶에 대한 의지상실";
+        }
+        return "";
+    };
+
+    const hpDesc = getStatusString(stats.hp, stats.maxHp, 'hp');
+    const mpDesc = getStatusString(stats.mp, stats.maxMp, 'mp');
+
+    const statusDesc = `체력(${hpDesc}), 정신력(${mpDesc}), 돈(${stats.gold}${currencySymbol})`;
     const inventoryDesc = inventory.length > 0
         ? inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ')
         : "없음";
@@ -293,11 +323,13 @@ Active Characters이 억지로 캐릭터와 붙어다니지 않도록 헤어질 
 대화형 '게임'이므로, 모든 전개는 유저에게 호의적이지 않으며, 잘못된 선택 시 사망으로 이어질 수 있다. (게임 오버)
 {{PLAYER_NAME}} 능력에 대한 잠재력은, 멋대로 설정을 추가하지 않고, 프롬프트에 명시된 수준으로 제한한다.
 행동과 전개에 있어서, 반드시 주인공의 신체능력과 성향, 기질에 맞춰서 진행되어야 한다. (중요)
+체력이 떨어지면 행동이 제한되며, 정신력이 떨어지면 의욕이 떨어져 실패하거나 행동 자체를 안하려고 한다. 돈이 없을 경우 구매가 불가능함.
 
 [유저 직접 입력 시 제약 사항]
 1. 유저는 신적인 개입을 할 수 없으며, 오직 주인공의 능력 한계 선에서 행동만 제어할 수 있다.
 2. 타인의 감정이나 행동을 제어하거나 유도할 수 없다.
 3. 자신의 능력이나 별도의 추가 설정을 부여할 수 없다.
+4. 유저는 직접 입력으로 위 1~3번 제한 사항을 지키되, 주인공 캐릭터에 한해서 캐릭터가 하지 않을 만한 행동을 억지로 실행시킬 수 있다.
 
 
 ## 1. 작품 개요

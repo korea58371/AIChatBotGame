@@ -23,6 +23,12 @@ interface Character {
     description?: string;
     spawnRules?: SpawnRules;
     englishName?: string; // Added for image rule
+    relationshipInfo?: {
+        relation: string;
+        callSign: string;
+        speechStyle: string;
+        endingStyle: string;
+    };
 }
 
 // Lightweight character structure for Logic Model to save tokens
@@ -54,7 +60,7 @@ interface GameState {
 
 export class PromptManager {
     static generateSystemPrompt(state: GameState, language: 'ko' | 'en' | null, userMessage?: string): string {
-        let prompt = getSystemPromptTemplate(state);
+        let prompt = getSystemPromptTemplate(state, language);
 
         // Inject Player Name
         const playerName = state.playerName || "주인공";
@@ -106,27 +112,28 @@ export class PromptManager {
         // Use dynamic data from state, fallback to empty object if missing
         const charsData = state.characterData || {};
 
-        // Start with active characters
-        const activeCharIds = new Set(state.activeCharacters);
+        // Start with active characters (Normalize to lowercase)
+        const activeCharIds = new Set(state.activeCharacters.map(id => id.toLowerCase()));
 
         // Check user input AND location context for mentions of other characters
         const locationContext = (state.currentLocation + (locationDesc || "")).toLowerCase();
         const userContext = (userMessage || "").toLowerCase();
 
-        Object.values(charsData).forEach((char: any) => {
-            // Check if name (Korean or English key) appears in user message or location context
-            const key = Object.keys(charsData).find(k => charsData[k] === char);
+        Object.entries(charsData).forEach(([charId, char]: [string, any]) => {
             const charName = char.name.toLowerCase();
+            const charEnglishName = (char.englishName || "").toLowerCase();
 
-            if (key) {
-                // Check key (e.g. "alicia")
-                if (userContext.includes(key) || locationContext.includes(key)) {
-                    activeCharIds.add(key);
-                }
+            // Check key (ID)
+            if (userContext.includes(charId) || locationContext.includes(charId)) {
+                activeCharIds.add(charId);
             }
-            // Check name (e.g. "엘리시아")
+            // Check Korean Name
             if (userContext.includes(charName) || locationContext.includes(charName)) {
-                if (key) activeCharIds.add(key);
+                activeCharIds.add(charId);
+            }
+            // Check English Name
+            if (charEnglishName && (userContext.includes(charEnglishName) || locationContext.includes(charEnglishName))) {
+                activeCharIds.add(charId);
             }
         });
 
@@ -170,6 +177,10 @@ export class PromptManager {
                 } else {
                     charInfo += `\nSecret (NSFW/Private): ${JSON.stringify(char.secret)}`;
                 }
+            }
+
+            if (char.relationshipInfo) {
+                charInfo += `\nRelationship: ${JSON.stringify(char.relationshipInfo)}`;
             }
 
             charInfo += `\nDefault Expression: ${char.default_expression}`;
@@ -234,7 +245,7 @@ export class PromptManager {
 
     static getSpawnCandidates(state: GameState): string {
         const charsData = state.characterData || {};
-        const activeCharIds = new Set(state.activeCharacters);
+        const activeCharIds = new Set(state.activeCharacters.map(id => id.toLowerCase()));
 
         return Object.values(charsData).map((c: any) => {
             let score = 0;
@@ -305,7 +316,7 @@ export class PromptManager {
         // 2. Get Active Characters (Lightweight)
         const charsData = state.characterData || {};
         const activeChars = state.activeCharacters.map(id => {
-            const c = charsData[id];
+            const c = charsData[id.toLowerCase()]; // Normalize lookup
             if (!c) return null;
             return `- ${c.name} (${c.role}): Active in scene.`;
         }).filter(Boolean).join('\n');

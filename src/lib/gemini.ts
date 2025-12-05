@@ -134,9 +134,13 @@ export async function generateGameLogic(
                - The player CANNOT use an item they do not have in their 'Current Stats' inventory. 
                - If the user tries to use a non-existent item, ignore the action or mark it as failed in the narrative (handled by story model), but DO NOT remove it from inventory here.
             2. **Status Updates:**
-               - If the player gets hurt, reduce HP.
-               - If the player uses magic, reduce MP.
-               - If the player earns gold, increase gold.
+               - **HP (Health)**:
+                 - 100% (Healthy), 80% (Minor Injury), 50% (Moderate Injury), 30% (Critical), 10% (Near Death), 0% (Death).
+                 - If the player gets hurt, reduce HP based on these thresholds.
+               - **MP (Mental Power)**:
+                 - 100% (Full Will), 80% (Calm), 60% (Stress), 40% (Shaken), 20% (Panic), 0% (Lost Will).
+                 - If the player uses magic or suffers mental trauma, reduce MP based on these thresholds.
+               - If the player earns money, increase gold.
             3. **Item Management:**
                - If the player gains an item, add it (use IDs from Valid Items if possible).
                - If the player uses a valid item from inventory, remove it.
@@ -189,7 +193,12 @@ export async function generateGameLogic(
                - **FORMAT**: Return the **COMPLETE NEW LIST** of memories. If no changes, return the existing list.
                - **LIMIT**: Try to keep the memory list under 10 items per character by consolidating.
                - If a NEW character is introduced, add them.
-               - ID should be lowercase English (e.g., 'guard_captain').
+               - ID should be the Character Name (e.g., '천서윤', '유화영').
+               - **RELATIONSHIP INFO**: Update the following details based on the interaction:
+                 - **relation**: Current relationship with protagonist (e.g., "Stranger", "Lover", "Enemy").
+                 - **callSign**: How they address the protagonist (e.g., "You", "Master", "Oppa").
+                 - **speechStyle**: "Formal" (Jondaemal) or "Informal" (Banmal).
+                 - **endingStyle**: Typical sentence ending (e.g., "~yo", "~da", "~nida").
             10. **Location Updates:**
                - If the narrative indicates the player has moved to a new location, return the new location ID in 'newLocation'.
                - **Secrets/Clues**: You can ADD, REMOVE, or UPDATE secrets. Return the **COMPLETE NEW LIST** of secrets for that location.
@@ -226,7 +235,13 @@ export async function generateGameLogic(
                         "id": string, 
                         "name": string, 
                         "description": string, 
-                        "memories": [ string ] 
+                        "memories": [ string ],
+                        "relationshipInfo": {
+                            "relation": string, 
+                            "callSign": string, 
+                            "speechStyle": string, 
+                            "endingStyle": string
+                        }
                     } 
                 ],
                 "locationUpdates": [
@@ -251,7 +266,7 @@ export async function generateGameLogic(
 
             **Active Characters Rule:**
             - Identify ALL characters currently present in the scene based on the narrative.
-            - Return their IDs (e.g., 'kim_dain', 'wang_wei').
+            - Return their IDs (e.g., '천서윤', '유화영').
             - If a character leaves, exclude them from this list.
             - If the player is alone, return an empty list [].
             `;
