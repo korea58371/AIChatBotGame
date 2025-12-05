@@ -1045,15 +1045,15 @@ export default function VisualNovelUI() {
 
                                             // 3. Perform Update
                                             const newCoins = userCoins + 50;
-                                            const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', currentUser.id);
+                                            // OPTIMISTIC: Update UI first!
+                                            setUserCoins(newCoins);
+                                            addToast("Charged 50 Coins!", 'success');
 
-                                            if (error) {
-                                                console.error("Coin Charge Failed:", error);
-                                                addToast("Failed: " + error.message, "warning");
-                                            } else {
-                                                setUserCoins(newCoins);
-                                                addToast("Charged 50 Coins!", 'success');
-                                            }
+                                            // Background Sync
+                                            supabase.from('profiles').update({ coins: newCoins }).eq('id', currentUser.id)
+                                                .then(({ error }: { error: any }) => {
+                                                    if (error) console.error("DB Sync Failed:", error);
+                                                });
                                         } catch (err) {
                                             console.error("Critical Error:", err);
                                             addToast("Error: " + JSON.stringify(err), "warning");
