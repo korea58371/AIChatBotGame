@@ -1015,49 +1015,28 @@ export default function VisualNovelUI() {
                                     onClick={async (e) => {
                                         e.stopPropagation();
 
-                                        try {
-                                            // 1. Try robust auth check with timeout
-                                            let currentUser = null;
+                                        // 1. Instant Local Auth Check (Using component state)
+                                        const currentUser = session?.user;
 
-                                            // Promise Race: getUser vs 2s Timeout
-                                            const getUserPromise = supabase.auth.getUser();
-                                            const timeoutPromise = new Promise<{ data: { user: null }, error: any }>((resolve) =>
-                                                setTimeout(() => resolve({ data: { user: null }, error: 'timeout' }), 2000)
-                                            );
-
-                                            const { data: { user }, error: authError } = await Promise.race([getUserPromise, timeoutPromise]);
-
-                                            if (user) {
-                                                currentUser = user;
-                                            } else {
-                                                // 2. Fallback to cached session if getUser hangs/fails
-                                                console.warn("getUser timed out or failed, trying getSession fallback...");
-                                                const { data: { session } } = await supabase.auth.getSession();
-                                                if (session?.user) {
-                                                    currentUser = session.user;
-                                                }
-                                            }
-
-                                            if (!currentUser) {
-                                                addToast("Login check failed. Please refresh.", "warning");
-                                                return;
-                                            }
-
-                                            // 3. Perform Update
-                                            const newCoins = userCoins + 50;
-                                            // OPTIMISTIC: Update UI first!
-                                            setUserCoins(newCoins);
-                                            addToast("Charged 50 Coins!", 'success');
-
-                                            // Background Sync
-                                            supabase.from('profiles').update({ coins: newCoins }).eq('id', currentUser.id)
-                                                .then(({ error }: { error: any }) => {
-                                                    if (error) console.error("DB Sync Failed:", error);
-                                                });
-                                        } catch (err) {
-                                            console.error("Critical Error:", err);
-                                            addToast("Error: " + JSON.stringify(err), "warning");
+                                        if (!currentUser) {
+                                            addToast("Login required.", "warning");
+                                            return;
                                         }
+
+                                        // 2. OPTIMISTIC UPDATE: Update UI immediately
+                                        const newCoins = userCoins + 50;
+                                        setUserCoins(newCoins);
+                                        addToast("Charged 50 Coins!", 'success');
+
+                                        // 3. Background DB Sync (Fire-and-forget)
+                                        supabase.from('profiles').update({ coins: newCoins }).eq('id', currentUser.id)
+                                            .then(({ error }: { error: any }) => {
+                                                if (error) {
+                                                    console.error("Background DB Sync Failed:", error);
+                                                } else {
+                                                    console.log("DB Sync Success");
+                                                }
+                                            });
                                     }}
                                     className="ml-1 w-5 h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-xs shadow hover:scale-110 transition-transform"
                                 >
