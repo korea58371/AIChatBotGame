@@ -247,6 +247,26 @@ export default function VisualNovelUI() {
     const [showCharacterInfo, setShowCharacterInfo] = useState(false);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+    // [Scaling Logic] Fixed 1080p Base Resolution
+    const [scale, setScale] = useState(1);
+    useEffect(() => {
+        const handleResize = () => {
+            const TARGET_WIDTH = 1920;
+            const TARGET_HEIGHT = 1080;
+
+            const scaleX = window.innerWidth / TARGET_WIDTH;
+            const scaleY = window.innerHeight / TARGET_HEIGHT;
+
+            // Use 'contain' fit (show entire 1920x1080 canvas, potentially with letterboxing)
+            const newScale = Math.min(scaleX, scaleY);
+            setScale(newScale);
+        };
+
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // [Transition Logic] Track previous character name to determine animation type
     // If name matches last ref => dissolve only (expression change).
     // If name differs => full animation (character switch).
@@ -1147,15 +1167,22 @@ export default function VisualNovelUI() {
 
     return (
         <div
-            className="relative w-full h-screen bg-black overflow-hidden font-sans select-none flex justify-center"
+            className="w-screen h-screen bg-black overflow-hidden font-sans select-none flex items-center justify-center"
             onClick={(e) => {
                 handleScreenClick(e);
             }}
             onWheel={handleWheel}
             onContextMenu={(e) => e.preventDefault()}
         >
-            {/* Game Container - Enforce Max 16:9 Aspect Ratio (Landscape) & Max 2:3 (Portrait) */}
-            <div className="relative w-full h-full max-w-[177.78vh] shadow-2xl overflow-hidden bg-black flex flex-col">
+            {/* Game Container - Fixed 1920x1080 Resolution scaled to viewport */}
+            <div
+                className="relative shadow-2xl overflow-hidden bg-black flex flex-col origin-center"
+                style={{
+                    width: '1920px',
+                    height: '1080px',
+                    transform: `scale(${scale})`
+                }}
+            >
 
                 {/* Visual Area (Background + Character) */}
                 {/* Visual Area (Background + Character) */}
@@ -1170,16 +1197,7 @@ export default function VisualNovelUI() {
                     <style jsx>{`
                         .visual-container {
                             width: 100%;
-                            /* Default: 16:9 aspect ratio */
-                            aspect-ratio: 16/9;
-                        }
-                        @media (max-aspect-ratio: 16/9) {
-                            .visual-container {
-                                /* In portrait/narrow, fill height but cap at 2:3 (150vw) */
-                                aspect-ratio: unset;
-                                height: 100%;
-                                max-height: 150vw; /* 2:3 Ratio (Height = 1.5 * Width) */
-                            }
+                            height: 100%;
                         }
                     `}</style>
 
