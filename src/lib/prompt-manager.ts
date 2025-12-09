@@ -56,11 +56,21 @@ interface GameState {
     playerName: string;
     availableBackgrounds?: string[];
     availableCharacterImages?: string[];
+    availableExtraImages?: string[]; // Added
+    isDirectInput?: boolean;
 }
 
 export class PromptManager {
     static generateSystemPrompt(state: GameState, language: 'ko' | 'en' | null, userMessage?: string): string {
         let prompt = getSystemPromptTemplate(state, language);
+
+        // [Requirement] Prepend Summarized Memory (Long-term Memory) to System Prompt
+        // This ensures the model prioritizes past context.
+        const memorySection = state.scenarioSummary
+            ? `\n[Previous Story Summary]\n${state.scenarioSummary}\n\n`
+            : "";
+
+        prompt = memorySection + prompt;
 
         // Inject Player Name
         const playerName = state.playerName || "주인공";
@@ -195,12 +205,27 @@ export class PromptManager {
 
         prompt = prompt.replace('{{AVAILABLE_CHARACTERS}}', availableChars || "None");
 
-        // 7. Available Backgrounds Injection
-        const AVAILABLE_BACKGROUNDS = state.availableBackgrounds && state.availableBackgrounds.length > 0
-            ? state.availableBackgrounds
-            : ["마을_거리", "집_거실", "집_누나방", "집_주인공방", "집_화장실", "학교_교실_수업중", "학교_복도_쉬는시간", "학교_정문"]; // Fallback
+        // 7. Context-Aware Background Injection (SMART OPTIMIZATION)
+        // Instead of all 168 files, we inject only ~20 relevant files based on location + generic fallback.
+        const relevantBackgrounds = PromptManager.getRelevantBackgrounds(state.currentLocation);
 
-        prompt = prompt.replace('{{AVAILABLE_BACKGROUNDS}}', AVAILABLE_BACKGROUNDS.join(', '));
+        // Group by Category to save tokens and improve AI understanding
+        const groupedBgs: Record<string, string[]> = {};
+        relevantBackgrounds.forEach(bg => {
+            const parts = bg.replace('.jpg', '').replace('.png', '').split('_');
+            const category = parts[0];
+            const name = parts.slice(1).join('_'); // Everything after first underscore
+
+            if (!groupedBgs[category]) groupedBgs[category] = [];
+            if (name) groupedBgs[category].push(name);
+            else groupedBgs[category].push('Default'); // Handle single-word files if any
+        });
+
+        const formattedBgs = Object.entries(groupedBgs)
+            .map(([cat, names]) => `- [${cat}] ${names.join(', ')}`)
+            .join('\n');
+
+        prompt = prompt.replace('{{AVAILABLE_BACKGROUNDS}}', formattedBgs);
 
         // 8. Available Character Images Injection (Optimized)
         // Instead of listing all files, we provide a rule.
@@ -219,6 +244,13 @@ export class PromptManager {
 `.trim();
 
         prompt = prompt.replace('{{AVAILABLE_CHARACTER_IMAGES}}', imageRule);
+
+        // 10. Available Extra Character Images Injection
+        const extraImages = state.availableExtraImages && state.availableExtraImages.length > 0
+            ? state.availableExtraImages.join(', ')
+            : "None";
+
+        prompt = prompt.replace('{{AVAILABLE_EXTRA_CHARACTERS}}', extraImages);
 
         // 9. Mood Injection
         const currentMood = state.currentMood || 'daily';
@@ -284,6 +316,41 @@ export class PromptManager {
             // 4. Random Factor (Tie-breaker: +0~1)
             score += Math.random();
 
+            // 5. Country Filter (CRITICAL FIX)
+            // If character is from a specific country (not Korea/Unknown), and current location doesn't support it, disqualify them.
+            const charCountryRaw = (c.country || "").toLowerCase();
+            const isKorea = charCountryRaw.includes("korea") || charCountryRaw.includes("한국") || charCountryRaw === "";
+
+            if (!isKorea) {
+                // Determine implicit location country context
+                const loc = state.currentLocation.toLowerCase();
+                // Simple keyword check for country presence in location name
+                // e.g. "Japan_Street", "Tokyo", "China_Town", "Paris"
+                const countryKeywords = ["japan", "일본", "china", "중국", "usa", "미국", "france", "프랑스", "uk", "영국", "germany", "독일", "italy", "이탈리아", "brazil", "브라질", "russia", "러시아"];
+                const globalKeywords = ["airport", "공항", "international", "국제", "global", "olympus", "hotel", "호텔"]; // Allow spawning in international hubs
+
+                // Extract pure country name from character data (e.g. "Japan (Tokyo)" -> "japan")
+                let targetCountry = "";
+                for (const k of countryKeywords) {
+                    if (charCountryRaw.includes(k)) {
+                        targetCountry = k;
+                        break;
+                    }
+                }
+
+                // Check matches
+                const isLocationMatch = targetCountry && loc.includes(targetCountry);
+                const isGlobalZone = globalKeywords.some(k => loc.includes(k));
+
+                if (!isLocationMatch && !isGlobalZone) {
+                    // Start Penalty: If not in their country and not in a global zone -> Massive Penalty
+                    // UNLESS they are specifically "visiting" (handled by explicit location match in rule 2?)
+                    // Current Rule 2 (Location Match) might still trigger for generic "Store".
+                    // So we must Override score.
+                    score = -20;
+                }
+            }
+
             return { char: c, score, tags };
         })
             .sort((a, b) => b.score - a.score)
@@ -328,5 +395,46 @@ ${activeChars || "None"}
 [Available Candidates for Spawning]
 ${spawnCandidates || "None"}
         `.trim();
+    }
+
+    static getRelevantBackgrounds(currentLocation: string): string[] {
+        // Simple heuristic: Keyword matching
+        // We use require here to avoid top-level import cycles if any, though bgList is data.
+        const bgFiles = require('../data/background_list.json');
+
+        const refinedLocation = (currentLocation || '').toLowerCase().trim();
+
+        // Dynamic Filter
+        const relevant = bgFiles.filter((bg: string) => {
+            const lowerBg = bg.toLowerCase();
+
+            // Core common sets (Always available)
+            if (lowerBg.startsWith('city_') || lowerBg.startsWith('indoors_') || lowerBg.startsWith('trans_') || lowerBg.startsWith('home_') || lowerBg.startsWith('store_')) return true;
+
+            // Location-specific sets
+            if (refinedLocation.includes('school') || refinedLocation.includes('academy') || refinedLocation.includes('학교')) {
+                return lowerBg.startsWith('school_') || lowerBg.startsWith('academy_');
+            }
+            if (refinedLocation.includes('dungeon') || refinedLocation.includes('던전')) {
+                return lowerBg.startsWith('dungeon_');
+            }
+            if (refinedLocation.includes('luxury') || refinedLocation.includes('hotel') || refinedLocation.includes('호텔')) {
+                return lowerBg.startsWith('luxury_');
+            }
+            if (refinedLocation.includes('facility') || refinedLocation.includes('lab') || refinedLocation.includes('연구소')) {
+                return lowerBg.startsWith('facility_');
+            }
+            if (refinedLocation.includes('store') || refinedLocation.includes('shop') || refinedLocation.includes('상점')) {
+                return lowerBg.startsWith('store_');
+            }
+            if (refinedLocation.includes('media') || refinedLocation.includes('broadcast') || refinedLocation.includes('방송')) {
+                return lowerBg.startsWith('media_');
+            }
+
+            return false;
+        });
+
+        // Limit to prevent overflow, but ensure we have enough variety
+        return relevant.slice(0, 50);
     }
 }

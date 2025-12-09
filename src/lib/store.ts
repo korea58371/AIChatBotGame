@@ -24,6 +24,9 @@ interface GameState {
   clearHistory: () => void;
   truncateHistory: (keepCount: number) => void;
 
+  turnCount: number;
+  incrementTurnCount: () => void;
+
   // Visual State
   currentBackground: string;
   setBackground: (bg: string) => void;
@@ -49,7 +52,8 @@ interface GameState {
   // Asset Lists
   availableBackgrounds: string[];
   availableCharacterImages: string[];
-  setAvailableAssets: (backgrounds: string[], characters: string[]) => void;
+  availableExtraImages: string[];
+  setAvailableAssets: (backgrounds: string[], characters: string[], extraCharacters: string[]) => void;
 
   // Dynamic Character Data
   characterData: Record<string, any>;
@@ -95,6 +99,7 @@ export interface PlayerStats {
   fame: number; // Added Fame
   fate: number; // Added Fate (Intervention Resource)
   playerRank: string; // Added Player Rank
+  personalitySummary: string; // Added Personality Summary from Logic Model
   // Base Stats
   str: number; // Strength
   agi: number; // Agility
@@ -113,6 +118,8 @@ export interface PlayerStats {
     warmth: number;
     eloquence: number;
     leadership: number;
+    humor: number; // Serious/Solemn (-100) <-> Playful/Witty (+100)
+    lust: number; // Ascetic/Pure (-100) <-> Lustful/Perverted (+100)
   };
   relationships: Record<string, number>; // Character ID -> Affinity (0-100)
 }
@@ -151,7 +158,10 @@ export const useGameStore = create<GameState>()(
         return { chatHistory: newHistory };
       }),
 
-      currentBackground: 'default',
+      turnCount: 0,
+      incrementTurnCount: () => set((state) => ({ turnCount: state.turnCount + 1 })),
+
+      currentBackground: '/assets/backgrounds/Default_Fallback.png',
       setBackground: (bg) => set({ currentBackground: bg }),
 
       characterExpression: 'normal',
@@ -174,9 +184,11 @@ export const useGameStore = create<GameState>()(
 
       availableBackgrounds: [],
       availableCharacterImages: [],
-      setAvailableAssets: (backgrounds, characters) => set({
+      availableExtraImages: [],
+      setAvailableAssets: (backgrounds, characters, extraCharacters) => set({
         availableBackgrounds: backgrounds,
-        availableCharacterImages: characters
+        availableCharacterImages: characters,
+        availableExtraImages: extraCharacters
       }),
 
       characterData: (Array.isArray(initialCharacterData) ? initialCharacterData : []).reduce((acc: any, char: any) => {
@@ -230,6 +242,7 @@ export const useGameStore = create<GameState>()(
         fame: 0,
         fate: 0,
         playerRank: '일반인',
+        personalitySummary: "", // Initial empty summary
         str: 10, agi: 10, int: 10, vit: 10, luk: 10,
         skills: [],
         personality: {
@@ -241,7 +254,9 @@ export const useGameStore = create<GameState>()(
           openness: 0,
           warmth: 0,
           eloquence: 0,
-          leadership: 0
+          leadership: 0,
+          humor: 0,
+          lust: 0
         },
         relationships: {}
       },
@@ -296,6 +311,7 @@ export const useGameStore = create<GameState>()(
         activeCharacters: [],
         currentLocation: 'home',
         scenarioSummary: '',
+        turnCount: 0,
         currentEvent: '',
         currentMood: 'daily',
         playerStats: {
@@ -306,6 +322,7 @@ export const useGameStore = create<GameState>()(
           fame: 0, // Added Fame
           fate: 0, // Added Fate
           playerRank: '일반인', // Added Player Rank
+          personalitySummary: "", // Added Personality Summary
           str: 10, agi: 10, int: 10, vit: 10, luk: 10,
           skills: [],
           personality: {
@@ -317,7 +334,9 @@ export const useGameStore = create<GameState>()(
             openness: 0,
             warmth: 0,
             eloquence: 0,
-            leadership: 0
+            leadership: 0,
+            humor: 0,
+            lust: 0
           },
           relationships: {}
         },

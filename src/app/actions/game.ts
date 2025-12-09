@@ -36,3 +36,30 @@ export async function serverGenerateSummary(
     if (!API_KEY) return currentSummary;
     return generateSummary(API_KEY, currentSummary, recentDialogue);
 }
+
+export async function getExtraCharacterImages() {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const extraCharDir = path.join(process.cwd(), 'public', 'assets', 'ExtraCharacters');
+
+        if (!fs.existsSync(extraCharDir)) {
+            console.warn(`ExtraCharacters directory not found: ${extraCharDir}`);
+            return [];
+        }
+
+        const files = fs.readdirSync(extraCharDir);
+        // Return filenames without extension, or with extension if preferred?
+        // standard characters seem to be names like "강지수_기본" and the file is "강지수_기본.png".
+        // The file list I saw included extensions.
+        // I should return the name without extension for consistency if the system prompt expects names.
+        // But wait, the standard asset list "강지수_기본" implies the filename is "강지수_기본.png".
+        // So I will strip .png, .jpg, etc.
+
+        return files.filter((file: string) => /\.(png|jpg|jpeg|webp)$/i.test(file))
+            .map((file: string) => path.parse(file).name);
+    } catch (error) {
+        console.error("Error reading ExtraCharacters:", error);
+        return [];
+    }
+}

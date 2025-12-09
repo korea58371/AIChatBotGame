@@ -41,8 +41,8 @@ export async function generateResponse(
 
     // Main Story Model: Gemini 3 Pro (Prioritize quality)
     const modelsToTry = [
-        'gemini-2.5-flash', // Correct ID from documentation /gemini-3-pro-preview 임시 수정
-        'gemini-2.5-pro', // Stable fallback
+        'gemini-3-pro-preview', // Correct ID from documentation /gemini-3-pro-preview 임시 수정
+        'gemini-2.5-flash', // Stable fallback
         'gemini-2.5-flash', // Fast fallback
     ];
 
@@ -72,7 +72,8 @@ export async function generateResponse(
             return {
                 text: response.text(),
                 usageMetadata: response.usageMetadata,
-                systemPrompt: systemPrompt
+                systemPrompt: systemPrompt,
+                usedModel: modelName
             };
 
         } catch (error: any) {
@@ -98,7 +99,7 @@ export async function generateGameLogic(
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // Try user's preferred model first, then fallback
-    const logicModels = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    const logicModels = ['gemini-2.5-flash', 'gemini-2.5-flash'];
 
     for (const modelName of logicModels) {
         try {
@@ -109,8 +110,15 @@ export async function generateGameLogic(
                 safetySettings
             });
 
-            // Prune currentStats to remove heavy character data (Token Optimization)
-            const { characterData, ...prunedStats } = currentStats;
+            // Prune currentStats to remove heavy character data AND asset lists (Token Optimization)
+            const {
+                characterData,
+                availableBackgrounds,
+                availableCharacterImages,
+                availableExtraImages,
+                scriptQueue, // Also remove script queue
+                ...prunedStats
+            } = currentStats;
             const worldData = currentStats.worldData || require('../data/prompts/world.json'); // Fallback to static if missing
 
             // Get lightweight context for Logic Model
@@ -155,6 +163,8 @@ export async function generateGameLogic(
                - **Warmth**: Cold (-100) <-> Warm/Kind (+100)
                - **Eloquence**: Quiet/Inarticulate (-100) <-> Eloquent/Persuasive (+100)
                - **Leadership**: Submissive/Follower (-100) <-> Dominant/Leader (+100)
+               - **Humor**: Serious/Solemn (-100) <-> Playful/Witty (+100)
+               - **Lust**: Ascetic/Pure (-100) <-> Lustful/Perverted (+100)
                - **Change Magnitude**: Small (+/- 1-2), Medium (+/- 3-5), Large (+/- 6-10).
                - Only update traits that are clearly affected by the user's action.
 
@@ -179,6 +189,7 @@ export async function generateGameLogic(
                  - If the user experiences random good luck (finding money, etc.) -> INCREASE 'Luck' (+1 to +5).
             7. **Fame System (NEW):**
                - **Heroic/Notable Deed**: If the player saves someone, defeats a strong enemy, or gains public attention -> Increase fame (+1 to +50).
+               - **Named Character Interaction**: If the player builds a relationship, joins forces, or has a significant interaction with a Named Character (already defined in the world) -> Increase fame (+1 to +10). Being associated with famous people makes you famous.
                - **Shameful Act**: If the player runs away, commits a crime, or is humiliated -> Decrease fame (-1 to -50).
                - **Fame Thresholds**: 0 (Nobody), 100 (Known Locally), 500 (City Famous), 1000 (National Hero).
             8. **Relationships:**
@@ -190,6 +201,10 @@ export async function generateGameLogic(
                - **FILTER TRIVIALITY**: DO NOT record mundane actions like eating, walking, sleeping, or minor greetings unless they have significant plot relevance.
                - **CONSOLIDATE**: If a character has multiple memories about the same topic (e.g., "Likes bread", "Ate bread", "Wants bread"), MERGE them into one concise memory (e.g., "Loves bread and feels happy when eating it").
                - **SIGNIFICANCE**: Only record events that change relationships, reveal secrets, or advance the main plot.
+               - **NO MIND READING (STRICT)**: 
+                 - You MUST NOT record the user's internal thoughts, intentions, or narration that was not spoken aloud.
+                 - ONLY record what the character explicitly SAW (actions), HEARD (dialogue), or EXPERIENCED directly.
+                 - If the user thought "I should give up", but didn't say it, the character DOES NOT KNOW they gave up.
                - **FORMAT**: Return the **COMPLETE NEW LIST** of memories. If no changes, return the existing list.
                - **LIMIT**: Try to keep the memory list under 10 items per character by consolidating.
                - If a NEW character is introduced, add them.
@@ -199,6 +214,8 @@ export async function generateGameLogic(
                  - **callSign**: How they address the protagonist (e.g., "You", "Master", "Oppa").
                  - **speechStyle**: "Formal" (Jondaemal) or "Informal" (Banmal).
                  - **endingStyle**: Typical sentence ending (e.g., "~yo", "~da", "~nida").
+                 - **EXIT TAG (IMPORTANT)**: If a character leaves the scene (closes door, walks away, says goodbye and exits), append '<떠남>' to the end of their final dialogue line.
+                   Example: "Goodbye, see you tomorrow. <떠남>"
             10. **Location Updates:**
                - If the narrative indicates the player has moved to a new location, return the new location ID in 'newLocation'.
                - **Secrets/Clues**: You can ADD, REMOVE, or UPDATE secrets. Return the **COMPLETE NEW LIST** of secrets for that location.
@@ -226,7 +243,9 @@ export async function generateGameLogic(
                     "openness": number,
                     "warmth": number,
                     "eloquence": number,
-                    "leadership": number
+                    "leadership": number,
+                    "humor": number,
+                    "lust": number
                 },
                 "relationshipChange": [ { "characterId": string, "change": number } ],
                 "newSkills": [ string ],
@@ -331,30 +350,31 @@ export async function generateSummary(
     if (!apiKey) return currentSummary;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        safetySettings
+    });
 
     const dialogueText = recentDialogue.map(msg =>
         `${msg.role === 'user' ? 'Player' : 'AI'}: ${msg.text}`
     ).join('\n');
 
     const prompt = `
-    당신은 TRPG 스토리 게임의 '기록관'입니다.
-    지금까지의 줄거리(Current Summary)와 최근 대화 내용(Recent Dialogue)이 주어집니다.
-    이 두 가지를 합쳐서, 게임의 흐름을 잃지 않도록 핵심 내용을 포함한 '새로운 줄거리 요약'을 작성하세요.
+    당신은 방대한 판타지 서사시를 기록하는 '왕실 서기'입니다.
+    현재까지의 [누적 줄거리]와 [최근 발생한 사건]을 통합하여, 다음 이야기를 진행하는 데 필요한 완벽한 요약본을 갱신해야 합니다.
 
-    [규칙]
-    1. 제 3자의 관점에서 서술할 것.
-    2. 중요한 사건, 획득한 아이템, 만난 NPC의 이름은 반드시 포함할 것.
-    3. 분량은 500자 이내로 압축할 것.
-    4. 문체는 건조하고 명확하게 작성할 것.
-
-    [기존 줄거리]
-    ${currentSummary || "이야기가 막 시작되었습니다."}
-
-    [최근 대화]
+    [입력 데이터]
+    1. 누적 줄거리 (과거): ${currentSummary || "없음"}
+    2. 최근 대화 (현재): 
     ${dialogueText}
 
-    [새로운 요약본]
+    [작성 지침]
+    1. **인과관계 유지**: 과거의 사건이 현재 어떤 결과로 이어졌는지 명시하십시오.
+    2. **상태 변화 기록**: 최근 대화에서 획득한 아이템, 부상, NPC와의 관계 변화(호감도 등)를 반드시 텍스트에 포함하십시오.
+    3. **불필요한 대화 삭제**: "안녕", "밥 먹었어?" 같은 잡담은 제거하고 핵심 사건 위주로 서술하십시오.
+    4. **시점**: "플레이어는 ~했다"와 같이 3인칭 관찰자 시점을 유지하십시오.
+
+    [갱신된 요약본]:
     `;
 
     try {
@@ -367,4 +387,85 @@ export async function generateSummary(
         console.warn("Summarization failed:", error.message || error);
         return currentSummary; // Return old summary on failure
     }
+}
+
+// =========================================================
+// Turn Orchestration Logic
+// =========================================================
+
+const SUMMARY_THRESHOLD = 10;
+
+export async function handleGameTurn(
+    apiKey: string,
+    state: any,             // State including turnCount and summary
+    history: Message[],     // UI display history
+    userInput: string
+) {
+    console.log(`[handleGameTurn] Turn: ${state.turnCount}, Summary Length: ${state.scenarioSummary?.length || 0}`);
+
+    // 1. Add user message to a temporary history for the AI call
+    // Note: The caller updates the actual UI history. This is for the AI logic.
+    // If we want to strictly follow the user's snippet, we operate on the list passed.
+    const newHistory = [...history, { role: 'user', text: userInput } as Message];
+
+    // 2. Main Story Model
+    // State should already have the summary injected via PromptManager in generateResponse
+    const storyResult = await generateResponse(
+        apiKey,
+        newHistory, // Pass full or sliced history? generateResponse calls startChat with it.
+        userInput,
+        state,
+        'ko' // Default to Korean as per context
+    );
+
+    // 3. Game Logic Model
+    const logicResult = await generateGameLogic(
+        apiKey,
+        userInput,
+        storyResult.text,
+        state
+    );
+
+    // Merge logic result into nextState (Conceptually)
+    // The actual state update depends on the caller (client or server action) applying the JSON.
+    // But for the purpose of summarization, we need to know the *next* turn count.
+
+    let nextState = { ...state, ...logicResult };
+
+    // Logic result might have specific fields like hpChange, etc. 
+    // We are interested in 'turnCount' and 'scenarioSummary'.
+    // The user's snippet implies we handle turn counting here or assume it's passed.
+    // If the state passed in is the *current* state (before this turn), we should increments turn info.
+
+    const currentTurnCount = (state.turnCount || 0) + 1;
+
+    // Update summary if threshold reached
+    let newSummary = state.scenarioSummary;
+
+    if (currentTurnCount > 0 && currentTurnCount % SUMMARY_THRESHOLD === 0) {
+        console.log(`[handleGameTurn] Triggering Memory Summarization at turn ${currentTurnCount}...`);
+
+        // A. Select recent dialogue (Last 10 turns = 20 messages)
+        // We use newHistory which includes the latest user message.
+        // We also need the model's response we just generated.
+        const fullDialogue = [...newHistory, { role: 'model', text: storyResult.text } as Message];
+        const recentDialogue = fullDialogue.slice(-SUMMARY_THRESHOLD * 2);
+
+        // B. Generate Summary
+        newSummary = await generateSummary(
+            apiKey,
+            state.scenarioSummary || "",
+            recentDialogue
+        );
+
+        console.log("[handleGameTurn] New Summary Generated.");
+    }
+
+    return {
+        reply: storyResult.text,
+        logic: logicResult,
+        summary: newSummary,
+        turnCount: currentTurnCount,
+        storyResult: storyResult
+    };
 }

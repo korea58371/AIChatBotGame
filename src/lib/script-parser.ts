@@ -6,6 +6,7 @@ export interface ScriptSegment {
     character?: string;
     expression?: string;
     choiceId?: number;
+    characterLeave?: boolean; // New flag for character exit
 }
 
 export function parseScript(text: string): ScriptSegment[] {
@@ -26,19 +27,23 @@ export function parseScript(text: string): ScriptSegment[] {
     while ((match = regex.exec(text)) !== null) {
         const tagName = match[1].trim();
         const content = match[2].trim();
-
         if (tagName === '배경') {
             segments.push({ type: 'background', content: content });
         } else if (tagName === '시스템팝업' || tagName === '시스템') {
             segments.push({ type: 'system_popup', content: content });
         } else if (tagName === '나레이션') {
-            // Split long narration into individual sentences for better readability
-            const sentences = content.match(/[^.!?]+[.!?]+["'”’\]\)]*|[^.!?]+$/g) || [content];
+            // Clean Markdown (Bold)
+            const cleanedContent = content.replace(/\*\*/g, '');
 
-            for (const sentence of sentences) {
-                if (sentence.trim()) {
-                    segments.push({ type: 'narration', content: sentence.trim() });
-                }
+            // Split by newlines first to preserve list structures
+            const lines = cleanedContent.split('\n');
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) continue;
+
+                // Simple Line-Based Parsing (User Request: Don't split sentences if structure is good)
+                segments.push({ type: 'narration', content: trimmedLine });
             }
         } else if (tagName.startsWith('선택지')) {
             const choiceId = parseInt(tagName.replace('선택지', ''));
@@ -53,7 +58,6 @@ export function parseScript(text: string): ScriptSegment[] {
                 const [name, expression] = meta.split('_');
 
                 // Heuristic: Check if content has narration attached after the dialogue
-                // Look for: "Dialogue" followed by newlines and then text
                 const splitMatch = dialogue.match(/^"([^"]+)"\s*\n+([\s\S]+)$/);
 
                 let dialogueContent = dialogue;
@@ -64,48 +68,30 @@ export function parseScript(text: string): ScriptSegment[] {
                     narrationContent = splitMatch[2].trim();
                 }
 
-                // Split dialogue into chunks of max 3 sentences
-                const sentences = dialogueContent.match(/[^.!?]+[.!?]+["'”’\]\)]*|[^.!?]+$/g) || [dialogueContent];
-                let chunk = "";
-                let count = 0;
-
-                for (const sentence of sentences) {
-                    chunk += sentence;
-                    count++;
-                    if (count >= 3) {
-                        segments.push({
-                            type: 'dialogue',
-                            content: chunk.trim(),
-                            character: name,
-                            expression: expression || '기본'
-                        });
-                        chunk = "";
-                        count = 0;
-                    }
-                }
-                if (chunk.trim()) {
-                    segments.push({
-                        type: 'dialogue',
-                        content: chunk.trim(),
-                        character: name,
-                        expression: expression || '기본'
-                    });
-                }
+                segments.push({
+                    type: 'dialogue',
+                    content: dialogueContent.trim(),
+                    character: name,
+                    expression: expression || '기본'
+                });
 
                 if (narrationContent) {
-                    segments.push({
-                        type: 'narration',
-                        content: narrationContent
-                    });
+                    // Also split narration content by line
+                    const nLines = narrationContent.split('\n');
+                    for (const nl of nLines) {
+                        if (nl.trim()) segments.push({ type: 'narration', content: nl.trim() });
+                    }
                 }
             } else {
-                // Fallback if format is wrong
                 segments.push({ type: 'dialogue', content: content, character: 'Unknown', expression: '기본' });
             }
+        } else if (tagName === '떠남') {
+            // Special Tag: Character Exit
+            // If the previous segment exists, mark it as exit
+            if (segments.length > 0) {
+                segments[segments.length - 1].characterLeave = true;
+            }
         } else {
-            // Check if the tag itself looks like "Name_Expression: Content" (AI Error Fallback)
-            // Example: <주인공_기본: 냄새, 좋아.> -> tagName="주인공_기본: 냄새, 좋아."
-            // We need to parse the tagName itself if it contains a colon
             const colonIndex = tagName.indexOf(':');
             if (colonIndex !== -1) {
                 const meta = tagName.substring(0, colonIndex).trim();
@@ -125,10 +111,74 @@ export function parseScript(text: string): ScriptSegment[] {
         }
     }
 
+    // Post-processing to handle <떠남> tag in content
+    for (const segment of segments) {
+        if (segment.content.includes('<떠남>')) {
+            segment.characterLeave = true;
+            segment.content = segment.content.replace(/<떠남>/g, '').trim();
+        }
+    }
+
     // If no tags found, treat entire text as narration (fallback for legacy/error)
     if (segments.length === 0 && text.trim()) {
         segments.push({ type: 'narration', content: text.trim() });
     }
 
     return segments;
+}
+
+// Helper to split text into sentences with sophisticated rules
+function splitSentences(text: string): string[] {
+    const results: string[] = [];
+    let buffer = "";
+    let depth = 0; // Track parentheses/bracket depth
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        buffer += char;
+
+        if (char === '(' || char === '[') depth++;
+        else if (char === ')' || char === ']') depth = Math.max(0, depth - 1);
+
+        // Check for split chars
+        if ((char === '.' || char === '!' || char === '?') && depth === 0) {
+            // 1. Lookahead for quotes/brackets that belong to this sentence
+            // e.g. "Run!" or (End). -> split after the closing mark
+            let j = i + 1;
+            while (j < text.length && ["'", '"', "”", "’", "]", ")"].includes(text[j])) {
+                buffer += text[j];
+                j++;
+                i++; // Advance main loop index as we consumed these chars
+            }
+
+            // 2. Check overlap logic (Next Char)
+            // If next char is NOT space and NOT EOF, it's likely not a split (e.g. 1.5, 3.14, www.google.com)
+            // But if it is End of String, we validly split (and push).
+            if (j < text.length && text[j] !== ' ' && text[j] !== '\n') {
+                continue;
+            }
+
+            // 3. Short Sentence / Merging Rule
+            // "주머니가 묵직하다. (기분 탓이다...)" -> "주머니가 묵직하다." is 10 chars.
+            // User wants: "Too short front sentence -> Don't line break".
+            // Heuristic: If buffer is very short (< 15 chars?), DO NOT commit it yet.
+            // But we need to keep the punctuation.
+            // Wait, if we 'continue' here, we just keep accumulating.
+            // "Short. Next." -> becomes one chunk "Short. Next."
+            // Exception: If this is the VERY END of the text, we must push it.
+            if (buffer.trim().length < 15 && j < text.length) {
+                continue;
+            }
+
+            // 4. Push and reset
+            results.push(buffer.trim());
+            buffer = "";
+        }
+    }
+
+    if (buffer.trim()) {
+        results.push(buffer.trim());
+    }
+
+    return results;
 }

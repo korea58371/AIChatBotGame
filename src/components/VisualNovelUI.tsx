@@ -3,11 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
-import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary } from '@/app/actions/game';
+import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages } from '@/app/actions/game';
+import { getCharacterImage } from '@/lib/image-mapper';
+import { resolveBackground } from '@/lib/background-manager'; // Added import // Added import
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import assets from '@/data/assets.json';
+import { START_SCENARIO_TEXT } from '@/data/start_scenario';
 
 const translations = {
     en: {
@@ -114,29 +117,95 @@ const translations = {
     }
 };
 
-const getKoreanExpression = (expr: string) => {
-    const map: { [key: string]: string } = {
-        'normal': '기본',
-        'neutral': '기본',
-        'default': '기본',
-        'happy': '기쁨',
-        'joy': '기쁨',
-        'smile': '기쁨',
-        'angry': '분노',
-        'rage': '분노',
-        'sad': '슬픔',
-        'sorrow': '슬픔',
-        'crying': '슬픔',
-        'surprised': '애정당황',
-        'shocked': '애정당황',
-        'shy': '애정당황',
-        'blush': '애정당황',
-        'love': '애정당황', // Most chars have 애정당황, not 애정
-        'affection': '애정당황',
-        'like': '애정당황'
-    };
-    return map[expr.toLowerCase()] || expr;
-};
+// getKoreanExpression removed in favor of getCharacterImage utility
+
+// Game Tips Library
+const LOADING_TIPS = [
+    "운(LUK) 스탯이 높으면 길가에서 돈을 줍거나, 위기 상황에서 기적적으로 탈출할 수 있습니다.",
+    "지능(INT)이 높으면 상대방의 거짓말을 간파하거나, 마법적인 현상을 이해할 수 있습니다.",
+    "도덕성(Morality)이 낮으면 범죄 조직과 협력하기 쉬워지지만, 시민들의 신뢰를 얻기 힘듭니다.",
+    "체력(VIT)은 전투 시 버틸 수 있는 맷집뿐만 아니라, 질병이나 독에 대한 저항력도 의미합니다.",
+    "민첩(AGI)이 높으면 은신, 소매치기, 도주 확률이 대폭 상승합니다.",
+    "매력(Speech/Eloquence)이 높으면 말싸움으로 적을 제압하거나, 물건을 싸게 살 수 있습니다.",
+    "명성(Fame)이 오르면 유명인사가 되어 팬이 생기지만, 동시에 적들의 표적이 될 수도 있습니다.",
+    "NPC와의 '호감도'는 단순한 숫자가 아닙니다. 위급할 때 그들이 당신을 위해 목숨을 걸 수도 있습니다.",
+    "특정 장소에는 밤에만 나타나는 비밀 상점이나 인물이 존재합니다.",
+    "아이템 '스마트폰'을 통해 정보를 수집하거나 다른 인물에게 연락할 수 있습니다.",
+    "음식을 먹으면 체력이 소량 회복되며, 기분이 전환되어 '무드'가 바뀔 수 있습니다.",
+    "정신력(MP)이 0이 되면 캐릭터가 미쳐버리거나, 자살 충동을 느끼는 등 '배드 엔딩' 직행입니다.",
+    "영웅심(Heroism)이 높으면 시민들이 당신을 추앙하지만, 악당들은 당신을 눈엣가시로 여깁니다.",
+    "이기심(Selfishness)이 높으면 자신의 이익을 위해 동료를 배신하는 선택지가 해금될 수 있습니다.",
+    "전투 중 '도주'는 비겁한 것이 아닙니다. 살아남는 것이 강한 것입니다.",
+    "돈(Gold)으로 대부분의 문제를 해결할 수 있습니다. 심지어 사람의 마음까지도요.",
+    "비 오는 날에는 은신 확률이 올라가지만, 체온 저하로 체력이 조금씩 깎일 수 있습니다.",
+    "어떤 선택지는 되돌릴 수 없습니다. 신중하게 선택하세요.",
+    "세이브 슬롯은 3개입니다. 중요한 분기점 앞에서는 반드시 저장하세요.",
+    "개발자 팁: 사실 운 스탯만 믿고 막 나가도 꽤 재미있는 상황이 벌어집니다."
+];
+
+// Internal Component for Ad Simulation
+function AdButton({ onReward }: { onReward: () => void }) {
+    const [status, setStatus] = useState<'idle' | 'playing' | 'rewarded'>('idle');
+    const [progress, setProgress] = useState(0);
+
+    useEffect(() => {
+        let interval: any;
+        if (status === 'playing') {
+            interval = setInterval(() => {
+                setProgress(prev => {
+                    if (prev >= 100) {
+                        clearInterval(interval);
+                        setStatus('rewarded');
+                        onReward();
+                        return 100;
+                    }
+                    return prev + 10; // 10% per 300ms -> 3 seconds total approx (actually 10 steps * 300 = 3s)
+                });
+            }, 500); // 0.5s * 10 = 5 seconds
+        }
+        return () => clearInterval(interval);
+    }, [status, onReward]);
+
+    if (status === 'rewarded') {
+        return (
+            <button disabled className="w-full py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-gray-400 font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                <span className="text-green-500">✓</span> 보상 지급 완료
+            </button>
+        );
+    }
+
+    if (status === 'playing') {
+        return (
+            <div className="w-full bg-gray-800 rounded-xl border border-yellow-500/50 p-4 relative overflow-hidden">
+                <div className="flex justify-between items-center mb-2 z-10 relative">
+                    <span className="text-yellow-500 font-bold text-sm animate-pulse">광고 시청 중...</span>
+                    <span className="text-white text-xs">{Math.floor(progress)}%</span>
+                </div>
+                {/* Progress Bar Background */}
+                <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden z-10 relative">
+                    <motion.div
+                        className="h-full bg-yellow-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                    />
+                </div>
+                {/* Fake Ad Content (Overlay) */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+                    <span className="text-4xl">📺</span>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <button
+            onClick={() => setStatus('playing')}
+            className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 rounded-xl border border-yellow-400 text-white font-bold shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
+        >
+            <span>📺</span> 광고 보고 50 골드 받기
+        </button>
+    );
+}
 
 export default function VisualNovelUI() {
     const {
@@ -163,10 +232,56 @@ export default function VisualNovelUI() {
         scenarioSummary,
         playerName, // Add playerName from hook
         userCoins,
-        setUserCoins
+        setUserCoins,
+        availableExtraImages,
+        turnCount,
+        incrementTurnCount
     } = useGameStore();
 
     const supabase = createClient();
+
+    // VN State
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+    const [showInventory, setShowInventory] = useState(false);
+    const [showCharacterInfo, setShowCharacterInfo] = useState(false);
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+    // Tip Rotation Logic
+    const [currentTipIndex, setCurrentTipIndex] = useState(0);
+    // UseRef to track if processing just started to randomize only once per load if desired, 
+    // but useEffect check is enough.
+    useEffect(() => {
+        if (isProcessing) {
+            // Random start
+            setCurrentTipIndex(Math.floor(Math.random() * LOADING_TIPS.length));
+            const interval = setInterval(() => {
+                setCurrentTipIndex(prev => (prev + 1) % LOADING_TIPS.length);
+            }, 8000); // Rotate every 8 seconds
+            return () => clearInterval(interval);
+        }
+    }, [isProcessing]);
+
+    // Input State
+    const [isInputOpen, setIsInputOpen] = useState(false);
+    const [userInput, setUserInput] = useState('');
+
+    // Debug State
+    const [isDebugOpen, setIsDebugOpen] = useState(false);
+    const [debugInput, setDebugInput] = useState('');
+    const [lastLogicResult, setLastLogicResult] = useState<any>(null);
+    const [pendingLogic, setPendingLogic] = useState<any>(null);
+
+    // Toast State
+    const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'warning' }[]>([]);
+
+    const addToast = (message: string, type: 'success' | 'info' | 'warning' = 'info') => {
+        const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 3000);
+    };
 
     // Auth State (Event-Based)
     const [session, setSession] = useState<any>(null);
@@ -221,38 +336,22 @@ export default function VisualNovelUI() {
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => {
         setIsMounted(true);
-        // Load Assets from static JSON
-        console.log("Loaded Assets (Static):", assets);
-        useGameStore.getState().setAvailableAssets(assets.backgrounds, assets.characters);
+        // Load Assets
+        const loadAssets = async () => {
+            console.log("Loading Assets...");
+            try {
+                const extraChars = await getExtraCharacterImages();
+                console.log("Loaded Extra Characters:", extraChars);
+                useGameStore.getState().setAvailableAssets(assets.backgrounds, assets.characters, extraChars);
+            } catch (e) {
+                console.error("Failed to load extra assets:", e);
+                useGameStore.getState().setAvailableAssets(assets.backgrounds, assets.characters, []);
+            }
+        };
+        loadAssets();
     }, []);
 
-    // VN State
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [showHistory, setShowHistory] = useState(false);
-    const [showInventory, setShowInventory] = useState(false);
-    const [showCharacterInfo, setShowCharacterInfo] = useState(false); // New State
-    const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-    // Input State
-    const [isInputOpen, setIsInputOpen] = useState(false);
-    const [userInput, setUserInput] = useState('');
-
-    // Debug State
-    const [isDebugOpen, setIsDebugOpen] = useState(false);
-    const [debugInput, setDebugInput] = useState('');
-    const [lastLogicResult, setLastLogicResult] = useState<any>(null);
-    const [pendingLogic, setPendingLogic] = useState<any>(null);
-
-    // Toast State
-    const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'warning' }[]>([]);
-
-    const addToast = (message: string, type: 'success' | 'info' | 'warning' = 'info') => {
-        const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        setToasts(prev => [...prev, { id, message, type }]);
-        setTimeout(() => {
-            setToasts(prev => prev.filter(t => t.id !== id));
-        }, 3000);
-    };
 
     // Save/Load State
     const [showSaveLoad, setShowSaveLoad] = useState(false);
@@ -339,16 +438,50 @@ export default function VisualNovelUI() {
 
     // Helper Functions
     const getBgUrl = (bg: string) => {
-        if (!bg) return '/assets/backgrounds/home.jpg';
-        return bg.startsWith('http') ? bg : `/assets/backgrounds/${encodeURIComponent(bg)}.jpg`;
+        if (!bg) return '/assets/backgrounds/Home_Entrance.jpg'; // Default fallback
+        if (bg.startsWith('http') || bg.startsWith('/')) return bg; // Return absolute paths directly
+        return `/assets/backgrounds/${encodeURIComponent(bg)}.jpg`; // Fallback for legacy simple names
     };
 
-    const getCharUrl = (char: string) => {
-        if (!char) return '';
-        return char.startsWith('http') ? char : `/assets/characters/${encodeURIComponent(char)}.png`;
+    const getCharUrl = (charExpression: string) => {
+        if (!charExpression) return '';
+        if (charExpression.startsWith('http')) return charExpression;
+
+        // Note: charExpression is expected to be "Name_Emotion" or just "Name"
+        // But getCharacterImage takes (name, emotion).
+        // If we store the full path in state, we can just return it.
+        // However, the state logic below stores "Name_Emotion".
+
+        // Let's check how it's stored.
+        // In advanceScript, we setCharacterExpression(`${charName}_${expr}`);
+        // Wait, if we use getCharacterImage, we should probably store the PATH directly?
+        // OR, we parse it here.
+
+        // The user request: "getCharacterImage("천서윤", "기쁨") returns path".
+        // My previous code in VisualNovelUI constructed the path manually: `/assets/characters/${charId}_${emotion}.png`
+
+        // If I change the state to store the PATH, then getCharUrl just returns it.
+        // Let's modify advanceScript to call getCharacterImage and store the RESULT path.
+        // Then getCharUrl simply checks for http or returns the string (if relative).
+
+        // But wait, ExtraCharacters logic is also here.
+        // If I store path, I need to handle Extra logic in advanceScript OR getCharacterImage?
+        // Extra characters are handled by `availableExtraImages.includes`.
+        // The prompt says "getCharacterImage" handles the mapping.
+
+        // If I update advanceScript to use getCharacterImage, then `characterExpression` state will hold the PATH.
+        // Then `getCharUrl` should just return it.
+
+        return charExpression;
     };
 
     const advanceScript = () => {
+        // Handle Character Exit (Exit Tag Logic)
+        if (currentSegment?.characterLeave) {
+            console.log("Character leaving based on <떠남> tag.");
+            setCharacterExpression(''); // Clear character (use empty string as per type definition)
+        }
+
         // Use a local copy of the queue to process immediately
         let currentQueue = [...scriptQueue];
 
@@ -366,7 +499,13 @@ export default function VisualNovelUI() {
 
         // Process background segments iteratively to avoid recursion
         while (nextSegment && nextSegment.type === 'background') {
-            setBackground(nextSegment.content);
+            // Resolve fuzzy tag to actual file path
+            console.log(`[Background Debug] AI Tag: "${nextSegment.content}"`);
+            const resolvedBg = resolveBackground(nextSegment.content);
+            console.log(`[Background Debug] Resolved to: "${resolvedBg}"`);
+            setBackground(resolvedBg);
+            setCharacterExpression(''); // Clear character on scene change
+
             currentQueue.shift(); // Remove processed background
             if (currentQueue.length === 0) break;
             nextSegment = currentQueue[0];
@@ -402,21 +541,48 @@ export default function VisualNovelUI() {
         setCurrentSegment(nextSegment);
 
         if (nextSegment.type === 'dialogue' && nextSegment.expression) {
-            // Combine character name and expression for filename (e.g., "Mina_happy")
             if (nextSegment.character && nextSegment.expression) {
-                const expr = getKoreanExpression(nextSegment.expression);
-                // Force '주인공' for player character
+                // Determine Name and Emotion from AI output
+                // AI is instructed to output Korean Name and Korean Emotion.
                 const charName = nextSegment.character === playerName ? '주인공' : nextSegment.character;
-                setCharacterExpression(`${charName}_${expr}`);
+                const emotion = nextSegment.expression; // AI output (e.g., '기쁨', 'Happy')
+
+                // Use the new Mapper
+                // Logic:
+                // 1. Check Extra Characters first (FileSystem based, no mapping needed usually, or Name match)
+                //    If Extra, we might handle it manually or trust the mapper returning fallback.
+                //    But getCharacterImage returns "Unknown_Default" if not found.
+                //    Extra characters are simple filenames like "Name.png" or "Name_Emotion.png"? 
+                //    The previous logic was: `/assets/ExtraCharacters/${char}.png`.
+                //    It seems Extra characters are NOT mapped by JSON.
+
+                let imagePath = '';
+
+                // Check Extra (Exact Match of Name_Emotion or just Name?)
+                // Usually Extra is just Name? 
+                // The previous code checked `availableExtraImages.includes(char)`.
+                // The `char` passed to getCharUrl was `Name_Emotion`.
+                // So if "ExtraChar_Basic" is in the list, it works.
+
+                const combinedKey = `${charName}_${emotion}`;
+                if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
+                    imagePath = `/assets/ExtraCharacters/${combinedKey}.png`;
+                } else {
+                    // Clean up emotion input (remove parens if any, though system prompt forbids them)
+                    // The mapper expects clean distinct Korean words.
+                    imagePath = getCharacterImage(charName, emotion);
+                }
+
+                setCharacterExpression(imagePath);
             }
         }
     }
 
-    const handleSend = async (text: string) => {
+    const handleSend = async (text: string, isDirectInput: boolean = false) => {
         if (!text.trim()) return;
 
         setIsProcessing(true);
-        console.log(`handleSend: "${text}", coins: ${userCoins}, session: ${!!session}`);
+        console.log(`handleSend: "${text}", coins: ${userCoins}, session: ${!!session}, isDirectInput: ${isDirectInput}`);
 
         try {
             let activeSession = session;
@@ -467,12 +633,28 @@ export default function VisualNovelUI() {
             const currentState = useGameStore.getState();
             let currentHistory = currentState.chatHistory;
 
-            if (currentHistory.length >= 15) {
-                console.log("Triggering Memory Summarization (Buffer Full)...");
-                addToast("Summarizing old memories...", "info");
+            // 0. Update Logic & Turn Count
+            incrementTurnCount();
+            const nextTurnCount = useGameStore.getState().turnCount; // Get updated value
+            const SUMMARY_THRESHOLD = 10;
 
-                // Summarize everything EXCEPT the last 10 messages
-                const messagesToSummarize = currentHistory.slice(0, -10);
+            console.log(`[VisualNovelUI] Turn: ${nextTurnCount}`);
+
+            // 5. [Core] Memory Summarization Logic (Turn-Based)
+            if (nextTurnCount > 0 && nextTurnCount % SUMMARY_THRESHOLD === 0) {
+                console.log(`Triggering Memory Summarization (Turn ${nextTurnCount})...`);
+                addToast(`Summarizing memories (Turn ${nextTurnCount})...`, "info");
+
+                // Summarize recent dialogue (Last 20 messages approx for 10 turns)
+                // We keep the history buffer intact for display, but summarize for 'scenarioSummary'.
+                // If history is very long, we might truncate it here too.
+
+                // Assuming history has user+model pairs, 10 turns = 20 messages.
+                // We want to summarize the *latest* chunk or the *accumulated* history?
+                // The prompt says "Current Summary + Recent Dialogue".
+                // So we take the recent dialogue.
+
+                const messagesToSummarize = currentHistory.slice(-SUMMARY_THRESHOLD * 2);
 
                 const newSummary = await serverGenerateSummary(
                     currentState.scenarioSummary,
@@ -480,7 +662,18 @@ export default function VisualNovelUI() {
                 );
 
                 useGameStore.getState().setScenarioSummary(newSummary);
-                useGameStore.getState().truncateHistory(10); // Keep exactly last 10 messages
+                console.log("%c[Scenario Summary Updated]", "color: orange; font-weight: bold;");
+                console.log(newSummary);
+
+                // Optional: Truncate history for optimization if it gets too long
+                // But generally users like to scroll back. 
+                // We can keep displayHistory, but truncate chatHistory (for API context) if we want.
+                // For now, let's keep the user's snippet logic: "Trigger on Turn Count".
+
+                // If we want to save tokens, we should truncate chatHistory.
+                if (currentHistory.length > 30) {
+                    useGameStore.getState().truncateHistory(20);
+                }
 
                 // Update local reference for this turn
                 currentHistory = useGameStore.getState().chatHistory;
@@ -504,11 +697,13 @@ export default function VisualNovelUI() {
                 characterData: currentState.characterData,
                 worldData: currentState.worldData,
                 availableBackgrounds: currentState.availableBackgrounds,
-                availableCharacterImages: currentState.availableCharacterImages
+                availableCharacterImages: currentState.availableCharacterImages,
+                availableExtraImages: currentState.availableExtraImages,
+                isDirectInput: isDirectInput // Inject Flag
             }));
 
             // Race Condition for Timeout
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 20000));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 120000));
             const responsePromise = serverGenerateResponse(
                 currentHistory,
                 text,
@@ -521,8 +716,13 @@ export default function VisualNovelUI() {
             // Handle both string (legacy) and object (new) return types
             const responseText = typeof result === 'string' ? result : result.text;
             const usageMetadata = typeof result === 'string' ? null : result.usageMetadata;
+            const usedModel = typeof result === 'string' ? 'Unknown' : (result as any).usedModel || 'Unknown';
 
             // Log Story Model Debug Info
+            // [DEBUG] Log the full response text to console as requested
+            console.log("%c[STORY MODEL OUTPUT]", "color: green; font-weight: bold; font-size: 14px;");
+            console.log(responseText);
+
             if (typeof result !== 'string' && (result as any).systemPrompt) {
                 console.log("%c[Story Model Input - System Prompt]", "color: cyan; font-weight: bold;");
                 console.log((result as any).systemPrompt);
@@ -531,15 +731,36 @@ export default function VisualNovelUI() {
             }
 
             if (usageMetadata) {
-                const inputCost = (usageMetadata.promptTokenCount / 1000000) * 0.30;
-                const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * 2.50;
+                // Determine Pricing Scheme based on Model
+                let inputRate = 0;
+                let outputRate = 0;
+                let modelType = 'Legacy/Unknown';
+
+                if (usedModel.includes('flash')) {
+                    // Gemini 1.5/2.5 Flash Pricing (Approx)
+                    // Input: $0.075 per 1M / Output: $0.30 per 1M
+                    inputRate = 0.075;
+                    outputRate = 0.30;
+                    modelType = 'Flash';
+                } else {
+                    // Gemini 1.5/3 Pro Pricing (Approx)
+                    // Input: $2.00 (<200k) / $4.00 (>200k) per 1M
+                    // Output: $12.00 (<200k) / $18.00 (>200k) per 1M
+                    const isLongContext = usageMetadata.promptTokenCount > 200000;
+                    inputRate = isLongContext ? 4.00 : 2.00;
+                    outputRate = isLongContext ? 18.00 : 12.00;
+                    modelType = isLongContext ? 'Pro (>200k)' : 'Pro (<200k)';
+                }
+
+                const inputCost = (usageMetadata.promptTokenCount / 1000000) * inputRate;
+                const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * outputRate;
                 const totalCost = inputCost + outputCost;
                 const totalCostKRW = totalCost * 1400;
 
-                console.log("Token Usage (Story):");
-                console.log(`- Input: ${usageMetadata.promptTokenCount} tokens ($${inputCost.toFixed(6)})`);
+                console.log(`Token Usage (Story - ${usedModel}):`);
+                console.log(`- Input: ${usageMetadata.promptTokenCount} tokens ($${inputCost.toFixed(6)}) [Type: ${modelType}]`);
                 console.log(`- Output: ${usageMetadata.candidatesTokenCount} tokens ($${outputCost.toFixed(6)})`);
-                console.log(`- Total Est. Cost: $${totalCost.toFixed(6)} (approx. ${totalCostKRW.toFixed(2)} KRW)`);
+                console.log(`- Total Est. Cost: $${totalCost.toFixed(6)} (approx. ₩${Math.round(totalCostKRW).toLocaleString()})`);
 
                 addToast(`Tokens: In ${usageMetadata.promptTokenCount} / Out ${usageMetadata.candidatesTokenCount}`, 'info');
             }
@@ -616,10 +837,19 @@ export default function VisualNovelUI() {
 
                         if (first.type === 'dialogue' && first.expression) {
                             if (first.character && first.expression) {
-                                const expr = getKoreanExpression(first.expression);
-                                // Force '주인공' for player character
                                 const charName = first.character === playerName ? '주인공' : first.character;
-                                setCharacterExpression(`${charName}_${expr}`);
+                                const emotion = first.expression;
+
+                                let imagePath = '';
+                                const combinedKey = `${charName}_${emotion}`;
+
+                                if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
+                                    imagePath = `/assets/ExtraCharacters/${combinedKey}.png`;
+                                } else {
+                                    imagePath = getCharacterImage(charName, emotion);
+                                }
+
+                                setCharacterExpression(imagePath);
                             }
                         }
                     }
@@ -644,7 +874,7 @@ export default function VisualNovelUI() {
     };
 
     const handleUserSubmit = () => {
-        handleSend(userInput);
+        handleSend(userInput, true);
         setUserInput('');
         setIsInputOpen(false);
     };
@@ -677,7 +907,57 @@ export default function VisualNovelUI() {
     };
 
     const handleStartGame = () => {
-        handleSend("Game Start. Please introduce the world and the main character.");
+        // Parse the raw text scenario
+        const segments = parseScript(START_SCENARIO_TEXT);
+
+        // 1. Construct text for History & AI Context
+        const historyText = segments.map(seg => {
+            if (seg.type === 'background') return `<배경>${seg.content}`;
+            if (seg.type === 'system_popup') return `<시스템팝업>${seg.content}`;
+            if (seg.type === 'narration') return `<나레이션>${seg.content}`;
+            if (seg.type === 'choice') return `<선택지${seg.choiceId || ''}>${seg.content}`;
+            if (seg.type === 'dialogue') {
+                return `<대사>${seg.character}_${seg.expression}: ${seg.content}`;
+            }
+            return seg.content;
+        }).join('\n\n');
+
+        // 2. Add to History (Silently, so it's in the log and available for AI)
+        addMessage({ role: 'model', text: historyText });
+
+        // 3. Play Script
+        // Skip initial background segments and set background immediately
+        let startIndex = 0;
+        while (startIndex < segments.length && segments[startIndex].type === 'background') {
+            const resolvedBg = resolveBackground(segments[startIndex].content);
+            setBackground(resolvedBg);
+            startIndex++;
+        }
+
+        if (startIndex < segments.length) {
+            const first = segments[startIndex];
+            setCurrentSegment(first);
+            setScriptQueue(segments.slice(startIndex + 1));
+
+            // Set character expression if the first segment is dialogue
+            if (first.type === 'dialogue' && first.expression && first.character) {
+                const charName = first.character === playerName ? '주인공' : first.character;
+                const emotion = first.expression;
+
+                let imagePath = '';
+                const combinedKey = `${charName}_${emotion}`;
+                if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
+                    imagePath = `/assets/ExtraCharacters/${combinedKey}.png`;
+                } else {
+                    imagePath = getCharacterImage(charName, emotion);
+                }
+                setCharacterExpression(imagePath);
+            }
+        } else {
+            // Fallback if scenario is just backgrounds (unlikely)
+            setScriptQueue([]);
+            setCurrentSegment(null);
+        }
     };
 
     const applyGameLogic = (logicResult: any) => {
@@ -698,7 +978,8 @@ export default function VisualNovelUI() {
         // Initialize if missing
         if (!newStats.personality) newStats.personality = {
             morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
-            openness: 0, warmth: 0, eloquence: 0, leadership: 0
+            openness: 0, warmth: 0, eloquence: 0, leadership: 0,
+            humor: 0, lust: 0
         };
         if (!newStats.skills) newStats.skills = [];
         if (!newStats.relationships) newStats.relationships = {};
@@ -894,15 +1175,15 @@ export default function VisualNovelUI() {
                     />
 
                     {/* Character Layer */}
-                    <AnimatePresence mode="wait">
-                        {characterExpression && currentSegment?.type === 'dialogue' && (
+                    <AnimatePresence>
+                        {characterExpression && (
                             <motion.div
                                 key={characterExpression}
-                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                initial={{ opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
+                                animate={{ opacity: 1, scale: 1, y: 0, x: "-50%" }}
+                                exit={{ opacity: 0, scale: 1, y: 0, x: "-50%" }}
                                 transition={{ duration: 0.5 }}
-                                className="absolute bottom-0 left-1/2 transform -translate-x-1/2 h-[90%] z-0 pointer-events-none"
+                                className="absolute bottom-0 left-1/2 h-[90%] z-0 pointer-events-none"
                             >
                                 <img
                                     src={getCharUrl(characterExpression)}
@@ -1191,18 +1472,67 @@ export default function VisualNovelUI() {
 
 
 
-                {/* Loading Indicator */}
+                {/* Interactive Loading Indicator (Ad/Tip Overlay) */}
                 <AnimatePresence>
                     {isProcessing && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/20 flex items-center justify-center z-50 pointer-events-auto"
+                            className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm"
                         >
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                                <p className="text-yellow-400 font-bold animate-pulse">{t.thinking}</p>
+                            <div className="flex flex-col items-center gap-6 max-w-md w-full p-8 rounded-2xl border border-yellow-500/30 bg-gray-900/90 shadow-2xl relative overflow-hidden">
+                                {/* Background Glow */}
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl animate-pulse" />
+
+                                {/* Spinner & Title */}
+                                <div className="flex flex-col items-center gap-2 z-10">
+                                    <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                                    <h3 className="text-xl font-bold text-yellow-400 animate-pulse">
+                                        이야기를 생성 중입니다...
+                                    </h3>
+                                    <p className="text-sm text-gray-500">Gemini 3 Pro 모델이 열심히 집필하고 있습니다.</p>
+                                </div>
+
+
+
+                                {/* Dynamic Tips (Simple Random Implementation) */}
+                                <div className="bg-black/50 p-4 rounded-lg border border-gray-700 w-full text-center z-10 transition-all duration-500">
+                                    <span className="text-gray-400 text-xs uppercase tracking-widest block mb-1">TIP</span>
+                                    <p key={currentTipIndex} className="text-gray-200 text-sm italic animate-in fade-in slide-in-from-bottom-2 duration-700">
+                                        "{LOADING_TIPS[currentTipIndex]}"
+                                    </p>
+                                </div>
+
+                                {/* Interactive Ad Button */}
+                                <div className="w-full z-10">
+                                    {/* Local state for ad simulation would be ideal, but we can't add state inside this block easily without refactoring the whole component.
+                                        So we'll use a self-contained component logic or just simple immediate reward for now?
+                                        Actually, we can use a small inner component if we defined it outside, but we are inside the render.
+                                        Let's try to keep it simple: Click -> 3s fake delay -> Reward. 
+                                        Since I can't add state variables easily in this tool call (I'd have to edit the top of the file),
+                                        I will assume I can edit the top of the file in a separate call if needed.
+                                        BUT, I can use a simple trick: use state variables if I added them.
+                                        
+                                        Wait, I haven't added `showAd` state yet.
+                                        I should have added State first.
+                                        Refactoring Plan:
+                                        1. Add `adState` (idle, playing, rewarded) to VisualNovelUI state.
+                                        2. Implement the UI here.
+                                    */}
+                                    <AdButton
+                                        onReward={() => {
+                                            const newCoins = userCoins + 50;
+                                            setUserCoins(newCoins);
+
+                                            // Update DB
+                                            if (session?.user) {
+                                                supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id).then();
+                                            }
+                                            addToast("광고 보상: 50 골드 지급 완료!", "success");
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </motion.div>
                     )}
