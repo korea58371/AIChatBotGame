@@ -370,7 +370,9 @@ export class PromptManager {
                 if (typeof c.personality === 'string') personaStr = c.personality;
                 else if (c.personality && c.personality['표면적 성격']) personaStr = c.personality['표면적 성격'];
 
-                return `- ${c.name} (${c.role || 'Unknown'}) | Job: ${jobStr} | Personality: ${personaStr} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
+                const age = c.profile?.['나이'] ? c.profile['나이'].replace(/[^0-9]/g, '') + '세' : '?';
+                const gender = c.profile?.['성별'] || '?';
+                return `- ${c.name} (${age}.${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
             })
             .join('\n');
     }

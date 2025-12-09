@@ -247,6 +247,24 @@ export default function VisualNovelUI() {
     const [showCharacterInfo, setShowCharacterInfo] = useState(false);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+    // [Transition Logic] Track previous character name to determine animation type
+    // If name matches last ref => dissolve only (expression change).
+    // If name differs => full animation (character switch).
+    const getCurrentCharName = (expr: string | null) => expr ? expr.split('_')[0] : '';
+    const lastCharNameRef = useRef<string>('');
+
+    const currentCharName = getCurrentCharName(characterExpression);
+    const isSameCharacter = lastCharNameRef.current === currentCharName && !!characterExpression;
+
+    useEffect(() => {
+        if (characterExpression) {
+            lastCharNameRef.current = getCurrentCharName(characterExpression);
+        } else {
+            // Reset when character disappears so next appearance animates fully
+            lastCharNameRef.current = '';
+        }
+    }, [characterExpression]);
+
     // Tip Rotation Logic
     const [currentTipIndex, setCurrentTipIndex] = useState(0);
     // UseRef to track if processing just started to randomize only once per load if desired, 
@@ -1179,7 +1197,7 @@ export default function VisualNovelUI() {
                         {characterExpression && (
                             <motion.div
                                 key={characterExpression}
-                                initial={{ opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
+                                initial={isSameCharacter ? { opacity: 0, scale: 1, y: 0, x: "-50%" } : { opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
                                 animate={{ opacity: 1, scale: 1, y: 0, x: "-50%" }}
                                 exit={{ opacity: 0, scale: 1, y: 0, x: "-50%" }}
                                 transition={{ duration: 0.5 }}
