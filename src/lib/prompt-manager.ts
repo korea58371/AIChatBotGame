@@ -246,9 +246,21 @@ export class PromptManager {
         prompt = prompt.replace('{{AVAILABLE_CHARACTER_IMAGES}}', imageRule);
 
         // 10. Available Extra Character Images Injection
+        // Load directly from the generated map to ensure availability on server-side
+        let extraNamesStr = "None";
+        try {
+            const extraMap = require('../../public/assets/ExtraCharacters/extra_map.json');
+            const extraNames = Object.keys(extraMap);
+            if (extraNames.length > 0) {
+                extraNamesStr = extraNames.join(', ');
+            }
+        } catch (e) {
+            console.error("Failed to load extra_map.json", e);
+        }
+
         const extraImages = state.availableExtraImages && state.availableExtraImages.length > 0
             ? state.availableExtraImages.join(', ')
-            : "None";
+            : extraNamesStr; // Fallback to loaded map if state is empty
 
         prompt = prompt.replace('{{AVAILABLE_EXTRA_CHARACTERS}}', extraImages);
 

@@ -60,11 +60,23 @@ export async function generateResponse(
 
             const model = genAI.getGenerativeModel(modelConfig);
 
+            // Sanitize history for Gemini API (Must start with 'user')
+            let processedHistory = history.map(msg => ({
+                role: msg.role,
+                parts: [{ text: msg.text }],
+            }));
+
+            // Fix 1: Protocol requires strictly alternating roles starting with 'user'.
+            // If the history starts with 'model', prepend a dummy 'user' message.
+            if (processedHistory.length > 0 && processedHistory[0].role === 'model') {
+                processedHistory = [
+                    { role: 'user', parts: [{ text: "..." }] }, // Dummy context starter
+                    ...processedHistory
+                ];
+            }
+
             const chatSession = model.startChat({
-                history: history.map(msg => ({
-                    role: msg.role,
-                    parts: [{ text: msg.text }],
-                })),
+                history: processedHistory,
             });
 
             const result = await chatSession.sendMessage(userMessage);
@@ -411,8 +423,10 @@ export async function handleGameTurn(
     // 2. Main Story Model
     // State should already have the summary injected via PromptManager in generateResponse
     const storyResult = await generateResponse(
-        apiKey,
-        newHistory, // Pass full or sliced history? generateResponse calls startChat with it.
+        // Fix 2: Pass 'history' (previous turns) instead of 'newHistory'.
+        // generateResponse calls startChat(history) then sendMessage(userInput).
+        // If we pass newHistory, it duplicates the user message.
+        history,
         userInput,
         state,
         'ko' // Default to Korean as per context

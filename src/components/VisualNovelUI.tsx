@@ -11,6 +11,11 @@ import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt } 
 import { motion, AnimatePresence } from 'framer-motion';
 import assets from '@/data/assets.json';
 import { START_SCENARIO_TEXT } from '@/data/start_scenario';
+import WikiSystem from './WikiSystem';
+import TextMessage from './features/TextMessage';
+import PhoneCall from './features/PhoneCall';
+import TVNews from './features/TVNews';
+import Article from './features/Article';
 
 const translations = {
     en: {
@@ -143,6 +148,63 @@ const LOADING_TIPS = [
     "개발자 팁: 사실 운 스탯만 믿고 막 나가도 꽤 재미있는 상황이 벌어집니다."
 ];
 
+// Internal Component for Response Timer
+function ResponseTimer({ avgTime }: { avgTime: number }) {
+    const [progress, setProgress] = useState(0);
+    const [elapsed, setElapsed] = useState(0);
+
+    useEffect(() => {
+        // Reset whenever avgTime changes or mount
+        setProgress(0);
+        setElapsed(0);
+
+        const interval = setInterval(() => {
+            setElapsed(prev => {
+                const newElapsed = prev + 100;
+                // Calculate percentage: (elapsed / avgTime) * 100
+                // Cap at 95% to allow for "finishing" jump
+                // If elapsed > avgTime, we slow down the increment drastically or just cap at 98%
+                let newProgress = (newElapsed / avgTime) * 100;
+                if (newProgress > 95) newProgress = 95 + ((newElapsed - avgTime) / 10000); // Very slow creep after 95%
+                if (newProgress > 99) newProgress = 99;
+
+                setProgress(newProgress);
+                return newElapsed;
+            });
+        }, 100);
+
+        return () => clearInterval(interval);
+    }, [avgTime]);
+
+    // Format time MM:SS
+    const formatTime = (ms: number) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return (
+        <div className="w-full mt-4 flex flex-col gap-2 min-w-[300px]">
+            <div className="flex justify-between text-xs text-yellow-500 font-mono">
+                <span className="animate-pulse">WARPING REALITY...</span>
+                <span>{formatTime(elapsed)} / {formatTime(avgTime)} EST</span>
+            </div>
+            <div className="w-full h-3 bg-gray-900 rounded-full overflow-hidden border border-yellow-900/50 shadow-inner relative">
+                {/* Grid Background Effect */}
+                <div className="absolute inset-0 bg-black opacity-20 pointer-events-none"></div>
+
+                <motion.div
+                    className="h-full bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ type: "tween", ease: "linear", duration: 0.1 }}
+                />
+            </div>
+        </div>
+    );
+}
+
 // Internal Component for Ad Simulation
 function AdButton({ onReward }: { onReward: () => void }) {
     const [status, setStatus] = useState<'idle' | 'playing' | 'rewarded'>('idle');
@@ -245,27 +307,8 @@ export default function VisualNovelUI() {
     const [showHistory, setShowHistory] = useState(false);
     const [showInventory, setShowInventory] = useState(false);
     const [showCharacterInfo, setShowCharacterInfo] = useState(false);
+    const [showWiki, setShowWiki] = useState(false);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-    // [Scaling Logic] Fixed 1080p Base Resolution
-    const [scale, setScale] = useState(1);
-    useEffect(() => {
-        const handleResize = () => {
-            const TARGET_WIDTH = 1920;
-            const TARGET_HEIGHT = 1080;
-
-            const scaleX = window.innerWidth / TARGET_WIDTH;
-            const scaleY = window.innerHeight / TARGET_HEIGHT;
-
-            // Use 'contain' fit (show entire 1920x1080 canvas, potentially with letterboxing)
-            const newScale = Math.min(scaleX, scaleY);
-            setScale(newScale);
-        };
-
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     // [Transition Logic] Track previous character name to determine animation type
     // If name matches last ref => dissolve only (expression change).
@@ -596,6 +639,14 @@ export default function VisualNovelUI() {
 
                 let imagePath = '';
 
+                // Prevent Protagonist Image from showing (Immersion)
+                // user can change their name, so we check using store's playerName or fallback '주인공'
+                if (charName === '주인공' || charName === playerName) {
+                    // Do nothing, leave imagePath empty
+                    setCharacterExpression('');
+                    return;
+                }
+
                 // Check Extra (Exact Match of Name_Emotion or just Name?)
                 // Usually Extra is just Name? 
                 // The previous code checked `availableExtraImages.includes(char)`.
@@ -616,10 +667,14 @@ export default function VisualNovelUI() {
         }
     }
 
+    // Response Time Tracking
+    const [avgResponseTime, setAvgResponseTime] = useState(60000); // Default 1 minute as per request
+
     const handleSend = async (text: string, isDirectInput: boolean = false) => {
         if (!text.trim()) return;
 
         setIsProcessing(true);
+        const startTime = Date.now();
         console.log(`handleSend: "${text}", coins: ${userCoins}, session: ${!!session}, isDirectInput: ${isDirectInput}`);
 
         try {
@@ -629,8 +684,6 @@ export default function VisualNovelUI() {
             // 1. Ensure Session (Use local state)
             if (!activeSession?.user) {
                 console.warn("handleSend: No session found, but allowing guest/optimistic play if coins > 0");
-                // If strictly required, return here. But we might want to allow guests?
-                // For now, let's assume if he has coins locally, he can play.
                 if (currentCoins < 1) {
                     addToast("Login required or not enough coins.", "warning");
                     setIsProcessing(false);
@@ -846,6 +899,10 @@ export default function VisualNovelUI() {
             // 3. Update State
             addMessage({ role: 'model', text: responseText });
 
+            // Update Average Response Time (Weighted: 70% history, 30% recent)
+            const duration = Date.now() - startTime;
+            setAvgResponseTime(prev => Math.round((prev * 0.7) + (duration * 0.3)));
+
             // Start playing
             if (segments.length > 0) {
                 // Skip initial background segments
@@ -939,14 +996,18 @@ export default function VisualNovelUI() {
     };
 
     const handleWheel = (e: React.WheelEvent) => {
-        if (e.deltaY < -30 && !showHistory && !isInputOpen && !isDebugOpen && !showInventory && !showCharacterInfo && !showSaveLoad) {
+        if (e.deltaY < -30 && !showHistory && !isInputOpen && !isDebugOpen && !showInventory && !showCharacterInfo && !showSaveLoad && !showWiki) {
             setShowHistory(true);
         }
     };
 
     const handleStartGame = () => {
+        // Replace Placeholder with Real Name
+        const effectiveName = playerName || '김현준';
+        const processedScenario = START_SCENARIO_TEXT.replace(/{{PLAYER_NAME}}/g, effectiveName);
+
         // Parse the raw text scenario
-        const segments = parseScript(START_SCENARIO_TEXT);
+        const segments = parseScript(processedScenario);
 
         // 1. Construct text for History & AI Context
         const historyText = segments.map(seg => {
@@ -1167,22 +1228,15 @@ export default function VisualNovelUI() {
 
     return (
         <div
-            className="w-screen h-screen bg-black overflow-hidden font-sans select-none flex items-center justify-center"
+            className="relative w-full h-screen bg-black overflow-hidden font-sans select-none flex justify-center"
             onClick={(e) => {
                 handleScreenClick(e);
             }}
             onWheel={handleWheel}
             onContextMenu={(e) => e.preventDefault()}
         >
-            {/* Game Container - Fixed 1920x1080 Resolution scaled to viewport */}
-            <div
-                className="relative shadow-2xl overflow-hidden bg-black flex flex-col origin-center"
-                style={{
-                    width: '1920px',
-                    height: '1080px',
-                    transform: `scale(${scale})`
-                }}
-            >
+            {/* Game Container - Enforce Max 16:9 Aspect Ratio (Landscape) & Max 2:3 (Portrait) */}
+            <div className="relative w-full h-full max-w-[177.78vh] shadow-2xl overflow-hidden bg-black flex flex-col">
 
                 {/* Visual Area (Background + Character) */}
                 {/* Visual Area (Background + Character) */}
@@ -1197,7 +1251,16 @@ export default function VisualNovelUI() {
                     <style jsx>{`
                         .visual-container {
                             width: 100%;
-                            height: 100%;
+                            /* Default: 16:9 aspect ratio */
+                            aspect-ratio: 16/9;
+                        }
+                        @media (max-aspect-ratio: 16/9) {
+                            .visual-container {
+                                /* In portrait/narrow, fill height but cap at 2:3 (150vw) */
+                                aspect-ratio: unset;
+                                height: 100%;
+                                max-height: 150vw; /* 2:3 Ratio (Height = 1.5 * Width) */
+                            }
                         }
                     `}</style>
 
@@ -1379,9 +1442,31 @@ export default function VisualNovelUI() {
                             >
                                 <Settings size={20} />
                             </button>
+                            <button
+                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                onClick={(e) => { e.stopPropagation(); /* Settings logic later */ }}
+                                title="Settings"
+                            >
+                                <Settings size={20} />
+                            </button>
+                            {/* Wiki Button */}
+                            <button
+                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                onClick={(e) => { e.stopPropagation(); setShowWiki(true); }}
+                                title="Wiki"
+                            >
+                                <div className="font-bold text-sm">W</div>
+                            </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Wiki Modal */}
+                <WikiSystem
+                    isOpen={showWiki}
+                    onClose={() => setShowWiki(false)}
+                    initialCharacter="고하늘"
+                />
 
                 {/* Toast Notifications */}
                 <div className="fixed top-24 right-4 z-50 flex flex-col gap-2 pointer-events-none">
@@ -1523,11 +1608,15 @@ export default function VisualNovelUI() {
 
                                 {/* Spinner & Title */}
                                 <div className="flex flex-col items-center gap-2 z-10">
-                                    <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                                    <h3 className="text-xl font-bold text-yellow-400 animate-pulse">
-                                        이야기를 생성 중입니다...
-                                    </h3>
-                                    <p className="text-sm text-gray-500">Gemini 3 Pro 모델이 열심히 집필하고 있습니다.</p>
+                                    <div className="w-full flex flex-col items-center">
+                                        <h3 className="text-2xl font-bold text-yellow-400 animate-pulse mb-4 tracking-widest uppercase text-center">
+                                            FATE IS WEAVING
+                                        </h3>
+                                        <ResponseTimer avgTime={avgResponseTime} />
+                                        <p className="text-xs text-gray-500 mt-4 font-mono">
+                                            Average Response Time: {Math.round(avgResponseTime / 1000)}s
+                                        </p>
+                                    </div>
                                 </div>
 
 
@@ -2036,10 +2125,61 @@ export default function VisualNovelUI() {
                     )}
                 </AnimatePresence>
 
+                {/* New Feature Operations Layers */}
+                <AnimatePresence>
+                    {currentSegment?.type === 'text_message' && (
+                        <div className="absolute inset-0 z-50">
+                            <TextMessage
+                                sender={currentSegment.character || 'Unknown'}
+                                header={currentSegment.expression || '지금'}
+                                content={currentSegment.content}
+                                onClose={() => advanceScript()}
+                            />
+                        </div>
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {currentSegment?.type === 'phone_call' && (
+                        <div className="absolute inset-0 z-50" onClick={() => advanceScript()}>
+                            <PhoneCall
+                                caller={currentSegment.character || 'Unknown'}
+                                status={currentSegment.expression || '통화중'}
+                                content={currentSegment.content}
+                            />
+                        </div>
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {currentSegment?.type === 'tv_news' && (
+                        <div className="absolute inset-0 z-50" onClick={() => advanceScript()}>
+                            <TVNews
+                                anchor={currentSegment.character || 'News'}
+                                background={currentSegment.expression} // Pass expression as background key
+                                content={currentSegment.content}
+                            />
+                        </div>
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {currentSegment?.type === 'article' && (
+                        <div className="absolute inset-0 z-50" onClick={() => advanceScript()}>
+                            <Article
+                                title={currentSegment.character || 'News'} // Used char field for Title
+                                source={currentSegment.expression || 'Internet'} // Used expr field for Source
+                                content={currentSegment.content}
+                                onClose={() => advanceScript()}
+                            />
+                        </div>
+                    )}
+                </AnimatePresence>
+
                 {/* Dialogue / Narration Layer */}
-                {currentSegment && currentSegment.type !== 'system_popup' && (
+                {currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
                     <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[30vh]">
-                        <div className="w-full max-w-7xl pointer-events-auto relative">
+                        <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                             {/* Dialogue Control Bar */}
                             <div className="absolute -top-10 right-0 flex gap-2 z-30">
                                 <button
@@ -2075,8 +2215,10 @@ export default function VisualNovelUI() {
                                                 }
 
                                                 const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
-                                                const found = charList.find((c: any) => c.englishName === currentSegment.character || c.name === currentSegment.character);
-                                                return found ? found.name : currentSegment.character;
+                                                const charName = currentSegment.character || '';
+                                                const found = charList.find((c: any) => c.englishName === charName || c.name === charName);
+                                                if (found) return found.name;
+                                                return charName.split('_')[0];
                                             })()}
                                         </span>
                                     </div>

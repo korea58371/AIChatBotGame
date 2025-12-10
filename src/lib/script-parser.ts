@@ -1,4 +1,4 @@
-export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'unknown';
+export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'text_message' | 'phone_call' | 'tv_news' | 'article' | 'unknown';
 
 export interface ScriptSegment {
     type: ScriptType;
@@ -68,12 +68,18 @@ export function parseScript(text: string): ScriptSegment[] {
                     narrationContent = splitMatch[2].trim();
                 }
 
-                segments.push({
-                    type: 'dialogue',
-                    content: dialogueContent.trim(),
-                    character: name,
-                    expression: expression || '기본'
-                });
+                // Split dialogue content by separate lines for sequential display
+                const speechLines = dialogueContent.split('\n');
+                for (const line of speechLines) {
+                    if (line.trim()) {
+                        segments.push({
+                            type: 'dialogue',
+                            content: line.trim(),
+                            character: name,
+                            expression: expression || '기본'
+                        });
+                    }
+                }
 
                 if (narrationContent) {
                     // Also split narration content by line
@@ -85,6 +91,99 @@ export function parseScript(text: string): ScriptSegment[] {
             } else {
                 segments.push({ type: 'dialogue', content: content, character: 'Unknown', expression: '기본' });
             }
+        } else if (tagName === '문자') {
+            // <문자>Sender_Header: Content
+            const colonIndex = content.indexOf(':');
+            let sender = 'Unknown';
+            let header = '지금';
+            let msgContent = content;
+
+            if (colonIndex !== -1) {
+                const meta = content.substring(0, colonIndex).trim();
+                msgContent = content.substring(colonIndex + 1).trim();
+                const [s, h] = meta.split('_');
+                sender = s;
+                if (h) header = h;
+            }
+
+            segments.push({
+                type: 'text_message',
+                character: sender,
+                expression: header,
+                content: msgContent
+            });
+        } else if (tagName === '전화') {
+            // <전화>Caller_Status: Content
+            const colonIndex = content.indexOf(':');
+            let caller = 'Unknown';
+            let status = '통화중';
+            let msgContent = content;
+
+            if (colonIndex !== -1) {
+                const meta = content.substring(0, colonIndex).trim();
+                msgContent = content.substring(colonIndex + 1).trim();
+                const [c, s] = meta.split('_');
+                caller = c;
+                if (s) status = s;
+            }
+
+            segments.push({
+                type: 'phone_call',
+                character: caller,
+                expression: status,
+                content: msgContent
+            });
+        } else if (tagName === 'TV뉴스') {
+            // <TV뉴스>Character_Background: Content
+            // Example: <TV뉴스>천서윤_DungeonEntrance: 보도 내용
+            const colonIndex = content.indexOf(':');
+            let anchor = 'News';
+            let background = ''; // Store background key in expression
+            let msgContent = content;
+
+            if (colonIndex !== -1) {
+                const meta = content.substring(0, colonIndex).trim();
+                msgContent = content.substring(colonIndex + 1).trim();
+
+                const parts = meta.split('_');
+
+                if (parts.length >= 2) {
+                    // Last part is always Background (e.g. "NewsStudio")
+                    background = parts.pop() || '';
+                    // Join user parts back together for the character name (e.g. "뉴스앵커_여" or "천서윤")
+                    anchor = parts.join('_');
+                } else {
+                    anchor = parts[0];
+                }
+            }
+
+            segments.push({
+                type: 'tv_news',
+                character: anchor,
+                expression: background, // We use 'expression' field to store the extra metadata (background)
+                content: msgContent
+            });
+        } else if (tagName === '기사') {
+            // <기사>Title_Source: Content
+            const colonIndex = content.indexOf(':');
+            let title = 'News';
+            let source = 'Internet';
+            let body = content;
+
+            if (colonIndex !== -1) {
+                const meta = content.substring(0, colonIndex).trim();
+                body = content.substring(colonIndex + 1).trim();
+                const [t, s] = meta.split('_');
+                title = t;
+                if (s) source = s;
+            }
+
+            segments.push({
+                type: 'article',
+                character: title,   // Store Title in character field
+                expression: source, // Store Source in expression field
+                content: body
+            });
         } else if (tagName === '떠남') {
             // Special Tag: Character Exit
             // If the previous segment exists, mark it as exit

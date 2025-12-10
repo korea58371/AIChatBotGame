@@ -110,6 +110,7 @@ export const backgroundMappings: Record<string, string> = {
     // ==========================================
     "방송국": "Media_NewsDesk.jpg",
     "뉴스": "Media_NewsDesk.jpg",
+    "NewsStudio": "Media_NewsDesk.jpg",
     "스튜디오": "Media_PersonalStudio.jpg",
     "라디오": "Media_Radio_Booth.jpg",
     "촬영장": "Media_Set_MV.jpg",
