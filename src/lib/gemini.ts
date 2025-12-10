@@ -423,9 +423,7 @@ export async function handleGameTurn(
     // 2. Main Story Model
     // State should already have the summary injected via PromptManager in generateResponse
     const storyResult = await generateResponse(
-        // Fix 2: Pass 'history' (previous turns) instead of 'newHistory'.
-        // generateResponse calls startChat(history) then sendMessage(userInput).
-        // If we pass newHistory, it duplicates the user message.
+        apiKey,
         history,
         userInput,
         state,

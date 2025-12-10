@@ -81,7 +81,7 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
     // Pre-process content to extract footnotes sequentially
     // usage: returns (string | JSX.Element)[] where string needs parseInline()
     const processFootnotes = (text: string) => {
-        const parts: (string | JSX.Element)[] = [];
+        const parts: (string | React.ReactNode)[] = [];
         let lastIndex = 0;
         const regex = /<<(.*?)>>/g;
         let match;
