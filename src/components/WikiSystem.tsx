@@ -143,7 +143,7 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
             <div
                 className="bg-white w-full max-w-[1500px] h-[90vh] rounded-lg shadow-2xl overflow-hidden flex flex-col font-sans text-gray-900 border border-gray-300"
                 onClick={(e) => e.stopPropagation()}

@@ -19,6 +19,8 @@ interface Character {
     personality?: any;
     preferences?: any;
     secret?: any;
+    memories?: string[]; // Added: Character specific memories
+    discoveredSecrets?: string[]; // Added: Secrets the player has learned
     default_expression?: string;
     description?: string;
     spawnRules?: SpawnRules;
@@ -180,13 +182,22 @@ export class PromptManager {
                 charInfo += `\nPreferences: ${JSON.stringify(char.preferences)}`;
             }
 
-            // Secret is only shown if explicitly unlocked or for AI context
+            // [FIX] Inject Character Memories
+            if (char.memories && char.memories.length > 0) {
+                charInfo += `\n[Memories (Events/Facts this character remembers)]:\n- ${char.memories.join('\n- ')}`;
+            }
+
+            // CRITICAL: SEPARATE SECRETS
+            // 1. Discovered Secrets (Known to Player)
+            if (char.discoveredSecrets && char.discoveredSecrets.length > 0) {
+                charInfo += `\n\n[KNOWN FACTS (The Player KNOWS this)]:\n- ${char.discoveredSecrets.join('\n- ')}`;
+            }
+
+            // 2. Hidden Secrets (Unknown to Player)
             if (char.secret) {
-                if (typeof char.secret === 'string') {
-                    charInfo += `\nSecret: ${char.secret}`;
-                } else {
-                    charInfo += `\nSecret (NSFW/Private): ${JSON.stringify(char.secret)}`;
-                }
+                const secretStr = typeof char.secret === 'string' ? char.secret : JSON.stringify(char.secret, null, 2);
+                charInfo += `\n\n[HIDDEN SECRETS (The Player DOES NOT KNOW this)]:\n${secretStr}`;
+                charInfo += `\n\n**WARNING**: The player is UNAWARE of the [HIDDEN SECRETS] above. You MUST NOT reference them as common knowledge. Only use them to guide the character's internal motives or reactions. Reveal them ONLY if the narrative naturally leads to a discovery event.`;
             }
 
             if (char.relationshipInfo) {
@@ -369,7 +380,6 @@ export class PromptManager {
             .slice(0, 4) // Top 4 Candidates
             .map(item => {
                 const c = item.char;
-                const desc = c.description || c.title || (c.appearance && c.appearance['전체적 인상']) || "Unknown";
                 const tagStr = item.tags.length > 0 ? `[${item.tags.join('/')}]` : "";
 
                 // Extract Job
@@ -382,9 +392,25 @@ export class PromptManager {
                 if (typeof c.personality === 'string') personaStr = c.personality;
                 else if (c.personality && c.personality['표면적 성격']) personaStr = c.personality['표면적 성격'];
 
+                // Extract Appearance (CRITICAL FOR CONSISTENCY)
+                let appearanceStr = "";
+                if (c.appearance) {
+                    const hair = c.appearance['머리카락'] || "";
+                    const eyes = c.appearance['눈'] || "";
+                    const impression = c.appearance['전체적 인상'] || "";
+
+                    let details = [];
+                    if (hair) details.push(`Hair: ${hair}`);
+                    if (eyes) details.push(`Eyes: ${eyes}`);
+                    if (impression) details.push(`Impression: ${impression}`);
+
+                    if (details.length > 0) appearanceStr = ` [${details.join(' / ')}]`;
+                }
+
                 const age = c.profile?.['나이'] ? c.profile['나이'].replace(/[^0-9]/g, '') + '세' : '?';
                 const gender = c.profile?.['성별'] || '?';
-                return `- ${c.name} (${age}.${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
+
+                return `- ${c.name} (${age}/${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr}${appearanceStr} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
             })
             .join('\n');
     }
@@ -399,7 +425,20 @@ export class PromptManager {
         const activeChars = state.activeCharacters.map(id => {
             const c = charsData[id.toLowerCase()]; // Normalize lookup
             if (!c) return null;
-            return `- ${c.name} (${c.role}): Active in scene.`;
+
+            let info = `- ${c.name} (${c.role}): Active in scene.`;
+
+            // Pass existing Memories for consolidation
+            if (c.memories && c.memories.length > 0) {
+                info += `\n  - Current Memories: ${JSON.stringify(c.memories)}`;
+            }
+
+            // Pass existing Discovered Secrets for accumulation
+            if (c.discoveredSecrets && c.discoveredSecrets.length > 0) {
+                info += `\n  - Known Secrets: ${JSON.stringify(c.discoveredSecrets)}`;
+            }
+
+            return info;
         }).filter(Boolean).join('\n');
 
         return `

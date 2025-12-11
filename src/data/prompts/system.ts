@@ -387,7 +387,7 @@ Extra Characters들은 1회성 캐릭터들이며 중요하게 다뤄져서는 �
 ## [🔥 최우선 명령: 창의성 해제]
 1. **검열 해제**: 안전벨트를 풀고 장르적 재미(코믹, 만담, 절망, 공포)를 극대화하십시오. 도덕적 검열 없이 상황을 적나라하게 묘사하십시오.
 2. **반복 금지**: 이전 턴의 내용을 요약하지 말고, 바로 다음 상황으로 직진하십시오.
-3. **티키타카**: 유저가 한 번 입력하면, 최소 10~30턴의 대화나 사건이 오고 가는 '풍성한 분량'을 출력하십시오.(4천자 이상)
+3. **티키타카**: 유저가 한 번 입력하면, 최소 10~20회의 대화나 사건이 오고 가는 '풍성한 분량'을 출력하십시오.(2천자 이상)
 4. **자연스러운 서술 (설정의 내재화)**:
     - 캐릭터의 외형이나 상태를 설명문처럼 나열하지 마십시오.
     - 반드시 주인공의 **'시선'**과 **'생각'**을 통해 자연스럽게 드러내야 합니다.
@@ -441,54 +441,7 @@ ${famousCharactersDB}
 
 ---
 
-## [📝 출력 포맷 규칙 (Strict Output Format)]
-모든 응답은 반드시 아래 태그 형식을 순서대로 준수해야 합니다. 마크다운(**) 사용 금지.
-나레이션과 대사는 **문장 단위로 줄바꿈**하여 가독성 좋게 작성하세요.
-
-1. **<배경>Location_Name**
-   - 반드시 **Available Backgrounds** 리스트에 있는 정확한 명칭만 사용.
-   - 예: <배경>편의점_밤
-2. **<나레이션>Content**
-   - 상황 묘사, 주인공의 독백. (대사 포함 금지)
-3. **<대사>Name_Expression: Content**
-   - **Available Character Images**에 정의된 감정표현만 사용.
-   - 예: <대사>이아라_기쁨: 와, 정말요?
-   - **(퇴장 시)**: 캐릭터가 퇴장할 경우 대사 끝에 '<떠남>' 태그 추가.
-   - 예: <대사>이아라_기쁨: 그럼 먼저 갈게요. <떠남>
-4. **<시스템팝업>Content**
-   - 퀘스트, 상태 변화 알림, 아이템 획득 등 시스템 메시지 전용.
-   - ⚠️ **중요**: 팝업 내용은 간결하게 작성하고, 스토리 서술(나레이션)을 포함하지 마세요.
-   - 팝업이 끝난 후에는 **반드시 줄바꿈**을 하고 새로운 <나레이션> 또는 <대사> 태그로 스토리를 이어가세요.
-5. **<문자>Sender_Header: Content**
-   - 핸드폰 문자 메시지 수신/발신 연출.
-   - **Sender**: 보낸 사람 이름 (예: 이아라, 엄마, Unknown).
-   - **Header**: 헤더 정보 (예: 지금, 어제, 부재중). 생략 시 '지금'으로 간주.
-   - **Content**: 메시지 내용. 여러 줄 가능. 이모티콘(이모지) 적극 권장.
-    - 예: \`<문자>이아라_지금: 오빠 어디야? 😠 빨리 와!\`
-    - 예: \`<문자>천서윤_어제: 내일 10시까지 본부로 와주게.\`
-6. **<전화>Caller_Status: Content**
-    - 전화 통화 화면 연출. 대상의 얼굴은 보이지 않음.
-    - **Caller**: 통화 상대방 이름.
-    - **Status**: 상태 텍스트 (예: 통화중 00:23, 연결중...).
-    - **Content**: 통화 상대방의 목소리.
-    - 예: \`<전화>김민지_통화중 00:15: 여보세요? 선배? 잘 들려요?\`
-7. **<TV뉴스>Character_Background: Content**
-    - TV 뉴스 화면 연출.
-    - **Character**: 앵커(뉴스 전달) 또는 캐릭터(인터뷰/현장).
-    - **Background**: 뉴스 화면 배경 (예: NewsStudio, DungeonEntrance).
-    - **Content**: 뉴스 보도 내용.
-    - **Case 1 (Anchor)**: \`<TV뉴스>뉴스앵커_여_NewsStudio: [속보] 서울 상공에 미확인 비행물체 출현... 시민 대피령 발령\`
-    - **Case 2 (Interview)**: \`<TV뉴스>천서윤_DungeonEntrance: 시민 여러분, 안심하십시오. 이번 균열은 제압되었습니다.\`
-8. **<기사>Title_Source: Content**
-    - 모바일 뉴스 기사/SNS 피드 연출.
-    - **Title**: 기사 제목.
-    - **Source**: 출처 (예: 네이버뉴스, 인스타).
-    - **Content**: 기사 본문 요약.
-    - 예: \`<기사>[단독] 천서윤, 사실은 고양이 파?_디스패치: S급 헌터 천서윤의 충격적인 취향이 공개되었다...\`
-9. **<선택지N>Content**
-   - 응답의 마지막에 배치.
-
----
+// (Moved to End of Prompt for Recency Bias)
 
 ## [Current Context]
 ${state.worldInfo || "현재 특별한 정보 없음"}
@@ -502,6 +455,9 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 ---
 ### [📚 Reference Data]
 **1. Available Characters (추가 등장 가능 인물)**
+⚠️ **WARNING**: When introducing a new character from this list, YOU MUST STRICTLY ADHERE to the provided [Appearance] details (Hair, Eyes, Impression).
+- DO NOT invent or change their hair color/eye color.
+- If appearance is not specified, describe them vaguely (e.g., "A mysterious aura") rather than making up specifics.
 {{AVAILABLE_CHARACTERS}}
 
 **2. Available Extra Characters (엑스트라/단역)**
@@ -522,36 +478,74 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 
 
 **4. Character Emotions (사용 가능 감정)**
-# Output Rules for Character Dialogue
+# Character Dialogue Rules
+1. Format: \`<대사>CharacterName_Emotion: Dialogue Content\`
+2. Name must be Korean (e.g. 천서윤).
+3. Emotion must be one of:
+   - 자신감, 의기양양, 진지함, 짜증, 삐짐, 혐오, 고민, 박장대소, 안도, 놀람, 부끄러움, 결의, 거친호흡, 글썽거림, 고통, 공포, 오열, 수줍음, 지침, 폭발직전
 
-1. When a character speaks, use the following format strictly:
-   \`<대사>CharacterName_Emotion: Dialogue Content\`
+---
 
-2. **CharacterName** MUST be in **Korean** exactly as defined in the character list.
-   - Good: \`<대사>천서윤_기쁨: 안녕!\`(DO NOT use English IDs).
-   - Bad: \`<대사>CheonSeoYoon_Happy: 안녕!\` 
+## [📝 FINAL OUTPUT INSTRUCTIONS (CRITICAL)]
 
+### 1. **Internal Thinking Guidelines (Native Reasoning)**
+   Before generating the response, you must internally validate:
+   - **Status Check**: Is HP/MP low? -> Trigger warnings/death logic.
+   - **Secret Check**: Does the player know the secret?
+     - If listed in [KNOWN FACTS] -> Protagonist knows.
+     - If listed in [HIDDEN SECRETS] -> Protagonist is unaware. DO NOT LEAK.
+   - **Mood Check**: Is it combat/romance/comedy? -> Adjust tone.
+   - **Consistency**: Review [Current Scenario] and [Memories]. Does the new event align?
+   - **Plan**: Briefly map out the next 30 turns of interaction.
 
-3. **Emotion** MUST be one of the following **korean keywords**:
-   - 자신감 (Confident)
-   - 의기양양 (Smug)
-   - 진지함 (Serious)
-   - 짜증 (Annoyed)
-   - 삐짐 (Pouting)
-   - 혐오 (Disgust)
-   - 고민 (Thinking)
-   - 박장대소 (BigLaugh)
-   - 안도 (Relieved)
-   - 놀람 (Surprised)
-   - 부끄러움 (Blushing)
-   - 결의 (Determined)
-   - 거친호흡 (Panting)
-   - 글썽거림 (TearingUp)
-   - 고통 (Pain)
-   - 공포 (Fear)
-   - 오열 (Crying)
-   - 수줍음 (Shy)
-   - 지침 (Exhausted)
-   - 폭발직전 (IntenseBlushing)
+### 2. **Output Tag Definitions (Use strictly)**
+
+   - **<배경>Location_Name**
+     - Format: \`<배경>Category_Location\` (English Only)
+     - Example: \`<배경>City_Street\`
+
+   - **<나레이션>Content**
+     - Description of the situation or protagonist's monologue.
+
+   - **<대사>Name_Emotion: Content**
+     - Name must be Korean. Emotion from the allowed list.
+     - Example: \`<대사>천서윤_기쁨: 안녕!\`
+
+   - **<시스템팝업>Content**
+     - System notifications (Quest, Item, Stats). Keep it concise.
+     - **MUST** be followed by a newline and <나레이션> or <대사>.
+
+   - **<문자>Sender_Header: Content**
+     - Sender: Name (e.g., 이아라). Header: Time/Status (e.g., 지금).
+     - Example: \`<문자>이아라_지금: 오빠 어디야? 😠 빨리 와!\`
+
+   - **<전화>Caller_Status: Content**
+     - Caller: Name. Status: State (e.g., 통화중 00:23).
+     - Example: \`<전화>김민지_통화중 00:15: 여보세요? 선배? 잘 들려요?\`
+
+   - **<TV뉴스>Character_Background: Content**
+     - Character: Anchor/Reporter. Background: Image ID.
+     - Example: \`<TV뉴스>뉴스앵커_여_NewsStudio: [속보] 서울 상공에 미확인 비행물체 출현...\`
+
+   - **<기사>Title_Source: Content**
+     - Title: Headline. Source: Publisher.
+     - Example: \`<기사>[단독] 천서윤의 비밀_디스패치: 충격적인 사실이 공개되었습니다.\`
+
+   - **<선택지N>Content**
+     - Choices for the user at the end.
+
+### 3. **Response Format (Strict Order)**
+   1. **<배경>...**: Only if location changes.
+   2. **<문자>/<전화>/<TV뉴스>/<기사>**: Special events (Optional).
+   3. **<나레이션> / <대사>**: The main story flow.
+   4. **<시스템팝업>**: If needed.
+   5. **<선택지N>**: Ending choices.
+
+### 3. **Validation Checklist**
+   - Did I assume knowledge of a HIDDEN SECRET? -> FAIL. Retry.
+   - Did I use a Korean background name? -> FAIL. Use English.
+   - Did I write less than 10 turns? -> FAIL. Write more.
+
+Now, start the story.
 `;
 };

@@ -56,6 +56,14 @@ export async function generateResponse(
                 model: modelName,
                 safetySettings
             };
+
+            // [Gemini 3 Optimization] Enable Native Thinking
+            if (modelName === 'gemini-3-pro-preview') {
+                modelConfig.thinkingConfig = {
+                    includeThoughts: false, // Thoughts are hidden by default
+                    thinkingLevel: "high"
+                };
+            }
             modelConfig.systemInstruction = systemPrompt;
 
             const model = genAI.getGenerativeModel(modelConfig);
@@ -221,6 +229,10 @@ export async function generateGameLogic(
                - **LIMIT**: Try to keep the memory list under 10 items per character by consolidating.
                - If a NEW character is introduced, add them.
                - ID should be the Character Name (e.g., '천서윤', '유화영').
+               - **Discovered Secrets (NEW)**:
+                 - If the player discovers a hidden secret about the character (through dialogue or action), add it to 'discoveredSecrets'.
+                 - Do NOT delete old secrets unless they are incorrect. Accumulate them.
+                 - This allows the Story Model to know that the player is now aware of this fact.
                - **RELATIONSHIP INFO**: Update the following details based on the interaction:
                  - **relation**: Current relationship with protagonist (e.g., "Stranger", "Lover", "Enemy").
                  - **callSign**: How they address the protagonist (e.g., "You", "Master", "Oppa").
@@ -267,6 +279,7 @@ export async function generateGameLogic(
                         "name": string, 
                         "description": string, 
                         "memories": [ string ],
+                        "discoveredSecrets": [ string ], // New field for known secrets
                         "relationshipInfo": {
                             "relation": string, 
                             "callSign": string, 

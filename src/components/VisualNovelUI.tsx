@@ -985,15 +985,48 @@ export default function VisualNovelUI() {
     const lastClickTime = useRef(0);
 
     const handleScreenClick = (e: React.MouseEvent) => {
-        if (isProcessing || isInputOpen || isDebugOpen || showHistory || showInventory || showCharacterInfo || showSaveLoad) return;
+        if (isProcessing || isInputOpen || isDebugOpen || showHistory || showInventory || showCharacterInfo || showSaveLoad || showWiki) return;
         if (choices.length > 0) return;
 
         const now = Date.now();
-        if (now - lastClickTime.current < 500) return; // 500ms Debounce
+        if (now - lastClickTime.current < 100) return; // 500ms Debounce
         lastClickTime.current = now;
 
         advanceScript();
     };
+
+    // Keyboard Navigation (Space / Enter)
+    // [Fix] Use Ref to access latest advanceScript without triggering re-renders or HMR dependency length errors
+    const advanceScriptRef = useRef(advanceScript);
+    useEffect(() => {
+        advanceScriptRef.current = advanceScript;
+    });
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if active element is an input or textarea
+            const target = document.activeElement as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault(); // Prevent default scrolling for Space
+
+                // Same validation as handleScreenClick
+                if (isProcessing || isInputOpen || isDebugOpen || showHistory || showInventory || showCharacterInfo || showSaveLoad || showWiki) return;
+                if (choices.length > 0) return;
+
+                const now = Date.now();
+                if (now - lastClickTime.current < 500) return; // 500ms Debounce
+                lastClickTime.current = now;
+
+                // Call the latest function via ref
+                advanceScriptRef.current();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isProcessing, isInputOpen, isDebugOpen, showHistory, showInventory, showCharacterInfo, showSaveLoad, showWiki, choices.length]);
 
     const handleWheel = (e: React.WheelEvent) => {
         if (e.deltaY < -30 && !showHistory && !isInputOpen && !isDebugOpen && !showInventory && !showCharacterInfo && !showSaveLoad && !showWiki) {
@@ -1299,9 +1332,9 @@ export default function VisualNovelUI() {
                 </div>
 
                 {/* UI Layer */}
-                <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-30 pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start pointer-events-none">
                     {/* Left: Player Info & Stats */}
-                    <div className="pointer-events-auto flex flex-col gap-2">
+                    <div className="pointer-events-auto flex flex-col gap-2 z-30">
                         <div className="flex items-center gap-4">
                             {/* Restored Portrait Button */}
                             <div
@@ -1349,7 +1382,7 @@ export default function VisualNovelUI() {
                     </div>
 
                     {/* Right: Resources & Settings */}
-                    <div className="pointer-events-auto flex flex-col items-end gap-3">
+                    <div className="pointer-events-auto flex flex-col items-end gap-3 z-[60]">
                         {/* Resource Container */}
                         <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 shadow-2xl">
                             {/* Gold */}

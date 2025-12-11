@@ -190,6 +190,11 @@ export function parseScript(text: string): ScriptSegment[] {
             if (segments.length > 0) {
                 segments[segments.length - 1].characterLeave = true;
             }
+        } else if (tagName.toLowerCase() === 'think' || tagName.toLowerCase() === '/think') {
+            // [Feature] Chain of Thought Hiding
+            // The system prompt generates <Think>...</Think> blocks for internal reasoning.
+            // We consciously ignore this content so it doesn't appear in the game UI.
+            continue;
         } else {
             const colonIndex = tagName.indexOf(':');
             if (colonIndex !== -1) {
