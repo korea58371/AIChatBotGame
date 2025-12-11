@@ -7,7 +7,7 @@ import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary,
 import { getCharacterImage } from '@/lib/image-mapper';
 import { resolveBackground } from '@/lib/background-manager'; // Added import // Added import
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import assets from '@/data/assets.json';
 import { START_SCENARIO_TEXT } from '@/data/start_scenario';
@@ -273,6 +273,16 @@ function AdButton({ onReward }: { onReward: () => void }) {
 }
 
 export default function VisualNovelUI() {
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
     const {
         chatHistory,
         addMessage,
@@ -1542,6 +1552,25 @@ export default function VisualNovelUI() {
                                 title="Settings"
                             >
                                 <Settings size={20} />
+                            </button>
+                            {/* Fullscreen Button */}
+                            <button
+                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!document.fullscreenElement) {
+                                        document.documentElement.requestFullscreen().catch(err => {
+                                            console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                                        });
+                                    } else {
+                                        if (document.exitFullscreen) {
+                                            document.exitFullscreen();
+                                        }
+                                    }
+                                }}
+                                title="Toggle Fullscreen"
+                            >
+                                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
                             </button>
                             {/* Wiki Button */}
                             <button

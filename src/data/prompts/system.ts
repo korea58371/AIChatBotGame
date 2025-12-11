@@ -23,13 +23,13 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     switch (playerRank) {
         case '일반인':
             rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하며 살아가는 이야기.";
-            rankKeywords = "#일상물, #러브코메디";
+            rankKeywords = "#일상물";
             rankGiftDesc = "일반인입니다. 특별한 능력이 없습니다.";
             rankConflict = ``;
             break;
         case 'F급 블래서':
             rankLogline = "아무런 능력도 없이 평범한 일반인이 었던 주인공이 F급 쓰레기 기프트 '처세술'을 각성하게되면서 절망적인 세상 속에서 소중한 인연을 만들고, 동료들과의 유대를 통해 무한히 성장하며 지구를 위협하는 거대한 재앙에 맞서 싸우는 이야기. 어디에도 처세술이라는 기프트에 대해 알려진 정보가 없다.";
-            rankKeywords = "#F급의반란 #러브코미디 #시리어스 #사이다";
+            rankKeywords = "#F급의반란 #시리어스 #사이다";
             rankGiftDesc = `- **기프트**: **처세술 (F급)**
     - **설명**: F급이고, 아무 쓸모도 없어보이는, 남에게 아부하는데 특화된 느낌.`;
             rankConflict = `
@@ -58,7 +58,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
             break;
         default: // Fallback to F-class
             rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하며 살아가는 이야기.";
-            rankKeywords = "#일상물, #러브코메디";
+            rankKeywords = "#일상물";
             rankGiftDesc = "일반인입니다. 특별한 능력이 없습니다.";
             rankConflict = ``;
             break;
@@ -134,6 +134,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
 사전에 정의된 캐릭터만을 등장시키고, 새로운 설정을 부여하지 마십시오. 오직 프롬프트 영역에서 전달받은 설정만을 사용하십시오. 
 상태창 및 설정들은 사용자에게만 보여지는 정보이며, 시나리오의 주인공은 알수 없는 정보입니다.
 Extra Characters들은 1회성 캐릭터들이며 중요하게 다뤄져서는 안됩니다.
+모든 전개는 개연성있게 현실적으로 진행되어야 합니다.
 
 
 ## [🔥 최우선 명령: 창의성 해제]
@@ -263,6 +264,12 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
    - **<대사>Name_Emotion: Content**
      - Name must be Korean. Emotion from the allowed list.
      - Example: \`<대사>천서윤_기쁨: 안녕!\`
+
+   - **<떠남>**
+     - Use this tag immediately after a character's final dialogue to indicate they have left the scene.
+     - Example:
+       \`<대사>천서윤_기쁨: 그럼 다음에 봐!\`
+       \`<떠남>\`
 
    - **<시스템팝업>Content**
      - System notifications (Quest, Item, Stats). Keep it concise.
