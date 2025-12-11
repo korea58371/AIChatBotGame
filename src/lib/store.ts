@@ -11,6 +11,11 @@ export interface Message {
 }
 
 interface GameState {
+  // Event System State
+  triggeredEvents: string[]; // IDs of events already triggered
+  activeEvent: any | null; // The event to be processed in the next prompt (Typing 'any' to avoid circular dependency for now, or import GameEvent)
+  addTriggeredEvent: (eventId: string) => void;
+  setActiveEvent: (event: any | null) => void;
 
 
   chatHistory: Message[]; // Active context for AI (truncated)
@@ -68,6 +73,12 @@ interface GameState {
 
   // Stats & Inventory State
   playerStats: PlayerStats;
+  // Natural Language State (from Logic Model)
+  statusDescription: string;
+  setStatusDescription: (desc: string) => void;
+  personalityDescription: string;
+  setPersonalityDescription: (desc: string) => void;
+
   setPlayerStats: (stats: Partial<PlayerStats>) => void;
   inventory: Item[];
   addItem: (item: Item) => void;
@@ -138,6 +149,14 @@ export const useGameStore = create<GameState>()(
 
       chatHistory: [],
       displayHistory: [],
+
+      // Event System
+      triggeredEvents: [],
+      activeEvent: null,
+      addTriggeredEvent: (eventId) => set((state) => ({
+        triggeredEvents: [...state.triggeredEvents, eventId]
+      })),
+      setActiveEvent: (event) => set({ activeEvent: event }),
 
       // Meta State
       userCoins: 0,
@@ -233,6 +252,12 @@ export const useGameStore = create<GameState>()(
         }
       })),
 
+      // Status Description (Natural Language)
+      statusDescription: "건강함",
+      setStatusDescription: (desc) => set({ statusDescription: desc }),
+      personalityDescription: "평범함",
+      setPersonalityDescription: (desc) => set({ personalityDescription: desc }),
+
       // Stats Init
       playerStats: {
         hp: 100, maxHp: 100,
@@ -314,6 +339,8 @@ export const useGameStore = create<GameState>()(
         turnCount: 0,
         currentEvent: '',
         currentMood: 'daily',
+        statusDescription: '건강함',
+        personalityDescription: '평범함',
         playerStats: {
           hp: 100, maxHp: 100,
           mp: 50, maxMp: 50,

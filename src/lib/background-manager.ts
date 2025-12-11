@@ -58,8 +58,8 @@ export function resolveBackground(tag: string): string {
         if (categoryFiles.length > 0) {
             console.log(`[BackgroundManager] Category Match Found: "${category}" (${categoryFiles.length} files)`);
             const subMatch = stringSimilarity.findBestMatch(query, categoryFiles);
-            // Lower threshold for category-constrained search because we already matched the category
-            if (subMatch.bestMatch.rating > 0.3) {
+            // Heightened threshold (0.3 -> 0.55) to prevent "City_Sewer" matching "City_Street" randomly
+            if (subMatch.bestMatch.rating > 0.55) {
                 console.log(`[BackgroundManager] Category-Constrained Match: "${query}" -> "${subMatch.bestMatch.target}"`);
                 return `/assets/backgrounds/${subMatch.bestMatch.target}`;
             }
@@ -74,14 +74,15 @@ export function resolveBackground(tag: string): string {
 
     console.log(`[BackgroundManager] Fuzzy File Match: "${query}" -> "${bestFileMatch.target}" (Score: ${bestFileMatch.rating.toFixed(2)})`);
 
-    // Threshold increased to 0.5 to avoid generic inputs matching specific unrelated files
-    if (bestFileMatch.rating > 0.5) {
+    // Threshold increased (0.5 -> 0.6) to avoid generic inputs matching specific unrelated files
+    if (bestFileMatch.rating > 0.6) {
         return `/assets/backgrounds/${bestFileMatch.target}`;
     }
 
     // ---------------------------------------------------------
-    // STRATEGY 4: Strict Fallback (Generic Background)
+    // STRATEGY 4: Strict Fallback (Immersion Preservation)
     // ---------------------------------------------------------
-    console.warn(`[BackgroundManager] No good match for "${query}". Using Generic Fallback.`);
-    return '/assets/backgrounds/Default_Fallback.png';
+    // User preference: "Better to have NO background than a WRONG one."
+    console.warn(`[BackgroundManager] No good match for "${query}". Returning empty (Black Screen).`);
+    return '';
 }

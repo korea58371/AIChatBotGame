@@ -11,6 +11,7 @@ import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt } 
 import { motion, AnimatePresence } from 'framer-motion';
 import assets from '@/data/assets.json';
 import { START_SCENARIO_TEXT } from '@/data/start_scenario';
+import { EventManager } from '@/lib/event-manager';
 import WikiSystem from './WikiSystem';
 import TextMessage from './features/TextMessage';
 import PhoneCall from './features/PhoneCall';
@@ -215,18 +216,20 @@ function AdButton({ onReward }: { onReward: () => void }) {
         if (status === 'playing') {
             interval = setInterval(() => {
                 setProgress(prev => {
-                    if (prev >= 100) {
-                        clearInterval(interval);
-                        setStatus('rewarded');
-                        onReward();
-                        return 100;
-                    }
-                    return prev + 10; // 10% per 300ms -> 3 seconds total approx (actually 10 steps * 300 = 3s)
+                    const next = prev + 10;
+                    return next > 100 ? 100 : next;
                 });
-            }, 500); // 0.5s * 10 = 5 seconds
+            }, 500);
         }
         return () => clearInterval(interval);
-    }, [status, onReward]);
+    }, [status]);
+
+    useEffect(() => {
+        if (status === 'playing' && progress >= 100) {
+            setStatus('rewarded');
+            onReward();
+        }
+    }, [progress, status, onReward]);
 
     if (status === 'rewarded') {
         return (
@@ -1257,6 +1260,33 @@ export default function VisualNovelUI() {
             useGameStore.getState().setActiveCharacters(logicResult.activeCharacters);
             console.log("Active Characters Updated:", logicResult.activeCharacters);
         }
+
+        // [New] Status & Personality Description Updates (Natural Language)
+        if (logicResult.statusDescription) {
+            useGameStore.getState().setStatusDescription(logicResult.statusDescription);
+        }
+        if (logicResult.personalityDescription) {
+            useGameStore.getState().setPersonalityDescription(logicResult.personalityDescription);
+        }
+
+        // [New] Event System Check
+        // Check events based on the NEW stats
+        const eventTrigger = EventManager.checkEvents({
+            ...useGameStore.getState(),
+            playerStats: newStats // Use the updated stats for checking
+        });
+
+        if (eventTrigger) {
+            console.log("Event Triggered:", eventTrigger.id);
+            useGameStore.getState().setActiveEvent(eventTrigger);
+            if (eventTrigger.once) {
+                useGameStore.getState().addTriggeredEvent(eventTrigger.id);
+            }
+            addToast(`Event Triggered: ${eventTrigger.id}`, 'info');
+        } else {
+            // Clear active event if none triggered (so it doesn't persist forever)
+            useGameStore.getState().setActiveEvent(null);
+        }
     };
 
     return (
@@ -1423,27 +1453,32 @@ export default function VisualNovelUI() {
                                          */
 
                                         // 1. Instant Local Auth Check (Using component state)
+                                        // 1. Instant Local Auth Check (Using component state)
                                         const currentUser = session?.user;
 
+                                        // [Dev Mode] Allow charging without login for testing
                                         if (!currentUser) {
-                                            addToast("Login required.", "warning");
-                                            return;
+                                            // addToast("Login required.", "warning");
+                                            // return;
+                                            console.warn("[Dev] Charging coins without active session (Guest Mode)");
                                         }
 
                                         // 2. OPTIMISTIC UPDATE: Update UI immediately
                                         const newCoins = userCoins + 50;
                                         setUserCoins(newCoins);
-                                        addToast("Charged 50 Coins!", 'success');
+                                        addToast("Charged 50 Coins! (Test)", 'success');
 
-                                        // 3. Background DB Sync (Fire-and-forget)
-                                        supabase.from('profiles').update({ coins: newCoins }).eq('id', currentUser.id)
-                                            .then(({ error }: { error: any }) => {
-                                                if (error) {
-                                                    console.error("Background DB Sync Failed:", error);
-                                                } else {
-                                                    console.log("DB Sync Success");
-                                                }
-                                            });
+                                        // 3. Background DB Sync (Only if logged in)
+                                        if (currentUser) {
+                                            supabase.from('profiles').update({ coins: newCoins }).eq('id', currentUser.id)
+                                                .then(({ error }: { error: any }) => {
+                                                    if (error) {
+                                                        console.error("Background DB Sync Failed:", error);
+                                                    } else {
+                                                        console.log("DB Sync Success");
+                                                    }
+                                                });
+                                        }
                                     }}
                                     className="ml-1 w-5 h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-xs shadow hover:scale-110 transition-transform"
                                 >
