@@ -9,6 +9,15 @@ export interface ScriptSegment {
     characterLeave?: boolean; // New flag for character exit
 }
 
+// [Helper] Auto-format text for readability (User Request)
+// Breaks lines if a sentence exceeds 20 characters and ends with punctuation.
+function formatForReadability(text: string): string {
+    if (!text) return text;
+    // Regex: Find a chunk of at least 20 chars that ends in . ? ! followed by whitespace
+    // Replace the whitespace with a newline
+    return text.replace(/(.{20,}?[.?!])\s+/g, "$1\n");
+}
+
 export function parseScript(text: string): ScriptSegment[] {
     const segments: ScriptSegment[] = [];
 
@@ -43,7 +52,16 @@ export function parseScript(text: string): ScriptSegment[] {
                 if (!trimmedLine) continue;
 
                 // Simple Line-Based Parsing (User Request: Don't split sentences if structure is good)
-                segments.push({ type: 'narration', content: trimmedLine });
+                // [Update] Apply Auto-Formatting for readability
+                const formatted = formatForReadability(trimmedLine);
+
+                // [User Request] Split into multiple segments instead of just line breaks
+                const parts = formatted.split('\n');
+                for (const part of parts) {
+                    if (part.trim()) {
+                        segments.push({ type: 'narration', content: part.trim() });
+                    }
+                }
             }
         } else if (tagName.startsWith('선택지')) {
             const choiceId = parseInt(tagName.replace('선택지', ''));
@@ -68,6 +86,10 @@ export function parseScript(text: string): ScriptSegment[] {
                     narrationContent = splitMatch[2].trim();
                 }
 
+                // [Update] Apply Auto-Formatting
+                dialogueContent = formatForReadability(dialogueContent);
+                if (narrationContent) narrationContent = formatForReadability(narrationContent);
+
                 // Split dialogue content by separate lines for sequential display
                 const speechLines = dialogueContent.split('\n');
                 for (const line of speechLines) {
@@ -89,7 +111,7 @@ export function parseScript(text: string): ScriptSegment[] {
                     }
                 }
             } else {
-                segments.push({ type: 'dialogue', content: content, character: 'Unknown', expression: '기본' });
+                segments.push({ type: 'dialogue', content: formatForReadability(content), character: 'Unknown', expression: '기본' });
             }
         } else if (tagName === '문자') {
             // <문자>Sender_Header: Content

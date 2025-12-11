@@ -1,5 +1,6 @@
 import { getSystemPromptTemplate } from '../data/prompts/system';
 import { MOOD_PROMPTS, MoodType } from '@/data/prompts/moods';
+import { RelationshipManager } from './relationship-manager';
 
 interface SpawnRules {
     locations?: string[];
@@ -157,6 +158,11 @@ export class PromptManager {
             if (char.title) charInfo += `\nTitle: ${char.title}`;
             if (char.quote) charInfo += `\nQuote: "${char.quote}"`;
 
+            // [New] Relationship Pacing (Affinity Tier)
+            const relScore = state.playerStats.relationships?.[charId] || 0;
+            const relationshipInstructions = RelationshipManager.getCharacterInstructions(char.name, relScore);
+            charInfo += `\n\n${relationshipInstructions}\n`;
+
             if (char.profile) {
                 charInfo += `\nProfile: ${JSON.stringify(char.profile)}`;
             }
@@ -216,20 +222,25 @@ export class PromptManager {
 
         prompt = prompt.replace('{{AVAILABLE_CHARACTERS}}', availableChars || "None");
 
-        // 7. Context-Aware Background Injection (SMART OPTIMIZATION)
-        // Instead of all 168 files, we inject only ~20 relevant files based on location + generic fallback.
-        const relevantBackgrounds = PromptManager.getRelevantBackgrounds(state.currentLocation);
+        // 7. Context-Aware Background Injection (FULL LIST REQUESTED BY USER)
+        // User requested to show ALL backgrounds to avoid missing Dungeon/Specific ones.
+        const relevantBackgrounds = state.availableBackgrounds || [];
 
         // Group by Category to save tokens and improve AI understanding
         const groupedBgs: Record<string, string[]> = {};
         relevantBackgrounds.forEach(bg => {
-            const parts = bg.replace('.jpg', '').replace('.png', '').split('_');
+            const parts = bg.replace(/\.(jpg|png)$/i, '').split('_');
             const category = parts[0];
-            const name = parts.slice(1).join('_'); // Everything after first underscore
+
+            // [User Request] Simplify: Only use the 2nd classification (Name)
+            // e.g., "City_Street_Day" -> "Street"
+            // "School_Corridor" -> "Corridor"
+            const name = parts[1] || 'Default';
 
             if (!groupedBgs[category]) groupedBgs[category] = [];
-            if (name) groupedBgs[category].push(name);
-            else groupedBgs[category].push('Default'); // Handle single-word files if any
+            if (!groupedBgs[category].includes(name)) { // Dedup
+                groupedBgs[category].push(name);
+            }
         });
 
         const formattedBgs = Object.entries(groupedBgs)

@@ -911,7 +911,9 @@ export default function VisualNovelUI() {
                 // Skip initial background segments
                 let startIndex = 0;
                 while (startIndex < segments.length && segments[startIndex].type === 'background') {
-                    setBackground(segments[startIndex].content);
+                    // [Fix] Resolve background properly before setting
+                    const resolvedBg = resolveBackground(segments[startIndex].content);
+                    setBackground(resolvedBg);
                     startIndex++;
                 }
 
@@ -1122,7 +1124,7 @@ export default function VisualNovelUI() {
         if (logicResult.hpChange) newStats.hp = Math.min(Math.max(0, newStats.hp + logicResult.hpChange), newStats.maxHp);
         if (logicResult.mpChange) newStats.mp = Math.min(Math.max(0, newStats.mp + logicResult.mpChange), newStats.maxMp);
         if (logicResult.goldChange) newStats.gold = Math.max(0, newStats.gold + logicResult.goldChange);
-        if (logicResult.goldChange) newStats.gold = Math.max(0, newStats.gold + logicResult.goldChange);
+
         if (logicResult.expChange) newStats.exp += logicResult.expChange;
         if (logicResult.fameChange) newStats.fame = Math.max(0, (newStats.fame || 0) + logicResult.fameChange);
         if (logicResult.fateChange) newStats.fate = Math.max(0, (newStats.fate || 0) + logicResult.fateChange); // Handle Fate Change
@@ -1196,12 +1198,31 @@ export default function VisualNovelUI() {
             });
         }
 
-        // Personality Toasts
+        // Personality Toasts (Dynamic)
         if (logicResult.personalityChange) {
-            const { selfishness, heroism, morality } = logicResult.personalityChange;
-            if (selfishness) addToast(`${t.selfishness} ${selfishness > 0 ? '+' : ''}${selfishness}`, 'info');
-            if (heroism) addToast(`${t.heroism} ${heroism > 0 ? '+' : ''}${heroism}`, 'success');
-            if (morality) addToast(`${t.morality} ${morality > 0 ? '+' : ''}${morality}`, morality > 0 ? 'success' : 'warning');
+            Object.entries(logicResult.personalityChange).forEach(([trait, value]: [string, any]) => {
+                if (value !== 0) {
+                    // Try to map trait to Korean if possible, or capitalize
+                    const label = trait.charAt(0).toUpperCase() + trait.slice(1);
+                    addToast(`${label} ${value > 0 ? '+' : ''}${value}`, value > 0 ? 'success' : 'warning');
+                }
+            });
+        }
+
+        // [New] Player Rank Update
+        if (logicResult.playerRank) {
+            const currentRank = useGameStore.getState().playerStats.playerRank;
+            if (currentRank !== logicResult.playerRank) {
+                // Update Rank
+                setPlayerStats({ ...newStats, playerRank: logicResult.playerRank });
+                addToast(`Rank Up: ${logicResult.playerRank}`, 'success');
+                console.log(`Rank updated from ${currentRank} to ${logicResult.playerRank}`);
+            }
+        }
+
+        // Debug Fame Change
+        if (logicResult.fameChange !== undefined) {
+            console.log(`[Logic] Fame Change: ${logicResult.fameChange}`);
         }
 
         // Character Updates (Bio & Memories)
@@ -1369,7 +1390,10 @@ export default function VisualNovelUI() {
                             {/* Restored Portrait Button */}
                             <div
                                 className="w-12 h-12 rounded-full border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.5)]"
-                                onClick={() => setShowCharacterInfo(true)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowCharacterInfo(true);
+                                }}
                             >
                                 {isMounted ? (
                                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" className="w-full h-full object-cover bg-gray-800" />
@@ -1489,6 +1513,7 @@ export default function VisualNovelUI() {
 
                         {/* Top Right Controls */}
                         <div className="flex gap-2">
+                            {/* Debug Button Hidden
                             <button
                                 className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
@@ -1496,6 +1521,7 @@ export default function VisualNovelUI() {
                             >
                                 <Bolt size={20} />
                             </button>
+                            */}
                             <button
                                 className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setShowInventory(true); }}
@@ -1670,7 +1696,7 @@ export default function VisualNovelUI() {
                             exit={{ opacity: 0 }}
                             className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm"
                         >
-                            <div className="flex flex-col items-center gap-6 max-w-md w-full p-8 rounded-2xl border border-yellow-500/30 bg-gray-900/90 shadow-2xl relative overflow-hidden">
+                            <div className="flex flex-col items-center gap-6 max-w-xl w-full p-8 rounded-2xl border border-yellow-500/30 bg-gray-900/90 shadow-2xl relative overflow-hidden">
                                 {/* Background Glow */}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl animate-pulse" />
 
@@ -1751,6 +1777,11 @@ export default function VisualNovelUI() {
                                                 segments = segments.slice(0, visibleCount);
                                             }
                                         }
+                                        // [Rewind Logic]
+                                        // Only allow rewind on the LATEST model message (Current Turn)
+                                        // to prevent state inconsistencies (Cannot go back past choices).
+                                        const canRewind = idx === arr.length - 1 && msg.role === 'model';
+
                                         return (
                                             <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                                                 <span className="text-sm text-gray-500 mb-2 font-bold">{msg.role === 'user' ? t.you : t.system}</span>
@@ -1760,7 +1791,62 @@ export default function VisualNovelUI() {
                                                     ) : (
                                                         <div className="flex flex-col divide-y divide-gray-700/50">
                                                             {segments.map((seg, sIdx) => (
-                                                                <div key={sIdx} className="p-4">
+                                                                <div key={sIdx} className="p-4 relative group">
+                                                                    {canRewind && (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (confirm("이 시점으로 되돌아가시겠습니까?")) {
+                                                                                    // 1. Re-parse full text
+                                                                                    const allSegments = parseScript(msg.text);
+
+                                                                                    // 2. Restore State Snapshot (Best Effort)
+                                                                                    // Find last background/char up to this point
+                                                                                    let bestBg = currentBackground;
+                                                                                    let bestChar = characterExpression;
+
+                                                                                    // Scan from 0 to sIdx to find visual state
+                                                                                    for (let i = 0; i <= sIdx; i++) {
+                                                                                        if (allSegments[i].type === 'background') bestBg = resolveBackground(allSegments[i].content);
+                                                                                        // For char, it's harder as we need to map name_expr -> path
+                                                                                        // but we can try basic check if segment has char info
+                                                                                        if (allSegments[i].type === 'dialogue' && allSegments[i].character && allSegments[i].expression) {
+                                                                                            // Approx: usage of general logic or just clear it?
+                                                                                            // Let's rely on the script playing to set it, 
+                                                                                            // BUT if we jump to middle, we might miss the 'set'
+                                                                                            // Actually, if we jump to sIdx, the NEXT update happens when we play sIdx.
+                                                                                            // So we just need to set the state PREVIOUS to sIdx?
+                                                                                            // No, we are STARTING at sIdx.
+                                                                                            // The VisualNovelUI renders based on `currentSegment`.
+                                                                                            // So effectively, we just setQueue and let it play.
+                                                                                            // Ideally we set BG if a specific BG tag was skipped?
+                                                                                            // Let's just set Queue and Current.
+                                                                                        }
+                                                                                    }
+
+                                                                                    // 3. Reset Queue
+                                                                                    setCurrentSegment(allSegments[sIdx]);
+                                                                                    setScriptQueue(allSegments.slice(sIdx + 1));
+
+                                                                                    // 4. Restore Background if found in previous segments of THIS turn
+                                                                                    // (If we crossed a BG tag in this turn, we should ensure it's applied)
+                                                                                    // Iterate 0 to sIdx and apply last found BG
+                                                                                    for (let i = 0; i <= sIdx; i++) {
+                                                                                        if (allSegments[i].type === 'background') {
+                                                                                            setBackground(resolveBackground(allSegments[i].content));
+                                                                                        }
+                                                                                    }
+
+                                                                                    setShowHistory(false);
+                                                                                    addToast("이전 시점으로 되돌아갔습니다.", "success");
+                                                                                }
+                                                                            }}
+                                                                            className="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-yellow-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all shadow-lg z-10"
+                                                                            title="이 대사부터 다시 보기 (Rewind)"
+                                                                        >
+                                                                            <RotateCcw size={14} />
+                                                                        </button>
+                                                                    )}
+
                                                                     {seg.type === 'dialogue' && (
                                                                         <div className="mb-1">
                                                                             <span className="text-yellow-500 font-bold text-lg">{seg.character}</span>

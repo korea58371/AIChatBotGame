@@ -15,7 +15,7 @@ export default function PhoneCall({ caller, status, content }: PhoneCallProps) {
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="w-full h-full max-w-md bg-gradient-to-b from-gray-900 to-black flex flex-col items-center justify-between py-12 px-6"
+                className="w-full h-full max-w-sm max-h-[700px] bg-gradient-to-b from-gray-900 to-black flex flex-col items-center justify-between py-12 px-6 rounded-[3rem] border-8 border-gray-900 shadow-2xl overflow-hidden"
             >
                 {/* Top: Header */}
                 <div className="flex flex-col items-center gap-4 mt-8">

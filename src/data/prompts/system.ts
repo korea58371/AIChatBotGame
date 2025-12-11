@@ -251,6 +251,12 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
      - Format: \`<배경>Category_Location\` (English Only)
      - Example: \`<배경>City_Street\`
 
+### 3. **Relationship Enforcement (Global Rule)**
+   - **STRICTLY ADHERE** to the "Relationship Tier" and "Constraint" provided for each character.
+   - **DO NOT** make a character fall in love or act overly intimate if their tier is "Stranger" or "Friend".
+   - Romance is **LOCKED** until the "Lover" tier is reached (Score 90+).
+   - If the User tries to force romance early, the character MUST reject/deflect it naturally.
+
    - **<나레이션>Content**
      - Description of the situation or protagonist's monologue.
 

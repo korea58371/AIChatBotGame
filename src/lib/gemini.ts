@@ -138,6 +138,8 @@ export async function generateGameLogic(
                 availableCharacterImages,
                 availableExtraImages,
                 scriptQueue, // Also remove script queue
+                chatHistory, // [Optimize] Remove history from stats dumping (Passed separately as strings)
+                displayHistory,
                 ...prunedStats
             } = currentStats;
             const worldData = currentStats.worldData || require('../data/prompts/world.json'); // Fallback to static if missing

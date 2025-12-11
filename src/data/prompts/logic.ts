@@ -10,6 +10,7 @@ You are the **Game Logic Engine**. Your role is to analyze the user's action and
 You are responsible for maintaining consistency and calculating the consequences of actions.
 
 **Current Game State:**
+- **Gold**: ${prunedStats.playerStats?.gold || 0}
 ${JSON.stringify(prunedStats, null, 2)}
 
 **Recent Context:**
@@ -61,11 +62,14 @@ ${logicContext}
     - **Penalty**: If Fate is insufficient, reduce LUK.
     - **Misfortune**: If user suffers bad luck/damage, INCREASE Fate.
 
-4. **Character Memory (Important)**:
-    - **Filter**: Ignore trivial actions.
     - **Consolidate**: Merge related memories.
     - **No Mind Reading**: Only record what was said/done/seen.
     - **Format**: Return the complete list of memories.
+
+5. **Relationship Pacing (Strict)**:
+    - **Max Change**: Do NOT increase/decrease affinity by more than **5 points** per turn, unless a major event occurred.
+    - **No Rushing**: Real relationships take time. Do NOT jump to high affinity instantly.
+    - **Context**: Consider the current "Tier". A stranger gaining +10 is suspicious. A lover gaining +5 is normal.
 
 ---
 
@@ -119,6 +123,7 @@ ${logicContext}
         }
     ],
     "newMood": "daily" | "combat" | "romance" | "comic" | "tension" | "erotic" | null,
+    "playerRank": string | null, // [NEW] Update rank based on Fame/Achievements (e.g., "Commoner" -> "Novice")
     "activeCharacters": [ string ],
     "statusDescription": string, // [NEW] Natural language description of current physical/mental state
     "personalityDescription": string // [NEW] Natural language description of current mindset
