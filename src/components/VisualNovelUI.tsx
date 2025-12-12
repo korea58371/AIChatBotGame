@@ -1150,6 +1150,14 @@ export default function VisualNovelUI() {
             newStats.luk = (newStats.luk || 10) + (logicResult.statChange.luk || 0);
         }
 
+        // [Fix] Update Fame & Fate (Was missing!)
+        if (logicResult.fameChange) {
+            newStats.fame = (newStats.fame || 0) + logicResult.fameChange;
+        }
+        if (logicResult.fateChange) {
+            newStats.fate = (newStats.fate || 0) + logicResult.fateChange;
+        }
+
         // Personality
         if (logicResult.personalityChange) {
             const p = newStats.personality;
