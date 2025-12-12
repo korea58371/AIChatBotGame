@@ -183,6 +183,8 @@ export const backgroundMappings: Record<string, string> = {
     "NewsStudio": "Media_NewsDesk.jpg",
     "스튜디오": "Media_PersonalStudio.jpg",
     "라디오": "Media_Radio_Booth.jpg",
+    "뉴스데스크": "Media_NewsDesk.jpg",
+    "NewsDesk": "Media_NewsDesk.jpg", // [Fix] Direct mapping for AI output
     "촬영장": "Media_Set_MV.jpg",
     "대기실": "Media_Room_Waiting.jpg",
     "기자회견": "Media_PressConference.jpg",
