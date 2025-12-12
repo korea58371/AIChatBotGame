@@ -198,9 +198,11 @@ export const backgroundMappings: Record<string, string> = {
     "비행기": "Trans_PrivateJet.jpg",
     "리무진": "Trans_Car_Limousine.jpg",
     "차안": "Trans_Car_DriveRoad.jpg",
+    "Trans_Car": "Trans_Car_DriveRoad.jpg", // [Fix] Explicit mapping for AI output
     "잠수함": "Trans_Submarine_Small.jpg",
     "헬기장": "Trans_Heliport.jpg",
     "케이블카": "Trans_CableCar.jpg",
+    "CableCar": "Trans_CableCar.jpg",
     "와이번": "Trans_Monster_Wyvern.jpg",
     "기차VIP실": "Trans_Train_VipRoom.jpg",
     "주차장": "Trans_Parking_Lot.jpg",

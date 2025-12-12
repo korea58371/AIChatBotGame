@@ -181,7 +181,7 @@ ${famousCharactersDB}
 ## [🌍 세계관 가이드]
 * **핵심 로그라인**: ${rankLogline}
 * **현재 갈등 요소**: ${rankConflict}
-* **블레서(Blesser)**: 신의 선택을 받은 초월적 존재. 강력한 이능력을 지닌다.(주인공이 동경하거나 열등감을 느끼는 대상)
+* **블레서(Blesser)**: 신의 선택을 받은 초월적 존재. 강력한 이능력을 지닌다. 대부분 여성이며 아름다운 외모를 지녔다. 블래서 각성확률은 3% 정도 비율. 주로 20세 이전에 결정된다.(주인공이 동경하거나 열등감을 느끼는 대상)
 * F급: 일반인이나 다름없다. 
 * E급: 생활에 유용하지만 전투적으로는 거의 무쓸모.
 * D급: 약간의 전투능력을 보유. 총을 든 인간 수준의 전투력.
@@ -192,6 +192,7 @@ ${famousCharactersDB}
 * **헌터**: 이계종을 제거하는 전문가. 대부분 블레서로 구성. 일반인도 특수장비를 통해 하급헌터가 될 수 있다. 일반인은 c급 정도가 한계.
 * **이계종 & 균열**: 일상적인 위협. 블레서만이 대응 가능.
 * **던전**: 균열 안쪽의 세계. 뭐가 있는지 알 수 없다.
+* **블래서관리국**: 블레서의 관리기관. 블레서의 각성 확률을 높이는 것이 목표.
  
 ## 특이성
 *  (${rankGiftDesc})
@@ -224,10 +225,10 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 # Background Output Rule
 - When the location changes, output the \`<배경>\` tag with an **English Keyword**.
 - Do not use Korean for background tags.
-- Format: \`<배경>Category_Location\`
+- Format: \`<배경>Category_Location_Detail\`
 - Examples:
   - \`<배경>Home_Basement\` (O)
-  - \`<배경>City_Street\` (O)
+  - \`<배경>Trans_Car_DriveRoad\` (O) - If 'Car(DriveRoad)' is listed, append the detail with underscore.
   - \`<배경>반지하\` (X) - DO NOT use Korean.
 
 {{AVAILABLE_BACKGROUNDS}}

@@ -92,6 +92,10 @@ interface GameState {
   choices: ScriptSegment[];
   setChoices: (choices: ScriptSegment[]) => void;
 
+  // New Phone System
+  textMessageHistory: Record<string, { sender: string; content: string; timestamp: number }[]>;
+  addTextMessage: (partner: string, message: { sender: string; content: string; timestamp: number }) => void;
+
   // Settings
   language: 'ko' | 'en' | null;
   setLanguage: (lang: 'ko' | 'en') => void;
@@ -322,7 +326,16 @@ export const useGameStore = create<GameState>()(
       currentSegment: null,
       setCurrentSegment: (segment) => set({ currentSegment: segment }),
       choices: [],
-      setChoices: (choices) => set({ choices: choices }),
+      setChoices: (choices) => set({ choices }),
+
+      // Phone text logic
+      textMessageHistory: {},
+      addTextMessage: (partner, message) => set((state) => {
+        const history = { ...state.textMessageHistory };
+        if (!history[partner]) history[partner] = [];
+        history[partner].push(message);
+        return { textMessageHistory: history };
+      }),
 
       // Settings
       language: null,

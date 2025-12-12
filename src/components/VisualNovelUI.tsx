@@ -16,6 +16,7 @@ import WikiSystem from './WikiSystem';
 import TextMessage from './features/TextMessage';
 import PhoneCall from './features/PhoneCall';
 import TVNews from './features/TVNews';
+import SmartphoneApp from './features/SmartphoneApp';
 import Article from './features/Article';
 
 const translations = {
@@ -321,6 +322,7 @@ export default function VisualNovelUI() {
     const [showInventory, setShowInventory] = useState(false);
     const [showCharacterInfo, setShowCharacterInfo] = useState(false);
     const [showWiki, setShowWiki] = useState(false);
+    const [isPhoneOpen, setIsPhoneOpen] = useState(false); // [New] Phone App State
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
     // [Transition Logic] Track previous character name to determine animation type
@@ -1320,6 +1322,27 @@ export default function VisualNovelUI() {
         }
     };
 
+    // [New] Text Message Auto-Save Logic
+    const lastSavedMessageRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (currentSegment && currentSegment.type === 'text_message') {
+            const msgId = `${currentSegment.character}-${currentSegment.content.slice(0, 10)}`;
+            if (lastSavedMessageRef.current !== msgId) {
+                lastSavedMessageRef.current = msgId;
+                useGameStore.getState().addTextMessage(
+                    currentSegment.character || 'Unknown',
+                    {
+                        sender: currentSegment.character || 'Unknown',
+                        content: currentSegment.content,
+                        timestamp: Date.now()
+                    }
+                );
+                console.log(`[TextHistory] Saved message from ${currentSegment.character}`);
+            }
+        }
+    }, [currentSegment]);
+
     return (
         <div
             className="relative w-full h-screen bg-black overflow-hidden font-sans select-none flex justify-center"
@@ -1519,6 +1542,14 @@ export default function VisualNovelUI() {
 
                         {/* Top Right Controls */}
                         <div className="flex gap-2">
+                            {/* Phone Button */}
+                            <button
+                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                onClick={(e) => { e.stopPropagation(); setIsPhoneOpen(true); }}
+                                title="Smartphone"
+                            >
+                                <div className="text-xl">📱</div>
+                            </button>
                             {/* Debug Button Hidden
                             <button
                                 className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
@@ -1597,6 +1628,12 @@ export default function VisualNovelUI() {
                     isOpen={showWiki}
                     onClose={() => setShowWiki(false)}
                     initialCharacter="고하늘"
+                />
+
+                {/* Smartphone App */}
+                <SmartphoneApp
+                    isOpen={isPhoneOpen}
+                    onClose={() => setIsPhoneOpen(false)}
                 />
 
                 {/* Toast Notifications */}

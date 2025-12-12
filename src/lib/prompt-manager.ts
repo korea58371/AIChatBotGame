@@ -229,23 +229,64 @@ export class PromptManager {
         // Group by Category to save tokens and improve AI understanding
         const groupedBgs: Record<string, string[]> = {};
         relevantBackgrounds.forEach(bg => {
-            const parts = bg.replace(/\.(jpg|png)$/i, '').split('_');
+            const parts = bg.replace(/\.(jpg|png|jpeg|webp)$/i, '').split('_');
             const category = parts[0];
-
-            // [User Request] Simplify: Only use the 2nd classification (Name)
-            // e.g., "City_Street_Day" -> "Street"
-            // "School_Corridor" -> "Corridor"
             const name = parts[1] || 'Default';
+            const detail = parts.slice(2).join('_');
 
             if (!groupedBgs[category]) groupedBgs[category] = [];
-            if (!groupedBgs[category].includes(name)) { // Dedup
-                groupedBgs[category].push(name);
+
+            // Format: "Name" or "Name(Detail)"
+            // check if we already have "Name" entry? 
+            // Better strategy: Group by Name first
+            // But for simple list:
+
+            let entry = name;
+            if (detail) {
+                // If we want detailed output, we should present it clearly
+                // e.g. "Car_DriveRoad", "Car_Limousine"
+                entry = `${name}_${detail}`;
+            }
+
+            // [Optimization] If we have multiple variants, maybe group them?
+            // "Car(DriveRoad, Limousine)"
+            // For now, let's just list distinctive keys to be safe and explicit.
+            // If the user wants "3rd category", explicit is better.
+            // However, simply appending detail might make the list too long.
+            // Let's use the Parenthesis format for variants as it saves tokens on repetitive prefixes.
+
+            // Implementation of Name(Detail, Detail) logic is complex in a single pass.
+            // Let's stick to the User's observation: "Car" vs "CableCar" ambiguity.
+            // Providing "Car_DriveRoad" and "Car_Limousine" resolves it.
+
+            if (!groupedBgs[category].includes(entry)) {
+                groupedBgs[category].push(entry);
             }
         });
 
-        const formattedBgs = Object.entries(groupedBgs)
-            .map(([cat, names]) => `- [${cat}] ${names.join(', ')}`)
-            .join('\n');
+        // Refine the list to group variants: e.g., "Car_DriveRoad", "Car_Limousine" -> "Car(DriveRoad, Limousine)"
+        const formattedBgs = Object.entries(groupedBgs).map(([cat, entries]) => {
+            // 1. Group by Prefix
+            const groups: Record<string, string[]> = {};
+            entries.forEach(e => {
+                const [prefix, ...rest] = e.split('_');
+                if (!groups[prefix]) groups[prefix] = [];
+                if (rest.length > 0) groups[prefix].push(rest.join('_'));
+                else groups[prefix].push(''); // Root item
+            });
+
+            const finalEntries = Object.entries(groups).map(([prefix, variants]) => {
+                const vars = variants.filter(v => v !== '').join(', ');
+                const hasRoot = variants.includes('');
+
+                if (vars) {
+                    return `${prefix}(${vars})`;
+                }
+                return prefix;
+            });
+
+            return `- [${cat}] ${finalEntries.join(', ')}`;
+        }).join('\n');
 
         prompt = prompt.replace('{{AVAILABLE_BACKGROUNDS}}', formattedBgs);
 
