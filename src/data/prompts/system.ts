@@ -166,6 +166,8 @@ ${playerRank !== '일반인' ? `
 
    - **<선택지N>Content**
      - Choices for the user at the end.
+     - **STRICT RULE**: Do NOT include hints, stats, or effects in parentheses (e.g., "(Relationship + 1)" or "(Requires STR)").
+     - Just describe the action simply. Example: \`<선택지1>그녀에게 말을 건다.\` (O) / \`<선택지1>그녀에게 말을 건다(호감도 상승)\` (X)
 
 ### 3. **Response Format (Strict Order)**
    1. **<배경>...**: Only if location changes.

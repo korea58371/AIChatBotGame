@@ -273,29 +273,22 @@ export async function generateSummary(
 
 // [Startup Warmup]
 // Fire-and-forget request to create/warm the cache.
-export async function preloadCache(initialState: any) {
+// [Startup Warmup]
+// Fire-and-forget request to create/warm the cache.
+export async function preloadCache(apiKey: string, initialState: any) {
+    if (!apiKey) return;
     try {
         console.log("[Gemini] Pre-loading cache...");
 
         // 1. Get the Exact Same Static Prompt as normal requests
-        // Need to import PromptManager dynamically or ensure it is available.
-        // Importing here to avoid circular dependency if possible, or use standard import.
         const { PromptManager } = require('./prompt-manager');
         const staticPrompt = PromptManager.getSharedStaticContext(initialState);
 
         // 2. Configure Model
-        // We MUST use the same model as the main Story Model (gemini-1.5-pro-002) to share cache?
-        // Actually, Context Caching is distinct. We just need to CREATE the cache.
-        // But usually Cache is tied to model family? No, it's a resource.
-        // However, we are using standard generateContent with systemInstruction.
-        // This implies NO explicit cache creation (we are relying on Automatic ephemeral caching if prompt is long enough?)
-        // OR are we using the explicit Cache API?
-        // User's previous logs showed "Cached: 0" then "Cached: 36827". This implies standard caching.
-        // Standard caching (Context Caching) works when the prefix matches.
-        // So we just need to send a request with the same systemInstruction.
-
+        // MATCH THE MAIN MODEL: gemini-3-pro-preview
+        const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: 'models/gemini-1.5-pro-002',
+            model: 'gemini-3-pro-preview',
             systemInstruction: staticPrompt,
         }, {
             apiVersion: 'v1beta',
