@@ -1350,10 +1350,10 @@ export default function VisualNovelUI() {
                         }
                         @media (max-aspect-ratio: 16/9) {
                             .visual-container {
-                                /* In portrait/narrow, fill height but cap at 2:3 (150vw) */
+                                /* In portrait/narrow, fill height fully */
                                 aspect-ratio: unset;
                                 height: 100%;
-                                max-height: 150vw; /* 2:3 Ratio (Height = 1.5 * Width) */
+                                width: 100%;
                             }
                         }
                     `}</style>
@@ -1381,7 +1381,7 @@ export default function VisualNovelUI() {
                                 <img
                                     src={getCharUrl(characterExpression)}
                                     alt="Character"
-                                    className="h-full object-contain drop-shadow-2xl"
+                                    className="h-full w-auto max-w-none object-contain drop-shadow-2xl"
                                     onError={(e) => {
                                         e.currentTarget.style.display = 'none';
                                         console.warn(`Failed to load character image: ${getCharUrl(characterExpression)}`);
@@ -2364,7 +2364,7 @@ export default function VisualNovelUI() {
                     <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[30vh]">
                         <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                             {/* Dialogue Control Bar */}
-                            <div className="absolute -top-10 right-0 flex gap-2 z-30">
+                            <div className="absolute -bottom-10 right-0 flex gap-2 z-30 opacity-50 hover:opacity-100 transition-opacity">
                                 <button
                                     className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
                                     onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
@@ -2408,7 +2408,7 @@ export default function VisualNovelUI() {
                                 )}
 
                                 {/* Text Content */}
-                                <div className="text-[36px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
+                                <div className="text-[32px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
                                     {currentSegment.type === 'narration' ? (
                                         <span className="text-gray-300 italic block px-8">
                                             {currentSegment.content}
@@ -2419,16 +2419,11 @@ export default function VisualNovelUI() {
                                         </span>
                                     )}
                                 </div>
-
-                                {/* Continue Indicator */}
-                                <div className="mt-2 animate-bounce text-yellow-500">
-                                    ▼
-                                </div>
                             </div>
                         </div>
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

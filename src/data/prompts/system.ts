@@ -271,10 +271,11 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
        \`<대사>천서윤_기쁨: 그럼 다음에 봐!\`
        \`<떠남>\`
 
+${playerRank !== '일반인' ? `
    - **<시스템팝업>Content**
      - System notifications (Quest, Item, Stats). Keep it concise.
      - **MUST** be followed by a newline and <나레이션> or <대사>.
-
+` : ``}
    - **<문자>Sender_Header: Content**
      - Sender: Name (e.g., 이아라). Header: Time/Status (e.g., 지금).
      - Example: \`<문자>이아라_지금: 오빠 어디야? 😠 빨리 와!\`
@@ -298,8 +299,8 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
    1. **<배경>...**: Only if location changes.
    2. **<문자>/<전화>/<TV뉴스>/<기사>**: Special events (Optional).
    3. **<나레이션> / <대사>**: The main story flow.
-   4. **<시스템팝업>**: If needed.
-   5. **<선택지N>**: Ending choices.
+   ${playerRank !== '일반인' ? `4. **<시스템팝업>**: If needed.` : ``}
+   ${playerRank !== '일반인' ? `5` : `4`}. **<선택지N>**: Ending choices.
 
 ### 3. **Validation Checklist**
    - Did I assume knowledge of a HIDDEN SECRET? -> FAIL. Retry.
