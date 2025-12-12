@@ -1574,6 +1574,24 @@ export default function VisualNovelUI() {
                     </div>
                 </div>
 
+                {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 */}
+                <div className="absolute bottom-10 right-8 flex gap-2 z-50 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
+                    <button
+                        className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
+                        onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
+                    >
+                        <History size={14} />
+                        {t.chatHistory}
+                    </button>
+                    <button
+                        className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
+                        onClick={(e) => { e.stopPropagation(); setShowSaveLoad(true); }}
+                    >
+                        <Save size={14} />
+                        {t.save}
+                    </button>
+                </div>
+
                 {/* Wiki Modal */}
                 <WikiSystem
                     isOpen={showWiki}
@@ -1845,6 +1863,7 @@ export default function VisualNovelUI() {
                                                                                     // 3. Reset Queue
                                                                                     setCurrentSegment(allSegments[sIdx]);
                                                                                     setScriptQueue(allSegments.slice(sIdx + 1));
+                                                                                    useGameStore.getState().setChoices([]); // Clear any active choices
 
                                                                                     // 4. Restore Background if found in previous segments of THIS turn
                                                                                     // (If we crossed a BG tag in this turn, we should ensure it's applied)
@@ -2354,22 +2373,6 @@ export default function VisualNovelUI() {
                     <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[30vh]">
                         <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                             {/* Dialogue Control Bar */}
-                            <div className="absolute -bottom-10 right-0 flex gap-2 z-30 opacity-50 hover:opacity-100 transition-opacity">
-                                <button
-                                    className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
-                                    onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
-                                >
-                                    <History size={14} />
-                                    {t.chatHistory}
-                                </button>
-                                <button
-                                    className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
-                                    onClick={(e) => { e.stopPropagation(); setShowSaveLoad(true); }}
-                                >
-                                    <Save size={14} />
-                                    {t.save}
-                                </button>
-                            </div>
 
                             <div
                                 className="w-full relative flex flex-col items-center cursor-pointer"
@@ -2412,8 +2415,9 @@ export default function VisualNovelUI() {
                             </div>
                         </div>
                     </div>
-                )}
-            </div>
+                )
+                }
+            </div >
         </div >
     );
 }

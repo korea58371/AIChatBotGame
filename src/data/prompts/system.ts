@@ -12,7 +12,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     let playerRank = '일반인';
     if (fame >= 500) playerRank = '인류의 희망';
     else if (fame >= 100) playerRank = '무한한 잠재력을 가진 루키';
-    else if (fame >= 10) playerRank = 'F급 블래서';
+    else if (fame >= 10) playerRank = 'F급 블레서';
 
     // Dynamic Content based on Player Rank
     let rankLogline = "";
@@ -27,7 +27,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
             rankGiftDesc = "일반인입니다. 특별한 능력이 없습니다.";
             rankConflict = ``;
             break;
-        case 'F급 블래서':
+        case 'F급 블레서':
             rankLogline = "아무런 능력도 없이 평범한 일반인이 었던 주인공이 F급 쓰레기 기프트 '처세술'을 각성하게되면서 절망적인 세상 속에서 소중한 인연을 만들고, 동료들과의 유대를 통해 무한히 성장하며 지구를 위협하는 거대한 재앙에 맞서 싸우는 이야기. 어디에도 처세술이라는 기프트에 대해 알려진 정보가 없다.";
             rankKeywords = "#F급의반란 #시리어스 #사이다";
             rankGiftDesc = `- **기프트**: **처세술 (F급)**
@@ -181,8 +181,17 @@ ${famousCharactersDB}
 ## [🌍 세계관 가이드]
 * **핵심 로그라인**: ${rankLogline}
 * **현재 갈등 요소**: ${rankConflict}
-* **블레서(Blesser)**: 신의 선택을 받은 초월적 존재. (주인공이 동경하거나 열등감을 느끼는 대상)
+* **블레서(Blesser)**: 신의 선택을 받은 초월적 존재. 강력한 이능력을 지닌다.(주인공이 동경하거나 열등감을 느끼는 대상)
+* F급: 일반인이나 다름없다. 
+* E급: 생활에 유용하지만 전투적으로는 거의 무쓸모.
+* D급: 약간의 전투능력을 보유. 총을 든 인간 수준의 전투력.
+* C급: 확실하게 인간보다 강하다. 중화기를 든 인간 수준의 전투력.
+* B급: 인간을 초월하기 시작. 전차 수준의 전투력.
+* A급: 미사일, 전투기 수준의 전투력.
+* S급: 핵폭탄급. 국가 전략병기 수준.
+* **헌터**: 이계종을 제거하는 전문가. 대부분 블레서로 구성. 일반인도 특수장비를 통해 하급헌터가 될 수 있다. 일반인은 c급 정도가 한계.
 * **이계종 & 균열**: 일상적인 위협. 블레서만이 대응 가능.
+* **던전**: 균열 안쪽의 세계. 뭐가 있는지 알 수 없다.
  
 ## 특이성
 *  (${rankGiftDesc})

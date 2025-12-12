@@ -15,6 +15,18 @@ export const backgroundMappings: Record<string, string> = {
     "비상계단": "Building_Stairs_Emergency.jpg",
     "옥상": "Building_Rooftop_Garden.jpg",
     "물탱크": "Building_Rooftop_WaterTank.jpg",
+    "고급반지하": "Home_Basement_Luxury.jpg",
+    "리모델링": "Home_Basement_Luxury.jpg",
+    "반지하_밤": "Home_Basement_Night.jpg",
+    "집_밤": "Home_Basement_Night.jpg",
+    "화장실_반지하": "Home_Bathroom_Basement.jpg",
+    "욕실": "Home_Bathroom_Basement.jpg",
+    "한옥": "Home_Hanok_Traditional.jpg",
+    "전통가옥": "Home_Hanok_Traditional.jpg",
+    "드레스룸": "Indoor_DressRoom.jpg",
+    "주방": "Indoor_Kitchen_Open.jpg",
+    "팬트리": "Indoor_Room_Pantry.jpg",
+    "창고": "Indoor_Room_Storage.jpg",
 
     // ==========================================
     // 2. 🏙️ 도시 & 일상 (City & Daily)
@@ -33,6 +45,27 @@ export const backgroundMappings: Record<string, string> = {
     "놀이터": "City_Playground_Old.jpg",
     "한강": "City_Park_Riverside_Night.jpg",
     "공원": "City_Park_Riverside_Night.jpg",
+    "카페": "City_Cafe_Cozy_Day.jpg",
+    "카페_밤": "City_Cafe_Cozy_Night.jpg",
+    "글램핑": "City_GlampingSite.jpg",
+    "캠핑장": "City_GlampingSite.jpg",
+    "캠핑카": "Place_CampingCar.jpg",
+    "버스정류장_비": "City_BusStop_Rain.jpg",
+    "은행": "Place_Bank_Vault.jpg",
+    "금고": "Place_Bank_Vault.jpg",
+    "자동차극장": "Place_DriveIn_Theater.jpg",
+    "분수대": "Place_Fountain_Wish.jpg",
+    "분실물센터": "Place_LostAndFound.jpg",
+    "타로카페": "Place_TarotCafe.jpg",
+    "점집": "Place_TarotCafe.jpg",
+    "박물관": "Place_Museum_Night.jpg",
+    "전시회": "Place_Museum_Night.jpg",
+    "바디프로필": "Place_Studio_BodyProfile.jpg",
+    "수족관": "Place_Aquarium_Night.jpg",
+    "아쿠아리움": "Place_Aquarium_Night.jpg",
+    "식물원": "Place_Botanical_Rain.jpg",
+    "산장": "Place_Cabin_Snow.jpg",
+    "캡슐호텔": "Place_CapsuleHotel.jpg",
 
     // ==========================================
     // 3. ⚔️ 던전 & 판타지 (Dungeon & Fantasy)
@@ -60,6 +93,14 @@ export const backgroundMappings: Record<string, string> = {
     "대성당": "Dungeon_Ruins_Cathedral.jpg",
     "대장간": "Store_Blacksmith_Workshop.jpg", // Updated to map to Store
     "정비소": "Fantasy_Repair_Room.jpg",
+    "시계탑": "Dungeon_ClockTower_Inside.jpg",
+    "폐백화점": "Dungeon_ShoppingMall_Ruined.jpg",
+    "쇼핑몰_폐허": "Dungeon_ShoppingMall_Ruined.jpg",
+    "침묵의도서관": "Dungeon_Library_Silence.jpg",
+    "포자숲": "Dungeon_SporeForest_Giant.jpg",
+    "사막_밤": "Dungeon_Desert_Night.jpg",
+    "그리폰": "Trans_Mount_Griffon.jpg",
+    "몬스터라이딩": "Place_Monster_Riding.jpg",
 
     // ==========================================
     // 4. 🏢 시설 & 기관 (Facility & Organization)
@@ -75,6 +116,20 @@ export const backgroundMappings: Record<string, string> = {
     "병원": "Hospital_Room_VIP.jpg", // Generic Hospital
     "치료실": "Hospital_Room_Therapy.jpg",
     "냉동창고": "Facility_Warehouse_Freezer.jpg",
+    "길드장개인실": "Facility_GuildHouse_MasterRoom.jpg",
+    "마스터룸": "Facility_GuildHouse_MasterRoom.jpg",
+    "장비창고": "Facility_Storage_CombatGear.jpg",
+    "무기고": "Facility_Storage_CombatGear.jpg",
+    "기계실": "Facility_Rooftop_MachineRoom.jpg",
+    "환풍구": "Facility_Rooftop_Vent.jpg",
+    "해체장": "Facility_Monster_Butcher.jpg",
+    "정육점": "Facility_Monster_Butcher.jpg",
+    "고압산소치료실": "Facility_HyperbaricChamber.jpg",
+    "격리실": "Facility_IsolationRoom.jpg",
+    "공사장": "Facility_ConstructionSite_Night.jpg",
+    "공사장_낮": "Facility_ConstructionSite_Day.jpg",
+    "공사장_노을": "Facility_ConstructionSite_Sunset.jpg",
+    "세탁실": "Facility_Wash_Room.jpg",
     "항구": "Facility_Port_Terminal.jpg",
     "연구소": "Facility_Lab_Abandoned.jpg",
     "취조실": "Facility_Room_Interrogation.jpg",
@@ -104,6 +159,21 @@ export const backgroundMappings: Record<string, string> = {
     "방탈출": "Ent_Cafe_RoomEscape.jpg",
     "볼링장": "Ent_Sports_Bowling.jpg",
     "골프장": "Ent_Sports_Golf_Night.jpg",
+    "리조트": "Luxury_Resort_Island.jpg",
+    "휴양지": "Luxury_Resort_Island.jpg",
+    "요트": "Luxury_Resort_Yacht.jpg",
+    "호텔입구": "Luxury_Hotel_Entrance.jpg",
+    "가면무도회": "Luxury_MasqueradeBall.jpg",
+    "파티": "Luxury_MasqueradeBall.jpg",
+    "야구장": "Ent_Sports_Baseball.jpg",
+    "클라이밍": "Ent_Sports_Climbing.jpg",
+    "아이스링크": "Ent_Sports_IceLink.jpg",
+    "테니스장": "Ent_Sports_Tennis.jpg",
+    "요가": "Ent_Sports_Yoga.jpg",
+    "료칸": "Place_Ryokan.jpg",
+    "온천여관": "Place_Ryokan.jpg",
+    "호텔화장실": "Indoor_Restroom_Hotel.jpg",
+    "고급화장실": "Indoor_Restroom_Luxury.jpg",
 
     // ==========================================
     // 6. 🎥 방송 & 미디어 (Media & Studio)
@@ -132,6 +202,11 @@ export const backgroundMappings: Record<string, string> = {
     "헬기장": "Trans_Heliport.jpg",
     "케이블카": "Trans_CableCar.jpg",
     "와이번": "Trans_Monster_Wyvern.jpg",
+    "기차VIP실": "Trans_Train_VipRoom.jpg",
+    "주차장": "Trans_Parking_Lot.jpg",
+    "주차정산소": "Trans_Parking_Booth.jpg",
+    "버스_밤": "Trans_Bus_Inside_Night.jpg",
+    "비행기화장실": "Trans_Plane_Restroom.jpg",
 
     // ==========================================
     // 8. 🚻 공용 공간 (Common & Restroom)
