@@ -20,7 +20,7 @@ export function resolveBackground(tag: string): string {
     // 1. Clean the tag: Remove <배경>, </배경>, whitespace
     const query = tag.replace(/<배경>|<\/배경>/g, '').trim();
 
-    if (!query) return '/assets/backgrounds/Home_Entrance.jpg'; // Fallback if empty
+    if (!query) return '/assets/backgrounds/Default_Fallback.jpg'; // Fallback if empty
 
     console.log(`[BackgroundManager] Resolving: "${query}"`);
 

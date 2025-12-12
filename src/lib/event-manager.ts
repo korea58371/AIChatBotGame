@@ -20,7 +20,10 @@ export class EventManager {
 
             // 2. Evaluate Condition
             try {
-                if (event.condition(state)) {
+                const isConditionMet = event.condition(state);
+                console.log(`[EventManager] Checking ${event.id}: Condition=${isConditionMet} (Turn: ${state.turnCount}, Rank: ${state.playerStats?.playerRank})`);
+
+                if (isConditionMet) {
                     console.log(`[EventManager] Event Triggered: ${event.id}`);
                     return event;
                 }

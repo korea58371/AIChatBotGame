@@ -23,7 +23,7 @@ export const GAME_EVENTS: GameEvent[] = [
             // User request context: "F급 기프트 처세술 각성"
             // Let's make it trigger when the user first gains a specific "Insight" or "Stress"
             // For now, let's trigger it if the user has < 100 gold and Turn > 3 (Desperation)
-            return state.turnCount >= 3 && state.playerStats.rank === '일반인';
+            return state.turnCount >= 3 && state.playerStats.playerRank === '일반인';
         },
         prompt: `
         ## [🔥 EVENT: Awakening of the F-Class]
