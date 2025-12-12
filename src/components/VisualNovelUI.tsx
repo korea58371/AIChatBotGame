@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
-import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages } from '@/app/actions/game';
+import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache } from '@/app/actions/game';
 import { getCharacterImage } from '@/lib/image-mapper';
 import { resolveBackground } from '@/lib/background-manager'; // Added import // Added import
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
@@ -443,6 +443,15 @@ export default function VisualNovelUI() {
                 console.error("Failed to load extra assets:", e);
                 useGameStore.getState().setAvailableAssets(assets.backgrounds, assets.characters, []);
             }
+
+            // [Startup Warmup] Preload Cache in Background
+            try {
+                console.log("[System] Triggering Cache Warmup...");
+                // Pass current state (Initial)
+                serverPreloadCache(useGameStore.getState());
+            } catch (e) {
+                console.error("Warmup Failed:", e);
+            }
         };
         loadAssets();
     }, []);
@@ -837,47 +846,61 @@ export default function VisualNovelUI() {
             }
 
             if (usageMetadata) {
-                // Determine Pricing Scheme based on Model
-                let inputRate = 0;
-                let outputRate = 0;
-                let modelType = 'Legacy/Unknown';
+                // Pricing Calculation with Context Caching
+                // Gemini 1.5 Pro: Input $1.25, Output $5.00, Cached Input $0.3125 (per 1M)
+                // Gemini 1.5 Flash: Input $0.075, Output $0.30, Cached Input $0.01875 (per 1M)
+
+                const cachedTokens = (usageMetadata as any).cachedContentTokenCount || 0;
+                const inputTokens = usageMetadata.promptTokenCount - cachedTokens; // Non-cached input
+                const outputTokens = usageMetadata.candidatesTokenCount;
+
+                let costPer1M_Input = 0;
+                let costPer1M_Cached = 0;
+                let costPer1M_Output = 0;
+                let modelType = 'Pro';
 
                 if (usedModel.includes('flash')) {
-                    // Gemini 1.5/2.5 Flash Pricing (Approx)
-                    // Input: $0.075 per 1M / Output: $0.30 per 1M
-                    inputRate = 0.075;
-                    outputRate = 0.30;
+                    // Flash Pricing
+                    costPer1M_Input = 0.075;
+                    costPer1M_Cached = 0.01875;
+                    costPer1M_Output = 0.30;
                     modelType = 'Flash';
                 } else {
-                    // Gemini 1.5/3 Pro Pricing (Approx)
-                    // Input: $2.00 (<200k) / $4.00 (>200k) per 1M
-                    // Output: $12.00 (<200k) / $18.00 (>200k) per 1M
-                    const isLongContext = usageMetadata.promptTokenCount > 200000;
-                    inputRate = isLongContext ? 4.00 : 2.00;
-                    outputRate = isLongContext ? 18.00 : 12.00;
-                    modelType = isLongContext ? 'Pro (>200k)' : 'Pro (<200k)';
+                    // Pro Pricing (Approx)
+                    costPer1M_Input = 1.25;
+                    costPer1M_Cached = 0.3125; // ~75% discount
+                    costPer1M_Output = 5.00;
+                    modelType = 'Pro';
                 }
 
-                const inputCost = (usageMetadata.promptTokenCount / 1000000) * inputRate;
-                const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * outputRate;
-                const totalCost = inputCost + outputCost;
-                const totalCostKRW = totalCost * 1400;
+                const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
+                const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
+                const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
+                const totalCost = costInput + costCached + costOutput;
+                const totalCostKRW = totalCost * 1450; // Exchange rate
 
-                console.log(`Token Usage (Story - ${usedModel}):`);
-                console.log(`- Input: ${usageMetadata.promptTokenCount} tokens ($${inputCost.toFixed(6)}) [Type: ${modelType}]`);
-                console.log(`- Output: ${usageMetadata.candidatesTokenCount} tokens ($${outputCost.toFixed(6)})`);
-                console.log(`- Total Est. Cost: $${totalCost.toFixed(6)} (approx. ₩${Math.round(totalCostKRW).toLocaleString()})`);
+                // [Verification Log]
+                console.log(`Token Usage (${usedModel}):`);
+                if (cachedTokens > 0) {
+                    console.log(`%c[🔥 CACHE HIT] Saved ${cachedTokens} tokens!`, 'color: #00ff00; font-weight: bold; font-size: 14px;');
+                } else {
+                    console.log(`%c[⚠️ MISS] Full prompt generated (${usageMetadata.promptTokenCount} tokens). Cache may be created now.`, 'color: orange;');
+                }
+                console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
+                console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)}) [SAVED]`);
+                console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
+                console.log(`- Total:     $${totalCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`);
 
-                addToast(`Tokens: In ${usageMetadata.promptTokenCount} / Out ${usageMetadata.candidatesTokenCount}`, 'info');
+                const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
+                addToast(`Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
             }
-
             const segments = parseScript(responseText);
 
             // 2. Generate Logic (Async)
             serverGenerateGameLogic(
                 text,
                 responseText,
-                currentState // Pass full state for context-aware spawning
+                useGameStore.getState() // Pass full state for context-aware spawning
             ).then(logic => {
                 // Log Logic Model Debug Info
                 if (logic) {

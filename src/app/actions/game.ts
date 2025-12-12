@@ -1,6 +1,6 @@
 'use server';
 
-import { generateResponse, generateGameLogic, generateSummary } from '@/lib/gemini';
+import { generateResponse, generateGameLogic, generateSummary, preloadCache } from '@/lib/gemini';
 import { Message } from '@/lib/store';
 
 const API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -23,10 +23,10 @@ export async function serverGenerateResponse(
 export async function serverGenerateGameLogic(
     lastUserMessage: string,
     lastAiResponse: string,
-    currentStats: any
+    gameState: any
 ) {
     if (!API_KEY) return null;
-    return generateGameLogic(API_KEY, lastUserMessage, lastAiResponse, currentStats);
+    return generateGameLogic(API_KEY, lastUserMessage, lastAiResponse, gameState);
 }
 
 export async function serverGenerateSummary(
@@ -61,5 +61,14 @@ export async function getExtraCharacterImages() {
     } catch (error) {
         console.error("Error reading ExtraCharacters:", error);
         return [];
+    }
+}
+
+export async function serverPreloadCache(gameState: any) {
+    if (!API_KEY) return;
+    try {
+        await preloadCache(API_KEY, gameState);
+    } catch (e) {
+        console.error("Server Preload Error:", e);
     }
 }

@@ -200,7 +200,7 @@ export const useGameStore = create<GameState>()(
       turnCount: 0,
       incrementTurnCount: () => set((state) => ({ turnCount: state.turnCount + 1 })),
 
-      currentBackground: '/assets/backgrounds/Default_Fallback.png',
+      currentBackground: '/assets/backgrounds/Default_Fallback.jpg',
       setBackground: (bg) => set({ currentBackground: bg }),
 
       characterExpression: 'normal',

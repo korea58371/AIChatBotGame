@@ -1,4 +1,4 @@
-import { getSystemPromptTemplate } from '../data/prompts/system';
+import { getSystemPromptTemplate, getRankInfo } from '../data/prompts/system';
 import { MOOD_PROMPTS, MoodType } from '@/data/prompts/moods';
 import { RelationshipManager } from './relationship-manager';
 
@@ -64,40 +64,79 @@ interface GameState {
 }
 
 export class PromptManager {
+    static getSharedStaticContext(state: GameState): string {
+        // [CONTEXT CACHING PREFIX]
+        // This section is designed to be STATIC and IDENTICAL across multiple turns and models (Story & Logic).
+        // It contains the heavy reference data (Characters, Backgrounds, World).
+        // By placing this at the very top, we enable Gemini's Context Caching.
+
+        const famousCharactersDB = `
+1. 천서윤 (S급): [국가 영웅/올림푸스 부길드장]. 연예인보다 유명한 현역 최강자.
+2. 주아인 (A급): [아처/양궁 금메달리스트]. 국민적 스포츠 영웅.
+3. 성시아 (S급): [힐러/차기 성녀]. 고귀하고 범접할 수 없는 교단의 상징.
+4. 이아라 (B급): [탑 아이돌/스트리머]. '국민 여동생'이자 블레서 방송계의 1인자.
+5. 한여름 (S급): [기상캐스터/마녀]. 날씨 조작 능력. 뉴스 시청률 보증수표.
+6. 앨리스 (S급): [100만 유튜버/버튜버]. 천재 프로게이머. 실물은 베일에 싸임.
+7. 신세아 (S급): [미래 길드 실소유주]. 돈을 물 쓰듯 하는 재벌 3세.
+8. 백련화 (은퇴 S급): [아카데미 교관/전 검성]. 현재는 호랑이 선생님.
+9. 사이온지 미유키 (랭킹 1위/일본/S급): [검희]. 교토 명문가 당주.
+10. 리메이링 (랭킹 1위/중국/S급): [천하제일인]. 대륙의 검후.
+11. 아나스타샤 (S급/러시아): [용병]. 한국에 정착한 최강의 용병.
+`;
+
+        const availableChars = PromptManager.getAvailableCharacters(state); // Usually 20~30KB
+        const availableExtra = PromptManager.getAvailableExtraCharacters(state) || "None";
+        const availableBackgrounds = PromptManager.getAvailableBackgrounds(state); // Heavy list
+
+        return `
+# [SHARED STATIC CONTEXT]
+The following information is constant reference data.
+
+## [👥 고정된 유명인 DB (변경 불가)]
+아래 인물들은 세계관 내의 '상수'입니다. 이들의 이름이 언급되거나 등장할 경우, **반드시 아래 설정(등급/직업)을 유지**해야 합니다.
+(주인공은 이들을 미디어로만 접해 알고 있으며, 개인적 친분은 없는 상태입니다.)
+${famousCharactersDB}
+
+---
+
+### [📚 Reference Data (Context Caching Optimized)]
+**1. Available Characters (추가 등장 가능 인물)**
+⚠️ **WARNING**: When introducing a new character from this list, YOU MUST STRICTLY ADHERE to the provided [Appearance] details (Hair, Eyes, Impression).
+- DO NOT invent or change their hair color/eye color.
+- If appearance is not specified, describe them vaguely (e.g., "A mysterious aura") rather than making up specifics.
+${availableChars}
+
+**2. Available Extra Characters (엑스트라/단역)**
+${availableExtra}
+
+**3. Available Backgrounds (사용 가능 배경)**
+# Background Output Rule
+- When the location changes, output the \`<배경>\` tag with an **English Keyword**.
+- Do not use Korean for background tags.
+- Format: \`<배경>Category_Location_Detail\`
+- Examples:
+  - \`<배경>Home_Basement\` (O)
+  - \`<배경>Trans_Car_DriveRoad\` (O) - If 'Car(DriveRoad)' is listed, append the detail with underscore.
+  - \`<배경>반지하\` (X) - DO NOT use Korean.
+${availableBackgrounds}
+
+**4. Character Emotions (사용 가능 감정)**
+# Character Dialogue Rules
+1. Format: \`<대사>CharacterName_Emotion: Dialogue Content\`
+2. Name must be Korean (e.g. 천서윤).
+3. Emotion must be one of:
+   - 자신감, 의기양양, 진지함, 짜증, 삐짐, 혐오, 고민, 박장대소, 안도, 놀람, 부끄러움, 결의, 거친호흡, 글썽거림, 고통, 공포, 오열, 수줍음, 지침, 폭발직전
+
+---
+`;
+    }
+
     static generateSystemPrompt(state: GameState, language: 'ko' | 'en' | null, userMessage?: string): string {
+        // [NOW DYNAMIC ONLY]
+        // The static part is handled separately by getSharedStaticContext
         let prompt = getSystemPromptTemplate(state, language);
 
-        // [Requirement] Prepend Summarized Memory (Long-term Memory) to System Prompt
-        // This ensures the model prioritizes past context.
-        const memorySection = state.scenarioSummary
-            ? `\n[Previous Story Summary]\n${state.scenarioSummary}\n\n`
-            : "";
 
-        prompt = memorySection + prompt;
-
-        // Inject Player Name
-        const playerName = state.playerName || "주인공";
-        prompt = prompt.replace(/{{PLAYER_NAME}}/g, playerName);
-
-        // 0. Player Stats Injection
-        const stats = state.playerStats;
-        const personality = stats.personality || {};
-        const inventoryList = state.inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ') || "None";
-
-        const playerStatus = `
-- Name: ${playerName}
-- Level: ${stats.level} (EXP: ${stats.exp})
-- Fame: ${stats.fame || 0}
-- HP: ${stats.hp}/${stats.maxHp}, MP: ${stats.mp}/${stats.maxMp}
-- Gold: ${stats.gold}
-- Stats: STR ${stats.str}, AGI ${stats.agi}, INT ${stats.int}, VIT ${stats.vit}, LUK ${stats.luk}
-- Personality: Selfishness ${personality.selfishness}, Heroism ${personality.heroism}, Morality ${personality.morality}
-- Inventory: ${inventoryList}
-        `.trim();
-
-
-
-        // 1. World Info (Location)
         const worldData = state.worldData || { locations: {}, items: {} };
         const locData = worldData.locations[state.currentLocation];
 
@@ -217,115 +256,24 @@ export class PromptManager {
 
         prompt = prompt.replace('{{CHARACTER_INFO}}', charInfos || "No other characters are currently present.");
 
-        // 6. Available Characters Summary (Context-Aware)
-        const availableChars = PromptManager.getSpawnCandidates(state);
+        // 6. Active Character Info
+        const activeCharInfo = PromptManager.getActiveCharacterProps(state);
+        prompt = prompt.replace('{{CHARACTER_INFO}}', activeCharInfo);
 
-        prompt = prompt.replace('{{AVAILABLE_CHARACTERS}}', availableChars || "None");
+        // 7. Images / Extra / Backgrounds -> Already in Static Context
+        // We just need to ensure placeholders are handled if they still exist in the template
+        // But we removed them from system.ts template, so we don't need to replace them here.
 
-        // 7. Context-Aware Background Injection (FULL LIST REQUESTED BY USER)
-        // User requested to show ALL backgrounds to avoid missing Dungeon/Specific ones.
-        const relevantBackgrounds = state.availableBackgrounds || [];
+        // However, we added {{AVAILABLE_CHARACTER_IMAGES}} for rule?
+        // Let's check system.ts. We REMOVED Reference Data.
+        // So we don't need to inject them here.
 
-        // Group by Category to save tokens and improve AI understanding
-        const groupedBgs: Record<string, string[]> = {};
-        relevantBackgrounds.forEach(bg => {
-            const parts = bg.replace(/\.(jpg|png|jpeg|webp)$/i, '').split('_');
-            const category = parts[0];
-            const name = parts[1] || 'Default';
-            const detail = parts.slice(2).join('_');
-
-            if (!groupedBgs[category]) groupedBgs[category] = [];
-
-            // Format: "Name" or "Name(Detail)"
-            // check if we already have "Name" entry? 
-            // Better strategy: Group by Name first
-            // But for simple list:
-
-            let entry = name;
-            if (detail) {
-                // If we want detailed output, we should present it clearly
-                // e.g. "Car_DriveRoad", "Car_Limousine"
-                entry = `${name}_${detail}`;
-            }
-
-            // [Optimization] If we have multiple variants, maybe group them?
-            // "Car(DriveRoad, Limousine)"
-            // For now, let's just list distinctive keys to be safe and explicit.
-            // If the user wants "3rd category", explicit is better.
-            // However, simply appending detail might make the list too long.
-            // Let's use the Parenthesis format for variants as it saves tokens on repetitive prefixes.
-
-            // Implementation of Name(Detail, Detail) logic is complex in a single pass.
-            // Let's stick to the User's observation: "Car" vs "CableCar" ambiguity.
-            // Providing "Car_DriveRoad" and "Car_Limousine" resolves it.
-
-            if (!groupedBgs[category].includes(entry)) {
-                groupedBgs[category].push(entry);
-            }
-        });
-
-        // Refine the list to group variants: e.g., "Car_DriveRoad", "Car_Limousine" -> "Car(DriveRoad, Limousine)"
-        const formattedBgs = Object.entries(groupedBgs).map(([cat, entries]) => {
-            // 1. Group by Prefix
-            const groups: Record<string, string[]> = {};
-            entries.forEach(e => {
-                const [prefix, ...rest] = e.split('_');
-                if (!groups[prefix]) groups[prefix] = [];
-                if (rest.length > 0) groups[prefix].push(rest.join('_'));
-                else groups[prefix].push(''); // Root item
-            });
-
-            const finalEntries = Object.entries(groups).map(([prefix, variants]) => {
-                const vars = variants.filter(v => v !== '').join(', ');
-                const hasRoot = variants.includes('');
-
-                if (vars) {
-                    return `${prefix}(${vars})`;
-                }
-                return prefix;
-            });
-
-            return `- [${cat}] ${finalEntries.join(', ')}`;
-        }).join('\n');
-
-        prompt = prompt.replace('{{AVAILABLE_BACKGROUNDS}}', formattedBgs);
-
-        // 8. Available Character Images Injection (Optimized)
-        // Instead of listing all files, we provide a rule.
-        const availableNames = Object.values(charsData)
-            .map(c => c.name)
-            .filter(Boolean)
-            .join(', ');
-
-        const imageRule = `
-**IMAGE RULE**:
-- Character images follow the format: \`[Name]_[Emotion].png\`
-- Standard emotions: \`기본\`, \`기쁨\`, \`슬픔\`, \`분노\`, \`애정당황\`.
-- Example: If Name is '민소희', use '민소희_기쁨' for happy expression.
-- Available Character Names: ${availableNames || "None"}
-- For the protagonist '${playerName}', ALWAYS use '주인공_[Emotion]'.
-`.trim();
-
-        prompt = prompt.replace('{{AVAILABLE_CHARACTER_IMAGES}}', imageRule);
-
-        // 10. Available Extra Character Images Injection
-        // Load directly from the generated map to ensure availability on server-side
-        let extraNamesStr = "None";
-        try {
-            const extraMap = require('../../public/assets/ExtraCharacters/extra_map.json');
-            const extraNames = Object.keys(extraMap);
-            if (extraNames.length > 0) {
-                extraNamesStr = extraNames.join(', ');
-            }
-        } catch (e) {
-            console.error("Failed to load extra_map.json", e);
-        }
-
-        const extraImages = state.availableExtraImages && state.availableExtraImages.length > 0
-            ? state.availableExtraImages.join(', ')
-            : extraNamesStr; // Fallback to loaded map if state is empty
-
-        prompt = prompt.replace('{{AVAILABLE_EXTRA_CHARACTERS}}', extraImages);
+        /* [MOVED TO STATIC CONTEXT]
+        - Available Characters
+        - Available Backgrounds
+        - Available Extra Characters
+        - Character Image Rules
+        */
 
         // 9. Mood Injection
         const currentMood = state.currentMood || 'daily';
@@ -541,5 +489,169 @@ ${spawnCandidates || "None"}
 
         // Limit to prevent overflow, but ensure we have enough variety
         return relevant.slice(0, 50);
+    }
+    static getAvailableCharacters(state: GameState): string {
+        // [CONTEXT CACHING CRITICAL]
+        // This function MUST return a large amount of text (>32k tokens total with other parts)
+        // to trigger Gemini's Context Caching.
+        // We iterate ALL characters in the database and provide detailed specs.
+
+        const charsData = state.characterData || {};
+        const allChars = Object.values(charsData);
+
+        if (allChars.length === 0) return "No character data available.";
+
+        return allChars.map((c: any) => {
+            let info = `### ${c.name}`;
+            if (c.role) info += ` (${c.role})`;
+
+            // Core Identity
+            if (c.title) info += `\n- Title: ${c.title}`;
+            if (c.quote) info += `\n- Quote: "${c.quote}"`;
+
+            // Appearance (Detailed for Visuals)
+            if (c.appearance) {
+                info += `\n- Appearance: ${JSON.stringify(c.appearance)}`;
+            } else if (c.description) {
+                info += `\n- Appearance/Desc: ${c.description}`;
+            }
+
+            // Personality & Traits
+            if (c.personality) {
+                info += `\n- Personality: ${typeof c.personality === 'string' ? c.personality : JSON.stringify(c.personality)}`;
+            }
+            if (c.preferences) info += `\n- Preferences: ${JSON.stringify(c.preferences)}`;
+            if (c.job) info += `\n- Job/Abilities: ${JSON.stringify(c.job)}`;
+
+            // Relationship Info (Static Base)
+            if (c.relationshipInfo) {
+                info += `\n- Social Specs: CallSign=${c.relationshipInfo.callSign}, Tone=${c.relationshipInfo.speechStyle}`;
+            }
+
+            // Secrets (Marked as Hidden)
+            // We include them in the cache so the model "knows" the world's truth, 
+            // but we instruct it to keep them hidden from the player until discovered.
+            if (c.secret) {
+                const secretStr = typeof c.secret === 'string' ? c.secret : JSON.stringify(c.secret);
+                info += `\n- [HIDDEN TRUTH]: ${secretStr} (Player Unknown)`;
+            }
+
+            return info;
+        }).join('\n\n');
+    }
+
+    static getAvailableExtraCharacters(state: GameState): string {
+        // Load directly from the generated map to ensure availability on server-side
+        let extraNamesStr = "None";
+        try {
+            const extraMap = require('../../public/assets/ExtraCharacters/extra_map.json');
+            const extraNames = Object.keys(extraMap);
+            if (extraNames.length > 0) {
+                extraNamesStr = extraNames.join(', ');
+            }
+        } catch (e) {
+            console.error("Failed to load extra_map.json", e);
+        }
+
+        const extraImages = state.availableExtraImages && state.availableExtraImages.length > 0
+            ? state.availableExtraImages.join(', ')
+            : extraNamesStr; // Fallback to loaded map if state is empty
+
+        return extraImages;
+    }
+
+    static getAvailableBackgrounds(state: GameState): string {
+        const relevantBackgrounds = state.availableBackgrounds || [];
+
+        // Group by Category to save tokens and improve AI understanding
+        const groupedBgs: Record<string, string[]> = {};
+        relevantBackgrounds.forEach((bg: string) => {
+            const parts = bg.replace(/\.(jpg|png|jpeg|webp)$/i, '').split('_');
+            const category = parts[0];
+            const name = parts[1] || 'Default';
+            const detail = parts.slice(2).join('_');
+
+            if (!groupedBgs[category]) groupedBgs[category] = [];
+
+            let entry = name;
+            if (detail) {
+                entry = `${name}_${detail}`;
+            }
+
+            if (!groupedBgs[category].includes(entry)) {
+                groupedBgs[category].push(entry);
+            }
+        });
+
+        // Refine the list to group variants
+        return Object.entries(groupedBgs).map(([cat, entries]) => {
+            const groups: Record<string, string[]> = {};
+            entries.forEach(e => {
+                const [prefix, ...rest] = e.split('_');
+                if (!groups[prefix]) groups[prefix] = [];
+                if (rest.length > 0) groups[prefix].push(rest.join('_'));
+                else groups[prefix].push(''); // Root item
+            });
+
+            const finalEntries = Object.entries(groups).map(([prefix, variants]) => {
+                const vars = variants.filter(v => v !== '').join(', ');
+                if (vars) {
+                    return `${prefix}(${vars})`;
+                }
+                return prefix;
+            });
+
+            return `- [${cat}] ${finalEntries.join(', ')}`;
+        }).join('\n');
+    }
+
+    static getActiveCharacterProps(state: GameState): string {
+        const charsData = state.characterData || {};
+        // Normalization
+        const activeCharIds = new Set(state.activeCharacters.map(id => id.toLowerCase()));
+
+        // Helper to find Active Chars from State (already logic in generateSystemPrompt, moving here for reuse)
+        // Actually, let's keep it simple. `state.activeCharacters` should be the source of truth from Logic Model.
+        // But generateSystemPrompt had extra logic to "detect" characters from context.
+        // We will move that detection logic to here if we want `activeCharInfo` to be robust.
+        // For now, let's just format the IDs currently in `state.activeCharacters`.
+
+        const charInfos = Array.from(activeCharIds).map(charId => {
+            const char = charsData[charId];
+            if (!char) return null;
+
+            // [OPTIMIZED DYNAMIC CONTEXT]
+            // Static info (Profile, Appearance, Job) is already in the Shared Static Context.
+            // Here we only provide "Who is here" and "Active State".
+
+            let charInfo = `### [ACTIVE] ${char.name} (${char.role || 'Unknown'})`;
+
+            // 1. Current Context / Status
+            if (char.default_expression) charInfo += `\n- Status: ${char.default_expression}`;
+
+            // 2. Relationship Pacing (Dynamic)
+            const relScore = state.playerStats.relationships?.[charId] || 0;
+            const relationshipInstructions = RelationshipManager.getCharacterInstructions(char.name, relScore);
+            charInfo += `\n- Relation: ${relationshipInstructions.replace(/\n/g, ' ')}`; // Inline for compactness
+
+            // 3. Memories (Dynamic)
+            if (char.memories && char.memories.length > 0) {
+                charInfo += `\n- Recent Memories: ${char.memories.join(' / ')}`;
+            }
+
+            // 4. Discovered Secrets (Dynamic - Player Knows)
+            if (char.discoveredSecrets && char.discoveredSecrets.length > 0) {
+                charInfo += `\n- [Player Knows]: ${char.discoveredSecrets.join(' / ')}`;
+            }
+
+            // 5. Hidden Secrets (Dynamic Context - Player DOES NOT Know)
+            // We usually don't need to repeat this if it's in Static, BUT if secrets unlock dynamically, we might need logic.
+            // For now, assume Static holds the "Truth". If a secret is *revealed*, it moves to discoveredSecrets.
+            // So we can omit the hidden block here to save space, relying on Static Context for the "Truth" reference.
+
+            return charInfo;
+        }).filter(Boolean).join('\n\n');
+
+        return charInfos || "No other characters are currently present.";
     }
 }

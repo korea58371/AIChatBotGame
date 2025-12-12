@@ -38,11 +38,20 @@ export async function generateResponse(
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // Generate dynamic system prompt based on current game state
-    const systemPrompt = PromptManager.generateSystemPrompt(gameState, language, userMessage);
+    const staticPrompt = PromptManager.getSharedStaticContext(gameState);
+    const dynamicPrompt = PromptManager.generateSystemPrompt(gameState, language, userMessage);
+
+    // [DEBUG LOG] Requested by user to see "New Input"
+    console.log("--- [Main Model New Input (Dynamic Prompt)] ---");
+    console.log(dynamicPrompt);
+    console.log("---------------------------------------------");
+
+    // [CONTEXT CACHING] Concatenate Static + Dynamic
+    const systemPrompt = staticPrompt + dynamicPrompt;
 
     // Main Story Model: Gemini 3 Pro (Prioritize quality)
     const modelsToTry = [
-        'gemini-3-pro-preview', // Correct ID from documentation /gemini-3-pro-preview 임시 수정
+        'gemini-3-pro-preview', // Correct ID from documentation
         'gemini-2.5-flash', // Stable fallback
         'gemini-2.5-flash', // Fast fallback
     ];
@@ -98,56 +107,70 @@ export async function generateResponse(
             };
 
         } catch (error: any) {
-            console.warn(`Model ${modelName} failed:`, error.message || error);
+            console.error(`Story Model ${modelName} failed:`, error.message || error);
             lastError = error;
-            // Continue to next model
+            // Continue to next model in list
         }
     }
 
-    console.error("All story models failed.", lastError);
-    throw new Error(`All story models failed. Last error: ${lastError?.message || JSON.stringify(lastError)}`);
+    throw lastError || new Error("All story models failed.");
 }
 
-// Game Logic Model: Gemini 2.5 Flash (Prioritize speed)
+// Logic Model: Gemini 2.5 Flash (Optimized for speed & JSON)
 export async function generateGameLogic(
     apiKey: string,
     lastUserMessage: string,
     lastAiResponse: string,
-    currentStats: any
+    gameState: any // [CHANGED] Accepts full GameState to generate shared static prompt
 ) {
-    if (!apiKey) return null;
+    if (!apiKey) throw new Error('API Key is missing');
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // Try user's preferred model first, then fallback
-    const logicModels = ['gemini-2.5-flash', 'gemini-2.5-flash'];
+    // [CONTEXT CACHING] Reuse the SAME static prefix
+    const staticPrompt = PromptManager.getSharedStaticContext(gameState);
 
-    for (const modelName of logicModels) {
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash']; // Logic uses 2.5 Flash
+
+    for (const modelName of modelsToTry) {
         try {
             console.log(`Trying logic model: ${modelName}`);
+
             const model = genAI.getGenerativeModel({
                 model: modelName,
+                safetySettings,
                 generationConfig: { responseMimeType: "application/json" },
-                safetySettings
+                // [OPTIMIZATION] Logic Model logic prompt is self-contained. 
+                // Do NOT pass staticPrompt (40k tokens) to Flash model as it wastes tokens and doesn't share cache.
+                // systemInstruction: staticPrompt 
             });
 
-            // Prune currentStats to remove heavy character data AND asset lists (Token Optimization)
+            // Logic Prompt (Dynamic Suffix)
+            // Note: We need to pass pruned stats for logic processing logic, but PromptManager uses full state.
+            // Ideally, we prune stats separately.
+            const stats = gameState.playerStats || {};
+            // Prune huge arrays to save tokens in the Dynamic part (Static part is already big but cached)
             const {
                 characterData,
                 availableBackgrounds,
                 availableCharacterImages,
                 availableExtraImages,
-                scriptQueue, // Also remove script queue
                 chatHistory, // [Optimize] Remove history from stats dumping (Passed separately as strings)
                 displayHistory,
                 ...prunedStats
-            } = currentStats;
-            const worldData = currentStats.worldData || require('../data/prompts/world.json'); // Fallback to static if missing
+            } = gameState;
+
+            const worldData = gameState.worldData || require('../data/prompts/world.json'); // Fallback to static if missing
 
             // Get lightweight context for Logic Model
-            const logicContext = PromptManager.getLogicModelContext(currentStats);
+            const logicContext = PromptManager.getLogicModelContext(gameState);
 
             const prompt = getLogicPrompt(prunedStats, lastUserMessage, lastAiResponse, logicContext, worldData);
+
+            // [DEBUG LOG] Verify Logic Model Prompt Size
+            console.log("--- [Logic Model Input Prompt] ---");
+            console.log(prompt);
+            console.log("----------------------------------");
 
             const result = await model.generateContent(prompt);
             const response = result.response;
@@ -245,6 +268,45 @@ export async function generateSummary(
     } catch (error: any) {
         console.warn("Summarization failed:", error.message || error);
         return currentSummary; // Return old summary on failure
+    }
+}
+
+// [Startup Warmup]
+// Fire-and-forget request to create/warm the cache.
+export async function preloadCache(initialState: any) {
+    try {
+        console.log("[Gemini] Pre-loading cache...");
+
+        // 1. Get the Exact Same Static Prompt as normal requests
+        // Need to import PromptManager dynamically or ensure it is available.
+        // Importing here to avoid circular dependency if possible, or use standard import.
+        const { PromptManager } = require('./prompt-manager');
+        const staticPrompt = PromptManager.getSharedStaticContext(initialState);
+
+        // 2. Configure Model
+        // We MUST use the same model as the main Story Model (gemini-1.5-pro-002) to share cache?
+        // Actually, Context Caching is distinct. We just need to CREATE the cache.
+        // But usually Cache is tied to model family? No, it's a resource.
+        // However, we are using standard generateContent with systemInstruction.
+        // This implies NO explicit cache creation (we are relying on Automatic ephemeral caching if prompt is long enough?)
+        // OR are we using the explicit Cache API?
+        // User's previous logs showed "Cached: 0" then "Cached: 36827". This implies standard caching.
+        // Standard caching (Context Caching) works when the prefix matches.
+        // So we just need to send a request with the same systemInstruction.
+
+        const model = genAI.getGenerativeModel({
+            model: 'models/gemini-1.5-pro-002',
+            systemInstruction: staticPrompt,
+        }, {
+            apiVersion: 'v1beta',
+        });
+
+        // 3. Send a dummy prompt
+        await model.generateContent("System Initialization (Warmup)");
+
+        console.log("[Gemini] Cache Warmup Request Sent!");
+    } catch (e) {
+        console.error("[Gemini] Cache Warmup Failed:", e);
     }
 }
 

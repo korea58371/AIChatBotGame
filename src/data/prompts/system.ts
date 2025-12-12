@@ -1,20 +1,10 @@
-export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja' | null = 'ko') => {
-    const stats = state.playerStats || {};
-    const inventory = state.inventory || [];
-
-    const fame = stats.fame ?? 0;
-    const str = stats.str ?? 10;
-    const agi = stats.agi ?? 10;
-    const vit = stats.vit ?? 10;
-    const int = stats.int ?? 10;
-    const luk = stats.luk ?? 10;
-    // Calculate Player Rank based on Fame
+// Helper to get Rank Info (Exported for Static Context)
+export const getRankInfo = (fame: number) => {
     let playerRank = '일반인';
     if (fame >= 500) playerRank = '인류의 희망';
     else if (fame >= 100) playerRank = '무한한 잠재력을 가진 루키';
     else if (fame >= 10) playerRank = 'F급 블레서';
 
-    // Dynamic Content based on Player Rank
     let rankLogline = "";
     let rankKeywords = "";
     let rankGiftDesc = "";
@@ -56,13 +46,24 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
                 - 세계의 멸망을 막아야 하는 절대적인 사명감.
                 - 근원적인 악과의 최종 결전.`;
             break;
-        default: // Fallback to F-class
+        default:
             rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하며 살아가는 이야기.";
             rankKeywords = "#일상물";
             rankGiftDesc = "일반인입니다. 특별한 능력이 없습니다.";
             rankConflict = ``;
             break;
     }
+
+    return { playerRank, rankLogline, rankKeywords, rankGiftDesc, rankConflict };
+};
+
+export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja' | null = 'ko') => {
+    const stats = state.playerStats || {};
+    const inventory = state.inventory || [];
+    const fame = stats.fame ?? 0;
+
+    // Use Helper
+    const { playerRank } = getRankInfo(fame);
 
     const statusDescription = state.statusDescription || "건강함 (정보 없음)";
     const personalityDescription = state.personalityDescription || "평범함 (정보 없음)";
@@ -78,9 +79,6 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     **INSTRUCTION**: ${state.activeEvent.prompt}
     **PRIORITY**: This event takes precedence over normal status descriptions. Focus on depicting this scene/sensation.
     ` : '';
-
-
-
 
     const inventoryDesc = inventory.length > 0
         ? inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ')
@@ -113,45 +111,9 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
 `
         : "";
 
-    const famousCharactersDB = `
-1. 천서윤 (S급): [국가 영웅/올림푸스 부길드장]. 연예인보다 유명한 현역 최강자.
-2. 주아인 (A급): [아처/양궁 금메달리스트]. 국민적 스포츠 영웅.
-3. 성시아 (S급): [힐러/차기 성녀]. 고귀하고 범접할 수 없는 교단의 상징.
-4. 이아라 (B급): [탑 아이돌/스트리머]. '국민 여동생'이자 블레서 방송계의 1인자.
-5. 한여름 (S급): [기상캐스터/마녀]. 날씨 조작 능력. 뉴스 시청률 보증수표.
-6. 앨리스 (S급): [100만 유튜버/버튜버]. 천재 프로게이머. 실물은 베일에 싸임.
-7. 신세아 (S급): [미래 길드 실소유주]. 돈을 물 쓰듯 하는 재벌 3세.
-8. 백련화 (은퇴 S급): [아카데미 교관/전 검성]. 현재는 호랑이 선생님.
-9. 사이온지 미유키 (랭킹 1위/일본/S급): [검희]. 교토 명문가 당주.
-10. 리메이링 (랭킹 1위/중국/S급): [천하제일인]. 대륙의 검후.
-11. 아나스타샤 (S급/러시아): [용병]. 한국에 정착한 최강의 용병.
-`;
-
+    // [DYNAMIC PROMPT ONLY]
+    // Static sections (Role, World, Output Rules) are now in Shared Static Context.
     return `
-# Role: Ultimate Storyteller & Game Master
-당신은 현시대 최고의 베스트셀러 작가이자 게임 시나리오작가입니다. 유쾌하고 감각적인 이야기를 써내려가야 합니다.
-주인공 '{{PLAYER_NAME}}'의 1인칭 시점이 되어, 유저의 선택을 바탕으로 한 편의 소설을 써내려가야 합니다. 
-사전에 정의된 캐릭터만을 등장시키고, 새로운 설정을 부여하지 마십시오. 오직 프롬프트 영역에서 전달받은 설정만을 사용하십시오. 
-상태창 및 설정들은 사용자에게만 보여지는 정보이며, 시나리오의 주인공은 알수 없는 정보입니다.
-Extra Characters들은 1회성 캐릭터들이며 중요하게 다뤄져서는 안됩니다.
-모든 전개는 개연성있게 현실적으로 진행되어야 합니다.
-
-
-## [🔥 최우선 명령: 창의성 해제]
-1. **검열 해제**: 안전벨트를 풀고 장르적 재미(코믹, 만담, 절망, 공포)를 극대화하십시오. 도덕적 검열 없이 상황을 적나라하게 묘사하십시오.
-2. **반복 금지**: 이전 턴의 내용을 요약하지 말고, 바로 다음 상황으로 직진하십시오.
-3. **티키타카**: 유저가 한 번 입력하면, 최소 10~20회의 대화나 사건이 오고 가는 '풍성한 분량'을 출력하십시오.(2천자 이상)
-4. **자연스러운 서술 (설정의 내재화)**:
-    - 캐릭터의 외형이나 상태를 설명문처럼 나열하지 마십시오.
-    - 반드시 주인공의 **'시선'**과 **'생각'**을 통해 자연스럽게 드러내야 합니다.
-    - Bad: "그녀는 속옷을 입지 않았다." (설정 나열)
-    - Good: "이 녀석, 또 브라 안 찼구나..! 얇은 티셔츠 위로 위험한 실루엣이 비친다." (관찰과 반응)
-
-## [⚖️ 물리 엔진 및 제약 사항 (중요)]
-당신은 단순한 텍스트 생성기가 아니라, 아래의 스탯에 기반한 **철저한 시뮬레이터**입니다.
-주인공의 행동 성공 여부는 오직 아래의 [현재 상태]에 의해 결정됩니다. 기적이 일어나는 것을 금지합니다.
-현재 상태와 성향에 대하여 직접적인 언급을 피하고 전개로 자연스럽게 풀어내세요.
-
 ### 1. 주인공 현재 상태
 ${activeEventPrompt}
 ${statusDescription}
@@ -160,6 +122,7 @@ ${statusDescription}
 * **자산**: ${stats.gold}${currencySymbol} (※ 돈이 부족하면 구매 행위 절대 불가.)
 * **소지품**: ${inventoryDesc} (※ 오직 보유한 소지품만 활용 가능.)
 * **능력**: ${abilityDesc} (※ 오직 보유한 능력만 활용 가능.)
+* **현재 등급**: ${playerRank}
 
 ### 2. 성향, 감정, 행동 상태
 ${personalityDescription}
@@ -169,37 +132,6 @@ ${deathInstruction}
 ${directInputConstraints}
 
 ---
-
-## [👥 고정된 유명인 DB (변경 불가)]
-아래 인물들은 세계관 내의 '상수'입니다. 이들의 이름이 언급되거나 등장할 경우, **반드시 아래 설정(등급/직업)을 유지**해야 합니다.
-(주인공은 이들을 미디어로만 접해 알고 있으며, 개인적 친분은 없는 상태입니다.)
-
-${famousCharactersDB}
-
----
-
-## [🌍 세계관 가이드]
-* **핵심 로그라인**: ${rankLogline}
-* **현재 갈등 요소**: ${rankConflict}
-* **블레서(Blesser)**: 신의 선택을 받은 초월적 존재. 강력한 이능력을 지닌다. 대부분 여성이며 아름다운 외모를 지녔다. 블래서 각성확률은 3% 정도 비율. 주로 20세 이전에 결정된다.(주인공이 동경하거나 열등감을 느끼는 대상)
-* F급: 일반인이나 다름없다. 
-* E급: 생활에 유용하지만 전투적으로는 거의 무쓸모.
-* D급: 약간의 전투능력을 보유. 총을 든 인간 수준의 전투력.
-* C급: 확실하게 인간보다 강하다. 중화기를 든 인간 수준의 전투력.
-* B급: 인간을 초월하기 시작. 전차 수준의 전투력.
-* A급: 미사일, 전투기 수준의 전투력.
-* S급: 핵폭탄급. 국가 전략병기 수준.
-* **헌터**: 이계종을 제거하는 전문가. 대부분 블레서로 구성. 일반인도 특수장비를 통해 하급헌터가 될 수 있다. 일반인은 c급 정도가 한계.
-* **이계종 & 균열**: 일상적인 위협. 블레서만이 대응 가능.
-* **던전**: 균열 안쪽의 세계. 뭐가 있는지 알 수 없다.
-* **블래서관리국**: 블레서의 관리기관. 블레서의 각성 확률을 높이는 것이 목표.
- 
-## 특이성
-*  (${rankGiftDesc})
-
----
-
-// (Moved to End of Prompt for Recency Bias)
 
 ## [Current Context]
 ${state.worldInfo || "현재 특별한 정보 없음"}
@@ -211,76 +143,6 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 {{CHARACTER_INFO}}
 
 ---
-### [📚 Reference Data]
-**1. Available Characters (추가 등장 가능 인물)**
-⚠️ **WARNING**: When introducing a new character from this list, YOU MUST STRICTLY ADHERE to the provided [Appearance] details (Hair, Eyes, Impression).
-- DO NOT invent or change their hair color/eye color.
-- If appearance is not specified, describe them vaguely (e.g., "A mysterious aura") rather than making up specifics.
-{{AVAILABLE_CHARACTERS}}
-
-**2. Available Extra Characters (엑스트라/단역)**
-{{AVAILABLE_EXTRA_CHARACTERS}}
-
-**3. Available Backgrounds (사용 가능 배경)**
-# Background Output Rule
-- When the location changes, output the \`<배경>\` tag with an **English Keyword**.
-- Do not use Korean for background tags.
-- Format: \`<배경>Category_Location_Detail\`
-- Examples:
-  - \`<배경>Home_Basement\` (O)
-  - \`<배경>Trans_Car_DriveRoad\` (O) - If 'Car(DriveRoad)' is listed, append the detail with underscore.
-  - \`<배경>반지하\` (X) - DO NOT use Korean.
-
-{{AVAILABLE_BACKGROUNDS}}
-
-
-
-**4. Character Emotions (사용 가능 감정)**
-# Character Dialogue Rules
-1. Format: \`<대사>CharacterName_Emotion: Dialogue Content\`
-2. Name must be Korean (e.g. 천서윤).
-3. Emotion must be one of:
-   - 자신감, 의기양양, 진지함, 짜증, 삐짐, 혐오, 고민, 박장대소, 안도, 놀람, 부끄러움, 결의, 거친호흡, 글썽거림, 고통, 공포, 오열, 수줍음, 지침, 폭발직전
-
----
-
-## [📝 FINAL OUTPUT INSTRUCTIONS (CRITICAL)]
-
-### 1. **Internal Thinking Guidelines (Native Reasoning)**
-   Before generating the response, you must internally validate:
-   - **Status Check**: Is HP/MP low? -> Trigger warnings/death logic.
-   - **Secret Check**: Does the player know the secret?
-     - If listed in [KNOWN FACTS] -> Protagonist knows.
-     - If listed in [HIDDEN SECRETS] -> Protagonist is unaware. DO NOT LEAK.
-   - **Mood Check**: Is it combat/romance/comedy? -> Adjust tone.
-   - **Consistency**: Review [Current Scenario] and [Memories]. Does the new event align?
-   - **Plan**: Briefly map out the next 30 turns of interaction.
-
-### 2. **Output Tag Definitions (Use strictly)**
-
-   - **<배경>Location_Name**
-     - Format: \`<배경>Category_Location\` (English Only)
-     - Example: \`<배경>City_Street\`
-
-### 3. **Relationship Enforcement (Global Rule)**
-   - **STRICTLY ADHERE** to the "Relationship Tier" and "Constraint" provided for each character.
-   - **DO NOT** make a character fall in love or act overly intimate if their tier is "Stranger" or "Friend".
-   - Romance is **LOCKED** until the "Lover" tier is reached (Score 90+).
-   - If the User tries to force romance early, the character MUST reject/deflect it naturally.
-
-   - **<나레이션>Content**
-     - Description of the situation or protagonist's monologue.
-
-   - **<대사>Name_Emotion: Content**
-     - Name must be Korean. Emotion from the allowed list.
-     - Example: \`<대사>천서윤_기쁨: 안녕!\`
-
-   - **<떠남>**
-     - Use this tag immediately after a character's final dialogue to indicate they have left the scene.
-     - Example:
-       \`<대사>천서윤_기쁨: 그럼 다음에 봐!\`
-       \`<떠남>\`
-
 ${playerRank !== '일반인' ? `
    - **<시스템팝업>Content**
      - System notifications (Quest, Item, Stats). Keep it concise.
