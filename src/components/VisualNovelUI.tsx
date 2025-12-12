@@ -1416,9 +1416,9 @@ export default function VisualNovelUI() {
                             </h1>
                         </div>
 
-                        <div className="flex gap-4 mt-1">
+                        <div className="flex flex-col gap-2 mt-2 items-start opacity-90 hover:opacity-100 transition-opacity">
                             {/* HP Bar */}
-                            <div className="relative w-48 h-8 transform -skew-x-12 overflow-hidden rounded-md border border-red-900/50 bg-black/60 backdrop-blur-md opacity-80 shadow-[0_0_10px_rgba(220,38,38,0.3)]">
+                            <div className="relative w-48 h-8 transform -skew-x-12 overflow-hidden rounded-md border border-red-900/50 bg-black/60 backdrop-blur-md shadow-[0_0_10px_rgba(220,38,38,0.3)]">
                                 <div className="absolute inset-0 bg-red-900/20" />
                                 <div
                                     className="h-full bg-gradient-to-r from-red-700 via-red-600 to-red-500 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(220,38,38,0.6)]"
@@ -1430,16 +1430,16 @@ export default function VisualNovelUI() {
                                 </div>
                             </div>
 
-                            {/* MP Bar */}
-                            <div className="relative w-48 h-8 transform -skew-x-12 overflow-hidden rounded-md border border-blue-900/50 bg-black/60 backdrop-blur-md opacity-80 shadow-[0_0_10px_rgba(37,99,235,0.3)]">
+                            {/* MP Bar (Reduced size ~60%) */}
+                            <div className="relative w-48 h-7 transform -skew-x-12 overflow-hidden rounded-md border border-blue-900/50 bg-black/60 backdrop-blur-md shadow-[0_0_10px_rgba(37,99,235,0.3)]">
                                 <div className="absolute inset-0 bg-blue-900/20" />
                                 <div
                                     className="h-full bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(37,99,235,0.6)]"
                                     style={{ width: `${(playerStats.mp / playerStats.maxMp) * 100}%` }}
                                 />
                                 <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-12">
-                                    <span className="text-xs font-bold text-blue-200 drop-shadow-sm">정신력</span>
-                                    <span className="text-xs font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
+                                    <span className="text-[10px] font-bold text-blue-200 drop-shadow-sm">정신력</span>
+                                    <span className="text-[10px] font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
                                 </div>
                             </div>
                         </div>
@@ -1463,11 +1463,7 @@ export default function VisualNovelUI() {
                                 <span className="text-purple-100 font-bold font-mono text-sm">{playerStats.fame}</span>
                             </div>
 
-                            {/* Fate */}
-                            <div className="flex items-center gap-2 border-r border-white/10 pr-4">
-                                <span className="text-lg drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]">🔮</span>
-                                <span className="text-purple-300 font-bold font-mono text-sm">{playerStats.fate}</span>
-                            </div>
+
 
                             {/* Cash (Coins) */}
                             <div className="flex items-center gap-2 pl-2">
@@ -1546,13 +1542,7 @@ export default function VisualNovelUI() {
                             >
                                 <Settings size={20} />
                             </button>
-                            <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
-                                onClick={(e) => { e.stopPropagation(); /* Settings logic later */ }}
-                                title="Settings"
-                            >
-                                <Settings size={20} />
-                            </button>
+
                             {/* Fullscreen Button */}
                             <button
                                 className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
@@ -1789,8 +1779,8 @@ export default function VisualNovelUI() {
                 {/* History Modal */}
                 <AnimatePresence>
                     {showHistory && (
-                        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                            <div className="bg-gray-900 w-full max-w-3xl h-[80vh] rounded-xl flex flex-col border border-gray-700">
+                        <div className="fixed inset-0 bg-black/90 z-50 flex items-start justify-center px-4 pb-4 pt-[140px] pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="bg-gray-900 w-full max-w-3xl h-full rounded-xl flex flex-col border border-gray-700">
                                 <div className="p-4 border-b border-gray-700 flex justify-between items-center">
                                     <h2 className="text-xl font-bold text-white">{t.chatHistory}</h2>
                                     <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white">{t.close}</button>
