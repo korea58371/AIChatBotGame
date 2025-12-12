@@ -24,7 +24,17 @@ export default function TVNews({ anchor, background, content }: TVNewsProps) {
     return (
         <div className="w-full h-full flex flex-col items-center justify-center bg-black/80 font-sans relative overflow-hidden">
             {/* TV Screen Container */}
-            <div className="relative w-[98%] max-w-[90vw] aspect-video bg-black border-[16px] border-gray-900 rounded-lg shadow-2xl overflow-hidden">
+            <style>{`
+                .tv-news-container {
+                    aspect-ratio: 16/9;
+                }
+                @media (orientation: portrait) {
+                    .tv-news-container {
+                        aspect-ratio: 1/1;
+                    }
+                }
+            `}</style>
+            <div className="tv-news-container relative w-[98%] max-w-[90vw] bg-black border-[16px] border-gray-900 rounded-lg shadow-2xl overflow-hidden">
 
                 {/* Background Layer */}
                 {bgUrl ? (
