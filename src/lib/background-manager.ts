@@ -22,7 +22,7 @@ export function resolveBackground(tag: string): string {
 
     if (!query) return '/assets/backgrounds/Default_Fallback.jpg'; // Fallback if empty
 
-    console.log(`[BackgroundManager] Resolving: "${query}"`);
+    // console.log(`[BackgroundManager] Resolving: "${query}"`);
 
     // ---------------------------------------------------------
     // STRATEGY 1: Direct Mapping (Fast & Exact)
@@ -72,7 +72,7 @@ export function resolveBackground(tag: string): string {
     const fileMatches = stringSimilarity.findBestMatch(query, backgroundFiles);
     const bestFileMatch = fileMatches.bestMatch;
 
-    console.log(`[BackgroundManager] Fuzzy File Match: "${query}" -> "${bestFileMatch.target}" (Score: ${bestFileMatch.rating.toFixed(2)})`);
+    // console.log(`[BackgroundManager] Fuzzy File Match: "${query}" -> "${bestFileMatch.target}" (Score: ${bestFileMatch.rating.toFixed(2)})`);
 
     // Threshold increased (0.5 -> 0.6) to avoid generic inputs matching specific unrelated files
     if (bestFileMatch.rating > 0.6) {

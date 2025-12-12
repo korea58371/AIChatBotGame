@@ -1,9 +1,25 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ScriptSegment } from '@/lib/script-parser';
-import initialCharacterData from '@/data/prompts/characters.json';
 import initialWorldData from '@/data/prompts/world.json';
 import { MoodType } from '@/data/prompts/moods';
+
+// [Fix] Transform Array to Object Map (Key: Korean Name)
+// This ensures ID lookups work correctly when AI outputs Korean names.
+const initialCharacterData: Record<string, any> = {};
+const charList = require('@/data/prompts/characters.json'); // unique import name
+
+if (Array.isArray(charList)) {
+  charList.forEach((c: any) => {
+    if (c.name) {
+      initialCharacterData[c.name] = c;
+      // Also add lowercase English ID if available for robustness?
+      // if (c.englishName) initialCharacterData[c.englishName.toLowerCase()] = c;
+    }
+  });
+} else {
+  Object.assign(initialCharacterData, charList);
+}
 
 export interface Message {
   role: 'user' | 'model';
