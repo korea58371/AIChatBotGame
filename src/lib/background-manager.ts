@@ -58,11 +58,21 @@ export function resolveBackground(tag: string): string {
         if (categoryFiles.length > 0) {
             console.log(`[BackgroundManager] Category Match Found: "${category}" (${categoryFiles.length} files)`);
             const subMatch = stringSimilarity.findBestMatch(query, categoryFiles);
-            // Heightened threshold (0.3 -> 0.55) to prevent "City_Sewer" matching "City_Street" randomly
-            if (subMatch.bestMatch.rating > 0.55) {
+
+            // [MODIFIED] Relaxed Threshold / Force Match Logic
+            // If we have a category match but the specific file is wrong (e.g. AI said "Store_Restaurant" but only "Store_Convenience" exists),
+            // it is BETTER to show *any* Store background than a black screen.
+            // Original: if (subMatch.bestMatch.rating > 0.55)
+
+            if (subMatch.bestMatch.rating > 0.4) {
                 console.log(`[BackgroundManager] Category-Constrained Match: "${query}" -> "${subMatch.bestMatch.target}"`);
                 return `/assets/backgrounds/${subMatch.bestMatch.target}`;
             }
+
+            // Force Fallback within Category if "Safe Mode" is desired
+            // For now, let's allow a very loose match if the category is correct.
+            console.log(`[BackgroundManager] Weak match but Category is valid. Forcing best category match: "${subMatch.bestMatch.target}"`);
+            return `/assets/backgrounds/${subMatch.bestMatch.target}`;
         }
     }
 

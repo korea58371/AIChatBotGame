@@ -1,6 +1,8 @@
 import charMapData from '../../public/assets/characters/character_map.json';
 import extraMapData from '../../public/assets/ExtraCharacters/extra_map.json';
 
+import { useGameStore } from './store';
+
 // 1. JSON 타입 명시 (Typescript)
 const charMap: Record<string, string> = charMapData;
 const extraMap: Record<string, string> = extraMapData;
@@ -44,23 +46,55 @@ const emotionMap: Record<string, string> = {
  * @param koreanEmotion AI가 출력한 감정 (예: "기쁨")
  */
 export function getCharacterImage(koreanName: string, koreanEmotion: string): string {
+    // 0. 예외 처리: 이름이 없거나 'Unknown'인 경우
+    if (!koreanName || koreanName === 'Unknown' || koreanName === 'System') {
+        return ''; // 빈 문자열 반환 (시스템이 처리하도록)
+    }
+
     // 1. 메인 캐릭터 매핑 확인
     const charId = charMap[koreanName];
 
     // 2. 감정 매핑 확인 (없으면 Default)
-    const emotion = emotionMap[koreanEmotion] || 'Default';
+    const emotionKeyword = emotionMap[koreanEmotion] || 'Default';
 
     // A. 메인 캐릭터인 경우
     if (charId) {
-        return `/assets/characters/${charId}/${charId}_Default_${emotion}.png`;
+        // [Fallback Logic] 파일 존재 여부 확인
+        const availableImages = useGameStore.getState().availableCharacterImages || [];
+        const targetFilename = `${charId}_Default_${emotionKeyword}.png`;
+
+        // 1) 정확한 이미지가 있는가?
+        if (availableImages.includes(targetFilename)) {
+            return `/assets/characters/${charId}/${targetFilename}`;
+        }
+
+        // 2) 매핑된 감정이 없으면 'Default'를 시도
+        // 예: BigLaugh 파일은 없지만 Laugh는 있을 수 있음 -> 이건 매핑 레벨에서 해결해야 하나, 여기서 단순화
+        // 일단 Normal/Default로 fallback
+        const defaultFilename = `${charId}_Default_Default.png`;
+        if (availableImages.includes(defaultFilename)) {
+            // console.warn(`[ImageMapper] Missing emotion "${emotionKeyword}" for ${charId}. Falling back to Default.`);
+            return `/assets/characters/${charId}/${defaultFilename}`;
+        }
+
+        // 3) Just try constructing it anyway (maybe list wasn't loaded) - but prevents 404 spam if list IS loaded
+        // If list is empty (load failed), we might block valid images.
+        // So check if list is populated.
+        if (availableImages.length === 0) {
+            return `/assets/characters/${charId}/${targetFilename}`;
+        }
+
+        // 4) 진짜 없음 -> 아예 404 방지를 위해 빈 문자열? 아니면 그냥 시도?
+        // 빈 문자열 반환 시 투명 처리됨.
+        return '';
     }
 
     // B. 엑스트라 캐릭터 확인
-    // 엑스트라는 감정 표현이 (보통) 없으므로 단일 이미지 반환
     if (extraMap[koreanName]) {
         return `/assets/ExtraCharacters/${extraMap[koreanName]}`;
     }
 
     // C. 매핑 실패 (Fallback)
-    return '/assets/characters/Unknown_Default_Default.png';
+    // Unknown_Default_Default.png는 존재하지 않으므로 요청하지 않음.
+    return '';
 }

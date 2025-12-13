@@ -1,4 +1,4 @@
-export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'text_message' | 'phone_call' | 'tv_news' | 'article' | 'unknown';
+export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'unknown';
 
 export interface ScriptSegment {
     type: ScriptType;
@@ -65,7 +65,11 @@ export function parseScript(text: string): ScriptSegment[] {
             }
         } else if (tagName.startsWith('선택지')) {
             const choiceId = parseInt(tagName.replace('선택지', ''));
-            segments.push({ type: 'choice', content: content, choiceId: isNaN(choiceId) ? 0 : choiceId });
+            segments.push({
+                type: 'choice',
+                content: content.replace(/\([^)]*\)/g, '').trim(),
+                choiceId: isNaN(choiceId) ? 0 : choiceId
+            });
         } else if (tagName === '대사') {
             // Format: Name_Expression: Content
             const colonIndex = content.indexOf(':');
@@ -131,6 +135,28 @@ export function parseScript(text: string): ScriptSegment[] {
             segments.push({
                 type: 'text_message',
                 character: sender,
+                expression: header,
+                content: msgContent
+            });
+        } else if (tagName === '답장') {
+            // <답장>Receiver_Header: Content
+            // Means: Player sends message TO Receiver
+            const colonIndex = content.indexOf(':');
+            let receiver = 'Unknown';
+            let header = '지금';
+            let msgContent = content;
+
+            if (colonIndex !== -1) {
+                const meta = content.substring(0, colonIndex).trim();
+                msgContent = content.substring(colonIndex + 1).trim();
+                const [r, h] = meta.split('_');
+                receiver = r;
+                if (h) header = h;
+            }
+
+            segments.push({
+                type: 'text_reply', // New Type
+                character: receiver, // Store Receiver here
                 expression: header,
                 content: msgContent
             });

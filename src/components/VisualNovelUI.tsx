@@ -291,6 +291,7 @@ export default function VisualNovelUI() {
         setBackground,
         characterExpression,
         setCharacterExpression,
+        addTextMessage, // Added destructuring
         playerStats,
         setPlayerStats,
         inventory,
@@ -614,6 +615,53 @@ export default function VisualNovelUI() {
             currentQueue.shift(); // Remove processed background
             if (currentQueue.length === 0) break;
             nextSegment = currentQueue[0];
+        }
+
+        // If queue is empty after processing backgrounds
+        if (currentQueue.length === 0) {
+            setScriptQueue([]);
+            setCurrentSegment(null);
+            if (pendingLogic) {
+                applyGameLogic(pendingLogic);
+                setPendingLogic(null);
+            }
+            return;
+        }
+
+        // Handle Text Messages (Store)
+        if (nextSegment.type === 'text_message') {
+            console.log(`[Script] Text Message from ${nextSegment.character}: ${nextSegment.content}`);
+            addTextMessage(nextSegment.character || 'Unknown', {
+                sender: nextSegment.character || 'Unknown',
+                content: nextSegment.content,
+                timestamp: Date.now()
+            });
+            addToast(`📩 ${nextSegment.character}: ${nextSegment.content.substring(0, 15)}...`, 'info');
+            setScriptQueue(currentQueue.slice(1));
+            setCurrentSegment(nextSegment); // [Changed] Show Popup
+            return;
+        }
+
+        // Handle Text Replies (Player)
+        if (nextSegment.type === 'text_reply') {
+            const receiver = nextSegment.character || 'Unknown';
+            console.log(`[Script] Text Reply to ${receiver}: ${nextSegment.content}`);
+            addTextMessage(receiver, {
+                sender: '주인공',
+                content: nextSegment.content,
+                timestamp: Date.now()
+            });
+            addToast(`📤 답장 전송: ${receiver}`, 'info');
+            setScriptQueue(currentQueue.slice(1));
+            setCurrentSegment(null);
+            return;
+        }
+
+        // Handle Phone Call
+        if (nextSegment.type === 'phone_call') {
+            console.log(`[Script] Phone Call: ${nextSegment.content}`);
+            // Logic for phone call (UI component)
+            // Falls through to default segment handling
         }
 
         // If queue is empty after processing backgrounds
@@ -1319,7 +1367,6 @@ export default function VisualNovelUI() {
             }
         }
 
-        // Active Characters Update
         if (logicResult.activeCharacters) {
             useGameStore.getState().setActiveCharacters(logicResult.activeCharacters);
             console.log("Active Characters Updated:", logicResult.activeCharacters);

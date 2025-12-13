@@ -349,6 +349,16 @@ export const useGameStore = create<GameState>()(
       addTextMessage: (partner, message) => set((state) => {
         const history = { ...state.textMessageHistory };
         if (!history[partner]) history[partner] = [];
+
+        // [Fix] Prevent Duplicates (Idempotency Check)
+        // Check if the last message has the exact same content. 
+        // Generative AI rarely repeats the exact same sentence consecutively for the same character.
+        const lastMsg = history[partner][history[partner].length - 1];
+        if (lastMsg && lastMsg.content === message.content && lastMsg.sender === message.sender) {
+          // Duplicate detected, ignore.
+          return {};
+        }
+
         history[partner].push(message);
         return { textMessageHistory: history };
       }),
@@ -401,7 +411,10 @@ export const useGameStore = create<GameState>()(
         currentSegment: null,
         choices: [],
         characterData: initialCharacterData, // Reset characters too
-        worldData: initialWorldData // Reset world too
+        worldData: initialWorldData, // Reset world too
+        textMessageHistory: {}, // Reset Phone History
+        triggeredEvents: [], // Reset triggered events
+        activeEvent: null // Reset active event
       }),
     }),
     {

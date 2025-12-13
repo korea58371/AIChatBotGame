@@ -152,6 +152,10 @@ ${playerRank !== '일반인' ? `
      - Sender: Name (e.g., 이아라). Header: Time/Status (e.g., 지금).
      - Example: \`<문자>이아라_지금: 오빠 어디야? 😠 빨리 와!\`
 
+   - **<답장>Receiver_Header: Content**
+     - Receiver: The character receiving the text. Sender is explicitly YOU (Player).
+     - Example: \`<답장>이아라_지금: 알겠어, 금방 갈게.\` (Player replies to Yi-Ara)
+
    - **<전화>Caller_Status: Content**
      - Caller: Name. Status: State (e.g., 통화중 00:23).
      - Example: \`<전화>김민지_통화중 00:15: 여보세요? 선배? 잘 들려요?\`
