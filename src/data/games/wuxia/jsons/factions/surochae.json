@@ -1,0 +1,56 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Sa-pa / Unorthodox)",
+    "faction_profile": {
+        "name": "장강수로채 (Yangtze River Water Fortress / 長江水路寨)",
+        "official_name": "Suro-maeng (Water Route League / 水路盟)",
+        "location": {
+            "region": "The Yangtze River (Jang-gang).",
+            "base": "Dongting Lake (Dongjeong-ho / 洞庭湖) - Hidden fortress within the vast lake.",
+            "territory": "Controls all shipping lanes on the major rivers."
+        },
+        "heritage": {
+            "nature": "Pirates / Water Bandits turned into a massive cartel.",
+            "structure": "18 Water Fortresses (Sippal-surochae)."
+        },
+        "status": {
+            "tier": "Major Unorthodox Faction.",
+            "political_role": "Economic powerhouse (tolls/smuggling). Rivals with Nokrim (Mountain Bandits)."
+        }
+    },
+    "characteristics": {
+        "archetype": "Pirate / Marine",
+        "combat_style": {
+            "summary": "Invincible on water. Specialists in swimming, breath holding, and fighting on rocking boats.",
+            "weapons": "Oars, Harpoons, Water-parting Blades.",
+            "advantage": "Can hold breath for hours (Gwi-sik-dae-beop)."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "분수결 (Water Parting Formula)",
+            "description": "Technique to cut through water and move freely underwater.",
+            "type": "Utility / Movement"
+        },
+        "skills": {
+            "list": [
+                "사공도법 (Boatman Saber Art)",
+                "파랑검 (Wave Breaking Sword)",
+                "수룡음 (Water Dragon Roar) - Sonic attack."
+            ]
+        },
+        "equipment": {
+            "ships": [
+                "Cheon-wang-seon (Heavenly King Ship) - Massive flagship.",
+                "Gwae-so-seon (Fast Small Ship) - Speedbots."
+            ]
+        }
+    },
+    "narrative_role": {
+        "role": [
+            "The obstacle for any journey involving a river crossing.",
+            "Smugglers of illegal goods or people.",
+            "Classic rivalry: 'Mountains have Nokrim, Waters have Surochae'."
+        ]
+    }
+}

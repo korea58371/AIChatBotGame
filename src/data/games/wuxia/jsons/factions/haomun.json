@@ -1,0 +1,103 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Organizations (Sa-pa / Unorthodox / Underworld)",
+    "faction_profile": {
+        "name": "하오문 (Haomun / Lower Five Families / 下五門)",
+        "alias": [
+            "The Underworld's Eyes and Ears",
+            "Street Rats",
+            "Masters of the Red Light District"
+        ],
+        "location": {
+            "region": "Distributed throughout the Central Plains (Jungwon).",
+            "bases": "Brothels (Giru), Gambling Dens (Dobak-jang), Inns (Gaekjan), Markets.",
+            "connectivity": "Ubiquitous but loosely connected compared to the Beggars' Sect."
+        },
+        "composition": "Composed of the Five Lowly Trades (Cha, Seon, Jeom, Gak, A).",
+        "structure": {
+            "Cha (車)": "Carriage Drivers (Mobility/Transport).",
+            "Seon (船)": "Boatmen (Water Transport).",
+            "Jeom (店)": "Waiters/Clerks (Jeom-so-i) in Inns and Restaurants (Eavesdropping).",
+            "Gak (腳)": "Porters/Laborers (Logistics).",
+            "A (牙)": "Brokers/Human Traffickers (Connections/Black Market)."
+        },
+        "status": {
+            "alignment": "Chaotic Neutral / Mercenary.",
+            "reputation": "Despised as bottom-feeders but essential for information and illicit services.",
+            "rivalry": "Beggars' Sect (Gaebang) - Competes for info, though Haomun is less united."
+        }
+    },
+    "characteristics": {
+        "archetype": "Spy / Assassin / Courtesan",
+        "core_business": [
+            "Information Trading: Processing fragmented gossip into valuable intel.",
+            "Assassination & Sabotage: Poisoning food, stabbing in sleep.",
+            "Entertainment & Vice: Prostitution, Gambling, Black Market."
+        ],
+        "combat_style": {
+            "summary": "Dirty, Stealthy, and Indirect.",
+            "tactics": [
+                "Avoid fair fights. Use poison (Dok) and hidden weapons (Amgi).",
+                "Target enemies when they are eating, sleeping, or having sex.",
+                "Seduction (Saek-gong) to drain vitality or extract secrets."
+            ],
+            "weakness": "Individual combat power is low. They rely on numbers and treachery."
+        },
+        "elite_unit": {
+            "name": "암영대 (Dark Shadow Unit)",
+            "description": "Elite assassins and spies of Haomun.",
+            "role": "Execution of high-value targets or silencing loose tongues."
+        }
+    },
+    "martial_arts_library": {
+        "assassination_arts": {
+            "style": "Silent and Deadly",
+            "list": [
+                "무음검 (Soundless Sword)",
+                "밀영검 (Secret Shadow Sword)",
+                "무영삼식 (Shadowless Three Forms) - Simple but lethal moves.",
+                "암향표 (Dark Scent Throwing) - Hidden weapons."
+            ]
+        },
+        "seduction_arts": {
+            "user": "Courtesans / High-ranking Female Agents",
+            "list": [
+                {
+                    "name": "최혼염녀무 (Soul Urging Glamorous Dance)",
+                    "effect": "Hypnotic dance that lowers guard."
+                },
+                "탕백환희소 (Soul Dissipating Joyful Laughter)",
+                "방중술 (Bedchamber Arts) - Energy draining or mind control.",
+                "몽란지염술 (Dream Orchid Extreme Glamour Art)"
+            ]
+        },
+        "sound_arts": {
+            "user": "Musicians in Brothels",
+            "list": [
+                "유명구혼 (Netherworld Soul Binding Sound)",
+                "천상신음 (Heavenly Groan/Sound)",
+                "마혼살음공 (Demon Soul Killing Sound Art)"
+            ]
+        },
+        "movement": {
+            "style": "Stealthy and Ghostly",
+            "list": [
+                "무영보 (Shadowless Step)",
+                "귀허보 (Ghost Void Step)",
+                "신풍무영보 (Divine Wind Shadowless Step)"
+            ]
+        },
+        "internal_energy": {
+            "list": [
+                "무영심법 (Shadowless Heart Method)",
+                "음혼신공 (Dark Soul Divine Art)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Information Broker' the protagonist visits when the Beggars' Sect is unavailable or too righteous.",
+        "The source of 'Poisoning' incidents in inns.",
+        "A faction that uses beauty (Courtesans) to entrap powerful figures.",
+        "The 'Underdog' faction that survives by being smarter and crueler than the orthodox masters."
+    ]
+}

@@ -1,0 +1,75 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Government & Imperial Court (Gwan-a / 官衙)",
+    "setting_profile": {
+        "era": "Ming Dynasty (명나라 / 明) Style (Generic Wuxia Setting).",
+        "role_in_story": [
+            "The Unseen Power: Usually ignored due to 'Gwan-mu-bul-ga-chim' (Non-interference policy).",
+            "The Ultimate Threat: If the Murim goes too far, the Imperial Army (muskets/cannons) or Secret Police (Jinyiwei/Dongchang) intervene.",
+            "The Employer: Hires Murim masters as bodyguards or assassins."
+        ]
+    },
+    "imperial_hierarchy": {
+        "royal_family": {
+            "emperor": "Hwang-je (皇帝) - The Son of Heaven.",
+            "empress": "Hwang-hu (皇后).",
+            "heir": "Hwang-tae-ja (Crown Prince / 皇太子).",
+            "princes": "Chin-wang (Imperial Prince / 親王) -> Gun-wang (County King / 郡王).",
+            "princesses": "Gong-ju (Princess / 公主)."
+        },
+        "central_government": {
+            "top_advisors": {
+                "sam_gong": "Sam-gong (Three Dukes / Taisa, Taibo, Taifu) - Rank 1.",
+                "nae_gak": "Grand Secretariat (Dae-hak-sa / 大學士) - Emperor's advisors."
+            },
+            "six_ministries": {
+                "name": "Yuk-bu (Six Ministries / 六部)",
+                "list": [
+                    "I-bu (Personnel / 吏部)",
+                    "Ho-bu (Revenue / 戶部)",
+                    "Ye-bu (Rites / 禮部)",
+                    "Byeong-bu (War / 兵部) - Handles military affairs.",
+                    "Hyeong-bu (Justice / 刑部) - Handles law and police.",
+                    "Gong-bu (Works / 工部)"
+                ]
+            }
+        }
+    },
+    "secret_police_and_antagonists": {
+        "note": "The most common government antagonists in Wuxia.",
+        "jinyiwei": {
+            "name": "금의위 (Embroidered Uniform Guard / 錦衣衛)",
+            "role": "Emperor's personal secret police/bodyguards.",
+            "power": "Extra-legal authority (arrest/torture without trial).",
+            "martial_arts": "Often depicted as learning top-tier arts to counter Murim masters.",
+            "visual": "Golden/Red uniforms, embroidered flying fish patterns."
+        },
+        "dongchang": {
+            "name": "동창 (Eastern Depot / 東廠)",
+            "role": "Spy agency run by Eunuchs (Hwan-gwan / 宦官).",
+            "leader": "Dok-ju (Chief Eunuch).",
+            "reputation": "More feared and ruthless than Jinyiwei. Rivals/Supervisors to Jinyiwei.",
+            "skills": "Eunuch martial arts (often yin-based, cruel, e.g., Sunflower Manual reference)."
+        }
+    },
+    "local_government_structure": {
+        "provincial": {
+            "admin": "Po-jeong-sa (Governor / 布政使).",
+            "military": "Do-ji-hwi-sa (Commander / 都指揮使) - Controls provincial army.",
+            "justice": "An-chal-sa (Judge / 按察使)."
+        },
+        "local": {
+            "bu": "Ji-bu (Prefect / 知府) - Rank 4.",
+            "hyeon": "Ji-hyeon (Magistrate / 知縣) - Rank 7. The most common official protagonists meet.",
+            "police": [
+                "Chong-po-du (Chief Constable / 總捕頭)",
+                "Po-gwae (Constable / 捕快) - The 'cops' of the Wuxia world."
+            ]
+        }
+    },
+    "narrative_usage": [
+        "Protagonist helps a 'Ji-hyeon' (Magistrate) solve a case involving a demonic cult.",
+        "The 'Dongchang' eunuchs try to control the Murim Alliance, serving as the main villains.",
+        "A 'Golden Pillow' (Gold Medal) from the Emperor grants immunity from the law."
+    ]
+}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Search, BookOpen } from 'lucide-react';
-import wikiData from '@/data/wiki_data.json';
+import { useGameStore } from '@/lib/store';
 import { getCharacterImage } from '@/lib/image-mapper';
 
 interface WikiSystemProps {
@@ -15,16 +15,19 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
 
 
 
-    const data = (wikiData as any)[currentDoc];
+    // [Fix] Use stable selector to prevent infinite loops (getServerSnapshot error)
+    const wikiData = useGameStore(state => state.wikiData);
+    const gameWikiData = wikiData || {};
+    const data = (gameWikiData as any)[currentDoc];
 
     // Debugging: Log loaded data keys
     React.useEffect(() => {
         console.log("WikiSystem mounted.");
-        console.log("Loaded wiki data keys:", Object.keys(wikiData));
-        console.log("Entries count:", Object.keys(wikiData).length);
-        const categories = new Set(Object.values(wikiData).map((v: any) => v.category));
+        console.log("Loaded wiki data keys:", Object.keys(gameWikiData));
+        console.log("Entries count:", Object.keys(gameWikiData).length);
+        const categories = new Set(Object.values(gameWikiData).map((v: any) => v.category));
         console.log("Categories present:", Array.from(categories));
-    }, []);
+    }, [gameWikiData]);
 
     // Footnote Logic
     const footnotes: string[] = [];
@@ -33,7 +36,7 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
     // Grouping Logic for Sidebar
     const groupedData = React.useMemo(() => {
         const groups: Record<string, string[]> = {};
-        Object.entries(wikiData).forEach(([key, value]: [string, any]) => {
+        Object.entries(gameWikiData).forEach(([key, value]: [string, any]) => {
             // Filter by search term
             if (searchTerm && !key.includes(searchTerm) && !value.name.includes(searchTerm)) return;
 

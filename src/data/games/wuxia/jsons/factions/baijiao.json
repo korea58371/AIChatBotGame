@@ -1,0 +1,82 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Hidden / Amjung / Evil Sects)",
+    "faction_profile": {
+        "name": "배교 (Baijiao / 拜敎)",
+        "alias": [
+            "The Hidden Cult (암중세력)",
+            "Masters of Soul and Sorcery",
+            "Wulin's Mad Scientists"
+        ],
+        "location": {
+            "nature": "Hidden (Amjung). No fixed public headquarters.",
+            "hideout_type": "Underground laboratories, disguised as ordinary sects, or deep within ancient ruins.",
+            "strategy": "Infiltration. They often replace leaders of other sects using disguises or soul shifting."
+        },
+        "ideology": {
+            "core": "Rational Evil (이성적 악).",
+            "contrast": "Unlike the 'Fanatical' Blood Cult (Hyeolgyo) or 'Might-obsessed' Demonic Cult (Magyo), Baijiao seeks 'Knowledge' and 'Immortality' through forbidden means.",
+            "goal": "Transcending human limits, Soul Transfer (Immortality), Overturning the Wulin order via conspiracy."
+        }
+    },
+    "characteristics": {
+        "archetype": "Dark Wizard / Warlock / Puppeteer",
+        "control_mechanism": {
+            "method": "Gu-dok (Poison Insects / 蠱毒).",
+            "effect": "Insects planted in the heart/organs. Can kill traitors remotely. Ensures absolute obedience through fear, not faith."
+        },
+        "combat_style": {
+            "summary": "Sorcery (Sul-beop) over Martial Arts. Mental attacks and Traps.",
+            "strength": "Superior in Formations and Curses compared to Zhuge or Mosan.",
+            "weakness": "Physical martial arts are often weaker than major sects; reliant on preparation and tricks."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "이혼대법 (Soul Transfer Great Art / 移魂大法)",
+            "description": "The ultimate forbidden art. Transferring one's soul into another body (vessel).",
+            "usage": "Used by elders to extend life or infiltrate enemy leadership.",
+            "risk": "Extremely difficult failure rate; requires specific conditions."
+        },
+        "mind_and_soul_arts": {
+            "style": "Hypnosis and Spirit Manipulation",
+            "list": [
+                "섭백마안 (Soul Controlling Demon Eye)",
+                "섭심호혼대법 (Mind Controlling Soul Calling Art)",
+                "최혼섭백마력 (Soul Urging Spirit Controlling Magic Power)",
+                "만겁윤회탈혼대법 (Myriad Kalpa Samsara Soul Stealing Art)",
+                "귀요안 (Ghost Monster Eye)"
+            ]
+        },
+        "body_manipulation_disguise": {
+            "style": "Physical Alteration",
+            "list": [
+                "분영축골신공 (Shadow Dividing Bone Shrinking Art) - Changing body size/shape.",
+                "역용술 (Disguise Art) - Perfect imitation of others.",
+                "화골신공 (Bone Melting Divine Art) - Offensive/Torture."
+            ]
+        },
+        "seduction_and_absorption": {
+            "style": "Draining and Bewitching",
+            "list": [
+                "미심섭신술 (Bewitching Mind Spirit Art)",
+                "소혼곡 (Soul Melting Song)",
+                "삼본흡정술 (Three Root Essence Absorption Art) - Draining vitality (Gi/Jing)."
+            ]
+        },
+        "formations": {
+            "style": "Illusion and Confusion",
+            "list": [
+                "대혼천진세 (Great Chaotic Heaven Formation)",
+                "환상윤회미로대진 (Illusion Reincarnation Maze Great Formation)",
+                "신녀미리진 (Divine Maiden Maze Formation)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Hidden Boss' revealed late in the story.",
+        "The faction responsible for the 'Imposter' plot (e.g., The Shaolin Abbot was actually a Baijiao spy).",
+        "Source of supernatural horror elements (Soul stealing, Mind control).",
+        "The intellectual villain who mocks the protagonist's 'brute force' justice."
+    ]
+}

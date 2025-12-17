@@ -1,0 +1,230 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Measurement System (Cheokgwan-beop / Traditional East Asian Units)",
+    "source_reference": "Traditional Korean/Chinese Standards",
+    "time_system": {
+        "basic_concept": {
+            "unit": "Sijin (시진 / 時辰)",
+            "value_metric": "2 hours",
+            "description": "Standard unit of time in Wuxia. 1 Sijin equals 2 modern hours."
+        },
+        "sub_units": {
+            "Gak (각 / 刻)": {
+                "value_metric": "15 minutes",
+                "calculation": "1 Sijin / 8"
+            },
+            "Ban_Sijin (반 시진)": {
+                "value_metric": "1 hour",
+                "calculation": "1 Sijin / 2"
+            }
+        },
+        "conceptual_units": {
+            "Ildagyeong (일다경 / 一茶頃)": {
+                "value_metric": "~15 minutes",
+                "meaning": "Time to drink a cup of tea. Represents a very short duration."
+            },
+            "Sikgyeong (식경 / 食頃)": {
+                "value_metric": "30 ~ 60 minutes",
+                "meaning": "Time to finish a meal. Represents a moderate duration."
+            }
+        },
+        "daily_cycle_12_branches": {
+            "description": "The day is divided into 12 periods (Sijin). Each period is 2 hours.",
+            "sub_division_rule": "Each period is split into 'Cho (Beginning/First hr)' and 'Jeong (Middle/Second hr)'.",
+            "periods": [
+                {
+                    "name": "Ja (자시 / 子時)",
+                    "range": "23:00 ~ 01:00",
+                    "cho": "23:00~24:00",
+                    "jeong": "00:00~01:00"
+                },
+                {
+                    "name": "Chuk (축시 / 丑時)",
+                    "range": "01:00 ~ 03:00",
+                    "cho": "01:00~02:00",
+                    "jeong": "02:00~03:00"
+                },
+                {
+                    "name": "In (인시 / 寅時)",
+                    "range": "03:00 ~ 05:00",
+                    "cho": "03:00~04:00",
+                    "jeong": "04:00~05:00"
+                },
+                {
+                    "name": "Myo (묘시 / 卯時)",
+                    "range": "05:00 ~ 07:00",
+                    "cho": "05:00~06:00",
+                    "jeong": "06:00~07:00"
+                },
+                {
+                    "name": "Jin (진시 / 辰時)",
+                    "range": "07:00 ~ 09:00",
+                    "cho": "07:00~08:00",
+                    "jeong": "08:00~09:00"
+                },
+                {
+                    "name": "Sa (사시 / 巳時)",
+                    "range": "09:00 ~ 11:00",
+                    "cho": "09:00~10:00",
+                    "jeong": "10:00~11:00"
+                },
+                {
+                    "name": "O (오시 / 午時)",
+                    "range": "11:00 ~ 13:00",
+                    "cho": "11:00~12:00",
+                    "jeong": "12:00~13:00"
+                },
+                {
+                    "name": "Mi (미시 / 未時)",
+                    "range": "13:00 ~ 15:00",
+                    "cho": "13:00~14:00",
+                    "jeong": "14:00~15:00"
+                },
+                {
+                    "name": "Sin (신시 / 申時)",
+                    "range": "15:00 ~ 17:00",
+                    "cho": "15:00~16:00",
+                    "jeong": "16:00~17:00"
+                },
+                {
+                    "name": "Yu (유시 / 酉時)",
+                    "range": "17:00 ~ 19:00",
+                    "cho": "17:00~18:00",
+                    "jeong": "18:00~19:00"
+                },
+                {
+                    "name": "Sul (술시 / 戌時)",
+                    "range": "19:00 ~ 21:00",
+                    "cho": "19:00~20:00",
+                    "jeong": "20:00~21:00"
+                },
+                {
+                    "name": "Hae (해시 / 亥時)",
+                    "range": "21:00 ~ 23:00",
+                    "cho": "21:00~22:00",
+                    "jeong": "22:00~23:00"
+                }
+            ]
+        }
+    },
+    "physical_measurements": {
+        "length": [
+            {
+                "unit": "Mo (모 / 毛)",
+                "value_metric": "0.303 mm"
+            },
+            {
+                "unit": "Chi / Chon (치, 촌 / 寸)",
+                "value_metric": "3.03 cm",
+                "description": "Finger knuckle length"
+            },
+            {
+                "unit": "Cheok / Ja (척, 자 / 尺)",
+                "value_metric": "30.30 cm",
+                "description": "Standard forearm length"
+            },
+            {
+                "unit": "Gan (간 / 間)",
+                "value_metric": "1.81 m",
+                "conversion": "6 Cheok"
+            },
+            {
+                "unit": "Jang (장 / 丈)",
+                "value_metric": "3 m",
+                "conversion": "10 Cheok"
+            },
+            {
+                "unit": "Jeong (정 / 町)",
+                "value_metric": "109 m",
+                "conversion": "60 Gan"
+            },
+            {
+                "unit": "Li (리 / 里)",
+                "value_metric": "400 m",
+                "description": "Standard distance unit for travel"
+            }
+        ],
+        "weight": [
+            {
+                "unit": "Mo (모 / 毛)",
+                "value_metric": "3.75 mg"
+            },
+            {
+                "unit": "Pun (푼 / 分)",
+                "value_metric": "0.375 g"
+            },
+            {
+                "unit": "Don (돈)",
+                "value_metric": "3.75 g"
+            },
+            {
+                "unit": "Nyang (냥 / 兩)",
+                "value_metric": "37.5 g"
+            },
+            {
+                "unit": "Geun (근 / 斤)",
+                "value_metric": "600g (Meat/Herbs) or 375g (Fruits/Veg)",
+                "description": "Variable unit depending on the object."
+            },
+            {
+                "unit": "Gwan (관 / 貫)",
+                "value_metric": "3.75 kg"
+            }
+        ],
+        "volume": [
+            {
+                "unit": "Jak (작 / 勺)",
+                "value_metric": "18 mL"
+            },
+            {
+                "unit": "Hop (홉)",
+                "value_metric": "180 mL"
+            },
+            {
+                "unit": "Doe / Seung (되, 승 / 升)",
+                "value_metric": "1.8 L"
+            },
+            {
+                "unit": "Mal / Du (말, 두 / 斗)",
+                "value_metric": "18 L"
+            },
+            {
+                "unit": "Seom / Seok (섬, 석 / 石)",
+                "value_metric": "180 L"
+            }
+        ],
+        "area": [
+            {
+                "unit": "Pyeong (평 / 坪)",
+                "value_metric": "3.3058 m²",
+                "conversion": "Square of 6 Cheok"
+            },
+            {
+                "unit": "Myo (묘 / 畝)",
+                "value_metric": "99.174 m²",
+                "conversion": "30 Pyeong"
+            },
+            {
+                "unit": "Dan (단 / 段)",
+                "value_metric": "991.74 m²",
+                "conversion": "300 Pyeong"
+            },
+            {
+                "unit": "Jeong (정 / 町)",
+                "value_metric": "9917.4 m²",
+                "conversion": "3000 Pyeong"
+            },
+            {
+                "unit": "Majigi (마지기)",
+                "value_metric": "150~300 Pyeong (Rice paddy) / 100 Pyeong (Field)",
+                "description": "Farming area unit"
+            }
+        ]
+    },
+    "miscellaneous_units": {
+        "Mo (모)": "Counting unit for squared items like Tofu.",
+        "Sari (사리)": "Counting unit for coiled items like noodles or rope.",
+        "Cheop (첩)": "1 bag of herbal medicine.",
+        "Tol (톨)": "Counting unit for small grains/nuts (chestnut, garlic)."
+    }
+}

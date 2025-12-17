@@ -1,0 +1,53 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Mythology / Astrological Fate",
+    "concept": "108 Stars of Destiny (108 Suhojeon Stars / 108 흉성)",
+    "origin": {
+        "source": "Water Margin (Suhojeon / 水滸傳)",
+        "historical_reference": "Bandit Leader Song Jiang and his 36/108 followers.",
+        "composition": {
+            "total": 108,
+            "heavenly_spirits": "36 Tiangang (36 천강성 / 天罡星)",
+            "earthly_fiends": "72 Disha (72 지살성 / 地煞星)"
+        }
+    },
+    "narrative_usage": {
+        "general_rule": "Rarely depicts all 108 stars. Usually selects specific stars to define a character's innate destiny or curse.",
+        "flexibility": "Except for well-known stars like Cheonsalseong, authors adapt the abilities based on the Chinese character's meaning."
+    },
+    "major_archetypes": [
+        {
+            "name": "천살성 (Cheonsalseong / Heavenly Killer Star / 天殺星)",
+            "category": "36 Tiangang",
+            "core_trait": "Innate Murderous Intent (Killing Aura / 殺氣)",
+            "characteristics": [
+                "Instinctive desire to harm humans.",
+                "Loss of reason/Berserk mode upon seeing blood.",
+                "Difficulty integrating into normal society."
+            ],
+            "typical_roles": [
+                "Born Assassin (Salsu)",
+                "Tragic Hero fighting their destiny"
+            ],
+            "awakening_trigger": "Traumatic event (e.g., Death of family), or realizing the destiny late in life."
+        }
+    ],
+    "structural_template": {
+        "description": "Template for authors to create custom star effects.",
+        "36_heavenly_spirits": {
+            "implication": "Major destinies, Leaders, Overpowering fates.",
+            "examples": [
+                "Cheongwigyeong (Leader)",
+                "Cheonsalseong (Killer)",
+                "Cheonyuseong"
+            ]
+        },
+        "72_earthly_fiends": {
+            "implication": "Minor destinies, Specialists, Supporting roles.",
+            "examples": [
+                "Jigwistar",
+                "Jisalseong"
+            ]
+        }
+    }
+}

@@ -1,0 +1,112 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "faction_profile": {
+        "name": "남궁세가 (Namgung Family / 南宮世家)",
+        "alias": [
+            "The Emperor of Swords (검의 제왕)",
+            "Leader of the Five Families (오대세가의 수장)",
+            "Sky of the Orthodox (정파의 하늘)"
+        ],
+        "location": {
+            "province": "Anhui (안휘성 / 安徽省)",
+            "base_options": [
+                "Mt. Hwang (Yellow Mountain / 황산) - Traditional setting.",
+                "Mt. Cheonju (천주산) - Alternative mountain setting.",
+                "Hefei (합비 / 合肥) - City setting (Common in modern Wuxia for realism)."
+            ],
+            "significance": "Located centrally, symbolizing their central role in the Murim Alliance."
+        },
+        "status": {
+            "rank": "No.1 of the Five Great Families.",
+            "political_role": "Often holds the position of Murim Alliance Leader (Murim-Maengju).",
+            "symbol": "The standard of orthodox swordsmanship."
+        }
+    },
+    "characteristics": {
+        "archetype": "The Perfect Elite / Noble Ruler",
+        "appearance": [
+            "Produces the most handsome men and beautiful women.",
+            "Young talents often claim spots in the 'Seven Dragons Five Phoenixes' (칠룡오봉)."
+        ],
+        "personality": [
+            "Values etiquette, righteousness, and order.",
+            "High pride (can be depicted as arrogance).",
+            "Obsessed with the 'Emperor' (Je-wang) imagery – dominating and retreating is not an option."
+        ],
+        "combat_style": {
+            "summary": "Heavy Sword (Jung-geom) & Lightning (Thunder) Attribute.",
+            "concept": "Majestic and Overwhelming. Crushing the enemy with the aura of a ruler.",
+            "element": "Thunder/Lightning (Brain / 뇌) & Wind (Pung / 풍)."
+        }
+    },
+    "martial_arts_library": {
+        "internal_energy": {
+            "focus": "Thunder and Majesty",
+            "list": [
+                {
+                    "name": "천뢰제왕신공 (Heavenly Thunder Emperor Divine Art)",
+                    "grade": "Supreme (Family Head only)",
+                    "effect": "Imbues attacks with the power of lightning and a ruler's aura."
+                },
+                {
+                    "name": "창궁대연신공 (Blue Sky Great Expansion Divine Art)"
+                },
+                {
+                    "name": "천뢰기 (Heavenly Thunder Qi)"
+                }
+            ]
+        },
+        "sword_arts": {
+            "style": "The Ruler's Sword (No retreat, heavy strikes)",
+            "list": [
+                {
+                    "name": "제왕검형 (Emperor Sword Form)",
+                    "description": "Signature Ultimate. Unfolding heavy, majestic strikes. Never retreats.",
+                    "type": "Heavy Sword (Jung-geom)"
+                },
+                {
+                    "name": "창궁무애검법 (Blue Sky Limitless Sword)",
+                    "description": "Artistic sword art manifesting blue Sword Flux (Geom-gang). Cuts evil Qi.",
+                    "type": "Anti-Evil / High Technique"
+                },
+                {
+                    "name": "천풍제왕검법 (Heaven Wind Emperor Sword)",
+                    "description": "Combines majesty with wind speed. Projectiles wind blades (Sword Wind).",
+                    "type": "Fast Sword (Kwae-geom) / Ranged"
+                },
+                "섬전십삼검뢰 (Lightning 13 Sword Thunder)",
+                "고혼일검 (Lonely Soul One Sword)",
+                "천뢰신검 (Heavenly Thunder God Sword)"
+            ]
+        },
+        "fist_and_palm": {
+            "list": [
+                "폭뢰신권 (Explosive Thunder God Fist)",
+                "천뢰삼장 (Heavenly Thunder Three Palms)",
+                "천풍장력 (Heaven Wind Palm Force)",
+                "대연장 (Great Expansion Palm)"
+            ]
+        },
+        "movement": {
+            "list": [
+                "천리호정 (Thousand Li Household Courtyard) - Shrinking distance.",
+                "천풍신법 (Heaven Wind Body Art)",
+                "구천비상신법 (Nine Heavens Soaring Body Art)"
+            ]
+        },
+        "finger_arts": [
+            "천뢰지 (Heavenly Thunder Finger)",
+            "삼합지 (Three Union Finger)"
+        ],
+        "formations": [
+            "대창궁무애검진 (Great Blue Sky Limitless Sword Formation)"
+        ]
+    },
+    "narrative_role": [
+        "The golden standard that the protagonist must surpass.",
+        "The 'Student Council President' of the Murim world.",
+        "Sometimes portrayed as hypocrites who use 'Righteousness' to hide greed.",
+        "A powerful ally whose name alone deters minor villains."
+    ]
+}

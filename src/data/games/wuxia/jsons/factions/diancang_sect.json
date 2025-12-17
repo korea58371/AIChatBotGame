@@ -1,0 +1,92 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects)",
+    "faction_profile": {
+        "name": "점창파 (Diancang Sect / 點蒼派)",
+        "alias": [
+            "Guardians of Yunnan (운남의 수호자)",
+            "Diancang Sword Sect (점창검파)",
+            "Descendants of Dali (대리국의 후예)"
+        ],
+        "location": {
+            "province": "Yunnan (운남성 / 雲南省)",
+            "mountain": "Mt. Diancang (점창산 / 點蒼山) - 18 peaks over 3,500m.",
+            "environment": "High altitude plateaus, eternal spring climate (near Kunming/Chunseong), borderland near Vietnam/Laos/Myanmar.",
+            "geo_political_status": "Located on the periphery (Southern Edge). Often serves as the first line of defense against the 'Southern Barbarians' (Nanman / 남만)."
+        },
+        "heritage": {
+            "origin": "Resistance fighters of the fallen Dali Kingdom (대리국) & Tianlong Temple (천룡사).",
+            "ideology": "Taoist roots mixed with Buddhist influences (from Dali).",
+            "nature": "Secular and Practical (Sok-ga) due to distance from Central Plains orthodoxy."
+        }
+    },
+    "characteristics": {
+        "archetype": "Frontier Ranger / Practical Swordsman",
+        "combat_style": {
+            "signature_tactic": "Diancang Dual Swords (점창쌍검 / 點蒼雙劍) - Fighting in pairs to cover blind spots.",
+            "weapon": "Sword (Primary) & Saber/Spear (Secondary - Practical warfare influence).",
+            "attributes": "Fire (Sun) & Wind (Mountain Gales)."
+        },
+        "reputation": "Remote and aloof. They focus on training and survival against local threats rather than Murim politics."
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "사일검법 (Shooting Sun Sword Art / 射日劍法)",
+            "description": "The supreme art of Diancang. Legendary technique capable of shooting down the sun (myth of Houyi).",
+            "moves": [
+                "후예만궁 (Houyi Draws the Bow)",
+                "사양무광 (Setting Sun No Light)",
+                "후예사일 (Houyi Shoots the Sun) - The killing move."
+            ]
+        },
+        "sword_arts": {
+            "style": "Sharp, Piercing, and Flowing",
+            "list": [
+                "화룡검 (Fire Dragon Sword)",
+                "백금검 (Hundred Bird Sword)",
+                "회풍무류검 (Returning Wind Dancing Willow Sword) - Soft/Defensive.",
+                "급풍쾌검 (Rapid Wind Fast Sword)",
+                "낙영비화검 (Falling Petal Flying Flower Sword)"
+            ]
+        },
+        "internal_energy": {
+            "list": [
+                "태을단목신공 (Taiyi Sandalwood Divine Art)",
+                "청명심법 (Clear Bright Heart Method)",
+                "태백일심법 (Taibai One Heart Method)"
+            ]
+        },
+        "fist_and_palm": {
+            "style": "Buddhist Influenced (Hand Seals/In)",
+            "list": [
+                "항마불인 (Demon Subduing Buddha Seal)",
+                "회풍불류권 (Returning Wind Sweeping Willow Fist)",
+                "태을무형권 (Taiyi Formless Fist)",
+                "칠절수 (Seven Severing Hand)"
+            ]
+        },
+        "movement": {
+            "style": "High Altitude Flight",
+            "list": [
+                "비천십이표 (Flying Sky Twelve Floating)",
+                "천룡환허보 (Heavenly Dragon Illusion Void Step)",
+                "응조칠식경공 (Eagle Claw Seven Style Lightness Art)"
+            ]
+        },
+        "other_weapons": {
+            "note": "Reflects their militaristic/resistance history.",
+            "saber": [
+                "적룡십팔도 (Red Dragon 18 Saber)"
+            ],
+            "spear": [
+                "관일창 (Piercing Sun Spear)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Southern Commander' of the Orthodox faction.",
+        "Experts in fighting non-Han Chinese martial arts (Southern tribes/Beasts).",
+        "Users of 'Combination Attacks' (Twin Swords), challenging individualistic protagonists.",
+        "A sect that retains the royal dignity of the fallen Dali Kingdom."
+    ]
+}

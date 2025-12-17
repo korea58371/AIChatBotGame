@@ -1,0 +1,62 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / Orthodox)",
+    "faction_profile": {
+        "name": "곤륜파 (Kunlun Sect / 昆崙派)",
+        "location": {
+            "province": "Qinghai (청해성 / 青海省)",
+            "mountain": "Mt. Kunlun (Kunlunshan / 昆崙山) - The 'Ancestor of Ten Thousand Mountains'.",
+            "geography": "Remote, high altitude, mystical atmosphere. Far west of the Central Plains."
+        },
+        "heritage": {
+            "founder": "Legendary figures (He Zudao etc. depending on lore).",
+            "philosophy": "Taoist. Pursuit of immortality and dragon/sky imagery.",
+            "trait": "Mysterious and powerful. Often disconnected from daily worldly affairs."
+        },
+        "status": {
+            "tier": "Major Sect (One of the Nine Great Sects).",
+            "political_role": "Guardian of the West. Often deals with threats from the Demonic Cult (Xinjiang is nearby)."
+        }
+    },
+    "characteristics": {
+        "archetype": "Dragon / Sky Warrior",
+        "combat_style": {
+            "summary": "Grand, Sweeping, and Soaring.",
+            "visuals": "Lots of jumping/air combat capabilities. Dragon-shaped Qi.",
+            "attribute": "Cloud and Dragon."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "운룡대팔식 (Cloud Dragon Great Eight Forms / 雲龍大八式)",
+            "description": "The ultimate movement technique allowing the user to step on air and change direction mid-flight.",
+            "type": "Movement / Aerial Combat"
+        },
+        "internal_energy": {
+            "list": [
+                "태청신공 (Great Clarity Divine Art)",
+                "상청무상검신공 (Supreme Clarity Formless Sword Divine Art)"
+            ]
+        },
+        "sword_arts": {
+            "list": [
+                "태청검법 (Great Clarity Sword)",
+                "운룡검 (Cloud Dragon Sword)",
+                "분광검 (Splitting Light Sword) - Creates illusions/afterimages."
+            ]
+        },
+        "palm_and_fist": {
+            "list": [
+                "낙안장 (Falling Goose Palm)",
+                "건곤오행장 (Heaven and Earth Five Elements Palm)"
+            ]
+        }
+    },
+    "narrative_role": {
+        "role": [
+            "The sect with the best movement techniques (Qinggong).",
+            "Usually aloof and arrogant due to their remote location.",
+            "The first line of defense against the Demonic Cult's eastern expansion."
+        ]
+    }
+}

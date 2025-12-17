@@ -1,0 +1,61 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Minor or Merchant Families)",
+    "faction_profile": {
+        "name": "상관세가 (Shangguan Family / 上官世家)",
+        "alias": [
+            "도혼상관세가 (Blade Soul Shangguan / 刀魂上官世家)",
+            "Golden Blade Family (금전의 도가)"
+        ],
+        "location": {
+            "province": "Henan (하남성 / 河南省)",
+            "city": "Sanju (산주현 / 山州縣)",
+            "history": "Rose to prominence during the Tang Dynasty."
+        },
+        "status": {
+            "tier": "Prestigious Family (Myeongmun-ga), but often just below the 'Five Great Families' (Odaesega).",
+            "rival": "Danmok Family (단목세가 - Sword vs Blade rivalry)."
+        },
+        "foundation": "Commerce (Sang-gwon), Banking (Eun-jang), Escort Agencies (Pyo-guk)."
+    },
+    "characteristics": {
+        "archetype": "Merchant Warriors / Wealthy Aristocrats",
+        "core_philosophy": "Money is Power (Wealth > Martial Arts).",
+        "growth_strategy": [
+            "Accumulating immense wealth through commerce.",
+            "Buying rare martial arts manuals and hiring master ronin.",
+            "Expanding influence through economic pressure rather than brute force."
+        ],
+        "martial_trait": [
+            "Blade Soul (Dao Soul / 刀魂): Despite their merchant nature, they are famous for Blade Arts.",
+            "Yin Affinity: Their core internal art is better suited for women, leading to powerful female martial artists."
+        ]
+    },
+    "martial_arts_library": {
+        "internal_energy": {
+            "name": "일월신기공 (Sun and Moon Divine Qi Art / 日月神氣功)",
+            "attribute": "Cold / Yin (Moonlight essence).",
+            "irony": "More suitable for women than men. A result of purchasing arts rather than developing a bloodline-specific one.",
+            "narrative_hook": "The daughter/heiress might be stronger than the son."
+        },
+        "blade_arts": {
+            "style": "Wind and Moon (Sharp and Swift)",
+            "list": [
+                "파풍일월도 (Wind Breaking Sun Moon Blade)",
+                "광풍십팔도 (Mad Wind 18 Blade) - Storm-like offensive.",
+                "무극팔로도세 (Limitless Eight Paths Blade Stance)"
+            ]
+        },
+        "movement": [
+            "현천칠성보 (Dark Heaven Seven Star Step)",
+            "벽월유보 (Jade Moon Roaming Step) - Elegant, dance-like movement.",
+            "산매보 (Scattered Charm Step)"
+        ]
+    },
+    "narrative_role": [
+        "The wealthy patron or financier of the Wulin Alliance.",
+        "A faction where the 'Young Miss' (Sojou) is the true powerhouse due to the Yin-affinity art.",
+        "Antagonists who try to solve problems with bribery.",
+        "Rivals to the Danmok Family (Sword vs Blade)."
+    ]
+}

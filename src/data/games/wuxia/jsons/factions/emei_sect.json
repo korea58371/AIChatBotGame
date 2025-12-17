@@ -1,0 +1,66 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / Orthodox)",
+    "faction_profile": {
+        "name": "아미파 (Emei Sect / 峨嵋派)",
+        "location": {
+            "province": "Sichuan (사천성 / 四川省)",
+            "mountain": "Mt. Emei (Emeishan / 峨嵋山) - Known for its steep cliffs and sea of clouds."
+        },
+        "heritage": {
+            "founder": "Guo Xiang (곽양) in some lore, or a Buddhist Nun master.",
+            "philosophy": "Buddhist (Female Monks / Bhikkhuni). Strong moral code but can be dogmatic.",
+            "trait": "Predominantly female. Men can join as lay disciples but rarely hold high power."
+        },
+        "status": {
+            "tier": "Major Sect (One of the Nine Great Sects).",
+            "political_role": "A strong voice in the Alliance. Often conflicts with Wudang or Shaolin over philosophy."
+        }
+    },
+    "characteristics": {
+        "archetype": "Battle Nun / Swordstress",
+        "combat_style": {
+            "summary": "Fast, Sharp, and Ruthless against evil.",
+            "weapons": "Sword (Geom) and Whisk (Bul-jin).",
+            "attribute": "Sharpness and Illusion."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "멸절검법 (Extinction Sword / 滅絕劒法)",
+            "description": "Cruel and overwhelming sword art designed to eradicate evil completely.",
+            "type": "Offensive Sword"
+        },
+        "internal_energy": {
+            "list": [
+                "아미구음공 (Emei Nine Yin Art)",
+                "보리심법 (Bodhi Heart Method)"
+            ]
+        },
+        "sword_arts": {
+            "list": [
+                "아미구파일방검 (Emei Nine Six One Sword)",
+                "표설천운검 (Drifting Snow Cloud Sword)",
+                "금정신검 (Golden Top Divine Sword)"
+            ]
+        },
+        "palm_and_fist": {
+            "list": [
+                "금광장 (Golden Light Palm)",
+                "표설적운장 (Snow Drifting Cloud Palm)"
+            ]
+        },
+        "movement": {
+            "list": [
+                "흑정령 (Black Spirit Crossing)"
+            ]
+        }
+    },
+    "narrative_role": {
+        "role": [
+            "The strict, conservative faction that opposes the protagonist's unconventional methods.",
+            "Home of a heroine who is torn between her sect's strict rules and her love for the protagonist.",
+            "A powerful ally that provides swift justice."
+        ]
+    }
+}

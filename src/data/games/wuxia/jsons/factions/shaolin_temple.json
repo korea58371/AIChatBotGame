@@ -1,0 +1,113 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / The Origin / Orthodox)",
+    "faction_profile": {
+        "name": "소림사 (Shaolin Temple / 少林寺)",
+        "alias": [
+            "The North Star of Wulin (무림의 태산북두)",
+            "Origin of All Martial Arts (천하공부출소림 / 天下功夫出少林)",
+            "The First Sect (천하제일문)"
+        ],
+        "location": {
+            "province": "Henan (하남성 / 河南省)",
+            "county": "Dengfeng (등봉현 / 登封縣)",
+            "mountain": "Mt. Song (Songshan / 숭산) - Specifically the Shaoshi Peak (소실봉).",
+            "geography": "Surrounded by forests (hence 'Shaolin'). To the north is the Yellow River (Hwang-ho).",
+            "landmarks": [
+                "Mountain Gate (Sanmun / 山門) - The imposing main entrance with the black-gold signboard written by Emperor Kangxi.",
+                "Dharma Hall (Daeungbojeon / 大雄寶殿) - Main gathering hall.",
+                "Tower Forest (Taprim / 塔林) - Graveyard of pagodas for past masters.",
+                "Scripture Library (Janggyeonggak / 藏經閣) - Stores 72 Arts and Sutras.",
+                "Bodhidharma Cave (Chamhoe-dong / 懺悔洞) - Prison for sinners/Wall-gazing training.",
+                "36 Chambers (Samsipyuk-bang) - Training grounds."
+            ]
+        },
+        "heritage": {
+            "founder": "Bhadra (Balta / 발타선사) historically; Bodhidharma (Dalma / 달마대사) in Wuxia lore.",
+            "philosophy": "Chan (Zen) Buddhism (선불교). Compassion (Ja-bi) and Deliverance (Je-do).",
+            "history": "Famous for the 13 Stick Monks saving Emperor Li Shimin (Tang Dynasty)."
+        },
+        "status": {
+            "tier": "God Tier (The Absolute Standard).",
+            "political_role": "Leader or Spiritual Anchor of the Murim Alliance. Usually stays neutral until a crisis threatens the world."
+        }
+    },
+    "characteristics": {
+        "archetype": "Monk / Tank / Paladin",
+        "structure": {
+            "leader": "Abbot (Bangjang / 方丈).",
+            "elites": [
+                "18 Arhats (Sippal-nahan / 十八羅漢) - Formation specialists.",
+                "4 Guardian Kings (Sadae-geumgang / 四大金剛) - Top tier guardians.",
+                "8 Great Protectors (Paldae-howon) - Guard the Abbot.",
+                "Discipline Hall (Gyeyul-won) - Internal police."
+            ]
+        },
+        "combat_style": {
+            "summary": "Hard External Arts transforming into Supreme Internal Arts.",
+            "visuals": "Golden Body (Geumgang), crushing palm strikes, immovable defense.",
+            "core_mechanic": "72 Supreme Arts (72 Jeol-ye). A vast library of techniques for every body part."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "역근경 & 세수경 (Yi Jin Jing & Xi Sui Jing)",
+            "description": "The ultimate internal arts of Bodhidharma. Reinforces tendons/meridians (Yi Jin) and cleanses bone marrow (Xi Sui).",
+            "effect": "Provides infinite internal energy and perfect physical condition."
+        },
+        "body_hardening": {
+            "name": "금강불괴 (Diamond Indestructible Body / 金剛不壞)",
+            "description": "The pinnacle of hard qigong. The body becomes invulnerable to blades and poison.",
+            "related_arts": [
+                "철포삼 (Iron Cloth Shirt)",
+                "금종罩 (Golden Bell Cover)"
+            ]
+        },
+        "fist_and_palm": {
+            "style": "Heavy and Yang-filled",
+            "list": [
+                {
+                    "name": "백보신권 (Hundred Step Divine Fist)",
+                    "effect": "Punching energy travels 100 steps."
+                },
+                {
+                    "name": "여래신장 (Tathagata Palm)",
+                    "note": "Often depicted as a lost or supreme Buddhist palm art."
+                },
+                "나한권 (Arhat Fist) - Foundation.",
+                "대력금강장 (Great Strength Diamond Palm)",
+                "수미산장 (Mt. Sumeru Palm)"
+            ]
+        },
+        "finger_arts": {
+            "style": "Piercing",
+            "list": [
+                "일지선공 (One Finger Zen / 一指禪功) - Shooting Qi from a finger.",
+                "다라엽지 (Pattra Leaf Finger)",
+                "금강지 (Diamond Finger)",
+                "탄지신통 (Flicking Finger Divine Skill)"
+            ]
+        },
+        "weapon_arts": {
+            "signature": "Staff (Bong/Gon)",
+            "list": [
+                "달마십팔로 (Bodhidharma 18 Staff)",
+                "복마장법 (Demon Subduing Staff)"
+            ]
+        },
+        "movement": {
+            "signature": "일위도강 (One Reed Crossing the River)",
+            "description": "Crossing a river on a single reed. The symbol of extreme lightness skill."
+        },
+        "formations": {
+            "name": "십팔나한진 (18 Arhat Formation)",
+            "description": "Unbreakable formation used to trap supreme masters."
+        }
+    },
+    "narrative_role": [
+        "The 'Final Wall' that protects the justice of the Wulin.",
+        "The place where the protagonist finds a 'Secret Manual' (e.g., Yi Jin Jing) in the library.",
+        "The arbiter of disputes (The Abbot's word is law).",
+        "A place of penance for powerful villains (imprisoned in the caves)."
+    ]
+}

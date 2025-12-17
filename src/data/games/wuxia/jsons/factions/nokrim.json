@@ -1,0 +1,90 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Sa-pa / Unorthodox Groups)",
+    "faction_profile": {
+        "name": "녹림 (Nokrim / Green Forest / 綠林)",
+        "alias": [
+            "녹림 72채 (72 Strongholds of Green Forest)",
+            "녹림 18채 (18 Elite Strongholds - rare case)",
+            "Brothers of the Mountain (산채 형제들)"
+        ],
+        "location": {
+            "region": "Distributed across all mountains in the Central Plains (Jungwon).",
+            "base_type": "Mountain Strongholds (Sanchae) located at strategic choke points.",
+            "connectivity": "Loose network due to vast distances; poor communication compared to major sects."
+        },
+        "structure": {
+            "leader": "Chong-chaeju (Total Stronghold Leader / 總寨主).",
+            "sub_leader": "Chaeju (Stronghold Leader / 寨主).",
+            "scale": "Varies from 18 (Elite/Stable times) to 72 (Famine/Chaotic times).",
+            "composition": "Mostly starving peasants turned bandits, led by physically gifted criminals."
+        },
+        "alignment": "Sa-pa (Unorthodox) / Chaotic Neutral (Survivalist)."
+    },
+    "characteristics": {
+        "archetype": "Bandit / Looter / Survivor",
+        "core_philosophy": "Brotherhood (Uiri) and Survival.",
+        "survival_strategy": [
+            "Bullies to the weak, cowards to the strong (Gang-yak-yak-gang).",
+            "Avoid conflicts with major sects; retreat is recommended if the enemy is strong.",
+            "Bluffing with numbers (Human wave tactics)."
+        ],
+        "quality_of_force": {
+            "minions": "Untrained thugs. Rely on numbers.",
+            "leaders": "Approximately First Rate (Ilryu). Rely on innate physical strength (Talent) rather than refined technique."
+        },
+        "narrative_role": [
+            "The 'Starter Villain' for the protagonist to farm experience and loot.",
+            "Providers of comedic relief (clumsy bandits).",
+            "A barometer for the world's economic state (more bandits = worse economy)."
+        ]
+    },
+    "laws_and_customs": {
+        "code_name": "청록대전 (Cheongrok-daejeon / Blue Green Great Code)",
+        "internal_rules": [
+            "Respect hierarchy (Death to mutineers).",
+            "Free speech in private, absolute obedience in public.",
+            "Do not fight between strongholds."
+        ],
+        "external_rules": [
+            "Extort 'appropriate' tolls (don't kill the golden goose).",
+            "Freeloading (Moojun-chwisik) is a virtue.",
+            "Build 'friendly' relations with neighbors (for easier extortion).",
+            "Do not intervene in other sects' wars."
+        ],
+        "summary": "Rules exist to mimic a formal sect, but essentially boil down to 'Don't get killed' and 'Steal wisely'."
+    },
+    "martial_arts_library": {
+        "meta_note": "Names sound grandiose, but often lack substance. Most are rough techniques relying on brute force.",
+        "signature_weapon": "Axe (Bu / 斧) and Dao (Saber / 刀).",
+        "axe_arts": {
+            "style": "Rough and Heavy",
+            "list": [
+                "지옥부법 (Hell Axe Art)",
+                "천풍부법 (Sky Wind Axe Art)",
+                "철령부 (Iron Spirit Axe)",
+                "혈마제령부 (Blood Demon Spirit Controlling Axe)"
+            ]
+        },
+        "nokrim_32_arts": {
+            "description": "A mix of stolen or crudely created arts distributed by the Headquarter.",
+            "selected_list": [
+                "천정록화비공 (Heaven Well Green Flower Secret Art)",
+                "백야권 (White Field Fist)",
+                "무유팔대공 (Caressing Soft Eight Great Art)",
+                "화화탄검 (Flower Sighing Sword)",
+                "단부도법 (Short Axe Saber Art) - Practical.",
+                "난화음영조 (Disordered Flower Shadow Claw)",
+                "폭뢰팽하검 (Explosive Thunder Swelling River Sword)",
+                "섬전도 (Lightning Saber)",
+                "광마이십사각 (Mad Horse 24 Kicks)",
+                "취명창법 (Jade Crying Spear Art)"
+            ]
+        },
+        "internal_energy": [
+            "풍뢰진기 (Wind Thunder True Qi)",
+            "무극심공 (Limitless Heart Art)",
+            "태극이원공 (Taiji Two Circle Art)"
+        ]
+    }
+}

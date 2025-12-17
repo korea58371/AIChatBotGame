@@ -1,0 +1,182 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Geography & Sect Locations",
+    "source_reference": "General Korean Wuxia Map (Based on Munpia R.A.H version)",
+    "meta_info": {
+        "disclaimer": "Locations may vary by author/setting. This data represents the most commonly accepted standards.",
+        "scale_note": "China is vast; travel times should be calculated based on 'Li' (400m) and transportation method (Horse vs. Qinggong)."
+    },
+    "regions": {
+        "central_plains": {
+            "name": "Junggwon (Middle Plains / 中原)",
+            "provinces": [
+                {
+                    "name": "Henan (하남 / 河南)",
+                    "significance": "Center of the World",
+                    "factions": [
+                        "Shaolin Temple (소림사 / 少林寺)"
+                    ]
+                },
+                {
+                    "name": "Hubei (호북 / 湖北)",
+                    "significance": "Central West, Wudang Mountains",
+                    "factions": [
+                        "Wudang Sect (무당파 / 武當派)",
+                        "Zhuge Family (제갈세가 / 諸葛世家)"
+                    ]
+                },
+                {
+                    "name": "Shaanxi (섬서 / 陝西)",
+                    "significance": "Home to multiple major sects",
+                    "factions": [
+                        "Mount Hua Sect (화산파 / 華山派)",
+                        "Zhongnan Sect (종남파 / 終南派)",
+                        "Quanzhen Sect (전진교 / 全真教)"
+                    ]
+                }
+            ]
+        },
+        "east": {
+            "name": "Dong-bu (Eastern Region)",
+            "provinces": [
+                {
+                    "name": "Shandong (산동 / 山東)",
+                    "factions": [
+                        "Shandong Ak Family (산동악가)",
+                        "Hwangbo Family (황보세가)"
+                    ]
+                },
+                {
+                    "name": "Anhui (안휘 / 安徽)",
+                    "factions": [
+                        "Namgung Family (남궁세가 / 南宮世家)"
+                    ]
+                },
+                {
+                    "name": "Jiangsu (강소 / 江蘇)",
+                    "factions": [
+                        "Maoshan Sect (모산파 / 茅山派)"
+                    ]
+                },
+                {
+                    "name": "Zhejiang (절강 / 浙江)",
+                    "factions": [
+                        "Botamun (보타문 / 普陀門)"
+                    ]
+                }
+            ]
+        },
+        "west": {
+            "name": "Seo-bu (Western Region)",
+            "provinces": [
+                {
+                    "name": "Sichuan (사천 / 四川)",
+                    "significance": "Isolated basin, often associated with poison/hidden weapons",
+                    "factions": [
+                        "Sichuan Tang Family (사천당가 / 四川唐門)",
+                        "Emei Sect (아미파 / 峨嵋派)",
+                        "Qingcheng Sect (청성파 / 青城派)"
+                    ]
+                },
+                {
+                    "name": "Gansu (감숙 / 甘肅)",
+                    "factions": [
+                        "Kongtong Sect (공동파 / 崆峒派)"
+                    ]
+                },
+                {
+                    "name": "Qinghai (청해 / 青海)",
+                    "factions": [
+                        "Kunlun Sect (곤륜파 / 昆崙派)"
+                    ]
+                }
+            ]
+        },
+        "north": {
+            "name": "Buk-bu (Northern Region)",
+            "provinces": [
+                {
+                    "name": "Hebei (하북 / 河北)",
+                    "factions": [
+                        "Hebei Peng Family (하북팽가 / 河北彭家)",
+                        "Beggars' Sect HQ (개방 / 丐幫) - *Note: HQ location varies*"
+                    ]
+                },
+                {
+                    "name": "Shanxi (산서 / 山西)",
+                    "factions": [
+                        "Jinju Eon Family (진주언가)",
+                        "Xinchang Yang Family (신창양가)"
+                    ]
+                }
+            ]
+        },
+        "south": {
+            "name": "Nam-bu (Southern Region)",
+            "provinces": [
+                {
+                    "name": "Yunnan (운남 / 雲南)",
+                    "factions": [
+                        "Diancang Sect (점창파 / 點蒼派)"
+                    ]
+                },
+                {
+                    "name": "Guangdong (광동 / 廣東)",
+                    "factions": [
+                        "Guangdong Jin Family (광동진가)"
+                    ]
+                },
+                {
+                    "name": "Hainan (해남 / 海南)",
+                    "factions": [
+                        "Hainan Sect (해남파 / 海南派)"
+                    ]
+                }
+            ]
+        }
+    },
+    "outer_realms": {
+        "description": "Areas outside the Central Plains (Sa-oe / Gwan-oe)",
+        "factions": [
+            {
+                "name": "North Sea Ice Palace (북해빙궁 / 北海氷宮)",
+                "location": "Far North (Russia/Siberia border)",
+                "characteristic": "Extreme Cold, Ice Arts"
+            },
+            {
+                "name": "Tianshan Sect (천산파 / 天山派)",
+                "location": "Xinjiang (Far West)",
+                "characteristic": "Mysterious, High Altitude"
+            },
+            {
+                "name": "Potala Palace (포달랍궁 / 布達拉宮)",
+                "location": "Xizang (Tibet)",
+                "characteristic": "Lamaism, Buddhist Arts"
+            },
+            {
+                "name": "Murong Family (모용세가 / 慕容世家)",
+                "location": "Liaoning (Northeast/Manchuria)",
+                "characteristic": "Sword Arts, Royalty Descendants"
+            },
+            {
+                "name": "Jangbaek Sect (장백파 / 長白派)",
+                "location": "Mt. Baekdu (Jilin/Korea border)"
+            }
+        ]
+    },
+    "roving_factions": {
+        "description": "Factions without a fixed city, spread across specific terrains.",
+        "groups": [
+            {
+                "name": "Nokrimchae (Green Forest Strongholds / 綠林寨)",
+                "territory": "Mountains throughout Central Plains",
+                "type": "Bandits"
+            },
+            {
+                "name": "Surochae (Water Fortresses / 水路寨)",
+                "territory": "Yangtze River (Janggang) and Yellow River",
+                "type": "Pirates / Water Bandits"
+            }
+        ]
+    }
+}

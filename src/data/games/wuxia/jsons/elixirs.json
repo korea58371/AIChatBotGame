@@ -1,0 +1,93 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Items & Consumables (Yeong-yak / 영약)",
+    "category_profile": {
+        "name": "영약 (Elixirs / Spiritual Medicines)",
+        "definition": "Rare substances formed by nature over centuries or refined by alchemy. Consuming them boosts Internal Energy (Nae-gong), heals incurable diseases, or alters body constitution.",
+        "role_in_story": "The classic 'MacGuffin' or 'Level Up' item found in hidden caves or guarded by beasts."
+    },
+    "sect_signature_pills": {
+        "description": "Man-made elixirs refined by major sects using secret recipes (Yeon-dan-sul).",
+        "list": [
+            {
+                "sect": "Shaolin (소림사)",
+                "name": "대환단 (Great Return Pill / 大還丹)",
+                "effect": "The most famous elixir. Revives the dying and boosts Qi significantly. Lower tier: Sohwandan (Small Return Pill)."
+            },
+            {
+                "sect": "Wudang (무당파)",
+                "name": "태청단 (Great Clarity Pill / 太淸丹)",
+                "effect": "Purifies internal energy and aids in Taoist cultivation."
+            },
+            {
+                "sect": "Mt. Hua (화산파)",
+                "name": "자하신단 (Purple Mist Divine Pill / 紫霞神丹)",
+                "effect": "Specifically boosts the Violet Mist Divine Art."
+            },
+            {
+                "sect": "Kunlun (곤륜파)",
+                "name": "청송신단 (Green Pine Divine Pill / 靑松神丹)"
+            },
+            {
+                "sect": "Beggars' Sect (개방)",
+                "name": "취구환 (Green Rescue Pill / 翠救丸)",
+                "effect": "Often used as an antidote for poisons."
+            }
+        ]
+    },
+    "legendary_natural_treasures": {
+        "description": "Formed by nature over thousands of years. Far more potent (and dangerous) than man-made pills.",
+        "balanced_holy_items": {
+            "list": [
+                {
+                    "name": "공청석유 (Empty Blue Stone Milk / 空淸石乳)",
+                    "origin": "Stalactite caves. 1 drop per 100 years.",
+                    "properties": "Pure energy. Safe for commoners (extends life) and masters (massive Qi boost). Can provide infinite potential.",
+                    "risk": "Low. The safest legendary elixir."
+                },
+                {
+                    "name": "만년하수오 (10,000-Year Fleeceflower / 萬年何首烏)",
+                    "origin": "Root resembling a human.",
+                    "properties": "Balanced Qi. Increases longevity and internal energy.",
+                    "risk": "Moderate. Safer than Ginseng but still potent."
+                },
+                {
+                    "name": "주과 (Vermilion Fruit / 朱果)",
+                    "origin": "Red fruit.",
+                    "properties": "Boosts Yang energy. Famous for preserving youth/beauty (Anti-aging) and longevity.",
+                    "risk": "Low/Moderate."
+                }
+            ]
+        },
+        "extreme_element_items": {
+            "list": [
+                {
+                    "name": "만년설삼 (10,000-Year Snow Ginseng / 萬年雪蔘)",
+                    "element": "Extreme Yin (Cold / 陰).",
+                    "origin": "Frozen peaks.",
+                    "effect": "Massive Yin Qi. Good for Ice Arts.",
+                    "risk": "Extreme. Will freeze a normal person to death instantly. Needs preparation."
+                },
+                {
+                    "name": "미타성수 (Amitabha Holy Water / 彌陀聖水)",
+                    "element": "Extreme Yin (Cold).",
+                    "origin": "1 drop per 100 years.",
+                    "effect": "Can trigger Metamorphosis (Hwan-gol-tal-tae).",
+                    "risk": "High. Freezing death."
+                },
+                {
+                    "name": "만년지극혈보 (10,000-Year Extreme Blood Treasure / 萬年至極血寶)",
+                    "element": "Extreme Yang (Heat / 陽).",
+                    "origin": "Formed under high pressure/heat.",
+                    "effect": "Cures 'Nine Yin Severed Meridians' (Gu-eum Jeol-maek). Massive Yang Qi.",
+                    "risk": "Extreme. Will melt organs and meridians if consumed without preparation."
+                }
+            ]
+        }
+    },
+    "narrative_usage": [
+        "Falling off a cliff -> Finding a skeleton and 'Gongcheong-seokyu' -> Becoming a master.",
+        "Heroine has 'Cold Disease' (Yin) -> Hero quests for 'Fire Fruit' (Yang) to save her.",
+        "Eating a 'Legendary Elixir' raw -> Suffering from energy overload -> Meditating to absorb it."
+    ]
+}

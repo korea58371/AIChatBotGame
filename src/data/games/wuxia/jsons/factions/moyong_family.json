@@ -1,0 +1,99 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "faction_profile": {
+        "name": "모용세가 (Murong Family / 慕容世家)",
+        "alias": [
+            "The Yan Royals (연나라 왕족)",
+            "Masters of Mechanics and Reflection"
+        ],
+        "location": {
+            "province": "Liaoning (요녕성 / 遼寧省)",
+            "city": "Shenyang (심양현 / 沈陽縣)",
+            "geo_political_status": "Located in the Northeast (Gwan-oe / Outside the Pass), slightly removed from the Central Plains."
+        },
+        "heritage": {
+            "origin": "Descendants of the Xianbei tribe (선비족) and the Royal Family of the Yan Kingdom (연나라).",
+            "pride": "Consider themselves royalty, superior to common martial artists."
+        },
+        "political_stance": "Ambitious / Often Neutral-Evil or Antagonistic.",
+        "core_goal": "Reconstruction of the Yan Empire (대연 제국 재건).",
+        "rivalry": "Namgung Family (Competes for the title of the 'Best Sword Family')."
+    },
+    "characteristics": {
+        "archetype": "Fallen Royalty / Ambitious Schemer",
+        "personality": [
+            "Extremely proud and aristocratic.",
+            "Obsessed with etiquette but ruthless in combat.",
+            "Operates in the shadows to build power for rebellion/restoration."
+        ],
+        "combat_style": {
+            "summary": "Extreme Speed (Fast Sword) and Technique over brute strength.",
+            "specialty": [
+                "Dual Wielding (Sword & Saber or Dual Swords).",
+                "Reflection (Returning the opponent's force against them).",
+                "Combination of Sword (Geom) and Saber (Do) arts."
+            ]
+        }
+    },
+    "martial_arts_library": {
+        "signature_technique": {
+            "name": "두전성이 (Dou Zhuan Xing Yi / 斗轉星移)",
+            "effect": "Reflecting the opponent's attack back at them.",
+            "origin": "Famous technique from 'Demi-Gods and Semi-Devils' (Tian Long Ba Bu)."
+        },
+        "internal_energy": [
+            {
+                "name": "건곤무양신공 (Heaven and Earth Unscathed Divine Art)",
+                "grade": "Supreme"
+            },
+            {
+                "name": "일월광명신공 (Sun and Moon Bright Divine Art)",
+                "grade": "Advanced"
+            }
+        ],
+        "sword_arts": {
+            "style": "Extreme Speed (쾌검 / Fast Sword)",
+            "list": [
+                "건곤파섬검 (Heaven Breaking Flash Sword) - Lightning speed.",
+                "섬광분운검 (Flash Cloud Splitting Sword)",
+                "염혈검 (Flame Blood Sword) - Rare fire attribute.",
+                "쌍용선풍검 (Twin Dragon Whirlwind Sword) - Dual sword technique.",
+                "교검절룡식 (Dragon Cutting Crafty Sword)",
+                "앙천검식 (Heaven Looking Sword)"
+            ]
+        },
+        "saber_arts": {
+            "style": "Sharp and Fast",
+            "list": [
+                "참풍도 (Wind Slashing Saber)",
+                "응익도법 (Hawk Wing Saber)",
+                "천랑도법 (Heavenly Wolf Saber) - Foundational art.",
+                "추혼쾌도법 (Soul Chasing Fast Saber)"
+            ]
+        },
+        "fan_arts": {
+            "description": "Used by scholars or leaders to maintain dignity while fighting.",
+            "list": [
+                "응익분풍선",
+                "기환선법",
+                "천랑선"
+            ]
+        },
+        "movement": [
+            "무영보 (Shadowless Step)",
+            "비류신보 (Flying Flow Godly Step)",
+            "비천신보 (Flying Sky Godly Step)"
+        ],
+        "other_skills": [
+            "적룡조 (Red Dragon Claw)",
+            "유성지법 (Meteor Finger)"
+        ]
+    },
+    "narrative_role": [
+        "The 'Hidden Boss' plotting a rebellion.",
+        "A rival who looks down on the protagonist for being a commoner.",
+        "A tragic faction trapped in the glory of the past.",
+        "Users of 'Reflection' arts, making them tricky opponents for brute-force protagonists."
+    ]
+}

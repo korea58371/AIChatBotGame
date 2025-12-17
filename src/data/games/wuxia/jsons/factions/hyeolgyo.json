@@ -1,0 +1,98 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Sa-gyo / Cults / Horror Faction)",
+    "faction_profile": {
+        "name": "혈교 (Blood Cult / Hyeolgyo / 血敎)",
+        "alias": [
+            "Cult of Blood",
+            "Vampires of Murim (무림의 흡혈귀)",
+            "Madmen of Sacrifice"
+        ],
+        "origin": {
+            "meta_origin": "A unique creation of Korean Wuxia (not historical like White Lotus/Ming Cult).",
+            "narrative_purpose": "Created to be a 'True Evil' distinct from the 'Might makes Right' philosophy of the Demonic Cult (Magyo)."
+        },
+        "location": {
+            "nature": "Hidden / Parasitic. No fixed base is standard; they hide within society or deep underground caverns filled with blood pools.",
+            "strategy": "Infiltration and corruption rather than open territorial rule."
+        },
+        "ideology": {
+            "core": "Fanaticism (광기 / 狂氣) & Sacrifice (희생).",
+            "belief": "Power is obtained through blood (absorption) and sacrifice (human offering), not just training.",
+            "contrast_with_magyo": {
+                "Magyo": "Worships Strength (Survival of the Fittest), Rational Evil, Martial Perfection.",
+                "Hyeolgyo": "Worships Blood/Entity (Fanaticism), Irrational Evil, Shortcuts via Sacrifice."
+            }
+        }
+    },
+    "characteristics": {
+        "archetype": "Vampire / Cultist / Butcher",
+        "mechanics": [
+            "Vampirism (흡혈): Absorbing blood/essence (Gi) to increase internal energy rapidly.",
+            "Human Sacrifice (인신공양): Killing masses to summon entities or power up rituals.",
+            "Resilience: Hard to kill due to forbidden regenerative arts (sometimes portrayed as undead-like)."
+        ],
+        "visuals": {
+            "qi_color": "Crimson / Blood Red (Blood fog, smell of iron).",
+            "atmosphere": "Gore, horror, piles of corpses."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "혈마오검 (Blood Demon Five Swords / 血魔五劍)",
+            "description": "The supreme sword art of the Blood Demon (Leader). Blood spurts with every swing.",
+            "forms": [
+                "1식 사멸령 (Death Destruction Spirit) - Bung-geom (Collapsing Sword).",
+                "2식 탈심혼 (Heart Stealing Soul) - Byeon-geom (Changing Sword).",
+                "3식 천심전 (Heart Piercing Arrow) - Kwae-geom (Fast Sword).",
+                "4식 혈궁천 (Blood Bow Heaven) - Sal-geom (Killing Sword).",
+                "5식 천절영 (Heaven Severing Spirit) - Hwan-geom (Illusion Sword)."
+            ]
+        },
+        "internal_energy": {
+            "style": "Corrupt and Parasitic",
+            "list": [
+                "마라혈해공 (Mara Blood Sea Art) - Accumulating Qi like a sea of blood.",
+                "철혈신공 (Iron Blood Divine Art)",
+                "백팔만혈류공 (1.08 Million Blood Flow Art)"
+            ]
+        },
+        "sword_arts": {
+            "style": "Cruel and Bloody",
+            "list": [
+                "혈룡검법 (Blood Dragon Sword)",
+                "폭혈검 (Exploding Blood Sword)",
+                "수라잔혈검 (Asura Remaining Blood Sword)",
+                "귀영혈류검법 (Ghost Shadow Blood Flow Sword)"
+            ]
+        },
+        "fist_arts": {
+            "list": [
+                "혈왕진혼권 (Blood King Soul Suppressing Fist)",
+                "혈룡천권 (Blood Dragon Sky Fist)"
+            ]
+        },
+        "movement": {
+            "style": "Bloody Mist",
+            "list": [
+                "혈해유룡보 (Blood Sea Roaming Dragon Step)",
+                "혈영보 (Blood Shadow Step)"
+            ]
+        },
+        "forbidden_arts_daebeop": {
+            "type": "Rituals & Transformations",
+            "list": [
+                "성혈금침대법 (Holy Blood Gold Needle Great Art) - Forcing potential or controlling puppets.",
+                "대천신혈마강림대법 (Great Heavenly God Blood Demon Descent) - Summoning/Transformation ritual.",
+                "천독화혈독인대법 (Heavenly Poison Melting Blood Poison Man Art) - Creating biological weapons.",
+                "역혈혼마대법 (Reverse Blood Chaotic Demon Art)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Horror' element villain (Gore/Splatter).",
+        "A faction that unites the Orthodox and Demonic Cults against a common, disgusting enemy.",
+        "The source of 'Corrupted' storylines where good characters are turned into blood-craving monsters.",
+        "An enemy that provides a moral justification for the protagonist to use extreme violence."
+    ]
+}

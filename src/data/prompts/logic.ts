@@ -19,8 +19,8 @@ ${JSON.stringify(prunedStats, null, 2)}
 
 **Reference Data:**
 ${logicContext}
-- Valid Locations: ${Object.keys(worldData.locations).join(', ')}
-- Valid Items: ${Object.keys(worldData.items).join(', ')}
+- Valid Locations: ${Object.keys(worldData.locations || {}).join(', ')}
+- Valid Items: ${Object.keys(worldData.items || {}).join(', ')}
 
 ---
 
@@ -62,6 +62,9 @@ ${logicContext}
     - **Penalty**: If Fate is insufficient, reduce LUK.
     - **Misfortune**: If user suffers bad luck/damage, INCREASE Fate.
 
+4. **Character & Memory Management**:
+    - **Context**: You receive a summarized list of memories.
+    - **New Memories**: Extract *important* facts or events from the recent turn.
     - **Consolidate**: Merge related memories.
     - **No Mind Reading**: Only record what was said/done/seen.
     - **Format**: Return the complete list of memories.

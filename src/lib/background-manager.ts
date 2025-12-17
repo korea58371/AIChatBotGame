@@ -1,9 +1,5 @@
 import stringSimilarity from 'string-similarity';
-import bgList from '../data/background_list.json';
-import { backgroundMappings } from '../data/backgroundMappings';
-
-// Ensure bgList is a string array (it should be valid from the JSON)
-const backgroundFiles: string[] = bgList as string[];
+import { useGameStore } from './store';
 
 /**
  * Resolves an AI background tag to the most similar filename in the assets folder.
@@ -17,10 +13,19 @@ const backgroundFiles: string[] = bgList as string[];
  * @returns The resolved absolute path, e.g., "/assets/backgrounds/City_Street.jpg"
  */
 export function resolveBackground(tag: string): string {
+    const state = useGameStore.getState();
+    const backgroundMappings = state.backgroundMappings || {};
+    const backgroundFiles = state.availableBackgrounds || [];
+    const activeGameId = state.activeGameId || 'god_bless_you';
+
+    // Determined Base Path
+    // [MODIFIED] Always use game-specific folder. Legacy check removed as we migrated assets.
+    const basePath = `/assets/${activeGameId}/backgrounds`;
+
     // 1. Clean the tag: Remove <배경>, </배경>, whitespace
     const query = tag.replace(/<배경>|<\/배경>/g, '').trim();
 
-    if (!query) return '/assets/backgrounds/Default_Fallback.jpg'; // Fallback if empty
+    if (!query) return `${basePath}/Default_Fallback.jpg`; // Fallback if empty
 
     // console.log(`[BackgroundManager] Resolving: "${query}"`);
 
@@ -29,7 +34,7 @@ export function resolveBackground(tag: string): string {
     // ---------------------------------------------------------
     if (backgroundMappings[query]) {
         console.log(`[BackgroundManager] Direct Match: "${query}" -> "${backgroundMappings[query]}"`);
-        return `/assets/backgrounds/${backgroundMappings[query]}`;
+        return `${basePath}/${backgroundMappings[query]}`;
     }
 
     // ---------------------------------------------------------
@@ -42,7 +47,7 @@ export function resolveBackground(tag: string): string {
     if (keyMatches.bestMatch.rating > 0.6) { // High confidence for aliases
         const mappedFile = backgroundMappings[keyMatches.bestMatch.target];
         console.log(`[BackgroundManager] Fuzzy Alias Match: "${query}" -> "${keyMatches.bestMatch.target}" -> "${mappedFile}"`);
-        return `/assets/backgrounds/${mappedFile}`;
+        return `${basePath}/${mappedFile}`;
     }
 
     // ---------------------------------------------------------
@@ -69,10 +74,15 @@ export function resolveBackground(tag: string): string {
                 return `/assets/backgrounds/${subMatch.bestMatch.target}`;
             }
 
+            if (subMatch.bestMatch.rating > 0.4) {
+                console.log(`[BackgroundManager] Category-Constrained Match: "${query}" -> "${subMatch.bestMatch.target}"`);
+                return `${basePath}/${subMatch.bestMatch.target}`;
+            }
+
             // Force Fallback within Category if "Safe Mode" is desired
             // For now, let's allow a very loose match if the category is correct.
             console.log(`[BackgroundManager] Weak match but Category is valid. Forcing best category match: "${subMatch.bestMatch.target}"`);
-            return `/assets/backgrounds/${subMatch.bestMatch.target}`;
+            return `${basePath}/${subMatch.bestMatch.target}`;
         }
     }
 
@@ -86,7 +96,7 @@ export function resolveBackground(tag: string): string {
 
     // Threshold increased (0.5 -> 0.6) to avoid generic inputs matching specific unrelated files
     if (bestFileMatch.rating > 0.6) {
-        return `/assets/backgrounds/${bestFileMatch.target}`;
+        return `${basePath}/${bestFileMatch.target}`;
     }
 
     // ---------------------------------------------------------

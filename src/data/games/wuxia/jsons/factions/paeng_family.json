@@ -1,0 +1,91 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "faction_profile": {
+        "name": "하북팽가 (Hebei Peng Family / 河北彭家)",
+        "alias": [
+            "The King of Blades (도왕 / 刀王)",
+            "Tiger of Hebei (하북의 호랑이)"
+        ],
+        "location": {
+            "province": "Hebei (하북성 / 河北省)",
+            "city": "Beijing (북경 / 北京) - Capital of Ming Dynasty.",
+            "geo_political_status": "Located in the Imperial Capital. Inevitably linked with Imperial Court (Gwan-a) and politics."
+        },
+        "heritage": "A lineage of warlords and generals.",
+        "political_stance": "Orthodox (Jeongpa). Often ranked #1 or #2 in the Five Families due to pure destructive power."
+    },
+    "characteristics": {
+        "archetype": "Barbarian / Warlord / Tank",
+        "personality": [
+            "Hot-blooded & Manly (열혈남아 / Macho).",
+            "Values loyalty (Uiri) and brotherhood.",
+            "Straightforward and aggressive, hating schemes."
+        ],
+        "physique": [
+            "Born with Divine Strength (신력 / Godly Strength).",
+            "Huge stature and heavy muscles (men and women alike).",
+            "Naturally tough skin and bones suitable for external arts."
+        ],
+        "combat_style": {
+            "summary": "Overwhelming Power & Heavy Weapons.",
+            "signature_weapon": "Great Saber / Dao (도 / 刀) - Often exaggerated in size and weight.",
+            "tactics": "Crushing opponents with sheer force and wide-range attacks. 'Slash first, ask later'."
+        },
+        "contradiction": {
+            "description": "Although portrayed as muscleheads, their location (Beijing) implies high political acumen.",
+            "narrative_hook": "Are they pretending to be ignorant to survive in the capital? Or are they truly just powerful enough to ignore politics?"
+        }
+    },
+    "martial_arts_library": {
+        "internal_energy": {
+            "focus": "Body Hardening & Explosive Power",
+            "list": [
+                {
+                    "name": "건곤미허신공 (Heaven and Earth Void Divine Art)",
+                    "effect": "Hardens skin like armor. Optimizes body for external arts."
+                },
+                {
+                    "name": "혼원벽력신공 (Chaos Thunderbolt Divine Art)",
+                    "grade": "Supreme (Family Head only)",
+                    "risk": "Requires natural divine strength; otherwise, meridians may burst."
+                }
+            ]
+        },
+        "saber_arts": {
+            "style": "Destructive / Wide Area",
+            "list": [
+                "철혈적성도 (Iron Blood Star Plucking Saber)",
+                "건곤연환탈백도 (Heaven and Earth Soul Stealing Chain Saber)",
+                "혼원벽력도 (Chaos Thunderbolt Saber) - Signature Ultimate.",
+                "오호단문도 (Five Tigers Broken Door Saber) - Foundational art.",
+                "왕자사도 (King Character Four Saber)",
+                "파황일도 (Desolate Breaking One Saber)",
+                "참마무영도법 (Demon Slashing Shadowless Saber)",
+                "염왕도 (Yama/Hell King Saber)"
+            ]
+        },
+        "palm_arts": {
+            "style": "Heavy / Bone Crushing",
+            "list": [
+                "건곤신장 (Heaven and Earth Divine Palm)",
+                "혼원벽력장 (Chaos Thunderbolt Palm)",
+                "대력금강장 (Great Strength Diamond Palm) - Immense physical force."
+            ]
+        },
+        "movement": [
+            "미허신보 (Void Divine Step)",
+            "혼원보 (Chaos Step)",
+            "어기신풍 (Riding Qi Divine Wind)"
+        ],
+        "formations": [
+            "연환패왕진 (Chain Tyrant Formation)"
+        ]
+    },
+    "narrative_role": [
+        "The reliable 'Tank' ally who clears minions.",
+        "A friction point with intellectual characters (like Zhuge Family).",
+        "A political buffer between the Murim Alliance and the Imperial Court.",
+        "Tragic figures who fight to the death for loyalty."
+    ]
+}

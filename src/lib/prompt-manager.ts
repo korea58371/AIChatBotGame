@@ -1,4 +1,3 @@
-import { getSystemPromptTemplate, getRankInfo } from '../data/prompts/system';
 import { MOOD_PROMPTS, MoodType } from '@/data/prompts/moods';
 import { RelationshipManager } from './relationship-manager';
 
@@ -61,6 +60,9 @@ interface GameState {
     availableCharacterImages?: string[];
     availableExtraImages?: string[]; // Added
     isDirectInput?: boolean;
+    getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
+    constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
+    lore?: any;
 }
 
 export class PromptManager {
@@ -70,23 +72,27 @@ export class PromptManager {
         // It contains the heavy reference data (Characters, Backgrounds, World).
         // By placing this at the very top, we enable Gemini's Context Caching.
 
-        const famousCharactersDB = `
-1. 천서윤 (S급): [국가 영웅/올림푸스 부길드장]. 연예인보다 유명한 현역 최강자.
-2. 주아인 (A급): [아처/양궁 금메달리스트]. 국민적 스포츠 영웅.
-3. 성시아 (S급): [힐러/차기 성녀]. 고귀하고 범접할 수 없는 교단의 상징.
-4. 이아라 (B급): [탑 아이돌/스트리머]. '국민 여동생'이자 블레서 방송계의 1인자.
-5. 한여름 (S급): [기상캐스터/마녀]. 날씨 조작 능력. 뉴스 시청률 보증수표.
-6. 앨리스 (S급): [100만 유튜버/버튜버]. 천재 프로게이머. 실물은 베일에 싸임.
-7. 신세아 (S급): [미래 길드 실소유주]. 돈을 물 쓰듯 하는 재벌 3세.
-8. 백련화 (은퇴 S급): [아카데미 교관/전 검성]. 현재는 호랑이 선생님.
-9. 사이온지 미유키 (랭킹 1위/일본/S급): [검희]. 교토 명문가 당주.
-10. 리메이링 (랭킹 1위/중국/S급): [천하제일인]. 대륙의 검후.
-11. 아나스타샤 (S급/러시아): [용병]. 한국에 정착한 최강의 용병.
-`;
+        // [FIXED] Use Game-Specific Constants
+        // If state.constants is missing, we should NOT fallback to God Bless You data.
+        const famousCharactersDB = state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded.";
 
         const availableChars = PromptManager.getAvailableCharacters(state); // Usually 20~30KB
         const availableExtra = PromptManager.getAvailableExtraCharacters(state) || "None";
         const availableBackgrounds = PromptManager.getAvailableBackgrounds(state); // Heavy list
+
+        // [WUXIA LORE INJECTION]
+        let loreContext = "";
+        if (state.lore) {
+            // Filter or format logic?
+            // For now, we inject the entire Knowledge Base as a Reference.
+            // We use JSON stringify with indentation for readability (LLMs understand formatted JSON well).
+            // [FIX] Use deterministic sort for Cache Stability
+            loreContext = `
+## [🌏 WORLD KNOWLEDGE BASE (LORE)]
+Use this detailed information to maintain consistency in the world setting, martial arts, systems, and factions.
+${JSON.stringify(PromptManager.deepSort(state.lore), null, 2)}
+`;
+        }
 
         return `
 # [SHARED STATIC CONTEXT]
@@ -97,30 +103,11 @@ The following information is constant reference data.
 (주인공은 이들을 미디어로만 접해 알고 있으며, 개인적 친분은 없는 상태입니다.)
 ${famousCharactersDB}
 
+${loreContext}
+
 ---
 
-## [🔥 CORE GAME RULES & TONE (STRICT ENFORCEMENT)]
-1. **[Realism & Consequences (Bad Endings)]**:
-   - This is NOT a casual game. Complacent choices or foolish actions MUST lead to realistic negative consequences, including severe injury, mental trauma, or **BAD ENDINGS (Game Over)**.
-   - Do NOT protect the player from their own mistakes.
-
-2. **[No Plot Armor & Power Balance]**:
-   - Remove ALL "Protagonist Convenience" clichés.
-   - Enforce realistic power scaling. The narrative must adhere to the world's logic, not the player's convenience. The world does not revolve around the main character.
-
-3. **[Relationships & Social Hierarchy]**:
-   - **Initial Status**: Unless specified in history, all Heroines/Blessers are **STRANGERS** to the protagonist.
-   - **Social Norms**: High-ranking Blessers typically ignore or look down upon civilians and low-rank Hunters. This is a natural social norm in this world, not necessarily malice. 
-   - **Reaction Principle**: Relationships must evolve strictly based on affinity scores and logical interactions. Do not force unearned friendliness.
-
-4. **[No Lucky Awakenings]**:
-   - The protagonist never "luckily" awakens obscure powers or finds legendary items by chance.
-   - All growth must be EARNED through effort, strategy, or overcoming adversity. No "Free Lunch" events.
-
-5. **[Logic of Appearance (Nationality & Location)]**:
-   - Strictly adhere to probability based on **Nationality** and **Location**.
-   - Foreign characters (e.g., Japan/China/Russia) or High-Society figures DO NOT randomly appear in common Korean neighborhoods/slums without a specific, compelling narrative reason.
-   - Maintain geographical coherence.
+${state.constants?.CORE_RULES || ""}
 
 ---
 
@@ -158,7 +145,13 @@ ${availableBackgrounds}
     static generateSystemPrompt(state: GameState, language: 'ko' | 'en' | null, userMessage?: string): string {
         // [NOW DYNAMIC ONLY]
         // The static part is handled separately by getSharedStaticContext
-        let prompt = getSystemPromptTemplate(state, language);
+        let prompt = "";
+
+        if (state.getSystemPromptTemplate) {
+            prompt = state.getSystemPromptTemplate(state, language);
+        } else {
+            prompt = "System prompt template not loaded.";
+        }
 
 
         const worldData = state.worldData || { locations: {}, items: {} };
@@ -318,7 +311,7 @@ ${availableBackgrounds}
             prompt += `\n\n**IMPORTANT: ALL OUTPUT MUST BE IN ENGLISH.**`;
         }
 
-        console.log("Generated System Prompt:", prompt); // Debug Log
+        // console.log("Generated System Prompt:", prompt); // Debug Log
         return prompt;
     }
 
@@ -474,10 +467,10 @@ ${spawnCandidates || "None"}
         `.trim();
     }
 
-    static getRelevantBackgrounds(currentLocation: string): string[] {
+    static getRelevantBackgrounds(currentLocation: string, state: GameState): string[] {
         // Simple heuristic: Keyword matching
-        // We use require here to avoid top-level import cycles if any, though bgList is data.
-        const bgFiles = require('../data/background_list.json');
+        // Use state instead of static require
+        const bgFiles = state.availableBackgrounds || [];
 
         const refinedLocation = (currentLocation || '').toLowerCase().trim();
 
@@ -525,6 +518,9 @@ ${spawnCandidates || "None"}
 
         if (allChars.length === 0) return "No character data available.";
 
+        // [FIX] Sort by name to guarantee deterministic order for Caching
+        allChars.sort((a: any, b: any) => a.name.localeCompare(b.name));
+
         return allChars.map((c: any) => {
             let info = `### ${c.name}`;
             if (c.role) info += ` (${c.role})`;
@@ -535,6 +531,8 @@ ${spawnCandidates || "None"}
 
             // Appearance (Detailed for Visuals)
             if (c.appearance) {
+                // Ensure deterministic JSON key order is hard, but usually appearance keys are stable enough if source is stable.
+                // For safety, we trust the source object is not mutated randomly.
                 info += `\n- Appearance: ${JSON.stringify(c.appearance)}`;
             } else if (c.description) {
                 info += `\n- Appearance/Desc: ${c.description}`;
@@ -564,24 +562,46 @@ ${spawnCandidates || "None"}
         }).join('\n\n');
     }
 
-    static getAvailableExtraCharacters(state: GameState): string {
-        // Load directly from the generated map to ensure availability on server-side
+    static getAvailableExtraCharacters(state: GameState & { extraMap?: Record<string, string> }): string {
+        // Load directly from the state (Loaded by DataManager)
         let extraNamesStr = "None";
-        try {
-            const extraMap = require('../../public/assets/ExtraCharacters/extra_map.json');
-            const extraNames = Object.keys(extraMap);
+
+        if (state.extraMap) {
+            const extraNames = Object.keys(state.extraMap).sort(); // [FIX] Sort keys
             if (extraNames.length > 0) {
                 extraNamesStr = extraNames.join(', ');
             }
-        } catch (e) {
-            console.error("Failed to load extra_map.json", e);
+        } else {
+            // Legacy Fallback (Hardcoded - likely to fail for new games but kept for safety)
+            try {
+                // Determine path based on active game? We don't have gameId here easily unless we add it to state.
+                // But state.extraMap SHOULD be present.
+                // If not, we skip the require to avoid error spam or wrong file.
+            } catch (e) {
+                console.warn("Failed to read extra map from state or fallback");
+            }
         }
 
         const extraImages = state.availableExtraImages && state.availableExtraImages.length > 0
-            ? state.availableExtraImages.join(', ')
+            ? [...state.availableExtraImages].sort().join(', ') // [FIX] Sort array
             : extraNamesStr; // Fallback to loaded map if state is empty
 
         return extraImages;
+    }
+
+    private static deepSort(obj: any): any {
+        if (obj === null || typeof obj !== 'object') {
+            return obj;
+        }
+        if (Array.isArray(obj)) {
+            return obj.map(PromptManager.deepSort);
+        }
+        const sortedKeys = Object.keys(obj).sort();
+        const result: any = {};
+        sortedKeys.forEach(key => {
+            result[key] = PromptManager.deepSort(obj[key]);
+        });
+        return result;
     }
 
     static getAvailableBackgrounds(state: GameState): string {
@@ -608,16 +628,26 @@ ${spawnCandidates || "None"}
         });
 
         // Refine the list to group variants
-        return Object.entries(groupedBgs).map(([cat, entries]) => {
+        // [FIX] Sort Categories
+        const sortedCategories = Object.keys(groupedBgs).sort();
+
+        return sortedCategories.map((cat) => {
+            const entries = groupedBgs[cat];
             const groups: Record<string, string[]> = {};
-            entries.forEach(e => {
+
+            // Sort entries to ensure deterministic sub-groups
+            entries.sort().forEach(e => {
                 const [prefix, ...rest] = e.split('_');
                 if (!groups[prefix]) groups[prefix] = [];
                 if (rest.length > 0) groups[prefix].push(rest.join('_'));
                 else groups[prefix].push(''); // Root item
             });
 
-            const finalEntries = Object.entries(groups).map(([prefix, variants]) => {
+            // [FIX] Sort Group Keys
+            const sortedPrefixes = Object.keys(groups).sort();
+
+            const finalEntries = sortedPrefixes.map((prefix) => {
+                const variants = groups[prefix].sort(); // [FIX] Sort Variants
                 const vars = variants.filter(v => v !== '').join(', ');
                 if (vars) {
                     return `${prefix}(${vars})`;

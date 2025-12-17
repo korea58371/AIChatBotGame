@@ -1,0 +1,75 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Organizations & Naming Conventions",
+    "definitions": {
+        "Munpa (문파 / Sect)": {
+            "core_concept": "Tradition & Lineage",
+            "characteristics": [
+                "Based on a specific founder or ancestor.",
+                "Strong religious or philosophical color (Taoism, Buddhism).",
+                "Emphasis on history and succession of specific martial arts."
+            ],
+            "examples": [
+                "Wudang Sect (무당파)",
+                "Mount Hua Sect (화산파)",
+                "Kongtong Sect (공동파)"
+            ]
+        },
+        "Bangpa (방파 / Faction or Gang)": {
+            "core_concept": "Interest & Profit",
+            "characteristics": [
+                "Formed by individuals with shared interests or goals.",
+                "Less bound by ancient tradition or religion compared to Munpa.",
+                "Organizational structure is prioritized over lineage."
+            ],
+            "note": "While distinct in definition, the terms are often used interchangeably in casual context."
+        }
+    },
+    "naming_suffixes": {
+        "description": "The last character of an organization's name determines its type and scale.",
+        "list": [
+            {
+                "suffix": "Pa (파 / 派)",
+                "meaning": "Sect / School",
+                "nuance": "Religious or regional martial arts group. Usually located on a mountain.",
+                "example": "Hwasan-pa (화산파)"
+            },
+            {
+                "suffix": "Bang (방 / 幇)",
+                "meaning": "Gang / Union",
+                "nuance": "Interest-based group, often lower class or street-level, but can be massive.",
+                "example": "Gaebang (Beggars' Sect / 개방), Ha-o-bang (하오방)"
+            },
+            {
+                "suffix": "Mun (문 / 門)",
+                "meaning": "Gate / Clan",
+                "nuance": "Family-based or a specific school of thought. Often implies a bloodline or strict master-disciple bond.",
+                "example": "Sacheon Tang-mun (Tang Family / 사천당문)"
+            },
+            {
+                "suffix": "Gung (궁 / 宮)",
+                "meaning": "Palace",
+                "nuance": "Grand, mysterious, isolated, or extremely powerful. Often implies royalty or divine status.",
+                "example": "Bukhae Bing-gung (North Sea Ice Palace / 북해빙궁), Podallap-gung (포달랍궁)"
+            },
+            {
+                "suffix": "Bo (보 / 堡)",
+                "meaning": "Fortress / Castle",
+                "nuance": "Military-style base or a heavily fortified family residence.",
+                "example": "Taewon Jin-bo (태원진보)"
+            },
+            {
+                "suffix": "Jang (장 / 莊)",
+                "meaning": "Manor / Villa",
+                "nuance": "Wealthy private residence, merchant guild base, or a neutral territory.",
+                "example": "Myeong-wang-jang (명왕장)"
+            },
+            {
+                "suffix": "Hoe (회 / 會)",
+                "meaning": "Society / Association",
+                "nuance": "Alliance, merchant guild, or a gathering for a specific purpose.",
+                "example": "Cheon-ji-hoe (천지회)"
+            }
+        ]
+    }
+}

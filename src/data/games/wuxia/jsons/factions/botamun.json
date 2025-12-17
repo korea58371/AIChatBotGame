@@ -1,0 +1,97 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Buddhist / Island / Hidden Sects)",
+    "faction_profile": {
+        "name": "보타문 (Botamun / Putuo Sect / 普陀門)",
+        "alias": [
+            "South Sea Putuo Hermitage (남해 보타암)",
+            "Sanctuary of Avalokitesvara (관음성지)",
+            "Guardians of the East Sea (동해의 수호자)"
+        ],
+        "location": {
+            "province": "Zhejiang (절강성 / 浙江省)",
+            "region": "Zhoushan Archipelago (주산열도 / 舟山列島)",
+            "mountain": "Mt. Putuo (보타산 / 普陀山) - One of the Four Sacred Mountains of Buddhism.",
+            "geography": "An island with an octagonal mountain shape. Scenic and isolated from the mainland.",
+            "landmarks": [
+                "Mt. Buljeong (불정산 - Highest Peak)",
+                "Puji Temple (보제사), Fayu Temple (법우사), Huiji Temple (혜제사)",
+                "Sound Adjusting Cave (조음동 / 調音洞)"
+            ]
+        },
+        "heritage": {
+            "religion": "Buddhism (Bul-ga / 不可).",
+            "worship": "Avalokitesvara (Gwan-eum Bosal / 観音菩薩).",
+            "composition": "Predominantly Nuns (Bhikkhuni) or Monks. Similar to Emei but more isolated."
+        },
+        "status": {
+            "tier": "Hidden Master Sect (Not typically in the Nine Great Sects, but elite).",
+            "role": "Deus Ex Machina (Appears only during great crises).",
+            "reputation": "Mysterious defenders who specialize in exorcism (Anti-Demon)."
+        }
+    },
+    "characteristics": {
+        "archetype": "Island Monastic Order / Demon Hunters",
+        "combat_style": {
+            "summary": "Buddhist Divine Light & Vast Ocean Power.",
+            "specialty": "Demon Subduing (Hang-ma / 降魔) - Highly effective against Demonic Cults or evil spirits.",
+            "vibe": "Holy, majestic, and vast like the sea."
+        },
+        "duality": {
+            "light": "Saviours appearing from the sea to stop the Demonic Cult.",
+            "shadow": "Corrupt monks hiding away from the world with dark secrets (optional twist)."
+        }
+    },
+    "martial_arts_library": {
+        "internal_energy": {
+            "style": "Oceanic and Vast",
+            "list": [
+                {
+                    "name": "창해심법 (Azure Sea Heart Method)",
+                    "effect": "Accumulates Qi as vast and deep as the ocean."
+                },
+                "창해심결 (Azure Sea Heart Chant)"
+            ]
+        },
+        "palm_arts": {
+            "style": "Anti-Evil / Holy",
+            "list": [
+                {
+                    "name": "항마수미신장 (Demon Subduing Sumeru Divine Palm)",
+                    "description": "Signature Ultimate. Rivals the 'Tathagata Palm'. Causes internal rupture in those with evil Qi (Demon detectors).",
+                    "effect": "Holy damage boost against Dark/Demonic alignment."
+                },
+                "동자배불 (Boy Worshipping Buddha)",
+                "복마앙불 (Demon Subduing Looking Up at Buddha)",
+                "항마불광 (Demon Subduing Buddha Light)",
+                "수미단열 (Sumeru Severing Heat)"
+            ]
+        },
+        "sword_arts": {
+            "style": "Many Hands (Speed) & Enlightenment",
+            "list": [
+                {
+                    "name": "대비천수검 (Great Compassion Thousand Hand Sword)",
+                    "description": "Creates an illusion of a thousand arms striking simultaneously."
+                },
+                {
+                    "name": "전광제석참 (Lightning Indra Slash)",
+                    "type": "Extreme Speed (Kwae-geom) / Finishing Move."
+                },
+                "일백팔사검 (108 Temple Sword)",
+                "반야보리검법 (Prajna Bodhi Sword)",
+                "칠절항마검법 (Seven Severing Demon Subduing Sword)",
+                "팔만사천보리항마검법 (84,000 Bodhi Demon Subduing Sword) - Ultimate technique.",
+                "천수일천검형 (Thousand Hand One Thousand Sword Form) - Illusion Mastery.",
+                "마라백팔검형 (Mara 108 Sword Form) - Qi Mastery.",
+                "의형십팔검 (Intent Form 18 Sword) - Intent Mastery."
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Reinforcements from the Sea' when the Orthodox faction is cornered.",
+        "A sect that tests the protagonist's morality (Buddhist koans).",
+        "Rivals to the Emei Sect (Mainland Nuns vs Island Nuns).",
+        "Keepers of ancient Buddhist artifacts sealed on the island."
+    ]
+}

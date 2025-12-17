@@ -1,0 +1,115 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Martial Skills & Arts (Giye / 技藝)",
+    "definition": "High-level techniques combining skill and art, usually requiring advanced Internal Energy (Qi).",
+    "skills_database": {
+        "telekinesis_and_manipulation": [
+            {
+                "name": "허공섭물 (Void Grabbing / 虛空攝物)",
+                "type": "Utility / Control",
+                "mechanic": "Moving objects without physical contact using invisible Qi.",
+                "difficulty": "High (Requires Master level)",
+                "synonyms": [
+                    "능공섭물",
+                    "격공섭물"
+                ]
+            },
+            {
+                "name": "어검술 (Sword Control / 馭劍術)",
+                "type": "Combat / Weapon Mastery",
+                "mechanic": "Telekinetic manipulation of a sword for combat.",
+                "comparison": "Advanced version of Void Grabbing. Can handle heavy weapons and complex maneuvers.",
+                "sub_skills": [
+                    "이기어검",
+                    "심어검",
+                    "어검비행 (Flying on sword)"
+                ]
+            }
+        ],
+        "physics_and_impact": [
+            {
+                "name": "격산타우 (Mountain Hitting Ox / 隔山打牛)",
+                "type": "Offensive (Penetration)",
+                "mechanic": "Delivering shockwaves through an obstacle to hit the target behind/inside.",
+                "advantage": "Ignores armor/defense. Destroys internal organs while leaving the surface intact.",
+                "synonyms": [
+                    "백보신권",
+                    "내가중수법"
+                ]
+            },
+            {
+                "name": "사량발천근 (Four Ounces Move 1000 Pounds / 四兩撥千斤)",
+                "type": "Defensive / Counter",
+                "mechanic": "Using minimal force to deflect massive power.",
+                "concept": "Softness overcomes Hardness (Yu-Neung-Je-Gang / 柔能制剛)."
+            },
+            {
+                "name": "천근추 (Thousand Pound Drop / 千斤錘)",
+                "type": "Weight Manipulation",
+                "mechanic": "Instantly increasing body weight using Qi.",
+                "usage": [
+                    "Rapid descent",
+                    "Anchoring stance",
+                    "Crushing enemies"
+                ],
+                "variation": "Can be reversed to lighten body for water walking."
+            }
+        ],
+        "energy_interaction": [
+            {
+                "name": "삼매진화 (Samadhi True Fire / 三昧眞火)",
+                "type": "Elemental (Fire)",
+                "mechanic": "Generating intense heat or flame using Internal Energy.",
+                "utility": "Burning toxins (Detoxification) or incineration."
+            },
+            {
+                "name": "차기미기 (Borrowing Qi / 借氣彌氣)",
+                "type": "Absorption",
+                "mechanic": "Absorbing opponent's Qi into one's own.",
+                "meta_note": "Old-school trope. Often considered 'Dark Arts' or balance-breaking. Similar to 'Star Sucking Great Art (흡성대법)'.",
+                "status": "Rare in modern Wuxia."
+            }
+        ],
+        "body_and_growth": [
+            {
+                "name": "환골탈태 (Rebirth / 換骨奪胎)",
+                "type": "Transformation / Power-up",
+                "condition": "Reaching a legendary realm (Hwagyeong/Hyeongyeong).",
+                "effect": "Physical reconstruction for optimal martial arts. Rejuvenation (Ban-ro-hwan-dong).",
+                "role": "Major plot climax or reward."
+            },
+            {
+                "name": "벌모세수 (Marrow Cleansing / 伐毛洗髓)",
+                "type": "Foundation Building",
+                "mechanic": "A master uses Qi to cleanse a disciple's meridians/impurities.",
+                "target": "Beginners or those too old to start training.",
+                "distinction": "Do not confuse with 'Geumbunsesu (Retirement)'."
+            }
+        ],
+        "interaction_with_others": [
+            {
+                "name": "격체전공 (Energy Transmission / 隔體傳功)",
+                "type": "Inheritance",
+                "mechanic": "Transferring one's lifetime cultivation to another via physical contact.",
+                "constraints": [
+                    "Efficiency loss (e.g., only 50% transfers)",
+                    "Requires same cultivation method"
+                ],
+                "narrative_use": "Dying master passing legacy to protagonist."
+            },
+            {
+                "name": "추궁과혈 (Pushing Palace Crossing Acupoints / 推宮過穴)",
+                "type": "Healing",
+                "mechanic": "Massaging acupoints with Qi to heal internal injuries.",
+                "risk": "High energy consumption. Requires absolute trust (defenseless state).",
+                "trope": "Romantic tension builder (Male hero healing injured female)."
+            },
+            {
+                "name": "분근착골 (Bone Splitting / 分筋錯骨)",
+                "type": "Interrogation / Torture",
+                "mechanic": "Dislocating joints and twisting muscles via acupoint manipulation.",
+                "usage": "Forcing enemies to confess information."
+            }
+        ]
+    }
+}

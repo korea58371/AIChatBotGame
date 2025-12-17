@@ -1,0 +1,89 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Taoist / Artistic / Regional)",
+    "faction_profile": {
+        "name": "황산파 (Huangshan Sect / 黃山派)",
+        "alias": [
+            "Mt. Huang Sect",
+            "Descendants of Xuanyuan (헌원의 후예)",
+            "The Artistic Swordsmen"
+        ],
+        "location": {
+            "province": "Anhui (안휘성 / 安徽省)",
+            "mountain": "Mt. Huang (Huangshan / 黃山)",
+            "reputation": "Known as the 'Number One Wondrous Mountain under Heaven' (중국제일기산). A holy site for Taoism and Art."
+        },
+        "heritage": {
+            "mythology": "Associated with the Yellow Emperor (Gongsun Xuanyuan / 공손헌원).",
+            "culture": "A gathering place for artists (painters, calligraphers) due to the scenery."
+        },
+        "status": {
+            "tier": "Tier 2 or Hidden Tier (Often excluded from the 'Nine Great Sects' in Korean Wuxia despite the mountain's fame).",
+            "reasoning": "Overshadowed by the standardized '9 Sects 1 Gang' trope, but holds immense potential due to the Xuanyuan legend."
+        }
+    },
+    "characteristics": {
+        "archetype": "Artistic Hermit / Elegant Warrior",
+        "combat_style": {
+            "summary": "Beautiful, delicate, yet domineering.",
+            "visuals": "Movements resemble calligraphy strokes or painting techniques.",
+            "duality": "Contains both righteous Taoist arts and surprisingly vicious/aggressive techniques (Poison, Demon Claws)."
+        }
+    },
+    "martial_arts_library": {
+        "sword_arts": {
+            "style": "Elegant and Illusionary",
+            "list": [
+                {
+                    "name": "무영검 (Shadowless Sword)",
+                    "description": "Signature Art. So fast and stealthy it leaves no shadow. Contains hidden beauty visible only to masters."
+                },
+                "분광검 (Light Splitting Sword)",
+                "적성환월검 (Red Star Illusion Moon Sword)",
+                "폭풍검 (Storm Sword)",
+                "북두검 (Big Dipper Sword)"
+            ]
+        },
+        "internal_energy": {
+            "list": [
+                "삼합신공 (Three Union Divine Art)",
+                "금강이합신공 (Diamond Separation Union Divine Art)",
+                "금마신공 (Gold Demon Divine Art) - Suggests a darker or more aggressive side.",
+                "미리백환공 (Maze Hundred Illusion Art)",
+                "백독비무공 (Hundred Poison Flying Mist Art) - Atypical for a righteous sect; implies poison usage."
+            ]
+        },
+        "movement": {
+            "style": "Cloud-like and Mysterious",
+            "list": [
+                "운해환종보 (Cloud Sea Illusion Track Step) - Inspired by the famous Sea of Clouds of Mt. Huang.",
+                "현천구성보 (Dark Heaven Nine Star Step)"
+            ]
+        },
+        "other_weapons": {
+            "spear": [
+                "회선창 (Whirling Spear)"
+            ],
+            "axe": [
+                "패왕부 (Tyrant Axe) - Domineering style contrasting with the sect's elegance."
+            ]
+        },
+        "hand_and_finger_arts": {
+            "list": [
+                "심화벽력수 (Heart Fire Thunderbolt Hand)",
+                "금광지 (Golden Light Finger)",
+                "추혼장 (Soul Chasing Palm)",
+                "쇄심마조 (Heart Crushing Demon Claw) - Vicious technique."
+            ]
+        },
+        "formations": [
+            "오행금검진 (Five Element Gold Sword Formation)",
+            "팔절쇄천진 (Eight Severing Lock Heaven Formation)"
+        ]
+    },
+    "narrative_role": [
+        "A sect of 'Warrior-Artists' who judge the protagonist by their taste in art as well as martial skill.",
+        "Keeper of the Yellow Emperor's ancient legacy (Hidden Dungeon/Treasure).",
+        "A faction with a duality: Beautiful scenery on the outside, but hiding 'Demon' and 'Poison' arts within."
+    ]
+}

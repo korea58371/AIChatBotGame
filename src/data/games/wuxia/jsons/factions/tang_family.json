@@ -1,0 +1,109 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "faction_profile": {
+        "name": "사천당문 (Sichuan Tang Family / 四川唐門)",
+        "alias": [
+            "Tang Family of Poison (당가 / 唐家)",
+            "Masters of Poison and Hidden Weapons"
+        ],
+        "location": {
+            "province": "Sichuan (사천성 / 四川省)",
+            "city": "Chengdu (성도 / 成都)",
+            "base": "Tang Family Village (당가타 / 唐家陀) - A massive fortress-village solely for the Tang bloodline."
+        },
+        "heritage": {
+            "origin": "Recorded in history (Ming Dynasty) as masters of 'Tang Family Fist' (Dangmun-gwon).",
+            "wuxia_adaptation": "Evolved into masters of Poison and Hidden Weapons based on texts like 'Musul-hoejong'."
+        },
+        "political_stance": "Grey / Neutral-Evil within the Orthodox faction. Often treated as semi-Sapa (Unorthodox) due to their use of poison.",
+        "social_structure": "Strict Patrilineal Bloodline. Uses 'Son-in-law entry' (Matrilocal marriage) to absorb outside talent, but power stays with the Tang surname."
+    },
+    "characteristics": {
+        "archetype": "Assassin / Alchemist / Technician",
+        "personality": [
+            "Vindictive: 'Repay kindness, repay grudges tenfold' (Eun-won-bun-myeong).",
+            "Volatile: Quick-tempered but calculating when it comes to revenge.",
+            "Exclusive: Strongly distrusts outsiders. Divided into Inner Family (Bloodline) and Outer Family (Servants/In-laws)."
+        ],
+        "combat_style": {
+            "summary": "Mid-to-Long range suppression using overwhelming barrage of projectiles and debilitating poisons.",
+            "fear_factor": "Enemies die without knowing how they were hit (Invisible poison/needles).",
+            "taboo": "In some settings, using poison is despised, so they claim it's 'Medicine' or 'Art'."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "만천화우 (Ten Thousand Flower Rain / 滿天花雨)",
+            "description": "The ultimate technique covering the sky with hidden weapons. Inescapable death.",
+            "type": "Area of Effect (AOE) Annihilation"
+        },
+        "hidden_weapon_arts": {
+            "manual": [
+                "만류귀종 (Ten Thousand Streams Return to Origin) - Controlling weapons to return to the user.",
+                "천녀산화 (Heavenly Maiden Scatters Flowers)",
+                "염왕첩 (King of Hell's Invitation) - Single target instant kill.",
+                "구환살 (Nine Illusion Kill)",
+                "배심정 (Heart Piercing Nail)"
+            ],
+            "mechanized": [
+                "폭우이화침 (Torrential Rain Pear Blossom Needle) - Legendary mechanism firing hundreds of needles at once.",
+                "천뢰구 (Heavenly Thunder Ball) - Explosive projectile.",
+                "청린마화 (Blue Scale Demon Fire) - Chemical fire."
+            ]
+        },
+        "poison_arts": {
+            "concept": "Poisons are divided by effect (melting, paralyzing, hallucinating).",
+            "famous_poisons": [
+                {
+                    "name": "칠보단혼산 (Seven Steps Soul Breaking Powder)",
+                    "effect": "Death within 7 steps."
+                },
+                {
+                    "name": "화혈왕독 (Blood Melting King Poison)",
+                    "effect": "Melts the body into blood."
+                },
+                {
+                    "name": "미인소 (Beauty's Smile)",
+                    "effect": "Corpse smiles after death (Neurotoxin)."
+                },
+                {
+                    "name": "비산탄 (Secret Acid Coal)",
+                    "effect": "Acid explosion."
+                }
+            ],
+            "antidotes_and_elixirs": [
+                "자오분심 (Midnight Noon Heart Burning) - Poison/Torture.",
+                "백초거독환 (Hundred Herb Detox Pill) - General antidote."
+            ]
+        },
+        "internal_energy": [
+            {
+                "name": "도반삼양귀원공 (Reverse Three Yang Return Art)"
+            },
+            {
+                "name": "만류귀원신공 (Ten Thousand Streams Return Divine Art)"
+            }
+        ],
+        "movement": [
+            "미허신보 (Void Step) - Used to create distance for throwing."
+        ]
+    },
+    "item_database": {
+        "projectiles": [
+            "유성혈 (Meteor Blood) - Specialized throwing star.",
+            "추혼비접 (Soul Chasing Butterfly)",
+            "자모표 (Mother and Son Dart) - A dart within a dart."
+        ],
+        "mechanisms": [
+            "파천연환노 (Heaven Breaking Chain Crossbow)",
+            "천독절명침통 (Thousand Poison Life Ending Needle Case)"
+        ]
+    },
+    "narrative_role": [
+        "The 'Wild Card' in the Murim Alliance.",
+        "Providers of antidotes or rare poisons for the plot.",
+        "A romantic interest who is dangerous ('Rose with thorns').",
+        "Antagonists who use traps and ambushes rather than fair duels."
+    ]
+}

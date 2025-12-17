@@ -1,0 +1,63 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "category": "Fictional Diseases / Constitutions",
+    "term": "절맥증 (Jeolmaekjeung / Severed Meridian Syndrome)",
+    "definition": {
+        "summary": "A congenital, incurable condition where excessive specific energy (usually Yin) blocks the meridians.",
+        "nature": "Congenital (Born with it), Terminal (Short lifespan).",
+        "core_mechanism": "Blood vessels and meridians malfunction due to an overflow of Yin (Cold) energy."
+    },
+    "general_characteristics": {
+        "symptoms": [
+            "Chronic pain throughout life.",
+            "Dysfunctional blood flow and energy circulation.",
+            "Early death (Terminal illness)."
+        ],
+        "hidden_trait": [
+            "Genius Potential: Patients often possess extraordinary intelligence or latent martial talent.",
+            "High Risk, High Return: If cured, the blocked energy often converts into massive internal power."
+        ],
+        "demographics": {
+            "traditional": "Mostly females (due to Yin association).",
+            "modern_wuxia": "Gender-neutral (Males also affected)."
+        }
+    },
+    "treatment_methods": {
+        "principle": "Neutralization of Yin with strong Yang energy.",
+        "items": [
+            "Rare Elixirs (영약).",
+            "Neidan (Internal Core) of Yang spiritual creatures (e.g., Fire Carp / 태양화리)."
+        ],
+        "interaction": "Transfer of Yang energy from a master (Protagonist) or Dual Cultivation."
+    },
+    "narrative_role": [
+        "Protagonist's motivation (Searching for a cure).",
+        "Reason for a character's sudden power-up or genius intellect.",
+        "Tragic heroine/hero archetype."
+    ],
+    "variations": [
+        {
+            "name": "구음절맥 (Gu-eum Jeolmaek / Nine Yin Severed Meridian)",
+            "severity": "High",
+            "description": "Body filled with irresistible Yin energy.",
+            "cure_condition": "Requires massive Yang energy (e.g., 10,000-year Fire Carp) or a supreme master's aid.",
+            "sub_types": [
+                "Sam-eum (3)",
+                "Dan-eum (Single)",
+                "Il-eum (1)"
+            ]
+        },
+        {
+            "name": "태음신맥 (Tae-eum Sinmaek / Great Yin Divine Meridian)",
+            "severity": "High",
+            "description": "Yin energy increases over time until meridians snap.",
+            "special_cure_case": "Reference 'Gunlimcheonha': Can be cured/utilized via sexual union with a male practicing Yin Arts (Energy transfer/harmony)."
+        },
+        {
+            "name": "천음절맥 (Cheon-eum Jeolmaek / Heavenly Yin Severed Meridian)",
+            "severity": "Extreme / Fated",
+            "description": "A variation of Gu-eum, implying 'Heaven's Will' (Fate). Considered harder to cure.",
+            "nuance": "Emphasizes the inevitability of the condition."
+        }
+    ]
+}

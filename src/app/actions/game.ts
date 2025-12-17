@@ -17,6 +17,22 @@ export async function serverGenerateResponse(
 ) {
     console.log(`[ServerAction] Received gameState. Luk: ${gameState.playerStats?.luk} (${typeof gameState.playerStats?.luk})`);
     if (!API_KEY) throw new Error("Server API Key is missing");
+
+    // [SERVER-SIDE RE-HYDRATION]
+    // The client does not send 'lore' to save bandwidth. We must load it here.
+    if (gameState.activeGameId) {
+        try {
+            const { DataManager } = await import('@/lib/data-manager');
+            const data = await DataManager.loadGameData(gameState.activeGameId);
+            if (data.lore) {
+                console.log(`[ServerAction] Re-hydrated Lore for ${gameState.activeGameId}. Keys: ${Object.keys(data.lore).length}`);
+                gameState.lore = data.lore;
+            }
+        } catch (e) {
+            console.error(`[ServerAction] Failed to re-hydrate lore for ${gameState.activeGameId}:`, e);
+        }
+    }
+
     return generateResponse(API_KEY, history, userMessage, gameState, language);
 }
 
@@ -37,11 +53,11 @@ export async function serverGenerateSummary(
     return generateSummary(API_KEY, currentSummary, recentDialogue);
 }
 
-export async function getExtraCharacterImages() {
+export async function getExtraCharacterImages(gameId: string = 'god_bless_you') {
     try {
         const fs = require('fs');
         const path = require('path');
-        const extraCharDir = path.join(process.cwd(), 'public', 'assets', 'ExtraCharacters');
+        const extraCharDir = path.join(process.cwd(), 'public', 'assets', gameId, 'ExtraCharacters');
 
         if (!fs.existsSync(extraCharDir)) {
             console.warn(`ExtraCharacters directory not found: ${extraCharDir}`);
@@ -49,17 +65,36 @@ export async function getExtraCharacterImages() {
         }
 
         const files = fs.readdirSync(extraCharDir);
-        // Return filenames without extension, or with extension if preferred?
-        // standard characters seem to be names like "강지수_기본" and the file is "강지수_기본.png".
-        // The file list I saw included extensions.
-        // I should return the name without extension for consistency if the system prompt expects names.
-        // But wait, the standard asset list "강지수_기본" implies the filename is "강지수_기본.png".
-        // So I will strip .png, .jpg, etc.
+        // Filter for images
+        const images = files.filter((file: string) => /\.(jpg|jpeg|png|webp)$/i.test(file));
+        // Return without extension? Or with?
+        // PromptManager expects "Name_Emotion".
+        // If file is "Name_Emotion.png", we return "Name_Emotion".
+        return images.map((file: string) => file.replace(/\.(jpg|jpeg|png|webp)$/i, ''));
+    } catch (e) {
+        console.error("Failed to load extra characters:", e);
+        return [];
+    }
+}
 
-        return files.filter((file: string) => /\.(png|jpg|jpeg|webp)$/i.test(file))
-            .map((file: string) => path.parse(file).name);
-    } catch (error) {
-        console.error("Error reading ExtraCharacters:", error);
+export async function getBackgroundList(gameId: string) {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const bgDir = path.join(process.cwd(), 'public', 'assets', gameId, 'backgrounds');
+
+        if (!fs.existsSync(bgDir)) {
+            console.warn(`Backgrounds directory not found: ${bgDir}`);
+            return [];
+        }
+
+        const files = fs.readdirSync(bgDir);
+        // Filter images
+        const images = files.filter((file: string) => /\.(jpg|jpeg|png|webp)$/i.test(file));
+        // Return filenames (e.g., "Category_Location_Detail.jpg")
+        return images;
+    } catch (e) {
+        console.error("Failed to load background list:", e);
         return [];
     }
 }

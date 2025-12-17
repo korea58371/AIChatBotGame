@@ -1,0 +1,75 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Body Constitutions & Bloodlines (Che-jil / 體質)",
+    "category_profile": {
+        "definition": "Innate physical or spiritual conditions determined at birth. They can be a curse (terminal illness) or a blessing (genius talent).",
+        "narrative_role": [
+            "The 'Time Limit' constraint for a character (must find a cure before age 20).",
+            "The justification for the Protagonist's rapid growth (1 year of training = 10 years for others).",
+            "The catalyst for conflict (factions fighting to secure a person with a rare body)."
+        ]
+    },
+    "constitution_types": {
+        "cursed_meridians": {
+            "type": "Jeol-maek (Severed Meridians / 絕脈)",
+            "description": "Meridians are blocked or severed by overflowing energy. Usually leads to early death unless cured.",
+            "list": [
+                {
+                    "name": "구음절맥 (Nine Yin Severed Meridian / 九陰絶脈)",
+                    "attribute": "Extreme Yin (Cold).",
+                    "effect": "Body freezes from inside. If cured/unlocked, possesses infinite Yin internal energy.",
+                    "cure": "Requires 'Extreme Yang' elixirs (e.g., Ten Thousand Year Fire Fruit)."
+                },
+                {
+                    "name": "구양절맥 (Nine Yang Severed Meridian / 九陽絶脈)",
+                    "attribute": "Extreme Yang (Fire).",
+                    "effect": "Body burns from inside. High fever. Opposite of Nine Yin."
+                },
+                {
+                    "name": "천절맥 (Heavenly Severed Meridian / 天絶脈)",
+                    "attribute": "Void.",
+                    "effect": "Meridians are naturally cut. Cannot practice martial arts initially, but if connected, becomes the strongest vessel."
+                }
+            ]
+        },
+        "divine_bodies": {
+            "type": "Sin-che / Seong-che (Divine/Sacred Body / 神體/聖體)",
+            "description": "Bodies blessed by the heavens. Born geniuses.",
+            "list": [
+                {
+                    "name": "무신체 (Martial God Body / 武神體)",
+                    "effect": "Instantly understands any martial art upon seeing it once. Perfect muscle memory."
+                },
+                {
+                    "name": "도태체 (Taoist Womb Body / 道胎體)",
+                    "effect": "Natural affinity with Nature/Tao. Internal energy regenerates automatically."
+                },
+                {
+                    "name": "만고독체 (Ten Thousand Poison Body / 萬蠱毒體)",
+                    "effect": "Immune to all poisons. Blood itself is a deadly poison. Often created artificially by the Tang Family or Demonic Cult."
+                },
+                {
+                    "name": "금강지체 (Diamond Body / 金剛之體)",
+                    "effect": "Bones and skin are hard as steel naturally. Great for Shaolin arts."
+                }
+            ]
+        },
+        "spiritual_bones": {
+            "type": "Sin-gol / Gi-gol (Divine/Strange Bones / 神骨/奇骨)",
+            "list": [
+                {
+                    "name": "통천다맥 (Heaven Connecting Multi-Meridian / 通天多脈)",
+                    "effect": "Has wider meridians than normal people, allowing massive Qi flow."
+                },
+                {
+                    "name": "선골 (Immortal Bone / 仙骨)",
+                    "effect": "Destined to become an Immortal. Ageless appearance."
+                }
+            ]
+        }
+    },
+    "narrative_usage": {
+        "awakening": "A cursed body (Jeol-maek) is cured by a protagonist, transforming the curse into a massive power source.",
+        "tragedy": "A loved one has a terminal constitution, forcing the protagonist to venture into dangerous regions (like North Sea or Nanman) to find a cure."
+    }
+}

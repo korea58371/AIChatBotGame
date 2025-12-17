@@ -1,0 +1,70 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Major Families / Challengers)",
+    "faction_profile": {
+        "name": "위지세가 (Weiji Family / 尉遲世家)",
+        "alias": [
+            "폭풍위지세가 (Storm Weiji Family / 暴風尉遲勢家)",
+            "Sword of the Storm"
+        ],
+        "location": {
+            "province": "Hebei (하북성 / 河北省)",
+            "geo_political_status": "Located in the same province as the 'Hebei Peng Family', often leading to rivalry or comparison.",
+            "note": "Exact city varies by author, but firmly established as a Northern power."
+        },
+        "status": {
+            "tier": "Tier 1.5 (Prestigious but not Top 5).",
+            "ambition": "Constantly striving to break into the 'Five Great Families' (Odaesega).",
+            "position": "A powerful local lord, sometimes overshadowed by the Peng Family."
+        }
+    },
+    "characteristics": {
+        "archetype": "The Ambitious Challenger / Storm Warriors",
+        "combat_style": {
+            "summary": "Fast and destructive attacks resembling a storm.",
+            "attributes": "Wind (Storm) and Lightning (at high levels).",
+            "weapon": "Sword (Main) and Palm (Sub)."
+        },
+        "reputation": "Known for 'Fast Sword' (Kwae-geom) and 'Domineering Sword' (Pae-geom)."
+    },
+    "martial_arts_library": {
+        "internal_energy": {
+            "signature": "천룡무상진기 (Heavenly Dragon Supreme True Qi)",
+            "description": "Manifests blueish Qi. At the 10th level, it commands storm and lightning.",
+            "risk": "High physical burden. Mastering it requires body metamorphosis (Hwangol-taltae).",
+            "sub_arts": [
+                "대왕심결 (Great King Heart Chant)",
+                "무풍선식 (No Wind Line Breath)"
+            ]
+        },
+        "sword_arts": {
+            "style": "Explosive Speed & Heavy Blows",
+            "list": [
+                {
+                    "name": "일운검법 (One Cloud Sword Art)",
+                    "trait": "Fast and sudden strikes from a cloud-like stance. Good for surprise attacks."
+                },
+                {
+                    "name": "팔황검법 (Eight Wastelands Sword Art)",
+                    "trait": "Heavy and destructive. Pouring all power into a single strike."
+                },
+                "천원사일검 (Heavenly Origin Shooting Sun Sword)",
+                "구유곤명검법 (Nine Underworlds Kunming Sword)"
+            ]
+        },
+        "palm_arts": {
+            "style": "Storm-generating Palms",
+            "list": [
+                "벽라장 (Jade Trumpet Palm)",
+                "건곤일소 (Heaven Earth One Sweep)",
+                "대유장법 (Great Underworld Palm)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Number 2' who is jealous of the 'Number 1' (Hebei Peng Family).",
+        "An elite clan that serves as a mid-boss before the protagonist faces the true Five Great Families.",
+        "A tragic family that ruins itself through excessive ambition.",
+        "Allies who provide 'Wind/Storm' attribute support."
+    ]
+}

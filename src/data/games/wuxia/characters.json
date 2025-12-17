@@ -1,0 +1,80 @@
+[
+    {
+        "name": "연화린",
+        "role": "주연",
+        "description": "북해빙궁의 소궁주. 차가운 미모 뒤에 숨겨진 헌신적인 사랑.",
+        "id": "YeonHwaRin"
+    },
+    {
+        "name": "백소유",
+        "role": "주연",
+        "description": "아미파의 대사저. 금욕적인 성녀지만 내면은...",
+        "id": "BaekSoYu"
+    },
+    {
+        "name": "화영",
+        "role": "주연",
+        "description": "화산파 장문인의 딸. 털털한 성격의 매화검희.",
+        "id": "HwaYeong"
+    },
+    {
+        "name": "남궁세아",
+        "role": "주연",
+        "description": "남궁세가의 영애. 고귀하고 오만한 뇌제.",
+        "id": "NamgungSeAh"
+    },
+    {
+        "name": "모용예린",
+        "role": "주연",
+        "description": "모용세가의 책사. 지략과 미모를 겸비한 안경 미녀.",
+        "id": "MoyongYeRin"
+    },
+    {
+        "name": "당소율",
+        "role": "주연",
+        "description": "사천당가의 독왕. 위험한 매력의 소악마.",
+        "id": "TangSoYul"
+    },
+    {
+        "name": "제갈연주",
+        "role": "주연",
+        "description": "제갈세가의 잠꾸러기 천재 군사.",
+        "id": "JegalYeonJoo"
+    },
+    {
+        "name": "주예서",
+        "role": "주연",
+        "description": "황실의 금지옥엽 공주님. 철없지만 사랑스러움.",
+        "id": "JuYeSeo"
+    },
+    {
+        "name": "천예령",
+        "role": "주연",
+        "description": "천마신교 소교주. 치명적이고 퇴폐적인 매력.",
+        "id": "CheonYeRyeong"
+    },
+    {
+        "name": "한설희",
+        "role": "주연",
+        "description": "약왕곡의 소의선. 따뜻하고 헌신적인 힐러.",
+        "id": "HanSeolHee"
+    },
+    {
+        "name": "홍유비",
+        "role": "주연",
+        "description": "하오문주이자 천하제일의 기녀. 요염한 여우 누님.",
+        "id": "HongYuBi"
+    },
+    {
+        "name": "공손란",
+        "role": "주연",
+        "description": "곤륜파의 검선. 어린아이 모습의 전설적인 고수.",
+        "id": "GongSonLan"
+    },
+    {
+        "name": "비연",
+        "role": "주연",
+        "description": "무영살막의 에이스 살수. 그림자 없는 칼날.",
+        "id": "BiYeon"
+    }
+]

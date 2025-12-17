@@ -1,0 +1,100 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects)",
+    "faction_profile": {
+        "name": "청성파 (Qingcheng Sect / 靑城派)",
+        "alias": [
+            "Origin of Taoism (도교의 발원지)",
+            "Green City Sect"
+        ],
+        "location": {
+            "province": "Sichuan (사천성 / 四川省)",
+            "mountain": "Mt. Qingcheng (청성산 / 靑城山) - Located northwest of Chengdu.",
+            "landmarks": [
+                "Tianshi Cave (천사동 / 天師洞) - Where Zhang Daoling preached.",
+                "Samcheong Hall (삼청전)",
+                "Sangcheong Palace (상청궁)"
+            ],
+            "geo_political_status": "One of the 'Three Great Powers of Sichuan' alongside the Sichuan Tang Family and Emei Sect."
+        },
+        "heritage": {
+            "founder": "Associated with Zhang Daoling (장도릉) and the 'Five Pecks of Rice' (Odumi-do / 오두미도).",
+            "history": "Started with Taoist arts (Bangjung-sul, Talismans) and evolved by absorbing local assassin/poison arts."
+        },
+        "status": {
+            "alignment": "Orthodox (Jeongpa) / Taoist (Do-ga).",
+            "reputation": "A prestigious member of the Nine Great Sects, but often ranked lower than Wudang or Shaolin due to their usage of 'petty' tricks (hidden weapons)."
+        }
+    },
+    "characteristics": {
+        "archetype": "Pragmatic Taoist / Sword & Hidden Weapon User",
+        "combat_style": {
+            "summary": "Fast Swords (Pine & Wind) combined with Surprise Attacks (Hidden Weapons).",
+            "specialty": "Unlike Wudang (Pure Taoist), Qingcheng incorporates 'Unorthodox' methods like poison palms and projectiles.",
+            "tactics": "Overwhelm with sword speed (Wind), then finish with a hidden needle."
+        },
+        "rivalry": {
+            "sichuan_triangle": {
+                "vs_Tang_Family": "Rivals in hidden weapons and influence over Sichuan.",
+                "vs_Emei_Sect": "Rivals for the title of the legitimate Taoist/Buddhist guardian of Sichuan."
+            }
+        }
+    },
+    "martial_arts_library": {
+        "sword_arts": {
+            "style": "Wind, Pine, and Speed",
+            "signature": {
+                "name": "송풍검 (Pine Wind Sword / 松風劍)",
+                "description": "Signature Art. Mimics the sound and speed of wind blowing through pine trees. Fast and sharp."
+            },
+            "list": [
+                "청풍검 (Clear Wind Sword)",
+                "청운적하검 (Blue Cloud Red Mist Sword)",
+                "칠십이파검 (72 Wave Sword)",
+                "급풍십삼자 (Rapid Wind 13 Stabs)",
+                "사전절광검 (Lightning Cutting Light Sword)"
+            ]
+        },
+        "internal_energy": {
+            "list": [
+                {
+                    "name": "오두미신공 (Five Pecks of Rice Divine Art)",
+                    "lore": "Derived from the historical roots of religious Taoism."
+                },
+                "만상귀일신공 (All Things Return to One Divine Art)",
+                "대라무위신공 (Great Luo Non-Action Divine Art)",
+                "건곤신공 (Heaven and Earth Divine Art)"
+            ]
+        },
+        "hidden_weapons": {
+            "note": "The defining trait that separates Qingcheng from other Orthodox sects.",
+            "list": [
+                "청자구타 (Blue Character Nine Strikes) - Throwing weapons shaped like the character 'Blue' (靑).",
+                "성자십팔파 (City Character Eighteen Breaks)",
+                "청봉정 (Blue Bee Nail)",
+                "뇌공굉 (Thunder God Blast) - Explosive."
+            ]
+        },
+        "palm_and_fist": {
+            "style": "Includes Poison/Dark Arts",
+            "list": [
+                "풍뢰장 (Wind Thunder Palm)",
+                "취음장 (Gathering Yin Palm) - Suggests Yin/Cold nature.",
+                "흑사장 (Black Sand Palm) - Often depicted as a poison palm.",
+                "최심장 (Heart Breaking Palm)"
+            ]
+        },
+        "movement": {
+            "list": [
+                "빙허임풍 (Riding the Wind on Void)",
+                "송서초상비 (Squirrel Grass Flight) - Agile and light."
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Hypocritical Orthodox' sect that uses dirty tricks when losing.",
+        "The generic enemy for the Tang Family (Poison vs Poison/Hidden Weapon).",
+        "A sect that keeps ancient Taoist seals (Talismans/Buju) capable of suppressing Jiangshi.",
+        "The 'Local Lord' of Sichuan who bullies the protagonist before the main plot begins."
+    ]
+}

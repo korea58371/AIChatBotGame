@@ -1,0 +1,93 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Minor or Major Families depending on setting)",
+    "faction_profile": {
+        "name": "산동악가 (Shandong Ak Family / 山東岳家)",
+        "alias": [
+            "Descendants of Yue Fei (악왕의 후예)",
+            "The Spear of Loyalty (충절의 창)"
+        ],
+        "location": {
+            "province": "Shandong (산동성 / 山東省)",
+            "city": "Jinan (제남 / 濟南)",
+            "landmarks": [
+                "Daming Lake (대명호 / 大明湖) - A scenic retreat for training.",
+                "Thousand Buddha Mountain (천불산 / 天佛山)",
+                "Yellow River (황하 / 黃河) - Symbol of their rough and grand spirit."
+            ],
+            "meta_note": "Historically, General Yue Fei was from Henan, not Shandong. In Korean Wuxia, this is accepted as a fictional adaptation or explained as descendants moving to Shandong."
+        },
+        "heritage": {
+            "ancestor": "General Yue Fei (악비 / 岳飛) - The God of War and symbol of loyalty.",
+            "ideology": "Serve the country with utmost loyalty (Jingchungboguk / 盡忠報國)."
+        },
+        "status": {
+            "tier": "Often depicted as a prestigous martial family, sometimes rivalling the Five Great Families.",
+            "specialty": "Spear Arts (Chang-beop) - Rare among noble families who usually prefer swords."
+        }
+    },
+    "characteristics": {
+        "archetype": "General / Soldier / Patriot",
+        "personality": [
+            "Rigid and upright (Military discipline).",
+            "Values honor and loyalty above life.",
+            "Often acts as a bridge between the Murim and the Imperial Military."
+        ],
+        "combat_style": {
+            "summary": "Military Spear Arts designed for war.",
+            "weapon": "Great Spear (Jang-chang / 長槍).",
+            "tactics": "Linear, destructive, and grand movements suitable for the battlefield rather than duels.",
+            "vibe": "Overwhelming momentum like the Yellow River."
+        },
+        "contradiction": {
+            "description": "Their loyalty to the Imperial Court can lead to conflicts with the independent spirit of the Murim world."
+        }
+    },
+    "martial_arts_library": {
+        "internal_energy": {
+            "style": "Explosive and masculine",
+            "list": [
+                {
+                    "name": "폭렬심법 (Explosive Heat Heart Method)",
+                    "effect": "Generates explosive Yang energy."
+                },
+                {
+                    "name": "일원심법 (One Origin Heart Method)"
+                },
+                {
+                    "name": "천정심결 (Heavenly Well Heart Chant)"
+                }
+            ]
+        },
+        "spear_arts": {
+            "style": "Battlefield Spear (Grand and Fierce)",
+            "list": [
+                {
+                    "name": "사십구식악가창법 (49-Style Ak Family Spear)",
+                    "description": "The foundation of their martial arts, derived from military drills."
+                },
+                {
+                    "name": "구십육수광풍창 (96-Hand Mad Wind Spear)",
+                    "description": "Fast and chaotic attacks like a storm."
+                },
+                {
+                    "name": "청룡천강창 (Blue Dragon Heavenly Descent Spear)",
+                    "description": "A striking technique that descends from above with heavy force."
+                },
+                "조화풍운창 (Creation Wind and Cloud Spear)",
+                "홍주난비류 (Red Province Chaotic Flight Flow)",
+                "파천구창 (Heaven Breaking Nine Spear)"
+            ]
+        },
+        "related_arts": [
+            "Eagle Claw Fist (응조권) - Legend says Yue Fei created this.",
+            "Eight Section Brocade (팔단금) - Health exercise attributed to Yue Fei."
+        ]
+    },
+    "narrative_role": [
+        "The 'Lawful Good' ally who is stubborn but reliable.",
+        "A character who questions the protagonist's morality based on 'Loyalty to the State'.",
+        "Rivals to the Hebei Peng Family (Blade vs Spear, Strength vs Discipline).",
+        "Guardians of the Shandong region against pirates or corrupt officials."
+    ]
+}

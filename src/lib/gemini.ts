@@ -41,6 +41,14 @@ export async function generateResponse(
     const staticPrompt = PromptManager.getSharedStaticContext(gameState);
     const dynamicPrompt = PromptManager.generateSystemPrompt(gameState, language, userMessage);
 
+    // [DEBUG] Check Lore Injection
+    if (gameState.lore) {
+        console.log(`[Gemini] Lore Data Present. Keys: ${Object.keys(gameState.lore).join(', ')}`);
+        console.log(`[Gemini] Lore Data approx length: ${JSON.stringify(gameState.lore).length} chars`);
+    } else {
+        console.warn("[Gemini] ⚠️ Lore Data is MISSING in gameState!");
+    }
+
     // [DEBUG LOG] Requested by user to see "New Input"
     console.log("--- [Main Model New Input (Dynamic Prompt)] ---");
     console.log(dynamicPrompt);
@@ -157,10 +165,12 @@ export async function generateGameLogic(
                 availableExtraImages,
                 chatHistory, // [Optimize] Remove history from stats dumping (Passed separately as strings)
                 displayHistory,
+                worldData: _unusedWorldData, // [FIX] Exclude worldData from prunedStats (Renamed to avoid conflict)
+                lore, // [CRITICAL FIX] Exclude Lore from Logic Model (It uses huge tokens and isn't needed for logic)
                 ...prunedStats
             } = gameState;
 
-            const worldData = gameState.worldData || require('../data/prompts/world.json'); // Fallback to static if missing
+            const worldData = gameState.worldData || { locations: {}, items: {} }; // Fallback to empty if missing
 
             // Get lightweight context for Logic Model
             const logicContext = PromptManager.getLogicModelContext(gameState);
@@ -273,15 +283,12 @@ export async function generateSummary(
 
 // [Startup Warmup]
 // Fire-and-forget request to create/warm the cache.
-// [Startup Warmup]
-// Fire-and-forget request to create/warm the cache.
 export async function preloadCache(apiKey: string, initialState: any) {
     if (!apiKey) return;
     try {
         console.log("[Gemini] Pre-loading cache...");
 
         // 1. Get the Exact Same Static Prompt as normal requests
-        const { PromptManager } = require('./prompt-manager');
         const staticPrompt = PromptManager.getSharedStaticContext(initialState);
 
         // 2. Configure Model

@@ -1,0 +1,94 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Sa-pa / Evil Sects / Final Boss)",
+    "faction_profile": {
+        "name": "마교 (Demonic Cult / 魔敎)",
+        "official_name": "천마신교 (Heavenly Demon Divine Cult / 天魔神敎)",
+        "alias": [
+            "The Cult (신교 / 神敎)",
+            "Ming Cult (명교 / 明敎)",
+            "White Lotus Cult (백련교 / 白蓮敎)",
+            "Sun and Moon Divine Cult (일월신교 / 日月神敎)"
+        ],
+        "location": {
+            "region": "Xinjiang (신강성 / 新疆省) - Far West.",
+            "mountain": "Mt. Tian (천산 / 天山) or Shiwan Dashan (십만대산 / 十萬大山).",
+            "base": "Heavenly Demon Palace (천마궁 / 天魔宮).",
+            "geography": "Harsh, desolate environment that breeds strong warriors."
+        },
+        "ideology": {
+            "core": "Survival of the Fittest (강자존 / 强者尊).",
+            "worship": "Cheon-ma (Heavenly Demon / 天魔). Not just a god, but an absolute ruler who possesses overwhelming power.",
+            "slogans": [
+                "신교불패 (The Divine Cult is Undefeated)",
+                "천마재림 (Return of the Heavenly Demon)",
+                "만마앙복 (Ten Thousand Demons Bow Down)",
+                "군마영세 (Eternal Rule of the Demon Host)"
+            ]
+        }
+    },
+    "characteristics": {
+        "archetype": "The Final Boss / Absolute Ruler",
+        "structure": {
+            "leader": "Cheon-ma (Heavenly Demon) - Usually the strongest being in the world.",
+            "hierarchy": "Strict hierarchy based on strength. Even a slave can become a leader if they are strong (e.g., Muk-hyang).",
+            "elite_forces": "Demonic Army (Ma-do-gwan), Blood Squads, etc."
+        },
+        "combat_style": {
+            "summary": "Destructive, Overwhelming, and Heaven-Defying.",
+            "attribute": "Ma-gi (Demonic Qi / 魔氣). Dark, oppressive, and chaotic energy.",
+            "tactics": "Crushing the opponent with sheer power rather than subtle tricks. 'Might makes Right'."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "천마신공 (Heavenly Demon Divine Art / 天魔神功)",
+            "description": "The ultimate art of the Cult. Only the Heavenly Demon can master it.",
+            "effect": "Grants god-like power but risks consuming the user's mind with demonic energy.",
+            "components": "Encompasses Sword, Palm, Movement, and Internal energy."
+        },
+        "internal_energy": {
+            "style": "Dark and Infinite",
+            "list": [
+                "광혈천마공 (Crazy Blood Heavenly Demon Art)",
+                "혼천마공 (Chaotic Heaven Demon Art)",
+                "빙천수라마공 (Ice Heaven Asura Demon Art) - Ice variant.",
+                "천장지옥마공 (Thousand Yard Hell Demon Art)"
+            ]
+        },
+        "sword_arts": {
+            "style": "Destructive Sword",
+            "list": [
+                {
+                    "name": "천마삼검 (Heavenly Demon Three Swords)",
+                    "description": "Three strikes that can cut through anything. Simple yet unstoppable."
+                },
+                "구천마검 (Nine Heavens Demon Sword)",
+                "아수라마검 (Asura Demon Sword)",
+                "천강혈룡검법 (Heaven Descending Blood Dragon Sword)"
+            ]
+        },
+        "fist_and_palm": {
+            "style": "Annihilation",
+            "list": [
+                "아수라멸천장 (Asura Heaven Destroying Palm)",
+                "천마파천권 (Heavenly Demon Sky Breaking Fist)",
+                "혈수천마장 (Blood Hand Heavenly Demon Palm)",
+                "수라권 (Asura Fist)"
+            ]
+        },
+        "movement": {
+            "style": "Domineering Walk",
+            "list": [
+                "천마군림보 (Heavenly Demon King's Step) - Walking on air, suppressing enemies with pressure.",
+                "마룡비천신법 (Demon Dragon Soaring Sky Body Art)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The ultimate antagonist the protagonist must face at the end.",
+        "The faction the protagonist belongs to in 'Anti-Hero' or 'Villain Protagonist' stories.",
+        "A force of nature that forces the feuding Orthodox and Unorthodox factions to unite.",
+        "The symbol of 'Power vs Morality'."
+    ]
+}

@@ -1,0 +1,103 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Sa-oe / Outer Realms)",
+    "faction_profile": {
+        "name": "북해빙궁 (North Sea Ice Palace / 北海氷宮)",
+        "alias": [
+            "The Ice Palace (빙궁)",
+            "Rulers of the Frozen North"
+        ],
+        "location": {
+            "region": "The Far North (Beyond Mongolia).",
+            "real_world_reference": "Lake Baikal (Russia) or Por-Bajin Ruins (Tuva Republic).",
+            "environment": "Eternal Winter. Blizzards and frozen lakes where normal humans freeze to death instantly."
+        },
+        "demographics": {
+            "ethnicity": "Saekmokin (Semuren / Colored-eye people). Often depicted with Western features (Blonde/Silver hair, Blue eyes).",
+            "gender_ratio": "Often Matriarchal or Female-dominated due to the Yin-nature of their arts.",
+            "common_surnames": [
+                "Seol (Snow / 雪)",
+                "Bing (Ice / 氷)",
+                "Han (Cold / 寒)",
+                "Baek (White / 白)"
+            ]
+        },
+        "status": {
+            "alignment": "Neutral / Unorthodox (Sa-pa).",
+            "goal": "Survival in the cold, or invading the warm Central Plains (Jungwon).",
+            "conflict": "Seeking 'Extreme Yang' elixirs to cure their genetic curse."
+        }
+    },
+    "characteristics": {
+        "archetype": "Ice Queen / Tragic Heroine",
+        "genetic_trait": {
+            "name": "구음절맥 (Nine Yin Severed Meridians / 九陰絶脈)",
+            "description": "A congenital condition where excessive Yin Qi blocks the meridians.",
+            "pros": "Unrivaled talent for Ice/Yin martial arts.",
+            "cons": "Terminal illness. Most die young unless treated with extreme Yang energy.",
+            "cure_quest": "Requires legendary Yang elixirs or Dual Cultivation with a Yang master."
+        },
+        "combat_style": {
+            "attribute": "Ice / Frost (Bing-han / 氷寒).",
+            "effect": "Freezes opponent's blood, slows movement, shatters weapons with cold.",
+            "visuals": "White/Blue Qi, frost forming on the ground, falling snow."
+        }
+    },
+    "martial_arts_library": {
+        "internal_energy": {
+            "style": "Extreme Yin",
+            "list": [
+                {
+                    "name": "빙천수라마공 (Ice Heaven Asura Demon Art)",
+                    "grade": "Supreme. Turns the user into a living ice statue."
+                },
+                "빙백신공 (Ice White Divine Art)",
+                "회안냉심공 (Grey Eye Cold Heart Art)"
+            ]
+        },
+        "sword_arts": {
+            "style": "Sharp and Freezing",
+            "list": [
+                "빙백수라검법 (Ice White Asura Sword)",
+                "설풍검법 (Snow Wind Sword)",
+                "천년빙검 (Thousand Year Ice Sword)",
+                "빙령수류검 (Ice Spirit Water Flow Sword)"
+            ]
+        },
+        "palm_and_hand": {
+            "style": "Freezing Touch",
+            "list": [
+                {
+                    "name": "빙천백옥수 (Ice Heaven White Jade Hand)",
+                    "effect": "Hands become hard as jade and cold as absolute zero."
+                },
+                "한빙백골소혼장 (Cold Ice White Bone Soul Melting Palm)",
+                "나찰빙혼장 (Rakshasa Ice Soul Palm)"
+            ]
+        },
+        "movement": {
+            "style": "Gliding on Ice",
+            "list": [
+                "설풍보법 (Snow Wind Step)",
+                "십이비붕보 (Twelve Flying Roc Step)"
+            ]
+        }
+    },
+    "item_database": {
+        "yang_elixirs": {
+            "description": "Necessary items to cure the Ice Palace's curse (Gu-eum Jeol-maek).",
+            "list": [
+                "태양화정액 (Sun Fire Essence Liquid)",
+                "만년화령과 (Ten Thousand Year Fire Spirit Fruit)",
+                "열양신단 (Burning Yang Divine Pill)",
+                "혈화삼 (Blood Flower Ginseng)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Tragic Heroine' love interest who needs the protagonist's help to survive.",
+        "A powerful third-party invasion force that freezes everything in its path.",
+        "The source of 'Ice' element allies in a party.",
+        "A quest hub for high-level adventures (Journey to the North)."
+    ]
+}

@@ -1,4 +1,13 @@
-import { GAME_EVENTS, GameEvent } from '@/data/events';
+
+
+export interface GameEvent {
+    id: string; // Unique ID
+    condition: (state: any) => boolean; // access to full state
+    priority: number; // Higher checks first.
+    prompt: string; // The instruction to inject into the system prompt
+    type: 'narrative' | 'system';
+    once: boolean; // If true, only triggers once
+}
 
 export class EventManager {
     /**
@@ -7,10 +16,10 @@ export class EventManager {
      * @returns The GameEvent to trigger, or null if none.
      */
     static checkEvents(state: any): GameEvent | null {
-        if (!state) return null;
+        if (!state || !state.events) return null;
 
         // Sort events by priority (High -> Low)
-        const sortedEvents = [...GAME_EVENTS].sort((a, b) => b.priority - a.priority);
+        const sortedEvents = [...state.events].sort((a: any, b: any) => b.priority - a.priority);
 
         for (const event of sortedEvents) {
             // 1. Check if already triggered (if 'once' is true)

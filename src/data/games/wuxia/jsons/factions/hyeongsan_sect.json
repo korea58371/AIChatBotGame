@@ -1,0 +1,88 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects or Five Sacred Mountains)",
+    "faction_profile": {
+        "name": "형산파 (Mount Heng Sect / 衡山派)",
+        "alias": [
+            "Nam-ak (Southern Sacred Mountain / 南岳)",
+            "The Solitary Beauty of the South (오악독수 / 南岳獨秀)"
+        ],
+        "location": {
+            "province": "Hunan (호남성 / 湖南省)",
+            "mountain": "Mt. Heng (형산 / 衡山) - Composed of 72 peaks.",
+            "climate": "Warm and scenic, located furthest south among the Five Sacred Mountains."
+        },
+        "status": {
+            "alliance_role": "Core member of the Five Sacred Mountain Sword Sects (Oh-ak Geom-pa).",
+            "ranking": "Often considered #2 in recognition within the Five Mountains (after Mount Hua), but sometimes excluded from the 'Nine Great Sects' depending on the author.",
+            "cultural_significance": "A joint sanctuary for Buddhism and Taoism, and the birthplace of the Huxiang School (Neo-Confucianism)."
+        },
+        "heritage": {
+            "mythology": "Resting place of Zhurong (God of Fire / 축융). Associated with Sung Heuk-ho from 'Investiture of the Gods'.",
+            "literature": "Background for 'The Cloud Dream of the Nine' (Guunmong) and associated with poets like Du Fu and Zhu Xi."
+        }
+    },
+    "characteristics": {
+        "archetype": "Artistic Swordsman / Mystic Illusionist",
+        "philosophical_blend": "Harmonious fusion of Confucianism, Buddhism, and Taoism.",
+        "combat_style": {
+            "summary": "Illusion, Speed, and Variation.",
+            "key_elements": [
+                "Mist & Cloud: Sword techniques that confuse the enemy like shifting clouds.",
+                "Sound & Vibration: Often associated with music (Zither/Flute) in some settings.",
+                "Fire: Secret techniques related to the Fire God Zhurong."
+            ],
+            "signature_visual": "Returning Wind and Falling Geese (visualizing the wind and birds)."
+        }
+    },
+    "martial_arts_library": {
+        "sword_arts": {
+            "style": "Fast, changeable, and deceptive",
+            "signature": {
+                "name": "칠십이식 회풍낙안검 (72-Style Returning Wind Falling Wild Goose Sword)",
+                "description": "The most famous technique. A dazzling display of speed and change, mimicking a goose landing in a whirlwind."
+            },
+            "illusion_arts": [
+                "백변천환 형산운무십삼검 (100 Changes 1000 Illusions Mt. Heng Mist 13 Sword)",
+                "유혼검법 (Ghost Soul Sword)",
+                "백화검법 (Hundred Flower Sword)"
+            ],
+            "fire_arts": [
+                "축융검법 (Zhurong Fire God Sword) - Heavy and destructive, contrasting with their usual style.",
+                "화정단심검법 (Fire Righteousness Severing Heart Sword)"
+            ],
+            "others": [
+                "오로검법 (Five Roads Sword)",
+                "원공검법 (Ape Lord Sword)",
+                "선학검법 (Immortal Crane Sword)",
+                "항마연화검법 (Demon Subduing Lotus Sword)"
+            ]
+        },
+        "internal_energy": {
+            "list": [
+                "구전일기혼원공 (Nine Turn One Qi Mixed Origin Art)",
+                "응원공 (Condensing Origin Art)",
+                "유혼신공 (Ghost Soul Divine Art)"
+            ]
+        },
+        "movement": {
+            "style": "Ghostly and Elusive",
+            "list": [
+                "잠형산보 (Hiding Shape Scattering Step)",
+                "환영구보 (Illusion Nine Step)",
+                "선풍보 (Whirlwind Step)"
+            ]
+        },
+        "palm_arts": {
+            "list": [
+                "원공장법 (Ape Lord Palm)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The artistic rival to Mount Hua (Sword vs Sword).",
+        "A sect that provides 'Mystery' or 'Illusion' elements to the story.",
+        "Often portrayed as neutral or scholarly, avoiding dirty political fights.",
+        "The stage for events involving the 'Fire God's Treasure' or ancient musical scores."
+    ]
+}

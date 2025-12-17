@@ -1,25 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ScriptSegment } from '@/lib/script-parser';
-import initialWorldData from '@/data/prompts/world.json';
 import { MoodType } from '@/data/prompts/moods';
-
-// [Fix] Transform Array to Object Map (Key: Korean Name)
-// This ensures ID lookups work correctly when AI outputs Korean names.
-const initialCharacterData: Record<string, any> = {};
-const charList = require('@/data/prompts/characters.json'); // unique import name
-
-if (Array.isArray(charList)) {
-  charList.forEach((c: any) => {
-    if (c.name) {
-      initialCharacterData[c.name] = c;
-      // Also add lowercase English ID if available for robustness?
-      // if (c.englishName) initialCharacterData[c.englishName.toLowerCase()] = c;
-    }
-  });
-} else {
-  Object.assign(initialCharacterData, charList);
-}
+import { DataManager, GameData } from './data-manager';
 
 export interface Message {
   role: 'user' | 'model';
@@ -27,15 +10,19 @@ export interface Message {
 }
 
 interface GameState {
+  // Game Configuration
+  activeGameId: string;
+  setGameId: (id: string) => Promise<void>;
+  isDataLoaded: boolean;
+
   // Event System State
-  triggeredEvents: string[]; // IDs of events already triggered
-  activeEvent: any | null; // The event to be processed in the next prompt (Typing 'any' to avoid circular dependency for now, or import GameEvent)
+  triggeredEvents: string[];
+  activeEvent: any | null;
   addTriggeredEvent: (eventId: string) => void;
   setActiveEvent: (event: any | null) => void;
 
-
-  chatHistory: Message[]; // Active context for AI (truncated)
-  displayHistory: Message[]; // Full history for UI display
+  chatHistory: Message[];
+  displayHistory: Message[];
 
   // Meta State
   userCoins: number;
@@ -59,9 +46,9 @@ interface GameState {
   setPlayerName: (name: string) => void;
 
   // Lore & Prompt State
-  activeCharacters: string[]; // List of character IDs currently in scene
+  activeCharacters: string[];
   setActiveCharacters: (chars: string[]) => void;
-  currentLocation: string; // Key from world.json
+  currentLocation: string;
   setCurrentLocation: (loc: string) => void;
   scenarioSummary: string;
   setScenarioSummary: (summary: string) => void;
@@ -75,6 +62,7 @@ interface GameState {
   availableCharacterImages: string[];
   availableExtraImages: string[];
   setAvailableAssets: (backgrounds: string[], characters: string[], extraCharacters: string[]) => void;
+  setAvailableExtraImages: (extraCharacters: string[]) => void;
 
   // Dynamic Character Data
   characterData: Record<string, any>;
@@ -89,7 +77,6 @@ interface GameState {
 
   // Stats & Inventory State
   playerStats: PlayerStats;
-  // Natural Language State (from Logic Model)
   statusDescription: string;
   setStatusDescription: (desc: string) => void;
   personalityDescription: string;
@@ -117,6 +104,18 @@ interface GameState {
   setLanguage: (lang: 'ko' | 'en') => void;
 
   resetGame: () => void;
+
+  // Loaded Game Logic Functions (Not persisted, reloaded on init)
+  getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
+  getRankInfo?: (fame: number) => any;
+  backgroundMappings?: Record<string, string>;
+  events?: any[]; // Dynamic events list
+  initialScenario?: string;
+  wikiData?: any; // [NEW] Added wikiData
+  characterMap?: Record<string, string>;
+  extraMap?: Record<string, string>;
+  constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
+  lore?: any;
 }
 
 export interface PlayerStats {
@@ -127,32 +126,18 @@ export interface PlayerStats {
   gold: number;
   level: number;
   exp: number;
-  fame: number; // Added Fame
-  fate: number; // Added Fate (Intervention Resource)
-  playerRank: string; // Added Player Rank
-  personalitySummary: string; // Added Personality Summary from Logic Model
-  // Base Stats
-  str: number; // Strength
-  agi: number; // Agility
-  int: number; // Intelligence
-  vit: number; // Vitality
-  luk: number; // Luck
-  // New Stats
+  fame: number;
+  fate: number;
+  playerRank: string;
+  personalitySummary: string;
+  str: number; agi: number; int: number; vit: number; luk: number;
   skills: string[];
   personality: {
-    morality: number;
-    courage: number;
-    energy: number;
-    decision: number;
-    lifestyle: number;
-    openness: number;
-    warmth: number;
-    eloquence: number;
-    leadership: number;
-    humor: number; // Serious/Solemn (-100) <-> Playful/Witty (+100)
-    lust: number; // Ascetic/Pure (-100) <-> Lustful/Perverted (+100)
+    morality: number; courage: number; energy: number; decision: number;
+    lifestyle: number; openness: number; warmth: number; eloquence: number;
+    leadership: number; humor: number; lust: number;
   };
-  relationships: Record<string, number>; // Character ID -> Affinity (0-100)
+  relationships: Record<string, number>;
 }
 
 export interface Item {
@@ -162,15 +147,93 @@ export interface Item {
   quantity: number;
 }
 
+// Initial Data Helper
+const INITIAL_STATS: PlayerStats = {
+  hp: 100, maxHp: 100,
+  mp: 50, maxMp: 50,
+  gold: 0,
+  level: 1, exp: 0,
+  fame: 0,
+  fate: 0,
+  playerRank: '일반인',
+  personalitySummary: "",
+  str: 10, agi: 10, int: 10, vit: 10, luk: 10,
+  skills: [],
+  personality: {
+    morality: 0, courage: 0, energy: 0, decision: 0,
+    lifestyle: 0, openness: 0, warmth: 0, eloquence: 0,
+    leadership: 0, humor: 0, lust: 0
+  },
+  relationships: {}
+};
+
 export const useGameStore = create<GameState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      activeGameId: 'god_bless_you', // Default
+      isDataLoaded: false,
 
+      setGameId: async (id: string) => {
+        set({ isDataLoaded: false });
+        try {
+          const data = await DataManager.loadGameData(id);
+
+          // Process Characters
+          const initialCharacterData: Record<string, any> = {};
+          const charList = data.characters;
+
+          if (Array.isArray(charList)) {
+            charList.forEach((c: any) => {
+              if (c.name) initialCharacterData[c.name] = c;
+            });
+          } else {
+            Object.assign(initialCharacterData, charList);
+          }
+
+          // Transform for State
+          const charState = Object.values(initialCharacterData).reduce((acc: any, char: any) => {
+            acc[char.name] = { ...char, id: char.name }; // ID is Name
+            return acc;
+          }, {});
+
+          set({
+            activeGameId: id,
+            worldData: data.world,
+            characterData: charState,
+            // We also need to store functions/mappings transiently or in state?
+            // Functions cannot be persisted by default.
+            // We will need to re-load them when the app starts if we persist state.
+            // For now, we will add them to the state but exclude from persistence.
+            getSystemPromptTemplate: data.getSystemPromptTemplate,
+            getRankInfo: data.getRankInfo,
+            backgroundMappings: data.backgroundMappings,
+            events: data.events, // Load events
+            isDataLoaded: true,
+
+            // Also update available backgrounds list
+            availableBackgrounds: data.backgroundList,
+
+            // Reset game when switching? Maybe optional.
+            // For now, let's reset to ensure clean state.
+            initialScenario: data.scenario,
+            wikiData: data.wikiData,
+            characterMap: data.characterMap, // Added
+            extraMap: data.extraMap, // Added
+            constants: data.constants, // Added
+            lore: data.lore, // Added
+          });
+
+          // If we are switching games, we should probably reset the session unless it's just a reload.
+          // Logic for "Fresh Start" vs "Reload" needs to be handled by caller.
+
+        } catch (e) {
+          console.error("Failed to set game ID:", e);
+        }
+      },
 
       chatHistory: [],
       displayHistory: [],
 
-      // Event System
       triggeredEvents: [],
       activeEvent: null,
       addTriggeredEvent: (eventId) => set((state) => ({
@@ -178,7 +241,6 @@ export const useGameStore = create<GameState>()(
       })),
       setActiveEvent: (event) => set({ activeEvent: event }),
 
-      // Meta State
       userCoins: 0,
       setUserCoins: (coins) => set({ userCoins: coins }),
 
@@ -189,8 +251,6 @@ export const useGameStore = create<GameState>()(
       clearHistory: () => set({ chatHistory: [], displayHistory: [] }),
       truncateHistory: (keepCount) => set((state) => {
         let newHistory = state.chatHistory.slice(-keepCount);
-        // Gemini API requires the first message to be from 'user'.
-        // If the truncated history starts with 'model', remove it.
         if (newHistory.length > 0 && newHistory[0].role === 'model') {
           newHistory = newHistory.slice(1);
         }
@@ -209,7 +269,6 @@ export const useGameStore = create<GameState>()(
       playerName: '주인공',
       setPlayerName: (name) => set({ playerName: name }),
 
-      // Lore State Init
       activeCharacters: [],
       setActiveCharacters: (chars) => set({ activeCharacters: chars }),
       currentLocation: 'home',
@@ -229,37 +288,21 @@ export const useGameStore = create<GameState>()(
         availableCharacterImages: characters,
         availableExtraImages: extraCharacters
       }),
+      setAvailableExtraImages: (extraCharacters) => set({ availableExtraImages: extraCharacters }),
 
-      characterData: (Array.isArray(initialCharacterData) ? initialCharacterData : []).reduce((acc: any, char: any) => {
-        // Use Name as ID (User preference)
-        const id = char.name;
-        acc[id] = { ...char, id };
-        return acc;
-      }, {}),
+      characterData: {}, // Initialized empty, filled by setGameId
       updateCharacter: (id, data) => set((state) => {
         const existingChar = state.characterData[id];
-        let baseChar = existingChar;
-
-        // If character doesn't exist in state, try to find it in static data by Name
-        if (!baseChar) {
-          const staticChar = (initialCharacterData as any[]).find((c: any) => c.name === id);
-          if (staticChar) {
-            baseChar = { ...staticChar, id };
-          } else {
-            baseChar = { id, name: id, ...data }; // Fallback for completely new characters
-          }
-        }
-
+        if (!existingChar) return {};
         return {
           characterData: {
             ...state.characterData,
-            [id]: { ...baseChar, ...data }
+            [id]: { ...existingChar, ...data }
           }
         };
       }),
 
-      // Dynamic World Data Init
-      worldData: initialWorldData,
+      worldData: { locations: {}, items: {} }, // Initialized empty
       updateLocation: (id, data) => set((state) => ({
         worldData: {
           ...state.worldData,
@@ -272,42 +315,16 @@ export const useGameStore = create<GameState>()(
         }
       })),
 
-      // Status Description (Natural Language)
       statusDescription: "건강함",
       setStatusDescription: (desc) => set({ statusDescription: desc }),
       personalityDescription: "평범함",
       setPersonalityDescription: (desc) => set({ personalityDescription: desc }),
 
-      // Stats Init
-      playerStats: {
-        hp: 100, maxHp: 100,
-        mp: 50, maxMp: 50,
-        gold: 0,
-        level: 1, exp: 0,
-        fame: 0,
-        fate: 0,
-        playerRank: '일반인',
-        personalitySummary: "", // Initial empty summary
-        str: 10, agi: 10, int: 10, vit: 10, luk: 10,
-        skills: [],
-        personality: {
-          morality: 0,
-          courage: 0,
-          energy: 0,
-          decision: 0,
-          lifestyle: 0,
-          openness: 0,
-          warmth: 0,
-          eloquence: 0,
-          leadership: 0,
-          humor: 0,
-          lust: 0
-        },
-        relationships: {}
-      },
+      playerStats: INITIAL_STATS,
       setPlayerStats: (stats) => set((state) => ({
         playerStats: { ...state.playerStats, ...stats }
       })),
+
       inventory: [],
       addItem: (item) => set((state) => {
         const existing = state.inventory.find(i => i.id === item.id);
@@ -323,12 +340,10 @@ export const useGameStore = create<GameState>()(
       removeItem: (itemId, amount = 1) => set((state) => {
         const existing = state.inventory.find(i => i.id === itemId);
         if (!existing) return {};
-
         const newQuantity = existing.quantity - amount;
         if (newQuantity <= 0) {
           return { inventory: state.inventory.filter(i => i.id !== itemId) };
         }
-
         return {
           inventory: state.inventory.map(i =>
             i.id === itemId ? { ...i, quantity: newQuantity } : i
@@ -336,7 +351,6 @@ export const useGameStore = create<GameState>()(
         };
       }),
 
-      // VN State Init
       scriptQueue: [],
       setScriptQueue: (queue) => set({ scriptQueue: queue }),
       currentSegment: null,
@@ -344,26 +358,23 @@ export const useGameStore = create<GameState>()(
       choices: [],
       setChoices: (choices) => set({ choices }),
 
-      // Phone text logic
       textMessageHistory: {},
       addTextMessage: (partner, message) => set((state) => {
         const history = { ...state.textMessageHistory };
-        if (!history[partner]) history[partner] = [];
+        // Create shallow copy of the specific array to avoid mutating state
+        const partnerHistory = history[partner] ? [...history[partner]] : [];
 
-        // [Fix] Prevent Duplicates (Idempotency Check)
-        // Check if the last message has the exact same content. 
-        // Generative AI rarely repeats the exact same sentence consecutively for the same character.
-        const lastMsg = history[partner][history[partner].length - 1];
+        const lastMsg = partnerHistory[partnerHistory.length - 1];
         if (lastMsg && lastMsg.content === message.content && lastMsg.sender === message.sender) {
-          // Duplicate detected, ignore.
           return {};
         }
 
-        history[partner].push(message);
+        partnerHistory.push(message);
+        history[partner] = partnerHistory;
+
         return { textMessageHistory: history };
       }),
 
-      // Settings
       language: null,
       setLanguage: (lang) => set({ language: lang }),
 
@@ -380,49 +391,33 @@ export const useGameStore = create<GameState>()(
         currentMood: 'daily',
         statusDescription: '건강함',
         personalityDescription: '평범함',
-        playerStats: {
-          hp: 100, maxHp: 100,
-          mp: 50, maxMp: 50,
-          gold: 0,
-          level: 1, exp: 0,
-          fame: 0, // Added Fame
-          fate: 0, // Added Fate
-          playerRank: '일반인', // Added Player Rank
-          personalitySummary: "", // Added Personality Summary
-          str: 10, agi: 10, int: 10, vit: 10, luk: 10,
-          skills: [],
-          personality: {
-            morality: 0,
-            courage: 0,
-            energy: 0,
-            decision: 0,
-            lifestyle: 0,
-            openness: 0,
-            warmth: 0,
-            eloquence: 0,
-            leadership: 0,
-            humor: 0,
-            lust: 0
-          },
-          relationships: {}
-        },
+        playerStats: INITIAL_STATS,
         inventory: [],
         scriptQueue: [],
         currentSegment: null,
         choices: [],
-        characterData: initialCharacterData, // Reset characters too
-        worldData: initialWorldData, // Reset world too
-        textMessageHistory: {}, // Reset Phone History
-        triggeredEvents: [], // Reset triggered events
-        activeEvent: null // Reset active event
+        textMessageHistory: {},
+        triggeredEvents: [],
+        activeEvent: null
       }),
     }),
     {
       name: 'vn-game-storage-v1',
       partialize: (state) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        return state;
+        const {
+          getSystemPromptTemplate,
+          getRankInfo,
+          backgroundMappings,
+          ...persistedState
+        } = state;
+        return persistedState;
       },
+      onRehydrateStorage: () => (state) => {
+        // On rehydration, we need to reload the non-persisted functions
+        if (state && state.activeGameId) {
+          state.setGameId(state.activeGameId);
+        }
+      }
     }
   )
 );

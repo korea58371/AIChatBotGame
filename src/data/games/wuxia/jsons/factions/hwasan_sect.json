@@ -1,0 +1,107 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects)",
+    "faction_profile": {
+        "name": "화산파 (Mount Hua Sect / 華山派)",
+        "alias": [
+            "The Plum Blossom Sword Sect (매화검파)",
+            "Leader of the Five Sacred Mountain Sword Sects (오악검파의 맹주)"
+        ],
+        "location": {
+            "province": "Shaanxi (섬서성 / 陝西省)",
+            "mountain": "Mt. Hua (화산 / 華山) - Specifically the Lotus Peak (Yeonhwa-bong / 蓮花峰) at the summit.",
+            "geography": "Extremely precipitous granite peaks. Known for dangerous cliffs and narrow paths like 'Changryong-ryeong' (Blue Dragon Ridge).",
+            "landmarks": [
+                "West Peak (Seo-bong) / Lotus Peak (Yeonhwa-bong) - Main base.",
+                "East Peak (Dong-bong) / Chaoyang Peak - Best sunrise view.",
+                "Jade Maiden Cave (Oknyeo-seoksil / 옥녀석실) - Hidden training ground.",
+                "Blue Dragon Ridge (Changryong-ryeong) - 1m wide staircase ridge used for training balance."
+            ]
+        },
+        "heritage": {
+            "founder": "Hao Datong (Wang Chongyang's disciple) / 'Hak-seung' (Real name), 'Yeon-yeon-ja' (Taoist name).",
+            "alignment": "Taoist (Do-ga) / Orthodox (Jeongpa).",
+            "symbol": "Plum Blossom (Mae-hwa / 梅花). Represents resilience in winter and breathtaking beauty."
+        },
+        "status": {
+            "tier": "Top Tier (Rivals Shaolin and Wudang).",
+            "specialty": "Sword Arts (Geom). Often called the 'Sword Sect of Mount Hua' (Hwasan Geom-pa).",
+            "reputation": "Known for the most beautiful and sharp sword arts. Home to the 'Plum Blossom Swordsmen' (Maehwa-geomsu)."
+        }
+    },
+    "characteristics": {
+        "archetype": "Elegant Swordsman / Flowering Blade",
+        "combat_style": {
+            "visuals": "Sword Qi manifests as scattering plum blossoms (pink/red aura).",
+            "core_concepts": [
+                "Mae-hwa (Plum Blossom): Beauty concealing deadly sharpness.",
+                "Gi (Strange/Unique) & Heom (Dangerous/Steep): Reflecting the treacherous terrain of Mt. Hua."
+            ],
+            "tactics": "Overwhelming the enemy with a dazzling flurry of sword strikes that look like flower petals."
+        },
+        "elite_unit": {
+            "name": "매화검수 (Plum Blossom Swordsman / Maehwa-geomsu)",
+            "description": "The elite disciples of Mt. Hua. They wear plum blossom embroidered robes or tassels.",
+            "significance": "A status symbol. The Sect Leader is always chosen from among them."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "이십사수매화검법 (24-Style Plum Blossom Sword Art)",
+            "description": "The most iconic art. Unfolds sword qi like blooming plum flowers.",
+            "variations": [
+                "설중암향부동매화검법 (Plum Scent in Snow Unfrozen Sword) - High-level art.",
+                "매화삼십육검 (Plum Blossom 36 Sword)",
+                "십방매화검진 (Ten Direction Plum Blossom Sword Formation)"
+            ]
+        },
+        "sword_arts": {
+            "style": "Fast, Sharp, and Flowery",
+            "list": [
+                "육합검 (Six Harmony Sword)",
+                "칠매검 (Seven Plum Sword)",
+                "삼선검 (Three Immortal Sword)",
+                "자하검 (Purple Mist Sword) - Associated with 'Violet Mist Divine Art'.",
+                "옥녀검 (Jade Maiden Sword)",
+                "광풍쾌검 (Mad Wind Fast Sword) - Extremely fast and aggressive.",
+                "양오검 (Nurturing Self Sword)",
+                "청운적하검 (Blue Cloud Red Mist Sword)"
+            ]
+        },
+        "internal_energy": {
+            "style": "Violet Mist & Pure Taoist Qi",
+            "list": [
+                {
+                    "name": "자하신공 (Violet Mist Divine Art / Purple Haze Divine Art)",
+                    "grade": "Supreme (Sect Leader only). Manifests purple qi on the face/skin."
+                },
+                "매화심법 (Plum Blossom Heart Method)",
+                "옥함신공 (Jade Box Divine Art)",
+                "건곤신공 (Heaven and Earth Divine Art)"
+            ]
+        },
+        "movement": {
+            "style": "Drifting Scent & steep climbing",
+            "list": [
+                "암향표 (Dark Scent Drifting) - Moving like a drifting scent.",
+                "칠성보 (Seven Star Step)",
+                "비류보 (Flying Flow Step)"
+            ]
+        },
+        "fist_and_palm": {
+            "note": "Secondary to Sword Arts.",
+            "list": [
+                "매화권 (Plum Blossom Fist)",
+                "옥녀장법 (Jade Maiden Palm)",
+                "매화청심장 (Plum Blossom Clear Heart Palm)",
+                "산화무영수 (Scattering Flower Shadowless Hand)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The Protagonist's Sect (Most popular choice in Korean Wuxia).",
+        "A sect that has fallen and needs restoring (The 'Return of the Mount Hua Sect' trope).",
+        "The most 'Visual' sect, perfect for describing beautiful combat scenes.",
+        "Rivals to Wudang (Sword vs Sword, Taoist vs Taoist)."
+    ]
+}

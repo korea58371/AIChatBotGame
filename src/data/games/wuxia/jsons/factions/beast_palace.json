@@ -1,0 +1,55 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Sae-oe / Outer Realm)",
+    "faction_profile": {
+        "name": "남만야수궁 (Southern Beast Palace / 南蠻野獸宮)",
+        "location": {
+            "region": "Nanman (Southern Wilds / 南蠻)",
+            "geography": "Deep jungles of Yunnan/Vietnam border. Hot, humid, filled with poisonous creatures."
+        },
+        "heritage": {
+            "philosophy": "Survival of the fittest (Nature). Harmony with beasts.",
+            "structure": "Tribal / Monarchy. Ruled by the Beast King (Ya-wang)."
+        },
+        "status": {
+            "tier": "Major Outer Faction (King of the South).",
+            "political_role": "Neutral/Isolationist but fearsome in war due to beast armies."
+        }
+    },
+    "characteristics": {
+        "archetype": "Beast Tamer / Berserker",
+        "combat_style": {
+            "summary": "Primitive brute strength combined with animal companions.",
+            "visuals": "Tiger skins, bone weapons, fighting alongside tigers/elephants.",
+            "attribute": "Yang (Physical Heat) and Poison resistance."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "백수신공 (Hundred Beast Divine Art)",
+            "description": "Mimicking the movements and power of a hundred beasts.",
+            "type": "Body Enhancement / Internal"
+        },
+        "skills": {
+            "list": [
+                "수화술 (Beast Speak) - Communicating with animals.",
+                "마호권 (Demonic Tiger Fist)",
+                "사왕비공 (Snake King Secret Art) - Poison/Flexibility."
+            ]
+        },
+        "beasts": {
+            "famous_types": [
+                "Cheon-nyeon-ho (Thousand Year Tiger)",
+                "Geum-gang-won (Diamond Ape)",
+                "Giant poisonous snakes"
+            ]
+        }
+    },
+    "narrative_role": {
+        "role": [
+            "Providers of 'exotic' challenges (fighting monsters instead of humans).",
+            "A potential ally for the protagonist if they gain the Beast King's respect.",
+            "Source of chaos (e.g., a beast stampede)."
+        ]
+    }
+}

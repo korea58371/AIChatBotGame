@@ -1,0 +1,97 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Major Families / Heterodox Families)",
+    "faction_profile": {
+        "name": "진주언가 (Jinju Eon Family / 晉州彥家)",
+        "alias": [
+            "The Fist of Jinju (진주의 권)",
+            "Master of Jiangshi (강시의 주인)"
+        ],
+        "location": {
+            "province": "Hebei (하북성 / 河北省)",
+            "city": "Jinju (진주현 / 晉州縣)",
+            "geo_political_conflict": "Shares the same province (Hebei) with the 'Hebei Peng Family'. Constant territorial and pride disputes."
+        },
+        "status": {
+            "tier": "High Tier (Often competes for a spot in the Five Great Families).",
+            "alignment": "Chaotic Neutral or Grey (Due to the taboo of Jiangshi arts).",
+            "reputation": "Known publicly for Fist Arts, but feared secretly for Necromancy."
+        }
+    },
+    "characteristics": {
+        "archetype": "Necromancer Brawler / Musclehead with Dark Secrets",
+        "physique": [
+            "Born with Divine Strength (Sin-ryeok) similar to the Peng Family.",
+            "Giant stature, thick skin, large fists.",
+            "Often stereotyped as simple-minded or dull-witted (Muscle-brained)."
+        ],
+        "duality": {
+            "surface": "Orthodox Fist Family (Honest, righteous, albeit rough).",
+            "hidden": "Practitioners of forbidden Jiangshi Arts (Manipulating corpses, hardening bodies like the undead)."
+        },
+        "rivalry": {
+            "target": "Hebei Peng Family (하북팽가)",
+            "dynamic": "Fist vs Blade. Both are 'Physical/Strength' families in Hebei. Eon Family is often the perennial #2."
+        }
+    },
+    "martial_arts_library": {
+        "internal_energy": {
+            "focus": "Body Hardening & Soul Manipulation",
+            "list": [
+                {
+                    "name": "대원신공 (Great Origin Divine Art)",
+                    "effect": "Hardens skin and meridians. Ultimate mastery leads to 'Blade/Sword Invulnerability'."
+                },
+                "벽라환혼신공 (Jade Net Soul Return Divine Art)",
+                "환령소혼심결 (Spirit Calling Soul Dispersing Chant)"
+            ]
+        },
+        "fist_arts": {
+            "style": "Destructive & Overwhelming",
+            "list": [
+                {
+                    "name": "언가권 (Eon Family Fist)",
+                    "description": "Signature Art. Crushes rocks with bare hands. Balanced offense and defense."
+                },
+                {
+                    "name": "벽라신권 (Jade Net Divine Fist)",
+                    "description": "Manifests Blue Fist Qi (Kwon-gang). High damage but causes recoil damage to the user.",
+                    "type": "High Risk, High Return"
+                },
+                "천횡권 (Heavenly Horizontal Fist)",
+                "강시일권 (Jiangshi One Fist)"
+            ]
+        },
+        "qigong_body_arts": {
+            "style": "Transforming the living body into a weapon (like a Jiangshi)",
+            "list": [
+                {
+                    "name": "강시공 (Jiangshi Art)",
+                    "effect": "Deadens pain receptors and hardens skin. Side effects include loss of sensation and regret in old age.",
+                    "analogy": "Extreme conditioning (like Muay Thai shin conditioning) taken to a supernatural level."
+                },
+                "천왕법신공 (Heavenly King Dharma Body)",
+                "천산갑 (Pangolin Armor)"
+            ]
+        },
+        "necromancy_jiangshi_arts": {
+            "status": "Forbidden / Secret Techniques",
+            "list": [
+                "구유고혼대법 (Nine Underworlds Lone Soul Great Art)",
+                "사신박령대법 (Evil God Spirit Binding Great Art)",
+                "백골대법 (White Bone Great Art)",
+                "마령찰극구시대법 (Demon Spirit Corpse Driving Art)"
+            ]
+        },
+        "movement": [
+            "마영귀신보 (Demon Shadow Ghost God Step)",
+            "귀허보 (Ghost Void Step)",
+            "귀영유유보 (Ghost Shadow Flowing Step)"
+        ]
+    },
+    "narrative_role": [
+        "The 'Dark Mirror' of the Hebei Peng Family.",
+        "A faction that tempts the protagonist with forbidden power (Jiangshi arts).",
+        "Comedic relief (Dumb muscleheads) or Horror elements (Undead soldiers), depending on the tone."
+    ]
+}

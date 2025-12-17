@@ -1,0 +1,100 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects)",
+    "faction_profile": {
+        "name": "공동파 (Kongtong Sect / 崆峒派)",
+        "alias": [
+            "Cradle of Taoism (도교의 요람)",
+            "Demon Subduing Sect (복마문 / 伏魔門)"
+        ],
+        "location": {
+            "province": "Gansu (감숙성 / 甘肅省)",
+            "mountain": "Mt. Kongtong (공동산 / 崆峒山)",
+            "significance": "Legend says the Yellow Emperor visited the hermit Guangchengzi here. Often depicted as the 'Last Bastion' protecting the Central Plains from Western threats."
+        },
+        "status": {
+            "alignment": "Orthodox (Jeongpa) / Taoist (Do-ga).",
+            "ranking": "One of the Nine Great Sects. Considered one of the major Sword Sects alongside Wudang, Emei, and Mt. Hua."
+        },
+        "core_theme": "Bok-ma (伏魔) - Subduing Demons. Many arts are named 'Demon Subduing'."
+    },
+    "characteristics": {
+        "archetype": "Exorcist / Hard Taoist",
+        "combat_style": {
+            "summary": "Aggressive Taoist arts designed to destroy Evil (Ma).",
+            "specialty": "Sword (Geom) and Fist (Gwon).",
+            "risk_factor": "Some arts (like Seven Injuries Fist) harm the user to inflict maximum damage."
+        },
+        "narrative_hook": [
+            "Unlike the 'Soft' Taoism of Wudang, Kongtong represents the 'Hard/Punishing' side.",
+            "Possesses techniques that border on Unorthodox due to their destructive nature (e.g., Seven Injuries Fist)."
+        ]
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "칠상권 (Seven Injuries Fist / 七傷拳)",
+            "description": "A legendary fist art. It inflicts internal injuries on the user (damaging 7 organs) to unleash devastating power.",
+            "type": "High Risk, High Return / Forbidden Art",
+            "narrative_use": "Used by a desperate master or a tragic hero who sacrifices health for power."
+        },
+        "sword_arts": {
+            "style": "Anti-Demon / Divine",
+            "list": [
+                {
+                    "name": "복마검 (Demon Subduing Sword)",
+                    "description": "Most common signature sword art. Designed to counter dark arts."
+                },
+                "소양검 (Lesser Yang Sword)",
+                "삼절검 (Three Severing Sword)",
+                "천운검 (Cloud Piercing Sword)",
+                "현천검 (Dark Heaven Sword)",
+                "칠살검 (Seven Kill Sword) - Aggressive name for a righteous sect.",
+                "무상주천검 (Impermanence Cycle Sword)"
+            ]
+        },
+        "fist_and_palm": {
+            "list": [
+                "복마장 (Demon Subduing Palm)",
+                "현천신장 (Dark Heaven God Palm)",
+                "현명신장 (Black Underworld God Palm) - Sometimes depicted as a dark/poisonous art.",
+                "추운권 (Cloud Chasing Fist)",
+                "통비신권 (Through Arm God Fist)"
+            ]
+        },
+        "internal_energy": {
+            "list": [
+                "천뢰복마신공 (Heavenly Thunder Demon Subduing Divine Art)",
+                "육양융설공 (Six Yang Snow Melting Art)",
+                "혼원일기공 (Mixed Origin One Qi Art)",
+                "이합신공 (Separation and Union Divine Art)"
+            ]
+        },
+        "claw_and_finger": {
+            "note": "Unusually employs Claw arts for an Orthodox sect.",
+            "list": [
+                "신풍귀조 (Divine Wind Ghost Claw)",
+                "개천풍운조 (Open Sky Wind Cloud Claw)",
+                "삼음오공조 (Three Yin Centipede Claw) - Sounds villainous, reflecting their harsh nature.",
+                "건곤지 (Heaven and Earth Finger)",
+                "소양지 (Lesser Yang Finger)"
+            ]
+        },
+        "special_techniques": {
+            "suicidal_move": {
+                "name": "인귀동도 (Man and Ghost Same Path / 人鬼동도)",
+                "effect": "Throwing one's body to perish together with the enemy (Dong-gwi-eo-jin). Similar to Kunlun's 'Jade Fragmentation'.",
+                "usage": "Last resort against a stronger demon/enemy."
+            },
+            "sound_arts": [
+                "오음신소 (Five Tone Divine Flute)",
+                "복마신후 (Demon Subduing Divine Roar)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The sect that holds the 'Seven Injuries Fist' scroll (a coveted item).",
+        "Guardians of the Western border (Gansu) alongside Kunlun.",
+        "A faction that is righteous but uses brutal methods (Claws, Self-harming fists) to fight evil.",
+        "Often portrayed as having internal conflict due to the dangers of their own martial arts."
+    ]
+}

@@ -1,0 +1,88 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Regions (Sae-oe / Outer Realms)",
+    "general_profile": {
+        "concept": "Sae-oe Murim (새외무림 / Outside the Great Wall)",
+        "definition": "Martial arts factions located outside the Central Plains (Jungwon/China).",
+        "characteristics": [
+            "Exotic & Foreign: Different customs, clothing, and martial arts philosophies.",
+            "Unorthodox Alignment: Often treated as Sapa (Unorthodox) or Neutral because they don't follow Jungwon's moral codes.",
+            "Family/Tribe Structure: Often organized by bloodlines or religious hierarchies rather than sect master/disciple relationships."
+        ]
+    },
+    "regions_and_factions": {
+        "north_bukhae": {
+            "region_name": "Bukhae (North Sea / 北海)",
+            "geography": "Lake Baikal or Por-Bajin Ruins. Eternal winter, ice storms.",
+            "factions": [
+                {
+                    "name": "북해빙궁 (North Sea Ice Palace / 北海氷宮)",
+                    "specialty": "Ice Arts (Bing-gong), Yin Energy. Rulers of the North."
+                }
+            ]
+        },
+        "south_nanman": {
+            "region_name": "Nanman (Southern Wilds / 南蠻)",
+            "geography": "Southeast of Yunnan (Vietnam, Laos borders). Dense jungles, poisonous swamps.",
+            "vibe": "Primitive, Amazonian, Beast-taming.",
+            "factions": [
+                {
+                    "name": "남만야수궁 (Southern Beast Palace / 南蠻野獸宮)",
+                    "specialty": "Taming Beasts (Tigers, Elephants, Snakes). Brutal physical arts."
+                },
+                {
+                    "name": "독곡 / 오독문 (Poison Valley / Five Poison Sect)",
+                    "specialty": "Using Gu (poison insects) and venomous plants."
+                }
+            ]
+        },
+        "west_seojang": {
+            "region_name": "Seojang (Tibet / 西藏)",
+            "geography": "Tibetan Plateau. High altitude, spiritual atmosphere.",
+            "factions": [
+                {
+                    "name": "포달랍궁 (Potala Palace / 布達拉宮)",
+                    "specialty": "Lamaism (Tibetan Buddhism), Red Handprints (Blood Arts). The political and religious center."
+                }
+            ]
+        },
+        "far_west_cheonchuk": {
+            "region_name": "Cheonchuk (India / 天竺)",
+            "geography": "India. The origin of Buddhism.",
+            "factions": [
+                {
+                    "name": "뇌음사 (Thunder Sound Temple / 雷音寺)",
+                    "specialty": "Ancient Buddhist Arts. Often rivals Shaolin. Divided into Great (Good) and Small (Evil) factions.",
+                    "conflict": "Hindu influence (sometimes linked to Demonic Arts origin)."
+                }
+            ]
+        },
+        "northwest_daemak": {
+            "region_name": "Daemak (Great Desert / 大漠)",
+            "geography": "Gobi & Taklamakan Deserts.",
+            "factions": [
+                {
+                    "name": "광풍사 (Mad Wind Sand / 狂風沙)",
+                    "type": "Bandit/Mercenary group using sandstorms."
+                },
+                {
+                    "name": "살막 (Murder Screen / 殺幕)",
+                    "type": "Assassin Guild hiding in the desert."
+                }
+            ]
+        },
+        "excluded_regions": {
+            "note": "Often excluded or minimized in Korean Wuxia to maintain immersion.",
+            "list": [
+                "Haedong (Korea)",
+                "Dong-yeong (Japan / Wae-gu)",
+                "Persia (Pasa)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "Invaders: A massive invasion force (e.g., Beast Palace riding elephants) challenging the Murim Alliance.",
+        "Exotic Allies: A character with strange abilities (Ice/Beast Taming) joining the protagonist's party.",
+        "The Unknown: A source of ancient, lost, or forbidden techniques (e.g., Origin of Demonic Arts from India or Persia)."
+    ]
+}

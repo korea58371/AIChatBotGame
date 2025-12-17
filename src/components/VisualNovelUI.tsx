@@ -9,8 +9,7 @@ import { resolveBackground } from '@/lib/background-manager'; // Added import //
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import assets from '@/data/assets.json';
-import { START_SCENARIO_TEXT } from '@/data/start_scenario';
+
 import { EventManager } from '@/lib/event-manager';
 import WikiSystem from './WikiSystem';
 import TextMessage from './features/TextMessage';
@@ -273,8 +272,21 @@ function AdButton({ onReward }: { onReward: () => void }) {
     );
 }
 
+// Helper to format text (Bold support)
+const formatText = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, index) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={index} className="text-yellow-400 font-extrabold">{part.slice(2, -2)}</strong>;
+        }
+        return part;
+    });
+};
+
 export default function VisualNovelUI() {
     const [isFullscreen, setIsFullscreen] = useState(false);
+    // ... (start of component)
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -312,7 +324,8 @@ export default function VisualNovelUI() {
         setUserCoins,
         availableExtraImages,
         turnCount,
-        incrementTurnCount
+        incrementTurnCount,
+        initialScenario
     } = useGameStore();
 
     const supabase = createClient();
@@ -437,12 +450,13 @@ export default function VisualNovelUI() {
         const loadAssets = async () => {
             console.log("Loading Assets...");
             try {
-                const extraChars = await getExtraCharacterImages();
+                const gameId = useGameStore.getState().activeGameId; // Get current game ID
+                const extraChars = await getExtraCharacterImages(gameId);
                 console.log("Loaded Extra Characters:", extraChars);
-                useGameStore.getState().setAvailableAssets(assets.backgrounds, assets.characters, extraChars);
+                useGameStore.getState().setAvailableExtraImages(extraChars);
             } catch (e) {
                 console.error("Failed to load extra assets:", e);
-                useGameStore.getState().setAvailableAssets(assets.backgrounds, assets.characters, []);
+                useGameStore.getState().setAvailableExtraImages([]);
             }
 
             // [Startup Warmup] Preload Cache in Background
@@ -544,9 +558,10 @@ export default function VisualNovelUI() {
 
     // Helper Functions
     const getBgUrl = (bg: string) => {
-        if (!bg) return '/assets/backgrounds/Home_Entrance.jpg'; // Default fallback
+        const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
+        if (!bg) return `/assets/${gameId}/backgrounds/Home_Entrance.jpg`; // Default fallback
         if (bg.startsWith('http') || bg.startsWith('/')) return bg; // Return absolute paths directly
-        return `/assets/backgrounds/${encodeURIComponent(bg)}.jpg`; // Fallback for legacy simple names
+        return `/assets/${gameId}/backgrounds/${encodeURIComponent(bg)}.jpg`; // Fallback for legacy simple names
     };
 
     const getCharUrl = (charExpression: string) => {
@@ -726,8 +741,15 @@ export default function VisualNovelUI() {
                 // So if "ExtraChar_Basic" is in the list, it works.
 
                 const combinedKey = `${charName}_${emotion}`;
+                const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
+                const extraMap = useGameStore.getState().extraMap; // Get extraMap from store
+
                 if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
-                    imagePath = `/assets/ExtraCharacters/${combinedKey}.png`;
+                    // Check direct file match (name_emotion)
+                    imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
+                } else if (extraMap && extraMap[charName]) {
+                    // Check exact name match in extraMap (e.g. "점소이(비굴한)" -> "점소이_비굴한.png")
+                    imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
                 } else {
                     // Clean up emotion input (remove parens if any, though system prompt forbids them)
                     // The mapper expects clean distinct Korean words.
@@ -862,6 +884,7 @@ export default function VisualNovelUI() {
                 availableBackgrounds: currentState.availableBackgrounds,
                 availableCharacterImages: currentState.availableCharacterImages,
                 availableExtraImages: currentState.availableExtraImages,
+                activeGameId: currentState.activeGameId, // [FIX] Pass GameID for Server Re-hydration
                 isDirectInput: isDirectInput // Inject Flag
             }));
 
@@ -1125,7 +1148,7 @@ export default function VisualNovelUI() {
     const handleStartGame = () => {
         // Replace Placeholder with Real Name
         const effectiveName = playerName || '김현준';
-        const processedScenario = START_SCENARIO_TEXT.replace(/{{PLAYER_NAME}}/g, effectiveName);
+        const processedScenario = (initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
 
         // Parse the raw text scenario
         const segments = parseScript(processedScenario);
@@ -2421,7 +2444,7 @@ export default function VisualNovelUI() {
                                 </h2>
 
                                 <div className="text-xl text-white leading-relaxed font-medium whitespace-pre-wrap">
-                                    {currentSegment.content.replace(/\*\*/g, '')}
+                                    {formatText(currentSegment.content)}
                                 </div>
 
                                 <div className="mt-8 text-sm text-gray-500 animate-pulse">
@@ -2519,11 +2542,11 @@ export default function VisualNovelUI() {
                                 <div className="text-[32px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
                                     {currentSegment.type === 'narration' ? (
                                         <span className="text-gray-300 italic block px-8">
-                                            {currentSegment.content}
+                                            {formatText(currentSegment.content)}
                                         </span>
                                     ) : (
                                         <span>
-                                            {currentSegment.content}
+                                            {formatText(currentSegment.content)}
                                         </span>
                                     )}
                                 </div>

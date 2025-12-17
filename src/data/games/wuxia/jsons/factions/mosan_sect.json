@@ -1,0 +1,102 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Taoist / Mystic / Occult)",
+    "faction_profile": {
+        "name": "모산파 (Mosan Sect / 茅山派)",
+        "alias": [
+            "Mosan Fulu Sect (모산부록파 / 茅山符籙派)",
+            "Masters of Talismans and Spells",
+            "Taoist Necromancers"
+        ],
+        "location": {
+            "province": "Jiangsu (강소성 / 江蘇省)",
+            "mountain": "Mt. Mao (Mosan / 茅山) - Originally Mt. Juqu (구곡산).",
+            "history": "Named after the Three Mao Brothers (Mao Ying, Mao Gu, Mao Zhong) who attained Tao here."
+        },
+        "heritage": {
+            "founder": "Wei Huacun (위화존 / 魏華存) - A female Taoist, daughter of a Western Jin chancellor. Unique for having a female founder.",
+            "key_figure": "Tao Hongjing (도홍경 / 9th Grandmaster) - Known as 'Huayang Yinju'. Elevated the sect's magical prowess.",
+            "focus": "Bang-sul (Arts), Do-sul (Magic), Ju-sul (Sorcery) rather than physical Martial Arts."
+        },
+        "status": {
+            "alignment": "Neutral / Grey (Technically Taoist/Orthodox, but their methods involve ghosts and corpses, making them seem Unorthodox/Sapa).",
+            "role": "Exorcists (civilian level) or Occult Specialists (Murim level)."
+        }
+    },
+    "characteristics": {
+        "archetype": "Sorcerer / Warlock / Exorcist",
+        "combat_style": {
+            "summary": "Ranged Magic & Minion Control (Jiangshi/Ghosts).",
+            "weapon": "Talismans (Bu-jeok), Wooden Swords (Mok-geom), Bells.",
+            "weakness": "Physically weak compared to martial artists. Relies on preparations, formations, and distance."
+        },
+        "specialty": [
+            "Jiangshi Control (강시술): Manipulating corpses to fight.",
+            "Illusion (Hwan-sul): Confusing enemies with formations.",
+            "Soul Manipulation: Calling or binding spirits."
+        ]
+    },
+    "arts_and_spells_library": {
+        "core_scripture": {
+            "name": "상청경 태동진경 (Shangqing Scripture Taidong True Sutra)",
+            "description": "The ultimate grimoire of Mosan, compiling all their spells and methods."
+        },
+        "utility_spells": {
+            "sensory": [
+                {
+                    "name": "귀이술법 (Ghost Ear Art)",
+                    "effect": "Amplifies hearing by borrowing a ghost's ears. Hears whispers from afar."
+                },
+                "미루사안 (Tearful Snake Eye)"
+            ],
+            "stealth_and_movement": [
+                "은신과행술 (Invisibility Passing Art)",
+                "둔형천은술 (Hiding Form Heaven Concealment Art)",
+                "천마잠영술 (Heavenly Demon Hiding Shadow Art)",
+                "낙성지행술 (Falling Star Earth Travel Art)"
+            ]
+        },
+        "offensive_spells": {
+            "binding": [
+                {
+                    "name": "청룡박 (Blue Dragon Bind)",
+                    "effect": "Binds the opponent's body."
+                },
+                "귀진박 (Ghost Tremor Bind)",
+                {
+                    "name": "반심술 (Reverse Heart Art)",
+                    "effect": "Blocks the flow of the opponent's Qi."
+                }
+            ],
+            "sonic_mental": [
+                "귀혼소 (Ghost Soul Laugh)",
+                "귀호섭백음 (Ghost Cry Soul Stealing Sound)",
+                "마혼살음공 (Demon Soul Killing Sound Art)",
+                "사혼소음 (Dead Soul Flute Sound)"
+            ]
+        },
+        "necromancy_and_healing": {
+            "list": [
+                {
+                    "name": "사령귀혼대법 (Evil Spirit Soul Return Great Art)",
+                    "effect": "Summons the souls of the dead."
+                },
+                "초혼소 (Soul Calling Laugh)",
+                {
+                    "name": "생사환위요상술 (Life Death Exchange Healing Art)",
+                    "effect": "Transfers injuries or life force (Mystic Healing)."
+                },
+                "생사회혼대법 (Life Death Return Soul Great Art)"
+            ]
+        },
+        "formations": [
+            "삼라환상기환술 (Forest of Illusions Strange Magic Art) - Traps enemies in hallucinations."
+        ]
+    },
+    "narrative_role": [
+        "The 'Occult Detective' who solves supernatural mysteries (hauntings, curses).",
+        "A support character who buffs allies or debuffs enemies with talismans.",
+        "A faction that controls an army of Jiangshi (Hopping Vampires), serving as a terrifying force.",
+        "The bridge between the living and the dead, often misunderstood by the 'righteous' sword sects."
+    ]
+}

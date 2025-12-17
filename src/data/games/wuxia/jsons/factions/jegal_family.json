@@ -1,0 +1,99 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "faction_profile": {
+        "name": "제갈세가 (Zhuge Family / 諸葛世家)",
+        "alias": [
+            "신기제갈 (Divine Strategy Zhuge / 神機諸葛)",
+            "Brain of the Wulin (무림의 머리)"
+        ],
+        "location": {
+            "province": "Hubei (호북성 / 湖北省)",
+            "base": "Xiangyang (양양현 / 襄陽縣)",
+            "landmark": "Mt. Yungjung (융중산 / 隆中山) - Symbolic retreat/training ground.",
+            "residence_type": "Grand Manor in the city (Practicality) vs Thatched Cottage on the mountain (Symbolism)."
+        },
+        "heritage": "Descendants of Zhuge Liang (Kongming / 제갈공명).",
+        "political_stance": "Orthodox (Jeongpa). Core pillar of the Murim Alliance (often holding the position of Chief Strategist)."
+    },
+    "characteristics": {
+        "archetype": "Strategist / Scholar / Tactician",
+        "strengths": [
+            "Unrivaled Intelligence & Strategy.",
+            "Mastery of Formations (Jinbeop) and Traps (Gigwan).",
+            "Information Network (Intelligence gathering).",
+            "Proficiency in Medicine and Calculation."
+        ],
+        "weaknesses": [
+            "Physical Frailty: Often depicted with weak constitutions or average skeletal structure.",
+            "Reliance on tools/formations over raw brute force."
+        ],
+        "combat_style": {
+            "summary": "Efficient, deceptive, and defensive.",
+            "signature_weapon": "Fan (Folding Fan) - often concealing hidden weapons or made of steel.",
+            "tactics": "Luring enemies into traps, using psychological warfare, attacking vital points with needles."
+        }
+    },
+    "martial_arts_library": {
+        "internal_energy": [
+            {
+                "name": "소천성공 (So-cheon-seong-gong)",
+                "grade": "Basic but Flawless"
+            },
+            {
+                "name": "대천성신공 (Dae-cheon-seong-sin-gong)",
+                "grade": "Advanced"
+            },
+            {
+                "name": "현원전단신공 (Hyeon-won-jeon-dan-sin-gong)",
+                "grade": "Supreme"
+            }
+        ],
+        "offensive_arts": {
+            "sword": [
+                "소천성검법 (So-cheon-seong Sword Art)",
+                "철현검법 (Iron String Sword Art)",
+                "칠현무형검 (7-String Formless Sword)",
+                "천지호연검법 (Heaven and Earth Ho-yeon Sword)"
+            ],
+            "palm_and_fist": [
+                "소천성장 (So-cheon-seong Palm)",
+                "대천성신장 (Great Heavenly Star Palm)",
+                "천성붕권 (Heavenly Star Collapsing Fist)",
+                "응혈신조 (Blood Coagulating Claw)"
+            ],
+            "finger": [
+                "탄지신통 (Tan-ji-sin-tong / Flicking Finger Divine Skill) - *Signature Move*"
+            ]
+        },
+        "movement": [
+            "천기신행 (Heavenly Machine Godly Walk)",
+            "천기미리보 (Heavenly Machine Maze Step)"
+        ],
+        "hidden_weapons": {
+            "concept": "Used for defense or surprise attacks via medical knowledge (needles).",
+            "techniques": [
+                "은하침통 (Silver River Needle Case)",
+                "소리비도 (Little Pear Flying Knife)",
+                "적엽비화 (Plucking Leaf Flying Flower)",
+                "등천비류이십사도 (Ascending River 24 Knives)"
+            ]
+        },
+        "formations_and_spells": {
+            "description": "The true power of the Zhuge Family. Can trap or kill stronger enemies.",
+            "list": [
+                "윤회진 (Samsara Formation)",
+                "태극건곤환상진 (Taiji Heaven and Earth Illusion Formation)",
+                "구궁치우괘멸진 (Nine Palace Chiyou Destruction Formation)",
+                "만리천환진 (Ten Thousand Li Illusion Formation)",
+                "육합귀문진 (Six Harmony Ghost Gate Formation)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Brain' of the party or Alliance.",
+        "Provides exposition on mysteries, ancient texts, or enemy weaknesses.",
+        "A glass cannon character who needs protection but solves impossible puzzles.",
+        "Often portrayed as handsome scholars holding a feather fan."
+    ]
+}

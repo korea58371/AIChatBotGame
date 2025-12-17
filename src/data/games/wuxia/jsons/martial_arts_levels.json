@@ -1,0 +1,83 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Power System & Realms (Gyeong-ji / 境地)",
+    "core_concepts": {
+        "geom_gi": {
+            "name": "검기 (Sword Qi / 劒氣)",
+            "definition": "Projecting internal energy (Qi) onto the blade.",
+            "visual": "A hazy aura extending 1cm to several inches from the blade.",
+            "requirement": "Requires mastery of Internal Energy (Nae-gong). Marks the entry into 'First Rate'."
+        },
+        "geom_gang": {
+            "name": "검강 (Sword Flux / 劒罡)",
+            "definition": "Highly compressed and solidified Sword Qi.",
+            "visual": "A solid, glowing blade of energy (like a lightsaber). Can cut through steel like tofu.",
+            "requirement": "Requires immense Qi and control. Marks the entry into 'Super Peak' or 'Transformation'."
+        }
+    },
+    "realm_hierarchy": {
+        "01_third_rate": {
+            "name": "삼류 (Third Rate / 三流)",
+            "archetype": "Thug / Minion",
+            "status": "Beginners or street fighters (Pa-rak-ho).",
+            "capability": "Physical strength only. No internal energy application.",
+            "role": "Extras, guards, cannon fodder."
+        },
+        "02_second_rate": {
+            "name": "이류 (Second Rate / 二流)",
+            "archetype": "Rookie / Disciple",
+            "status": "Learned internal arts but cannot apply them practically.",
+            "capability": "Can mimic forms (Cho-sik) but lacks power. 'Licking the surface'.",
+            "role": "Junior disciples, low-level escorts."
+        },
+        "03_first_rate": {
+            "name": "일류 (First Rate / 一流)",
+            "archetype": "Warrior / Expert",
+            "status": "A respected martial artist.",
+            "capability": "Can control Qi. Capable of 'Sword Qi Injuring Men' (Geom-gi-sang-in).",
+            "role": "Senior disciples, mercenaries, squad leaders."
+        },
+        "04_peak": {
+            "name": "절정 (Peak / 絕頂)",
+            "archetype": "Master / Elder",
+            "status": "Top 100 in the Jianghu (Gangho). Elders of minor sects.",
+            "capability": "Perfect Sword Qi (Geom-gi). Can create defensive Qi barriers (Gi-mak).",
+            "role": "Mid-boss, mentor figure, elite warrior.",
+            "power_gap": "Often the limit for talented humans without 'Miraculous Encounters'."
+        },
+        "05_super_peak": {
+            "name": "초절정 (Super Peak / 超絕頂)",
+            "archetype": "Grandmaster / Sect Leader",
+            "status": "Entry to Superhuman.",
+            "capability": "Can use Sword Flux (Geom-gang).",
+            "limitation": "Using Geom-gang drains stamina rapidly. Can only use it a few times.",
+            "power_gap": "Overwhelmingly stronger than Peak (Geom-gang breaks Sword Qi)."
+        },
+        "06_transformation": {
+            "name": "화경 (Transformation / 化境)",
+            "archetype": "Legend / Supreme Master",
+            "status": "Top 10 in the world.",
+            "capability": "Infinite Sword Flux. Telekinetic Control (I-gi-eo-geom).",
+            "phenomenon": "Metamorphosis (Hwan-gol-tal-tae) - Body reconstructs to optimal state. Rejuvenation (Ban-ro-hwan-dong) begins.",
+            "visual": "Sword Flux can be shaped (e.g., orbs) or separated from the blade."
+        },
+        "07_profound": {
+            "name": "현경 (Profound / 玄境)",
+            "archetype": "Demi-God / Unrivaled",
+            "status": "The strongest in the era (Top 1-2).",
+            "capability": "Refined Sword Flux. Massive scale (e.g., dozens of Qi spheres).",
+            "visual": "Nature Unity (Ja-yeon-dong-hwa). Their presence might disappear or feel like the universe itself."
+        },
+        "08_life_and_death": {
+            "name": "생사경 (Life and Death / 生死境)",
+            "archetype": "God / Immortal",
+            "status": "Transcendence. Beyond human limits.",
+            "capability": "Mind Sword (Sim-geom) - Cutting with thought alone. Flying (Deung-seon).",
+            "role": "Deus Ex Machina. Usually leaves the mortal world (Ascension)."
+        }
+    },
+    "narrative_usage": {
+        "power_cliff": "The gap between Peak (Geom-gi) and Super Peak (Geom-gang) is often depicted as an insurmountable wall.",
+        "growth_event": "Crossing from Peak to Transformation usually involves a life-or-death crisis or consuming a Legendary Elixir (e.g., Gongcheong-seokyu)."
+    }
+}

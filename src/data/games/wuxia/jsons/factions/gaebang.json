@@ -1,0 +1,89 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Organizations (Gu-pa Il-bang / The One Gang)",
+    "faction_profile": {
+        "name": "개방 (Beggars' Sect / Gaebang / 丐幇)",
+        "alias": [
+            "The One Gang (일방 / 一幇)",
+            "Gungga-bang (궁가방 / 窮家幇)",
+            "The Information Network of the World"
+        ],
+        "location": {
+            "region": "Everywhere in the Central Plains (Pan-Jungwon).",
+            "base": "Headquarters (Chong-ta) is mobile or hidden, but branches (Bun-ta) exist in every major city.",
+            "hideouts": "Under bridges, abandoned temples, slums."
+        },
+        "ideology": {
+            "core": "Justice (Ui / 義) and Anti-Materialism.",
+            "motto": "Punish evil, help the weak.",
+            "requirement": "Must renounce all wealth upon entry. Total poverty."
+        },
+        "structure": {
+            "leader": "Bangju (Sect Leader) - Wielder of the Dog Beating Staff.",
+            "rank_system": "Knots (Gyeol / 結) tied on the waist sash.",
+            "hierarchy": [
+                "9 Knots: Sect Leader (Bangju)",
+                "8 Knots: Hu-gae (Successor)",
+                "7 Knots: Elders (Jang-ro)",
+                "6~2 Knots: Officials (Branch Leaders, Enforcers)",
+                "1 Knot: Newbie (White Clothes Beggar)",
+                "0 Knot: Trainee"
+            ]
+        }
+    },
+    "characteristics": {
+        "archetype": "Beggar Hero / Information Broker",
+        "strengths": [
+            "Information: With beggars in every street corner, nothing happens without them knowing.",
+            "Numbers: Largest membership in the Wulin (Human Wave tactics).",
+            "Unity: Bound by brotherhood and strict rules despite chaotic appearance."
+        ],
+        "customs": {
+            "induction_ritual": "Spitting Ritual (All members spit on the new leader to show equality and acceptance of filth).",
+            "dress_code": "Ragged clothes (patchwork), holding a bowl and a stick."
+        }
+    },
+    "martial_arts_library": {
+        "signature_weapon_art": {
+            "name": "타구봉법 (Dog Beating Staff Technique / 打狗棒法)",
+            "description": "The supreme technique taught only to the Sect Leader. Uses a stick to strike 'dogs' (enemies).",
+            "forms": [
+                "봉타쌍견 (Strike Twin Dogs)",
+                "타초경사 (Beat Grass Startle Snake)",
+                "반자결 (Binding Word Formula) - Entangling the enemy weapon."
+            ],
+            "weapon": "타구봉 (Dog Beating Staff) - Usually made of green jade or dark iron. Symbol of authority."
+        },
+        "signature_palm_art": {
+            "name": "강룡십팔장 (Eighteen Dragon Subduing Palms / 降龍十八掌)",
+            "description": "The pinnacle of external hard Yang arts. Overwhelming destructive power.",
+            "pros": "Unstoppable force, creates dragon-shaped Qi.",
+            "cons": "Consumes massive internal energy. Hard to sustain for long battles."
+        },
+        "formations": {
+            "name": "타구진 (Dog Beating Formation / 打狗陣)",
+            "style": "Chaotic Mob Attack.",
+            "tactics": "Distracting with begging, singing, crying, and spitting while attacking from all angles. Looks messy but is highly calculated."
+        },
+        "movement": {
+            "style": "Drunken & Unpredictable",
+            "list": [
+                "취팔선보 (Drunken Eight Immortals Step)",
+                "연화락 (Lotus Fall)",
+                "만리추풍신법 (Ten Thousand Li Chasing Wind)"
+            ]
+        },
+        "internal_energy": {
+            "list": [
+                "혼천강룡신공 (Chaotic Heaven Descending Dragon Art)",
+                "옥현귀진현공 (Jade Mystery Return Truth Art)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'News Channel' of the Wulin world.",
+        "The faction that provides a 'Drunken Master' or 'Eccentric Mentor' for the protagonist.",
+        "A moral compass that proves 'Clothes do not make the man'.",
+        "Rivals to the Haomun (Underworld) in information gathering."
+    ]
+}

@@ -27,6 +27,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const [saveSlots, setSaveSlots] = useState<{ id: number; date: string; summary: string }[]>([]);
 
     const resetGameStore = useGameStore(state => state.resetGame);
+    const activeGameId = useGameStore(state => state.activeGameId);
+    const setGameId = useGameStore(state => state.setGameId);
 
     // Check Auth State
     useEffect(() => {
@@ -190,45 +192,29 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                     muted
                     playsInline
                     className="absolute inset-0 w-full h-full object-cover opacity-100"
+                    key={`video-${activeGameId}`} // Re-render video on game switch
                 >
-                    <source src="/assets/Movies/Main.mp4" type="video/mp4" />
+                    <source src={`/assets/${activeGameId}/Movies/Main.mp4`} type="video/mp4" />
                 </video>
 
                 {/* Overlay Gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
 
-                {/* Top Bar */}
-                <div className="absolute top-0 w-full p-6 flex justify-between items-center z-20">
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                            <span className="text-gray-200 text-sm font-medium tracking-wider">GOD BLESS YOU</span>
-                        </div>
-                    </div>
+                {/* ... (Top Bar skipped) ... */}
 
-                    <div className="flex items-center gap-4">
-                        {user && (
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-yellow-500/30 shadow-lg shadow-yellow-500/10">
-                                    <div className="w-4 h-4 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]" />
-                                    <span className="text-yellow-100 font-bold tabular-nums tracking-wider">{coins.toLocaleString()}</span>
-                                </div>
-                            </div>
-                        )}
-
-                        <button className="p-3 bg-black/30 backdrop-blur-md rounded-full border border-white/10 hover:bg-white/10 transition-colors">
-                            <Settings className="w-5 h-5 text-gray-200" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Logo Area - Moved to Right Center */}
-                {/* top-[40%] to be slightly above center to allow room for buttons below */}
+                {/* Logo Area */}
                 <div className="absolute right-0 top-[45%] w-full flex justify-end pr-10 md:pr-32 z-10 pointer-events-none transform -translate-y-1/2">
                     <motion.img
+                        key={`title-${activeGameId}`} // Re-animate on switch
                         initial={{ opacity: 0, x: 50 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 1, delay: 0.5 }}
-                        src="/assets/interface/title/Title.png"
+                        src={`/assets/${activeGameId}/interface/title/Title.png`}
+                        onError={(e) => {
+                            // Fallback to God Bless You if Wuxia title missing (optional, or just show broken)
+                            // For now, let's allow it to break or fallback to generic if we had one.
+                            // e.currentTarget.src = "/assets/god_bless_you/interface/title/Title.png";
+                        }}
                         alt="Title"
                         className="w-[340px] md:w-[560px] object-contain drop-shadow-[0_4px_30px_rgba(0,0,0,0.6)]"
                     />
@@ -326,10 +312,51 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                     )}
                 </div>
 
+                {/* Game Selector UI */}
+                <div className="absolute bottom-24 w-full flex justify-center gap-6 z-30">
+                    <button
+                        onClick={() => setGameId('god_bless_you')}
+                        className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${activeGameId === 'god_bless_you' ? 'scale-110 opacity-100' : 'scale-100 opacity-50 hover:opacity-80'}`}
+                    >
+                        <div className={`p-4 rounded-full border-2 transition-all duration-300 ${activeGameId === 'god_bless_you' ? 'bg-blue-900/80 border-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.5)]' : 'bg-black/50 border-gray-600'}`}>
+                            <span className="text-2xl">🏰</span>
+                        </div>
+                        <span className={`text-sm font-bold tracking-widest uppercase transition-colors ${activeGameId === 'god_bless_you' ? 'text-blue-300' : 'text-gray-500'}`}>
+                            God Bless You
+                        </span>
+                        {activeGameId === 'god_bless_you' && (
+                            <motion.div
+                                layoutId="activeIndicator"
+                                className="absolute -bottom-2 w-1 h-1 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"
+                            />
+                        )}
+                    </button>
+
+                    <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-600 to-transparent" />
+
+                    <button
+                        onClick={() => setGameId('wuxia')}
+                        className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${activeGameId === 'wuxia' ? 'scale-110 opacity-100' : 'scale-100 opacity-50 hover:opacity-80'}`}
+                    >
+                        <div className={`p-4 rounded-full border-2 transition-all duration-300 ${activeGameId === 'wuxia' ? 'bg-red-900/80 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-black/50 border-gray-600'}`}>
+                            <span className="text-2xl">⚔️</span>
+                        </div>
+                        <span className={`text-sm font-bold tracking-widest uppercase transition-colors ${activeGameId === 'wuxia' ? 'text-red-400' : 'text-gray-500'}`}>
+                            천하제일
+                        </span>
+                        {activeGameId === 'wuxia' && (
+                            <motion.div
+                                layoutId="activeIndicator"
+                                className="absolute -bottom-2 w-1 h-1 bg-red-500 rounded-full shadow-[0_0_10px_#ef4444]"
+                            />
+                        )}
+                    </button>
+                </div>
+
                 {/* Bottom Navigation */}
                 <div className="absolute bottom-10 w-full flex justify-center gap-4 z-20">
                     <div className="text-xs text-gray-500 font-mono tracking-widest">
-                        SYSTEM READY... WAITING FOR INPUT
+                        Selected World: {activeGameId} | SYSTEM READY...
                     </div>
                 </div>
 

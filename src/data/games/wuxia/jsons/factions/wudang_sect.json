@@ -1,0 +1,126 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects)",
+    "faction_profile": {
+        "name": "무당파 (Wudang Sect / 武當派)",
+        "alias": [
+            "Mt. Wudang Sect",
+            "North Star of the Martial Forest (Mu-rim Tae-san-buk-du / often shared with Shaolin)",
+            "Origin of Taiji (태극의 본산)"
+        ],
+        "location": {
+            "province": "Hubei (호북성 / 湖北省)",
+            "city": "Junzhou, Xiangyang Prefecture (양양부 균주성)",
+            "mountain": "Mt. Wudang (무당산 / 武當派) - Combines the grandeur of Tai and danger of Hua.",
+            "base": "Golden Summit (Geumjeong) on Heavenly Pillar Peak (Cheonju-bong / 1612m).",
+            "landmarks": [
+                "Taihe Palace (Taehwa-gung / 太和宮) - The Golden Hall built by Emperor Yongle.",
+                "Purple Cloud Palace (Jaso-gung / 紫霄宮)",
+                "Nanyan Palace (Nam-am-gung / 南岩宮)"
+            ]
+        },
+        "heritage": {
+            "founder": "Zhang Sanfeng (Jang Sam-bong / 張三豊) - A legendary Taoist Immortal.",
+            "philosophy": "Taoism (Do-ga). Emphasizes 'Softness overcomes Hardness' (Yu-neung-je-gang) and 'Harmony of Yin and Yang'.",
+            "symbol": "Taiji (Yin-Yang Symbol) and the Tortoise/Snake (Symbol of Xuanwu/Jinmu)."
+        },
+        "status": {
+            "tier": "Top Tier (Rivals Shaolin).",
+            "specialty": "Internal Arts (Nae-gong) and Sword Arts (Geom).",
+            "reputation": "The standard of Taoist martial arts. Known for defensive and counter-attacking styles."
+        }
+    },
+    "characteristics": {
+        "archetype": "Taoist Master / Soft Counter-Attacker",
+        "structure": {
+            "hierarchy": [
+                "Munhasaeng (Official Disciple): Learns Taiji/Wudang Sword.",
+                "Dosa (Taoist Priest): Remains in the mountain.",
+                "Doin (Taoist Walker): Active in Jianghu.",
+                "Sokga-jeja (Lay Disciple): Wealthy patrons learning basic arts."
+            ],
+            "places": "Divided into 8 Palaces (Pal-gung), 2 Temples (I-gwan), 36 Nunneries (Am-dang), 72 Shrines (Am-myo)."
+        },
+        "combat_style": {
+            "visuals": "Slow but unstoppable. Circles (Taiji) deflecting straight attacks.",
+            "core_mechanics": [
+                "Taiji (太極): Using the opponent's force against them.",
+                "Liangyi (Two Ultimates / 兩儀): Coordination of Yin and Yang."
+            ],
+            "tactics": "Waiting for the opponent to move first, then arriving first (Hu-bal-je-in)."
+        }
+    },
+    "martial_arts_library": {
+        "signature_ultimate": {
+            "name": "태극권 & 태극검 (Taiji Fist & Taiji Sword)",
+            "description": "The pinnacle of Wudang arts. Created by Zhang Sanfeng. Understanding the circular flow of nature.",
+            "variations": [
+                "태극혜검 (Taiji Wisdom Sword)",
+                "태극만월검 (Taiji Full Moon Sword)"
+            ]
+        },
+        "sword_arts": {
+            "style": "Soft, Circular, and Continuous",
+            "list": [
+                {
+                    "name": "양의검 (Two Ultimates Sword)",
+                    "description": "Exploits the harmony of Yin and Yang. Often used as a dual-person formation."
+                },
+                {
+                    "name": "요지유검 (Soft Finger Winding Sword)",
+                    "description": "A flexible sword art that can bend around defenses like a ribbon."
+                },
+                "삼재검 (Three Powers Sword) - Foundation.",
+                "칠성검 (Seven Star Sword)",
+                "유운검 (Flowing Cloud Sword)",
+                "신문십삼검 (Divine Gate 13 Sword)",
+                "연환탈명검 (Chain Life Stealing Sword)"
+            ]
+        },
+        "fist_and_palm": {
+            "style": "Internal Damage (Myeon-jang)",
+            "list": [
+                {
+                    "name": "면장 (Cotton Palm / Myeon-jang)",
+                    "effect": "Soft touch that destroys internal organs. 'Needle hidden in cotton'."
+                },
+                "무당장권 (Wudang Long Fist) - Foundation.",
+                "태극신권 (Taiji Divine Fist)",
+                "배운신권 (Cloud Pushing Divine Fist)",
+                "진천철장 (Heaven Shaking Iron Palm)"
+            ]
+        },
+        "internal_energy": {
+            "style": "Pure Yang (Sun-yang) & Infinite (Mu-geuk)",
+            "list": [
+                {
+                    "name": "순양무극공 (Pure Yang Limitless Art)",
+                    "grade": "Supreme. Builds massive, pure internal energy."
+                },
+                "태극신공 (Taiji Divine Art)",
+                "무당구양신공 (Wudang Nine Yang Art) - Reference to H 의천도룡기.",
+                "현허칠성신공 (Mysterious Void Seven Star Art)"
+            ]
+        },
+        "movement": {
+            "signature": "제운종 (Cloud Ladder Leap / Je-un-jong)",
+            "effect": "Allows the user to step on air/their own foot to jump higher mid-air. Famous gravity-defying art.",
+            "others": [
+                "호종보 (Tiger Leap Step)",
+                "유운신법 (Flowing Cloud Body Art)"
+            ]
+        },
+        "formations": {
+            "list": [
+                "진무칠절진 (True Martial Seven Severing Formation) - Extremely powerful 7-man formation.",
+                "오행검진 (Five Element Sword Formation)"
+            ]
+        }
+    },
+    "narrative_role": [
+        "The 'Older Brother' of the Orthodox faction (Serious, heavy, reliable).",
+        "A sect that emphasizes internal cultivation over flashy moves.",
+        "The usual rival to Shaolin for the title of 'Number One Sect'.",
+        "A place where the protagonist learns the true meaning of 'Softness' and 'Nature'."
+    ]
+}

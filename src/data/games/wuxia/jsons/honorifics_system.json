@@ -1,0 +1,174 @@
+{
+    "domain": "Wuxia (Martial Arts Fiction)",
+    "sub_domain": "Honorifics & Address System",
+    "source_reference": "Korean Wuxia Standards",
+    "social_titles": {
+        "description": "General titles used in Jianghu (Martial World) between non-relatives.",
+        "female": [
+            {
+                "term": "소저 (Sojeo / 小姐)",
+                "target": "Young Lady",
+                "usage": "Surname + Sojeo (e.g., Namgung Sojeo). Standard politeness."
+            },
+            {
+                "term": "낭자 (Nangja / 娘子)",
+                "target": "Young Lady",
+                "usage": "Slightly more intimate than Sojeo."
+            }
+        ],
+        "male": [
+            {
+                "term": "소협 (Sohyeop / 少俠)",
+                "target": "Young Hero / Young Man",
+                "usage": "Surname + Sohyeop (e.g., Jegal Sohyeop). Standard politeness."
+            },
+            {
+                "term": "공자 (Gongja / 公子)",
+                "target": "Young Master",
+                "usage": "More respectful/intimate than Sohyeop."
+            },
+            {
+                "term": "대협 (Daehyeop / 大俠)",
+                "target": "Great Hero / Respected Elder",
+                "usage": "Used for highly bidden figures or elders. Surname/Title + Daehyeop."
+            },
+            {
+                "term": "가가 (Gaga / 哥哥)",
+                "target": "Brother / Lover",
+                "usage": "Literally 'older brother', but in KR Wuxia implies 'Darling/Honey' for lovers."
+            }
+        ],
+        "neutral": [
+            {
+                "term": "선배 (Seonbae / 先輩)",
+                "target": "Senior Martial Artist",
+                "usage": "Surname + Seonbae (Casual) or 'No-Seonbaenim' (Respectful to unknown elder)."
+            }
+        ]
+    },
+    "sect_system": {
+        "hierarchy_positions": [
+            {
+                "term": "장문인 (Jangmunin / 掌門人)",
+                "role": "Sect Leader",
+                "note": "Supreme leader. The title itself is an honorific (no 'nim' added)."
+            },
+            {
+                "term": "장로 (Jangro / 長老)",
+                "role": "Elder",
+                "note": "Core decision maker. High authority."
+            },
+            {
+                "term": "원로 (Wonro / 元老)",
+                "role": "Grand Elder",
+                "note": "Generation higher than Sect Leader. Only appears in crises."
+            }
+        ],
+        "peer_relations": {
+            "rule": "Based on entry date (Seniority), not biological age.",
+            "terms": [
+                {
+                    "term": "대사형 (Daesahyeong / 大師兄)",
+                    "meaning": "Eldest Senior Brother (First Disciple)"
+                },
+                {
+                    "term": "사형 (Sahyeong / 師兄)",
+                    "meaning": "Senior Brother (Male)"
+                },
+                {
+                    "term": "사저 (Sajeo / 師姐)",
+                    "meaning": "Senior Sister (Female)"
+                },
+                {
+                    "term": "사제 (Saje / 師弟)",
+                    "meaning": "Junior Brother (Male)"
+                },
+                {
+                    "term": "사매 (Samae / 師妹)",
+                    "meaning": "Junior Sister (Female)"
+                },
+                {
+                    "term": "사질 (Sajil / 師姪)",
+                    "meaning": "Disciple of one's peer (Martial Nephew/Niece)"
+                }
+            ]
+        },
+        "master_lineage": {
+            "terms": [
+                {
+                    "term": "사부 (Sabu / 師父)",
+                    "meaning": "Master / Teacher"
+                },
+                {
+                    "term": "사모 (Samo / 師母)",
+                    "meaning": "Master's Wife"
+                },
+                {
+                    "term": "사조 (Sajo / 師祖)",
+                    "meaning": "Master's Master (Grandmaster)"
+                },
+                {
+                    "term": "태사조 (Taesajo / 太師祖)",
+                    "meaning": "Master's Grandmaster (Great Grandmaster)"
+                },
+                {
+                    "term": "사백 (Sabaek / 師伯)",
+                    "meaning": "Master's Senior Peer (Senior Uncle)"
+                },
+                {
+                    "term": "사숙 (Sasuk / 師叔)",
+                    "meaning": "Master's Junior Peer (Junior Uncle)"
+                }
+            ]
+        }
+    },
+    "family_kinship": {
+        "context": "Used in Family Clans (e.g., Namgung, Tang, Jegal).",
+        "offspring": [
+            {
+                "term": "여식 (Yeosik / 女息)",
+                "meaning": "My Daughter (Humble)"
+            },
+            {
+                "term": "가아 (Gaa / 家兒)",
+                "meaning": "My Son (Humble, rarely used)"
+            }
+        ],
+        "paternal_relatives": [
+            {
+                "term": "백부 (Baekbu / 伯父)",
+                "meaning": "Father's Older Brother"
+            },
+            {
+                "term": "백모 (Baekmo / 伯母)",
+                "meaning": "Wife of Father's Older Brother"
+            },
+            {
+                "term": "숙부 (Sukbu / 叔父)",
+                "meaning": "Father's Younger Brother"
+            },
+            {
+                "term": "숙모 (Sukmo / 叔母)",
+                "meaning": "Wife of Father's Younger Brother"
+            },
+            {
+                "term": "당숙 (Dangsuk / 堂叔)",
+                "meaning": "Father's Cousin (1st cousin once removed)"
+            },
+            {
+                "term": "재당숙 (Jaedangsuk / 再堂叔)",
+                "meaning": "Father's Second Cousin"
+            }
+        ],
+        "maternal_relatives": [
+            {
+                "term": "외숙 (Oesuk / 外叔)",
+                "meaning": "Mother's Brother (Maternal Uncle)"
+            },
+            {
+                "term": "외당질 (Oedangjil / 外堂姪)",
+                "meaning": "Maternal Cousin's Child"
+            }
+        ]
+    }
+}
