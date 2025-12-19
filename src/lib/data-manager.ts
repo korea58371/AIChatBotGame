@@ -151,7 +151,7 @@ export class DataManager {
                 world: worldModule.default || worldModule,
                 characters: charactersModule.default || charactersModule,
                 backgroundList: (bgListModule as any).default || bgListModule,
-                events: eventsModule.default || eventsModule.events || [],
+                events: (eventsModule as any).default || (eventsModule as any).events || [],
                 scenario: scenarioModule.START_SCENARIO_TEXT || "",
                 characterCreationQuestions: (scenarioModule as any).CHARACTER_CREATION_QUESTIONS || null,
                 backgroundMappings: bgMappingsModule.backgroundMappings || {},
