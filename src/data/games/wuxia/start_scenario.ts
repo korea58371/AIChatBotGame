@@ -14,7 +14,7 @@ export const CHARACTER_CREATION_QUESTIONS = [
         question: "2문) 소협이 무림에 나온 진정한 목적은 무엇입니까?",
         options: [
             { value: 'supreme', label: "1. [천하제일] 무공의 끝을 보고 우화등선하는 것." },
-            { value: 'harem', label: "2. [하렘 건설] 천하의 절세미녀들을 모두 나의 여인으로 만드는 것." },
+            { value: 'harem', label: "2. [영웅호색] 천하의 절세미녀들을 모두 나의 여인으로 만드는 것." },
             { value: 'revenge', label: "3. [혈수복수] 가문을 멸문시킨 원수들을 찾아 처참하게 죽이는 것." },
             { value: 'wealth', label: "4. [거상/유유자적] 막대한 부를 쌓아 평생 놀고 먹는 것." }
         ]

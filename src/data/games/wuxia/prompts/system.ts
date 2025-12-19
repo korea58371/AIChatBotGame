@@ -1,20 +1,19 @@
-import { CORE_RULES, WUXIA_SYSTEM_PROMPT_CONSTANTS } from '../constants';
+import { CORE_RULES, WUXIA_SYSTEM_PROMPT_CONSTANTS, FACTION_BEHAVIOR_GUIDELINES, WUXIA_ALLOWED_EMOTIONS } from '../constants';
 import martialArtsLevels from '../jsons/martial_arts_levels.json';
 import factionsData from '../jsons/factions.json';
+import { backgroundMappings } from '../backgroundMappings';
 
 const realmHierarchy = martialArtsLevels.realm_hierarchy as Record<string, any>;
 
-export const getRankInfo = (fame: number) => {
-    // 1. Calculate Rank based on Fame
-    let currentRankKey = '01_third_rate'; // Default
-    const ranks = Object.keys(realmHierarchy).sort(); // Ensure sorted order
+export const getRankInfo = (rankKey: string = '이류') => {
+    // 1. Determine Rank Key (Default: '이류' - Rule #1)
+    let currentRankKey = '이류';
 
-    for (const rankKey of ranks) {
-        const rankData = realmHierarchy[rankKey];
-        if (rankData.condition && fame >= rankData.condition.min_fame) {
-            currentRankKey = rankKey;
-        }
+    // Check if the provided key is valid in the hierarchy
+    if (rankKey && realmHierarchy[rankKey]) {
+        currentRankKey = rankKey;
     }
+    // If not found, it stays as '이류'. Old fame logic is removed.
 
     const rankData = realmHierarchy[currentRankKey];
 
@@ -38,7 +37,10 @@ export const getRankInfo = (fame: number) => {
 
 export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja' | null = 'ko') => {
     const stats = state.playerStats || {};
-    const { playerRank, rankData } = getRankInfo(stats.fame || 0);
+
+    // [Fix] Prioritize stored playerRank. Logic Model handles changes.
+    const storedRankKey = stats.playerRank;
+    const { playerRank, rankData } = getRankInfo(storedRankKey);
     const faction = stats.faction || '무소속';
 
     // Construct Skill List
@@ -49,8 +51,19 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
         `- **${r.name}**: ${r.capability} (Gap: ${r.power_gap || 'Significant'})`
     ).join('\n');
 
+    // Get Background List
+    const backgroundList = Object.keys(backgroundMappings).join(', ');
+
     return `
 ${WUXIA_SYSTEM_PROMPT_CONSTANTS}
+
+${FACTION_BEHAVIOR_GUIDELINES}
+
+${WUXIA_ALLOWED_EMOTIONS}
+
+### [사용 가능한 배경 목록 (Backgrounds)]
+**반드시 아래 목록에 있는 배경 키(Key)만 사용하라:**
+[ ${backgroundList} ]
 
 ### [무협 세계관: 무공 경지]
 ${hierarchyDesc}
@@ -83,6 +96,11 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 
 ## [등장 인물]
 {{CHARACTER_INFO}}
+
+- **<선택지N>Content**
+- Choices for the user at the end.
+- **STRICT RULE**: Do NOT include hints, stats, or effects in parentheses (e.g., "(Relationship + 1)" or "(Requires STR)").
+- Just describe the action simply. Example: \`<선택지1>그녀에게 말을 건다.\` (O) / \`<선택지1>그녀에게 말을 건다(호감도 상승)\` (X)
 
 ---
 이제 위 샘플 스타일을 따라 이야기를 시작하라.

@@ -81,7 +81,7 @@ export async function generateResponse(
 
     // Main Story Model: Gemini 3 Pro (Prioritize quality)
     const modelsToTry = [
-        'gemini-3-flash-preview', // Correct ID from documentation, gemini-3-pro-preview
+        'gemini-3-pro-preview', // Correct ID from documentation, gemini-3-pro-preview, gemini-3-flash-preview
         'gemini-2.5-flash', // Stable fallback
         'gemini-2.5-flash', // Fast fallback
     ];
@@ -344,7 +344,7 @@ export async function preloadCache(apiKey: string, initialState: any) {
 // Turn Orchestration Logic
 // =========================================================
 
-const SUMMARY_THRESHOLD = 10;
+const SUMMARY_THRESHOLD = 3;
 
 export async function handleGameTurn(
     apiKey: string,

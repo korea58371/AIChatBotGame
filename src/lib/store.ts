@@ -164,7 +164,7 @@ const INITIAL_STATS: PlayerStats = {
   level: 1, exp: 0,
   fame: 0,
   fate: 0,
-  playerRank: '02_second_rate',
+  playerRank: '이류',
   neigong: 10,
   faction: '무소속',
   personalitySummary: "",
@@ -423,7 +423,7 @@ export const useGameStore = create<GameState>()(
       }),
     }),
     {
-      name: 'vn-game-storage-v1',
+      name: 'vn-game-storage-v2', // [Fix] Invalidate old cache to apply Second Rate fix
       partialize: (state) => {
         const {
           getSystemPromptTemplate,

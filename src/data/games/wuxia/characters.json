@@ -3,78 +3,144 @@
         "name": "연화린",
         "role": "주연",
         "description": "북해빙궁의 소궁주. 차가운 미모 뒤에 숨겨진 헌신적인 사랑.",
-        "id": "YeonHwaRin"
+        "id": "YeonHwaRin",
+        "faction": "북해빙궁",
+        "martial_arts_realm": "절정"
     },
     {
         "name": "백소유",
         "role": "주연",
         "description": "아미파의 대사저. 금욕적인 성녀지만 내면은...",
-        "id": "BaekSoYu"
+        "id": "BaekSoYu",
+        "faction": "아미파",
+        "martial_arts_realm": "절정"
     },
     {
         "name": "화영",
         "role": "주연",
         "description": "화산파 장문인의 딸. 털털한 성격의 매화검희.",
-        "id": "HwaYeong"
+        "id": "HwaYeong",
+        "faction": "화산파",
+        "martial_arts_realm": "절정"
     },
     {
         "name": "남궁세아",
         "role": "주연",
         "description": "남궁세가의 영애. 고귀하고 오만한 뇌제.",
-        "id": "NamgungSeAh"
+        "id": "NamgungSeAh",
+        "faction": "남궁세가",
+        "martial_arts_realm": "절정(최상)"
     },
     {
         "name": "모용예린",
         "role": "주연",
         "description": "모용세가의 책사. 지략과 미모를 겸비한 안경 미녀.",
-        "id": "MoyongYeRin"
+        "id": "MoyongYeRin",
+        "faction": "모용세가",
+        "martial_arts_realm": "일류"
     },
     {
         "name": "당소율",
         "role": "주연",
-        "description": "사천당가의 독왕. 위험한 매력의 소악마.",
-        "id": "TangSoYul"
+        "description": "사천당가의 영애이자 독왕의 수제자. 위험한 매력의 소악마.",
+        "id": "TangSoYul",
+        "faction": "사천당가",
+        "martial_arts_realm": "절정"
     },
     {
         "name": "제갈연주",
         "role": "주연",
-        "description": "제갈세가의 잠꾸러기 천재 군사.",
-        "id": "JegalYeonJoo"
+        "description": "제갈세가의 잠꾸러기 천재 군사. 자는 동안에도 천기를 읽는다.",
+        "id": "JegalYeonJoo",
+        "faction": "제갈세가",
+        "martial_arts_realm": "일류(진법 초절정)"
     },
     {
         "name": "주예서",
         "role": "주연",
         "description": "황실의 금지옥엽 공주님. 철없지만 사랑스러움.",
-        "id": "JuYeSeo"
+        "id": "JuYeSeo",
+        "faction": "황실",
+        "martial_arts_realm": "이류"
     },
     {
         "name": "천예령",
         "role": "주연",
-        "description": "천마신교 소교주. 치명적이고 퇴폐적인 매력.",
-        "id": "CheonYeRyeong"
+        "description": "천마신교 소교주. 치명적이고 퇴폐적인 매력의 혈마녀.",
+        "id": "CheonYeRyeong",
+        "faction": "천마신교",
+        "martial_arts_realm": "절정(상급)"
     },
     {
         "name": "한설희",
         "role": "주연",
-        "description": "약왕곡의 소의선. 따뜻하고 헌신적인 힐러.",
-        "id": "HanSeolHee"
+        "description": "약왕곡의 소의선. 따뜻하고 헌신적인 힐러이자 잔소리꾼.",
+        "id": "HanSeolHee",
+        "faction": "약왕곡",
+        "martial_arts_realm": "절정(의술)"
     },
     {
         "name": "홍유비",
         "role": "주연",
         "description": "하오문주이자 천하제일의 기녀. 요염한 여우 누님.",
-        "id": "HongYuBi"
+        "id": "HongYuBi",
+        "faction": "하오문",
+        "martial_arts_realm": "절정"
     },
     {
         "name": "공손란",
         "role": "주연",
-        "description": "곤륜파의 검선. 어린아이 모습의 전설적인 고수.",
-        "id": "GongSonLan"
+        "description": "곤륜파의 검선. 반로환동하여 어린아이 모습을 한 전설적인 고수.",
+        "id": "GongSonLan",
+        "faction": "곤륜파",
+        "martial_arts_realm": "현경"
     },
     {
         "name": "비연",
         "role": "주연",
-        "description": "무영살막의 에이스 살수. 그림자 없는 칼날.",
-        "id": "BiYeon"
+        "description": "무영살막의 에이스 살수. 감정이 없는 그림자 없는 칼날.",
+        "id": "BiYeon",
+        "faction": "무영살막",
+        "martial_arts_realm": "절정(암살)"
+    },
+    {
+        "name": "설하은",
+        "role": "주연",
+        "description": "천하제일미. 얼굴을 가리고 다니는 신비로운 미녀.",
+        "id": "SeolHaEun",
+        "faction": "무소속",
+        "martial_arts_realm": "민간인"
+    },
+    {
+        "name": "야율",
+        "role": "주연",
+        "description": "남만 야수궁의 야생녀. 맹수를 부리는 헌신적인 사냥꾼.",
+        "id": "YaYul",
+        "faction": "남만야수궁",
+        "martial_arts_realm": "절정(육체파)"
+    },
+    {
+        "name": "팽소소",
+        "role": "주연",
+        "description": "하북팽가의 장녀. 압도적인 피지컬과 괴력을 지닌 대장부.",
+        "id": "PaengSoSo",
+        "faction": "하북팽가",
+        "martial_arts_realm": "절정(괴력)"
+    },
+    {
+        "name": "도무아",
+        "role": "주연",
+        "description": "모산파의 강시 소녀. 음침하지만 귀신을 보는 영매사.",
+        "id": "DoMuA",
+        "faction": "모산파",
+        "martial_arts_realm": "절정(주술)"
+    },
+    {
+        "name": "금채월",
+        "role": "주연",
+        "description": "대통상회의 상속녀. 돈으로 모든 것을 해결하는 츤데레 아가씨.",
+        "id": "GeumChaeWol",
+        "faction": "대통상회",
+        "martial_arts_realm": "삼류(장비빨 절정)"
     }
 ]

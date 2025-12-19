@@ -71,7 +71,15 @@ const wuxiaEmotionMap: Record<string, string> = {
     "우울": "Sadness_Lv2",
     "수줍음": "Shy_Lv1",
     "진지함": "Determined", // Map to Determined? Or Default.
-    "사랑": "HeartEyes"
+    "사랑": "HeartEyes",
+
+    // [New] AI Hallucination Fixes
+    "흥미": "Expectant",
+    "웃음": "Joy_Lv2",
+    "미소": "Joy_Lv1",
+    "비웃음": "Disgust",
+    "냉소": "Disgust",
+    "짜증": "Anger_Lv1"
 };
 
 /**
@@ -137,6 +145,14 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
         emotionKeyword = emotionMap[koreanEmotion] || 'Default';
         targetFilename = `${charId}_Default_${emotionKeyword}.png`;
         defaultFilename = `${charId}_Default_Default.png`;
+    }
+
+    // A. Direct File Match (Priority for Wuxia Static Extras)
+    // If the input name (Key) matches a file exactly, use it.
+    // This handles cases where Wuxia extras are static images without emotion suffixes
+    // e.g. "마을의원_늙은" -> "마을의원_늙은.png"
+    if (availableExtraImages.includes(koreanName)) {
+        return `${extraBasePath}/${koreanName}.png`;
     }
 
     // A. 메인 캐릭터인 경우

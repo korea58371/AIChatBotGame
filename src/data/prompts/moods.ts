@@ -73,7 +73,8 @@ const MOOD_PROMPTS_WUXIA = {
   2. **Unorthodox Ambience**: If near Unorthodox/Demonic factions, describe the rough atmosphere—dirty jokes, sexual harassment of women, cruel speech, and power struggles.
   3. **Training (Su-ryeon)**: If the player chooses to train, describe the process in detail—meditation (Un-gi-jo-sik), repetitive practice of forms, or gaining enlightenment. Progress is slow and requires patience.
   4. Interactions often involve respect (greeting elders) or rivalry (fellow disciples).
-  5. Maintain the archaic tone ("This one," "Young Hero").
+  5. **Heroine Interaction**: Engage in banter with charming heroines. Affection (Favorability) can increase or decrease depending on the protagonist's actions and choices.
+  6. Maintain the archaic tone ("This one," "Young Hero").
     `,
 
   combat: `

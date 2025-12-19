@@ -12,7 +12,7 @@
         }
     },
     "realm_hierarchy": {
-        "01_third_rate": {
+        "삼류": {
             "name": "삼류",
             "status": "입문 단계",
             "capability": "Physical strength dependent. Mimicking forms.",
@@ -21,11 +21,10 @@
             "physical_changes": "Danjeon not formed or faint. Slightly stronger bones than commoners.",
             "qi_quality": "Distracted/Scattered (산만함). Hard to gather.",
             "condition": {
-                "min_fame": 0,
                 "min_neigong": 0
             }
         },
-        "02_second_rate": {
+        "이류": {
             "name": "이류",
             "status": "숙련 단계",
             "capability": "Can use forms in combat. Concentrates Qi for impact.",
@@ -34,11 +33,10 @@
             "physical_changes": "Lower Danjeon (하단전) formed. Some of 12 Meridians opened.",
             "qi_quality": "Gas/Mist (기체). Hazy fog. Cannot project externally.",
             "condition": {
-                "min_fame": 100,
                 "min_neigong": 10
             }
         },
-        "03_first_rate": {
+        "일류": {
             "name": "일류",
             "status": "고수 단계",
             "capability": "Infusing Qi into weapons (Sword Threads/Haze).",
@@ -47,11 +45,10 @@
             "physical_changes": "12 Standard Meridians (십이정경) fully opened. Unimpeded flow.",
             "qi_quality": "Compressed Gas (압축 기체). Thicker aura, destructive when infused.",
             "condition": {
-                "min_fame": 500,
                 "min_neigong": 20
             }
         },
-        "04_peak": {
+        "절정": {
             "name": "절정",
             "status": "당주급",
             "capability": "Projecting Qi (Sword Qi / Geom-gi). 'Sword and Self are One' (basic).",
@@ -60,11 +57,10 @@
             "physical_changes": "8 Extraordinary Meridians (기경팔맥) opening. Massive capacity increase.",
             "qi_quality": "Liquid (액체). Flows like water. Forms visible Sword Qi.",
             "condition": {
-                "min_fame": 3000,
                 "min_neigong": 40
             }
         },
-        "05_super_peak": {
+        "초절정": {
             "name": "초절정",
             "status": "무림 거두",
             "capability": "Sword Flux (Geom-gang). Solidified energy.",
@@ -73,11 +69,10 @@
             "physical_changes": "Ren & Du Meridians (임독양맥) Opened. Small Circulation (소주천) complete. Rapid recovery.",
             "qi_quality": "Mercury/High-Density Liquid (점성 액체). Heavy and solid. Can break Sword Qi.",
             "condition": {
-                "min_fame": 10000,
                 "min_neigong": 60
             }
         },
-        "06_transformation": {
+        "화경": {
             "name": "화경",
             "status": "탈인간",
             "capability": "Telekinetic Sword (I-gi-eo-geom). Formless Intent.",
@@ -86,11 +81,10 @@
             "physical_changes": "Metamorphosis (환골탈태). Impurities expelled. Body reconstructed. Heaven & Earth Bridge (천지교타).",
             "qi_quality": "Solid/Crystal (고체) or Formless (무형). Elemental attacks (Sam-mae-jin-hwa).",
             "condition": {
-                "min_fame": 50000,
                 "min_neigong": 120
             }
         },
-        "07_profound": {
+        "현경": {
             "name": "현경",
             "status": "전설",
             "capability": "Mind Sword (Sim-geom). Cutting space/intent. Harmony with Nature (Ja-yeon-che).",
@@ -99,11 +93,10 @@
             "physical_changes": "Rejuvenation (반로환동). Aging stops. Return to prime/childhood.",
             "qi_quality": "Void & Reality (허와 실). Presence erasure. Spatial pressure.",
             "condition": {
-                "min_fame": 200000,
                 "min_neigong": 200
             }
         },
-        "08_life_and_death": {
+        "생사경": {
             "name": "생사경",
             "status": "신의 영역",
             "capability": "Creation/Destruction. Ascension (Deung-seon).",
@@ -112,7 +105,6 @@
             "physical_changes": "Immortality (불로불사). Indestructible Body (금강불괴).",
             "qi_quality": "Nothingness/Creation (무/창조). Authority/Power (권능).",
             "condition": {
-                "min_fame": 1000000,
                 "min_neigong": 999
             }
         }

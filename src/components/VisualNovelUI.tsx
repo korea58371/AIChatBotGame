@@ -717,7 +717,11 @@ export default function VisualNovelUI() {
 
         if (nextSegment.type === 'dialogue' && nextSegment.expression) {
             // [New] Dynamic Override for Extra Characters
-            if (nextSegment.characterImageKey && nextSegment.character) {
+            const charMap = useGameStore.getState().characterMap || {};
+            const isMainCharacter = !!charMap[nextSegment.character || ''];
+
+            // Prevent override if it is a Main Character
+            if (nextSegment.characterImageKey && nextSegment.character && !isMainCharacter) {
                 useGameStore.getState().setExtraOverride(nextSegment.character, nextSegment.characterImageKey);
             }
 
@@ -727,37 +731,21 @@ export default function VisualNovelUI() {
                 const charName = nextSegment.character === playerName ? '주인공' : nextSegment.character;
                 const emotion = nextSegment.expression; // AI output (e.g., '기쁨', 'Happy')
 
-                // Use the new Mapper
-                // Logic:
-                // 1. Check Extra Characters first (FileSystem based, no mapping needed usually, or Name match)
-                //    If Extra, we might handle it manually or trust the mapper returning fallback.
-                //    But getCharacterImage returns "Unknown_Default" if not found.
-                //    Extra characters are simple filenames like "Name.png" or "Name_Emotion.png"? 
-                //    The previous logic was: `/assets/ExtraCharacters/${char}.png`.
-                //    It seems Extra characters are NOT mapped by JSON.
-
                 let imagePath = '';
 
                 // Prevent Protagonist Image from showing (Immersion)
-                // user can change their name, so we check using store's playerName or fallback '주인공'
                 if (charName === '주인공' || charName === playerName) {
-                    // Do nothing, leave imagePath empty
                     setCharacterExpression('');
                     return;
                 }
-
-                // Check Extra (Exact Match of Name_Emotion or just Name?)
-                // Usually Extra is just Name? 
-                // The previous code checked `availableExtraImages.includes(char)`.
-                // The `char` passed to getCharUrl was `Name_Emotion`.
-                // So if "ExtraChar_Basic" is in the list, it works.
 
                 const combinedKey = `${charName}_${emotion}`;
                 const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
                 const extraMap = useGameStore.getState().extraMap; // Get extraMap from store
 
                 // [Fix] Explicit Key Lookup (Priority)
-                if (nextSegment.characterImageKey) {
+                // Only use characterImageKey if NOT a Main Character
+                if (nextSegment.characterImageKey && !isMainCharacter) {
                     if (extraMap && extraMap[nextSegment.characterImageKey]) {
                         imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[nextSegment.characterImageKey]}`;
                     } else {
@@ -915,7 +903,7 @@ export default function VisualNovelUI() {
             }));
 
             // Race Condition for Timeout
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 120000));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 300000));
             const responsePromise = serverGenerateResponse(
                 currentHistory,
                 text,
@@ -1225,8 +1213,12 @@ export default function VisualNovelUI() {
 
             // Set character expression if the first segment is dialogue
             if (first.type === 'dialogue' && first.expression && first.character) {
+                const charMap = useGameStore.getState().characterMap || {};
+                const isMainCharacter = !!charMap[first.character];
+
                 // [New] Override check for first segment
-                if (first.characterImageKey && first.character) {
+                // Prevent override if it is a Main Character (AI descriptions in parens shouldn't hijack the image)
+                if (first.characterImageKey && first.character && !isMainCharacter) {
                     useGameStore.getState().setExtraOverride(first.character, first.characterImageKey);
                 }
 
@@ -1239,7 +1231,8 @@ export default function VisualNovelUI() {
                 const combinedKey = `${charName}_${emotion}`;
 
                 // [Fix] Explicit Key Lookup (Priority)
-                if (first.characterImageKey) {
+                // Only use characterImageKey if NOT a Main Character (unless we add a costume system later)
+                if (first.characterImageKey && !isMainCharacter) {
                     if (extraMap && extraMap[first.characterImageKey]) {
                         imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[first.characterImageKey]}`;
                     } else {
@@ -1679,7 +1672,12 @@ export default function VisualNovelUI() {
                                 <div className="px-2 py-0.5 bg-zinc-900/80 border border-zinc-700 rounded text-[10px] text-zinc-300 font-bold tracking-wider shadow-sm flex items-center gap-1">
                                     <span className="text-yellow-500/80">경지</span>
                                     <span className="text-white">
-                                        {((martialArtsLevels as any).realm_hierarchy[playerStats.playerRank]?.name || playerStats.playerRank || '미정').split('(')[0].trim()}
+                                        {(() => {
+                                            const rankKey = playerStats.playerRank || '';
+                                            const hierarchy = (martialArtsLevels as any).realm_hierarchy;
+                                            const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
+                                            return (rankData?.name || rankKey || '미정').split('(')[0].trim();
+                                        })()}
                                     </span>
                                 </div>
                                 {/* Faction Badge */}
