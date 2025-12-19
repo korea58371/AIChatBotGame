@@ -115,7 +115,7 @@ interface GameState {
   characterMap?: Record<string, string>;
   extraMap?: Record<string, string>;
   constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
-  constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
+
   lore?: any;
   characterCreationQuestions?: any[]; // [NEW] Added for generic creation support
 
