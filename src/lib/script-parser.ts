@@ -101,19 +101,19 @@ export function parseScript(text: string): ScriptSegment[] {
                     const remainder = parenMatch[3].trim();
                     expression = remainder.startsWith('_') ? remainder.substring(1) : (remainder || '기본');
                 } else {
-                    // 2. Standard Fallback: Name_Expression
+                    // 2. Standard Fallback: Name_Expression (Greedy Name)
+                    // For "God Bless You", names often contain underscores (e.g., 전사_남성).
+                    // We assume the LAST part is the expression, and everything before is the Name.
                     const parts = meta.split('_');
-                    name = parts[0];
 
-                    if (parts.length >= 3) {
-                        // Fallback for old "Name_Key_Expression" syntax if valid
-                        imageKey = parts[1];
-                        expression = parts.slice(2).join('_');
-                    } else if (parts.length === 2) {
-                        expression = parts[1];
+                    if (parts.length >= 2) {
+                        expression = parts.pop() || '기본';
+                        name = parts.join('_');
                     } else {
+                        name = parts[0];
                         expression = '기본';
                     }
+                    // imageKey remains undefined, allowing VisualNovelUI to fallback to Name lookup
                 }
 
                 // Heuristic: Check if content has narration attached after the dialogue
