@@ -756,7 +756,17 @@ export default function VisualNovelUI() {
                 const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
                 const extraMap = useGameStore.getState().extraMap; // Get extraMap from store
 
-                if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
+                // [Fix] Explicit Key Lookup (Priority)
+                if (nextSegment.characterImageKey) {
+                    if (extraMap && extraMap[nextSegment.characterImageKey]) {
+                        imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[nextSegment.characterImageKey]}`;
+                    } else {
+                        // Fallback for direct matches?
+                        imagePath = getCharacterImage(nextSegment.characterImageKey, emotion);
+                    }
+                }
+                // Existing Logic
+                else if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
                     // Check direct file match (name_emotion)
                     imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
                 } else if (extraMap && extraMap[charName]) {
@@ -1222,11 +1232,24 @@ export default function VisualNovelUI() {
 
                 const charName = first.character === playerName ? '주인공' : first.character;
                 const emotion = first.expression;
+                const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
+                const extraMap = useGameStore.getState().extraMap;
 
                 let imagePath = '';
                 const combinedKey = `${charName}_${emotion}`;
-                if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
-                    imagePath = `/assets/ExtraCharacters/${combinedKey}.png`;
+
+                // [Fix] Explicit Key Lookup (Priority)
+                if (first.characterImageKey) {
+                    if (extraMap && extraMap[first.characterImageKey]) {
+                        imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[first.characterImageKey]}`;
+                    } else {
+                        imagePath = getCharacterImage(first.characterImageKey, emotion);
+                    }
+                }
+                else if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
+                    imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
+                } else if (extraMap && extraMap[charName]) {
+                    imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
                 } else {
                     imagePath = getCharacterImage(charName, emotion);
                 }

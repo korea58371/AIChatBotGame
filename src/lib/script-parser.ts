@@ -85,21 +85,21 @@ export function parseScript(text: string): ScriptSegment[] {
                 // [Update] Robust Parsing for Name(ImageKey)_Expression
                 // Handle cases where ImageKey contains underscores: "엽문(낭인무사_술좋아하는)_기쁨"
 
-                // 1. Check for explicit ImageKey pattern: Name(Key)
-                const parenMatch = meta.match(/^(.+)\((.+)\)(.*)$/);
+                // 1. Check for explicit ImageKey pattern: Name(Key) or Name[Key]
+                // Prioritize Square Brackets [] for robust handling if AI uses them
+                const bracketMatch = meta.match(/^(.+?)\[(.+)\](.*)$/);
+                const parenMatch = meta.match(/^(.+?)\((.+)\)(.*)$/); // Non-greedy match for Name
 
-                if (parenMatch) {
+                if (bracketMatch) {
+                    name = bracketMatch[1].trim();
+                    imageKey = bracketMatch[2].trim();
+                    const remainder = bracketMatch[3].trim();
+                    expression = remainder.startsWith('_') ? remainder.substring(1) : (remainder || '기본');
+                } else if (parenMatch) {
                     name = parenMatch[1].trim();
                     imageKey = parenMatch[2].trim();
-                    const remainder = parenMatch[3].trim(); // e.g. "_기쁨" or ""
-
-                    if (remainder.startsWith('_')) {
-                        expression = remainder.substring(1);
-                    } else if (remainder) {
-                        expression = remainder;
-                    } else {
-                        expression = '기본';
-                    }
+                    const remainder = parenMatch[3].trim();
+                    expression = remainder.startsWith('_') ? remainder.substring(1) : (remainder || '기본');
                 } else {
                     // 2. Standard Fallback: Name_Expression
                     const parts = meta.split('_');
