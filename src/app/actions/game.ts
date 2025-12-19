@@ -55,44 +55,32 @@ export async function serverGenerateSummary(
     return generateSummary(API_KEY, currentSummary, recentDialogue);
 }
 
+// [OPTIMIZATION] Use Pre-generated Assets Manifest to avoid Vercel Bundling 300MB+ images
+// import fs from 'fs'; // Removed to prevent NFT bundling
+// import path from 'path'; // Removed
+
+// Import the generated manifest
+// @ts-ignore
+import assetsManifest from '@/data/assets.json';
+
 export async function getExtraCharacterImages(gameId: string = 'god_bless_you') {
     try {
-        const extraCharDir = path.join(process.cwd(), 'public', 'assets', gameId, 'ExtraCharacters');
-
-        if (!fs.existsSync(extraCharDir)) {
-            console.warn(`ExtraCharacters directory not found: ${extraCharDir}`);
-            return [];
-        }
-
-        const files = fs.readdirSync(extraCharDir);
-        // Filter for images
-        const images = files.filter((file: string) => /\.(jpg|jpeg|png|webp)$/i.test(file));
-        // Return without extension? Or with?
-        // PromptManager expects "Name_Emotion".
-        // If file is "Name_Emotion.png", we return "Name_Emotion".
-        return images.map((file: string) => file.replace(/\.(jpg|jpeg|png|webp)$/i, ''));
+        const gameAssets = (assetsManifest as any)[gameId];
+        if (!gameAssets || !gameAssets.extraCharacters) return [];
+        return gameAssets.extraCharacters;
     } catch (e) {
-        console.error("Failed to load extra characters:", e);
+        console.error("Failed to load extra characters from manifest:", e);
         return [];
     }
 }
 
 export async function getBackgroundList(gameId: string) {
     try {
-        const bgDir = path.join(process.cwd(), 'public', 'assets', gameId, 'backgrounds');
-
-        if (!fs.existsSync(bgDir)) {
-            console.warn(`Backgrounds directory not found: ${bgDir}`);
-            return [];
-        }
-
-        const files = fs.readdirSync(bgDir);
-        // Filter images
-        const images = files.filter((file: string) => /\.(jpg|jpeg|png|webp)$/i.test(file));
-        // Return filenames (e.g., "Category_Location_Detail.jpg")
-        return images;
+        const gameAssets = (assetsManifest as any)[gameId];
+        if (!gameAssets || !gameAssets.backgrounds) return [];
+        return gameAssets.backgrounds;
     } catch (e) {
-        console.error("Failed to load background list:", e);
+        console.error("Failed to load background list from manifest:", e);
         return [];
     }
 }
