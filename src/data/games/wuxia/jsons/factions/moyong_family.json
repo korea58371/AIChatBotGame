@@ -7,6 +7,7 @@
             "The Yan Royals (연나라 왕족)",
             "Masters of Mechanics and Reflection"
         ],
+        "type": "Orthodox / Noble Clan (정파 무림맹 소속 명문세가)",
         "location": {
             "province": "Liaoning (요녕성 / 遼寧省)",
             "city": "Shenyang (심양현 / 沈陽縣)",
@@ -16,7 +17,7 @@
             "origin": "Descendants of the Xianbei tribe (선비족) and the Royal Family of the Yan Kingdom (연나라).",
             "pride": "Consider themselves royalty, superior to common martial artists."
         },
-        "political_stance": "Ambitious / Often Neutral-Evil or Antagonistic.",
+        "political_stance": "Orthodox Alliance Member (Generic) but Ambitious/Rebellious internally.",
         "core_goal": "Reconstruction of the Yan Empire (대연 제국 재건).",
         "rivalry": "Namgung Family (Competes for the title of the 'Best Sword Family')."
     },

@@ -1,17 +1,18 @@
 import stringSimilarity from 'string-similarity';
 import { useGameStore } from './store';
+import { backgroundMappings as wuxiaBackgroundMap } from '@/data/games/wuxia/backgroundMappings';
 
 /**
  * Resolves an AI background tag to the most similar filename in the assets folder.
  * Strategy:
- * 1. Direct Mapping (Korean/Alias -> Filename)
- * 2. Fuzzy Mapping (Fuzzy Alias -> Filename)
- * 3. Fuzzy Filename (Fuzzy Keyword -> Actual Filename)
- * 4. Fallback (Default_Fallback.png)
- * 
+ * 1. Direct Mapping(Korean / Alias -> Filename)
+    * 2. Fuzzy Mapping(Fuzzy Alias -> Filename)
+        * 3. Fuzzy Filename(Fuzzy Keyword -> Actual Filename)
+            * 4. Fallback(Default_Fallback.png)
+                * 
  * @param tag The tag from AI, e.g., "<배경>City_Street"
- * @returns The resolved absolute path, e.g., "/assets/backgrounds/City_Street.jpg"
- */
+    * @returns The resolved absolute path, e.g., "/assets/backgrounds/City_Street.jpg"
+        */
 export function resolveBackground(tag: string): string {
     const state = useGameStore.getState();
     const backgroundMappings = state.backgroundMappings || {};
@@ -21,6 +22,26 @@ export function resolveBackground(tag: string): string {
     // Determined Base Path
     // [MODIFIED] Always use game-specific folder. Legacy check removed as we migrated assets.
     const basePath = `/assets/${activeGameId}/backgrounds`;
+
+    // [New] Wuxia Background Mapping (Korean Key -> English Filename)
+    if (activeGameId === 'wuxia') {
+        const queryClean = tag.replace(/<배경>|<\/배경>/g, '').trim();
+        // Remove .jpg extension if present in input for robust matching
+        const key = queryClean.replace('.jpg', '');
+
+        if (wuxiaBackgroundMap[key]) {
+            console.log(`[BackgroundManager] Wuxia Map Match: "${key}" -> "${wuxiaBackgroundMap[key]}"`);
+            return `${basePath}/${wuxiaBackgroundMap[key]}`;
+        }
+
+        // [New] Check if the key itself is a valid value in the map (Reverse Lookup / Direct English Usage)
+        const allValues = Object.values(wuxiaBackgroundMap);
+        const potentialFile = key.endsWith('.jpg') ? key : key + '.jpg';
+        if (allValues.includes(potentialFile)) {
+            console.log(`[BackgroundManager] Wuxia Direct English Match: "${key}" -> "${potentialFile}"`);
+            return `${basePath}/${potentialFile}`;
+        }
+    }
 
     // 1. Clean the tag: Remove <배경>, </배경>, whitespace
     const query = tag.replace(/<배경>|<\/배경>/g, '').trim();

@@ -7,6 +7,7 @@ export interface ScriptSegment {
     expression?: string;
     choiceId?: number;
     characterLeave?: boolean; // New flag for character exit
+    characterImageKey?: string; // [New] Helper for <대사> overrides
 }
 
 // [Helper] Auto-format text for readability (User Request)
@@ -77,7 +78,43 @@ export function parseScript(text: string): ScriptSegment[] {
                 const meta = content.substring(0, colonIndex).trim();
                 const dialogue = content.substring(colonIndex + 1).trim();
 
-                const [name, expression] = meta.split('_');
+                let name = '';
+                let expression = '';
+                let imageKey: string | undefined = undefined;
+
+                // [Update] Robust Parsing for Name(ImageKey)_Expression
+                // Handle cases where ImageKey contains underscores: "엽문(낭인무사_술좋아하는)_기쁨"
+
+                // 1. Check for explicit ImageKey pattern: Name(Key)
+                const parenMatch = meta.match(/^(.+)\((.+)\)(.*)$/);
+
+                if (parenMatch) {
+                    name = parenMatch[1].trim();
+                    imageKey = parenMatch[2].trim();
+                    const remainder = parenMatch[3].trim(); // e.g. "_기쁨" or ""
+
+                    if (remainder.startsWith('_')) {
+                        expression = remainder.substring(1);
+                    } else if (remainder) {
+                        expression = remainder;
+                    } else {
+                        expression = '기본';
+                    }
+                } else {
+                    // 2. Standard Fallback: Name_Expression
+                    const parts = meta.split('_');
+                    name = parts[0];
+
+                    if (parts.length >= 3) {
+                        // Fallback for old "Name_Key_Expression" syntax if valid
+                        imageKey = parts[1];
+                        expression = parts.slice(2).join('_');
+                    } else if (parts.length === 2) {
+                        expression = parts[1];
+                    } else {
+                        expression = '기본';
+                    }
+                }
 
                 // Heuristic: Check if content has narration attached after the dialogue
                 const splitMatch = dialogue.match(/^"([^"]+)"\s*\n+([\s\S]+)$/);
@@ -102,6 +139,7 @@ export function parseScript(text: string): ScriptSegment[] {
                             type: 'dialogue',
                             content: line.trim(),
                             character: name,
+                            characterImageKey: imageKey, // Pass if parsed
                             expression: expression || '기본'
                         });
                     }

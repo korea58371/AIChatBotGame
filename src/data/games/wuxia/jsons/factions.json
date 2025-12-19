@@ -1,171 +1,172 @@
 {
     "factions": [
         {
-            "group_name": "거대 연합 (Great Alliances)",
+            "group_name": "거대 연합",
             "description": "무림의 질서를 좌우하는 거대 연합 세력.",
             "factions": [
                 {
-                    "name": "무림맹 (Murim Alliance)",
+                    "name": "무림맹",
                     "type": "Alliance (정파 연합)",
                     "description": "구파일방과 오대세가를 주축으로 결성된 정파 무림의 연합체. 마교와 사파의 발호를 막고 무림의 위계를 세운다.",
                     "martial_arts_style": "각 문파의 정수",
                     "location": "하남성 숭산 근처 무림맹 본단",
                     "key_figures": [
-                        "맹주(Alliance Leader): 독고천 (Dokgo Cheon) - 검황. 천하 제일의 검객.",
-                        "군사(Strategist): 제갈공 (Jegal Gong) - 제갈세가 가주 겸임."
+                        "맹주: 독고천 - 검황. 천하 제일의 검객.",
+                        "군사: 제갈공 - 제갈세가 가주 겸임."
                     ],
                     "key_heroines": []
                 },
                 {
-                    "name": "패천맹 (Pa-cheon-maeng / Tyrant Heaven League)",
+                    "name": "패천맹",
                     "type": "Alliance (사파 연합)",
                     "description": "녹림, 장강수로채, 하오문 등 사파 세력들이 정파와 마교에 대항하기 위해 결성한 거대 연합. 힘과 이익을 숭상한다.",
                     "martial_arts_style": "실전 무공, 암수, 독공",
                     "location": "중원 각지의 거점 (총타는 비밀)",
                     "key_figures": [
-                        "맹주(Alliance Leader): 장무극 (Jang Mu-geuk) - 흑제. 패도적인 카리스마.",
-                        "부맹주(Vice Leader): 수로채 총채주 (Water Fortress Lord)"
+                        "맹주: 장무극 - 흑제. 패도적인 카리스마.",
+                        "부맹주: 수로채 총채주"
                     ],
                     "key_heroines": []
                 }
             ]
         },
         {
-            "group_name": "구파일방 (The Nine Great Sects & The Beggars Sect)",
+            "group_name": "구파일방",
             "description": "정파 무림을 이끄는 10대 문파. 의협심과 도덕을 중시하며 무림맹의 주축이 된다.",
             "factions": [
                 {
-                    "name": "소림사 (Shaolin Temple)",
+                    "name": "소림사",
                     "type": "Orthodox (정파)",
                     "description": "천하무공의 발원지이자 무림의 태산북두. 불심을 바탕으로 한 강력한 권법과 지팡이술을 사용한다.",
                     "martial_arts_style": "백보신권, 여래신장, 금강불괴",
-                    "location": "하남성 숭산 (Mount Song, Henan Province)",
+                    "location": "하남성 숭산",
                     "key_figures": [
-                        "방장(Abbot): 현암 대사 (Hyeon-Am)",
-                        "사대신승(Four Great Divine Monks): 공견(Gong-Gyeon), 공문(Gong-Mun), 공성(Gong-Seong), 공지(Gong-Ji)",
-                        "달마원주(Bodhidharma Hall Head): 현명(Hyeon-Myeong)",
-                        "나한당주(Arhat Hall Head): 현광(Hyeon-Gwang)",
-                        "후기지수(Rising Star): 무진(Mu-Jin)"
+                        "방장: 현암 대사",
+                        "사대신승: 공견, 공문, 공성, 공지",
+                        "달마원주: 현명",
+                        "나한당주: 현광",
+                        "후기지수: 무진"
                     ],
                     "key_heroines": []
                 },
                 {
-                    "name": "무당파 (Wudang Sect)",
+                    "name": "무당파",
                     "type": "Orthodox (정파)",
                     "description": "태극의 이치를 깨달은 도가 문파. 부드러움으로 강함을 제압하는 검술과 내공이 특징이다.",
                     "martial_arts_style": "태극검, 태극권, 제운종",
-                    "location": "호북성 무당산 (Mount Wudang, Hubei Province)",
+                    "location": "호북성 무당산",
                     "key_figures": [
-                        "장문인(Leader): 청허 도장 (Cheong-Heo) - 무당의 태극을 완성한 도인. 검황 독고진의 사형.",
-                        "장로(Elder): 현무 도장 (Hyeon-Mu) - 엄격한 규율 담당.",
-                        "후기지수(Rising Star): 명운 (Myeong-Un) - 청허의 제자. 차기 장문인 후보."
+                        "장문인: 청허 도장 - 무당의 태극을 완성한 도인. 검황 독고천의 사형.",
+                        "장로: 현무 도장 - 엄격한 규율 담당.",
+                        "후기지수: 명운 - 청허의 제자. 차기 장문인 후보."
                     ],
                     "key_heroines": []
                 },
                 {
-                    "name": "화산파 (Mount Hua Sect)",
+                    "name": "화산파",
                     "type": "Orthodox (정파)",
                     "description": "매화의 아름다움과 변화무쌍함을 검에 담은 문파. 험준한 산세처럼 날카롭고 빠르다.",
                     "martial_arts_style": "매화검법, 자霞강기",
-                    "location": "섬서성 화산 (Mount Hua, Shaanxi Province)",
+                    "location": "섬서성 화산",
                     "key_figures": [
-                        "장문인(Leader): 청풍(Cheong-Pung) - 화산의 검웅. 매화영의 스승.",
-                        "장로(Elder): 운검(Un-Gum)",
-                        "후기지수(Rising Star): 화진(Hwa-Jin) - 매화영의 사형. 뛰어난 검재."
+                        "장문인: 청풍 - 화산의 검웅. 화영의 스승.",
+                        "장로: 운검",
+                        "후기지수: 화진 - 화영의 사형. 뛰어난 검재."
                     ],
                     "key_heroines": [
-                        "화영 (Hwa-Yeong)"
+                        "화영"
                     ]
                 },
                 {
-                    "name": "아미파 (Emei Sect)",
+                    "name": "아미파",
                     "type": "Orthodox (정파)",
                     "description": "여성들로만 이루어진 불가의 문파. 부드러우면서도 매서운 검술을 구사한다.",
                     "martial_arts_style": "아미구파일방검, 멸절검",
-                    "location": "사천성 아미산 (Mount Emei, Sichuan Province)",
+                    "location": "사천성 아미산",
                     "key_figures": [
-                        "장문인(Leader): 절심사태 (Jeol-Sim) - 불같은 성격의 여승. 백소유의 스승.",
-                        "장로(Elder): 정허 스님 (Jeong-Heo)",
-                        "후기지수(Rising Star): 주진양 (Ju Jin-yang) - 백소유의 라이벌."
+                        "장문인: 절심사태 - 불같은 성격의 여승. 백소유의 스승.",
+                        "장로: 정허 스님",
+                        "후기지수: 주진양 - 백소유의 라이벌."
                     ],
                     "key_heroines": [
-                        "백소유 (Baek So-yu)"
+                        "백소유"
                     ]
                 },
                 {
-                    "name": "곤륜파 (Kunlun Sect)",
+                    "name": "곤륜파",
                     "type": "Orthodox (정파)",
                     "description": "서역의 신비로운 산에 위치한 도가 문파. 용과 봉황의 기세를 담은 무공을 쓴다.",
                     "martial_arts_style": "운룡대팔식, 태청검법",
-                    "location": "청해성 곤륜산 (Mount Kunlun, Qinghai Province)",
+                    "location": "청해성 곤륜산",
                     "key_figures": [
-                        "장문인(Leader): 운중자 (Un-Jung-ja)",
-                        "원로(Legend): 공손월 (Gong-son Wol) - 검선. 실질적인 최강자.",
-                        "후기지수(Rising Star): 천소운 (Cheon So-un)"
+                        "장문인: 운중자",
+                        "원로: 공손월 - 검선. 실질적인 최강자.",
+                        "후기지수: 천소운"
                     ],
                     "key_heroines": [
-                        "공손월 (Gong-son Wol)"
+                        "공손월"
                     ]
                 },
                 {
-                    "name": "종남파 (Southern Edge Sect)",
+                    "name": "종남파",
                     "type": "Orthodox (정파)",
                     "description": "천하제일의 쾌검을 추구하는 문파. 화산파와 라이벌 관계이다.",
-                    "martial_arts_style": "천하삼십육검",
-                    "location": "섬서성 종남산 (Mount Zhongnan, Shaanxi Province)",
+                    "martial_arts_style": "천하삼십육검, 태을신공",
+                    "location": "섬서성 종남산",
                     "key_figures": [
-                        "장문인(Leader): 조일현 (Jo Il-hyeon) - 화산파에 열등감을 가짐.",
-                        "후기지수(Rising Star): 진금영 (Jin Geum-yeong) - 이대제자 수석."
+                        "장문인: 곽윤",
+                        "후기지수: 진금영 - 매화영의 라이벌."
                     ],
                     "key_heroines": []
                 },
                 {
-                    "name": "점창파 (Diancang Sect)",
+                    "name": "점창파",
                     "type": "Orthodox (정파)",
-                    "description": "검과 사격술(비검)에 능한 문파. 날카로운 찌르기와 쾌속한 움직임이 주특기이다.",
+                    "description": "날카롭고 직선적인 검법이 특징인 문파.",
                     "martial_arts_style": "사일검법",
-                    "location": "운남성 점창산 (Mount Diancang, Yunnan Province)",
+                    "location": "운남성 점창산",
+                    "key_figures": [],
+                    "key_heroines": []
+                },
+                {
+                    "name": "청성파",
+                    "type": "Orthodox (정파)",
+                    "description": "변화무쌍한 검법과 도술에 능한 문파.",
+                    "martial_arts_style": "청성십구파, 최심장",
+                    "location": "사천성 청성산",
                     "key_figures": [
-                        "장문인(Leader): 사공명 (Sa Gong-myeong) - 쾌검의 명수.",
-                        "후기지수(Rising Star): 유엽 (Yu Yeop) - 비검술의 천재."
+                        "장문인: 운현 도장"
                     ],
                     "key_heroines": []
                 },
                 {
-                    "name": "청성파 (Qingcheng Sect)",
+                    "name": "공동파",
                     "type": "Orthodox (정파)",
-                    "description": "청성산의 정기를 받은 도가 문파. 변화무쌍하고 현란한 검술을 자랑한다.",
-                    "martial_arts_style": "청자구타, 최심장",
-                    "location": "사천성 청성산 (Mount Qingcheng, Sichuan Province)",
-                    "key_figures": [
-                        "장문인(Leader): 청운자 (Cheong-Un-ja) - 도가 무공의 고수.",
-                        "후기지수(Rising Star): 청명 (Cheong-Myeong)"
-                    ],
+                    "description": "음과 양을 조화시키는 권법과 검술을 사용한다.",
+                    "martial_arts_style": "복마검법, 칠상권",
+                    "location": "감숙성 공동산",
+                    "key_figures": [],
                     "key_heroines": []
                 },
                 {
-                    "name": "공동파 (Kongtong Sect)",
+                    "name": "개방",
                     "type": "Orthodox (정파)",
-                    "description": "기문의 병기와 권법을 조화롭게 사용하는 문파. 실전적인 무공을 중시한다.",
-                    "martial_arts_style": "복마권, 칠상권",
-                    "location": "감숙성 공동산 (Mount Kongtong, Gansu Province)",
-                    "key_figures": [
-                        "장문인(Leader): 관서노인 (Gwan-Seo Elder) - 권법의 달인.",
-                        "후기지수(Rising Star): 당권 (Dang Gwon)"
-                    ],
-                    "key_heroines": []
-                },
-                {
-                    "name": "개방 (Beggars Sect)",
-                    "type": "Orthodox (정파)",
-                    "description": "거지들의 집단이자 정보의 중심지. 자유분방하지만 의리를 목숨처럼 여긴다.",
+                    "description": "거지들로 이루어진 정보 조직이자 무력 단체. 천하에서 가장 많은 제자를 거느리고 있다.",
                     "martial_arts_style": "타구봉법, 항룡십팔장",
-                    "location": "총타: 하남성 개봉 (Kaifeng, Henan Province) / 전역에 분포",
+                    "location": "강호 전역 (총타는 이동함)",
                     "key_figures": [
-                        "방주(Leader): 구칠공 (Gu Chil-gong) - 거지들의 대부.",
-                        "장로(Elder): 백결 개방 장로",
-                        "후기지수(Rising Star): 노거지 (No Geo-ji)"
+                        "방주: 홍거 - 북개. 식탐이 많지만 의협심이 강함.",
+                        "후기지수: 소봉 - 차기 방주 후보."
                     ],
+                    "key_heroines": []
+                },
+                {
+                    "name": "해남파",
+                    "type": "Orthodox (정파)",
+                    "description": "검과 권을 모두 수련하는 검권쌍절의 문파.",
+                    "martial_arts_style": "남해삼십육검",
+                    "location": "해남성 보타산",
+                    "key_figures": [],
                     "key_heroines": []
                 }
             ]
@@ -175,357 +176,279 @@
             "description": "혈연으로 맺어진 명문 거족. 각자의 독문 무공으로 무림에 막강한 영향력을 행사한다.",
             "factions": [
                 {
-                    "name": "남궁세가 (Namgung Clan)",
-                    "type": "Orthodox (정파)",
-                    "description": "검의 종가이자 오대세가의 수장 격인 가문. 제왕적인 기풍의 검술과 뇌기를 다룬다.",
-                    "martial_arts_style": "제왕검형, 창천대검",
-                    "location": "안휘성 천주산 (Mount Tianzhu, Anhui Province)",
+                    "name": "남궁세가",
+                    "type": "Noble Clan (명문 세가)",
+                    "description": "검의 종가. 웅장하고 패도적인 제왕검형을 추구한다.",
+                    "martial_arts_style": "창궁무애검법, 제왕검형",
+                    "location": "안휘성 합비",
                     "key_figures": [
-                        "가주(Head): 남궁천 (Namgung Cheon) - 뇌제(Lightning Sovereign). 오대세가의 맹주.",
-                        "가타(Elder): 남궁혁 (Namgung Hyeok) - 가주의 동생.",
-                        "후기지수(Rising Star): 남궁진 (Namgung Jin) - 남궁세아의 오빠. 소가주."
+                        "가주: 남궁위 - 검왕. 무림맹의 핵심 전력.",
+                        "소가주: 남궁민 - 오만하지만 실력은 확실한 후기지수."
+                    ],
+                    "key_heroines": []
+                },
+                {
+                    "name": "모용세가",
+                    "type": "Noble Clan (명문 세가)",
+                    "description": "상대방의 무공을 되돌려주는 '이피지도 환시피신'으로 유명한 가문. 귀족적이고 오만하다.",
+                    "martial_arts_style": "두전성이, 참합지",
+                    "location": "연자오",
+                    "key_figures": [
+                        "가주: 모용성",
+                        "소가주: 모용복"
+                    ],
+                    "key_heroines": []
+                },
+                {
+                    "name": "사천당가",
+                    "type": "Noble Clan (명문 세가)",
+                    "description": "독과 암기의 명가. 비밀스럽고 위험한 가문으로 알려져 있다.",
+                    "martial_arts_style": "만천화우, 각종 독공",
+                    "location": "사천성 성도",
+                    "key_figures": [
+                        "가주: 당천엽 - 독왕. 냉혹한 성격.",
+                        "소가주: 당무문",
+                        "영애: 당무아 - 독을 다루는 요녀."
                     ],
                     "key_heroines": [
-                        "남궁세아 (Namgung Se-ah)"
+                        "당무아"
                     ]
                 },
                 {
-                    "name": "모용세가 (Moyong Clan)",
-                    "type": "Orthodox (정파)",
-                    "description": "연나라 황실의 후예를 자처하는 귀족적인 가문. 상대의 무공을 되돌려주는 기술과 검술에 능하다.",
-                    "martial_arts_style": "피전검법, 두전성이",
-                    "location": "요녕성 (Liaoning Province) / 연자오 (Yanziwu)",
+                    "name": "하북팽가",
+                    "type": "Noble Clan (명문 세가)",
+                    "description": "도법의 명가. 호탕하고 거친 성격의 사내들이 많다.",
+                    "martial_arts_style": "오호단문도",
+                    "location": "하북성",
                     "key_figures": [
-                        "가주(Head): 모용수 (Moyong Su) - 귀족적인 풍모의 고수.",
-                        "후기지수(Rising Star): 모용휘 (Moyong Hwi) - 모용예린의 오빠. 야심가."
+                        "가주: 팽대해 - 도왕.",
+                        "소가주: 팽광렬"
                     ],
-                    "key_heroines": [
-                        "모용예린 (Moyong Ye-rin)"
-                    ]
+                    "key_heroines": []
                 },
                 {
-                    "name": "사천당가 (Sichuan Tang Clan)",
-                    "type": "Orthodox/Neutral (정파/중도)",
-                    "description": "암기와 독을 다루는 가문. 정파에 속하지만 그 방식이 은밀하고 치명적이라 두려움을 산다.",
-                    "martial_arts_style": "만천화우, 독사지체",
-                    "location": "사천성 성도 (Chengdu, Sichuan Province)",
+                    "name": "제갈세가",
+                    "type": "Noble Clan (명문 세가)",
+                    "description": "지략과 진법의 가문. 무공보다는 머리로 싸우는 책사들의 집안.",
+                    "martial_arts_style": "천기미리보, 각종 진법",
+                    "location": "호북성 융중",
                     "key_figures": [
-                        "가주(Head): 당문식 (Tang Mun-sik) - 독왕(Poison King).",
-                        "장로(Elder): 당노부인 (Old Madame Tang) - 가문의 실세.",
-                        "후기지수(Rising Star): 당보 (Tang Bo) - 당소율의 사촌. 독술 천재."
+                        "가주: 제갈공 - 천기자. 무림맹 군사.",
+                        "후기지수: 제갈현 - 제갈연주의 사촌."
                     ],
                     "key_heroines": [
-                        "당소율 (Tang So-yul)"
-                    ]
-                },
-                {
-                    "name": "하북팽가 (Hebei Paeng Clan)",
-                    "type": "Orthodox (정파)",
-                    "description": "도(刀)와 권법의 명가. 호탕하고 힘을 중시하며, 육체를 극한으로 단련하는 무공을 쓴다.",
-                    "martial_arts_style": "오호단문도, 혼원벽",
-                    "location": "하북성 (Hebei Province)",
-                    "key_figures": [
-                        "가주(Head): 팽무도 (Paeng Mu-do) - 도왕(Saber King).",
-                        "후기지수(Rising Star): 팽대광 (Paeng Dae-gwang) - 팽소소의 오빠."
-                    ],
-                    "key_heroines": [
-                        "팽소소 (Paeng So-so)"
-                    ]
-                },
-                {
-                    "name": "제갈세가 (Jegal Clan)",
-                    "type": "Orthodox (정파)",
-                    "description": "무력보다는 지략과 진법, 기관술로 유명한 가문. 무림맹의 두뇌 역할을 한다.",
-                    "martial_arts_style": "천기진법, 탄지신공",
-                    "location": "호북성 융중 (Longzhong, Hubei Province)",
-                    "key_figures": [
-                        "가주(Head): 제갈공 (Jegal Gong) - 와룡(Wolong)의 후예.",
-                        "후기지수(Rising Star): 제갈현 (Jegal Hyeon) - 제갈연주의 사촌."
-                    ],
-                    "key_heroines": [
-                        "제갈연주 (Jegal Yeon-joo)"
+                        "제갈연주"
                     ]
                 }
             ]
         },
         {
-            "group_name": "사파 및 마교 (Unorthodox & Demonic Factions)",
-            "description": "기존 질서에 저항하거나 힘을 숭상하는 세력들.",
+            "group_name": "마교",
+            "description": "천마를 숭배하는 절대적인 힘의 집단. 무림 공적 1호.",
             "factions": [
                 {
-                    "name": "천마신교 (Heavenly Demon Cult)",
-                    "type": "Demonic (마교)",
-                    "description": "힘이 곧 진리라는 신념 아래 천마를 숭배하는 종교 집단. 강호의 공적(公敵)이다.",
-                    "martial_arts_style": "천마군림보, 흡성대법",
-                    "location": "십만대산 (Hundred Thousand Mountains)",
+                    "name": "천마신교",
+                    "type": "Demonic Cult (마교)",
+                    "description": "십만대산에 위치한 마교의 본산. 강자존의 법칙이 지배한다.",
+                    "martial_arts_style": "천마신공, 아수라패황권",
+                    "location": "십만대산",
                     "key_figures": [
-                        "교주(Cult Leader): 천위강 (Cheon Wi-gang) - 천마(Heavenly Demon).",
-                        "장로(Elder): 광마 (Crazy Demon) - 좌호법.",
-                        "후기지수(Rising Star): 천예령 (Cheon Ye-ryeong) - 소교주."
+                        "천마: 현 천마. 절대지존.",
+                        "군사: 흑룡 - 마교의 두뇌."
                     ],
                     "key_heroines": [
-                        "천예령 (Cheon Ye-ryeong)"
+                        "천마 (여성일 경우)"
                     ]
-                },
+                }
+            ]
+        },
+        {
+            "group_name": "사파",
+            "description": "규율에 얽매이지 않고 자유롭게 힘을 추구하는 세력들.",
+            "factions": [
                 {
-                    "name": "하오문 (Hao Sect)",
+                    "name": "녹림",
                     "type": "Unorthodox (사파)",
-                    "description": "기녀, 점소이, 도박꾼 등 하층민들의 조직. 정보 수집력은 개방과 비견된다.",
-                    "martial_arts_style": "변장술, 암살술, 유혹술",
-                    "location": "전역에 분포 / 본거지: 장안 (Chang'an)",
+                    "description": "산적들의 연합체. 산을 거점으로 통행세를 걷거나 약탈을 한다.",
+                    "martial_arts_style": "녹림십팔채 무공",
+                    "location": "전국 각지의 산채",
                     "key_figures": [
-                        "문주(Sect Leader): 천면수사 (Thousand Face Scholar) - 정체 불명.",
-                        "지부장(Branch Manager): 홍유비 (Hong Yu-bi) - 장안 지부장."
+                        "총채주: 임꺽정 - 녹림왕.",
+                        "채주: 흑풍 - 악명 높은 산적 두목."
                     ],
-                    "key_heroines": [
-                        "홍유비 (Hong Yu-bi)"
-                    ]
+                    "key_heroines": []
                 },
                 {
-                    "name": "무영살막 (Shadow Assassin Guild)",
+                    "name": "장강수로채",
+                    "type": "Unorthodox (사파)",
+                    "description": "장강을 지배하는 수적들의 연합체. 물 위에서는 무림맹도 함부로 못한다.",
+                    "martial_arts_style": "수중전 특화 무공",
+                    "location": "장강 유역",
+                    "key_figures": [
+                        "총채주: 수왕 - 장강의 지배자."
+                    ],
+                    "key_heroines": []
+                },
+                {
+                    "name": "하오문",
+                    "type": "Unorthodox (사파)",
+                    "description": "점소이, 기녀, 소매치기 등 밑바닥 인생들의 정보 조직. 정보력만큼은 개방에 버금간다.",
+                    "martial_arts_style": "암습, 도주술",
+                    "location": "각 도시의 뒷골목",
+                    "key_figures": [
+                        "문주: 하오문주 - 정체불명."
+                    ],
+                    "key_heroines": []
+                },
+                {
+                    "name": "무영살막",
                     "type": "Unorthodox (사파/청부업)",
                     "description": "돈을 받고 의뢰를 수행하는 살수 집단. 그림자처럼 흔적을 남기지 않는다.",
                     "martial_arts_style": "무영보, 일격필살",
                     "location": "비밀 (위치 불명)",
                     "key_figures": [
-                        "국주(Guild Leader): 무영 (Mu-yeong) - 살왕(Killing King).",
-                        "살수(Assassin): 비연 (Bi-yeon) - 에이스."
+                        "국주: 무영 - 살왕.",
+                        "살수: 비연 - 에이스."
                     ],
                     "key_heroines": [
-                        "비연 (Bi-yeon)"
+                        "비연"
                     ]
                 },
                 {
-                    "name": "모산파 (Mount Mao Sect)",
+                    "name": "모산파",
                     "type": "Unorthodox/Taoist (사파/도술)",
                     "description": "강시를 부리고 영혼을 다루는 주술 문파. 음산한 분위기 때문에 정파에서 배척받는다.",
                     "martial_arts_style": "강시술, 흑마술",
-                    "location": "강소성 모산 (Mount Mao, Jiangsu Province)",
+                    "location": "강소성 모산",
                     "key_figures": [
-                        "장문인(Leader): 모산도인 (Taoist Mao) - 괴팍한 늙은이.",
-                        "제자(Disciple): 당무아 (Dang Mu-a) - 수제자."
-                    ],
-                    "key_heroines": [
-                        "당무아 (Dang Mu-a)"
-                    ]
-                },
-                {
-                    "name": "녹림 (Green Forest Alliance)",
-                    "type": "Unorthodox (사파)",
-                    "description": "산적들의 연합체. 십팔채(18 Stockades) 또는 칠십이채(72 Stockades)로 이루어져 있으며, 산악 지대를 장악하고 있다.",
-                    "martial_arts_style": "녹림십팔참, 투박하지만 실전적인 도법",
-                    "location": "전역의 명산 / 총채: 태행산 (Taihang Mountains)",
-                    "key_figures": [
-                        "총채주(Chief): 석대산 (Seok Dae-san) - 괴력의 거한."
+                        "장문인: 모산도인 - 괴팍한 늙은이.",
+                        "제자: 당무아 - 수제자."
                     ],
                     "key_heroines": []
                 },
                 {
-                    "name": "장강수로채 (Yangtze River Water Fortress)",
-                    "type": "Unorthodox (사파)",
-                    "description": "장강을 지배하는 수적들의 연합. 수로 운송과 밀무역을 독점하며, 물 위에서는 천하무적이다.",
-                    "martial_arts_style": "사공도, 분수결, 수중전 특화",
-                    "location": "장강 (Yangtze River) / 총채: 동정호 (Dongting Lake)",
-                    "key_figures": [
-                        "총채주(Chief): 수룡 (Water Dragon) - 수중전 최강."
-                    ],
-                    "key_heroines": []
-                },
-                {
-                    "name": "금전방 (Golden Coin Society)",
+                    "name": "금전방",
                     "type": "Unorthodox/Criminal (사파/범죄)",
                     "description": "돈을 최고의 가치로 여기는 거대 범죄 조직. 압도적인 재력으로 고수들을 고용하여 세력을 넓힌다.",
                     "martial_arts_style": "금전표, 용병 무공",
-                    "location": "본거지 불명 (각지의 상단으로 위장)",
+                    "location": "본거지 불명",
                     "key_figures": [
-                        "방주(Leader): 상관무 (Shangguan Mu) - 무공과 지략을 겸비."
+                        "방주: 상관무 - 무공과 지략을 겸비."
                     ],
                     "key_heroines": []
                 }
             ]
         },
         {
-            "group_name": "세외 세력 및 기타 (Outer & Neutral Factions)",
-            "description": "중원을 벗어난 변방의 세력이나 어디에도 속하지 않는 독립 세력.",
+            "group_name": "새외 세력",
+            "description": "중원 바깥의 이민족 무림 세력.",
             "factions": [
                 {
-                    "name": "북해빙궁 (North Sea Ice Palace)",
-                    "type": "Outer (세외)",
-                    "description": "북쪽 끝 동토의 왕국. 냉기를 이용한 빙공(氷功)을 사용한다.",
-                    "martial_arts_style": "빙백신장, 한빙면장",
-                    "location": "북해 (North Sea) / 바이칼 호수 근처",
+                    "name": "북해빙궁",
+                    "type": "Foreign (새외)",
+                    "description": "북해의 만년설로 뒤덮인 곳에 위치한 문파. 냉기를 다루는 빙공을 사용한다.",
+                    "martial_arts_style": "빙백신공, 한빙장",
+                    "location": "북해 빙궁",
                     "key_figures": [
-                        "궁주(Palace Lord): 연무린 (Yeon Mu-rin) - 빙황(Ice Emperor). 냉혹한 지배자.",
-                        "소궁주(Young Lord): 연화린 (Yeon Hwa-rin) - 차기 궁주."
+                        "궁주: 빙제 - 북해의 지배자.",
+                        "소궁주: 단우진"
                     ],
                     "key_heroines": [
-                        "연화린 (Yeon Hwa-rin)"
+                        "빙궁주 (여성일 경우)"
                     ]
                 },
                 {
-                    "name": "남만야수궁 (Southern Beast Palace)",
-                    "type": "Outer (세외)",
-                    "description": "남쪽 밀림의 야생 부족. 맹수를 부리며 야수 같은 신체 능력을 가진다.",
-                    "martial_arts_style": "백수권, 수화술",
-                    "location": "운남성 남만 (Southern Wilderness, Yunnan Province)",
+                    "name": "남만야수궁",
+                    "type": "Foreign (새외)",
+                    "description": "남만의 밀림에 위치한 문파. 맹수들을 부리며 야수와 같은 무공을 쓴다.",
+                    "martial_arts_style": "야수변, 독공",
+                    "location": "남만 밀림",
                     "key_figures": [
-                        "궁주(Palace Lord): 야율 바르칸 (Yayul Barchan) - 야왕(Beast King).",
-                        "소궁주(Princess): 야율 (Ya-yul) - 맹수와 소통."
+                        "궁주: 야수왕"
+                    ],
+                    "key_heroines": []
+                },
+                {
+                    "name": "포달랍궁",
+                    "type": "Foreign (새외)",
+                    "description": "서장(티베트)의 라마교 무림 세력. 강력한 내공과 밀종 무공을 지녔다.",
+                    "martial_arts_style": "밀종大手인, 용상반야공",
+                    "location": "서장 포달랍궁",
+                    "key_figures": [
+                        "법왕: 금륜법왕"
+                    ],
+                    "key_heroines": []
+                }
+            ]
+        },
+        {
+            "group_name": "기타 세력",
+            "description": "어디에도 속하지 않는 독자적인 세력들.",
+            "factions": [
+                {
+                    "name": "살막",
+                    "type": "Independent (독립)",
+                    "description": "돈을 받고 사람을 죽이는 살수 청부 집단. 한번 의뢰를 받으면 끝까지 추적한다.",
+                    "martial_arts_style": "암살술, 독술",
+                    "location": "불명",
+                    "key_figures": [
+                        "살주: 무영 - 그림자 없는 살수."
+                    ],
+                    "key_heroines": []
+                },
+                {
+                    "name": "관청",
+                    "type": "Government (관부)",
+                    "description": "황실과 관군. 원칙적으로 무림 불간섭이지만, 역모 등 큰 사건에는 개입한다.",
+                    "martial_arts_style": "군대식 무공, 금의위 무공",
+                    "location": "황궁 및 각 관아",
+                    "key_figures": [
+                        "금의위 대장: 황보숭"
                     ],
                     "key_heroines": [
-                        "야율 (Ya-yul)"
+                        "황녀 / 공주"
                     ]
                 },
                 {
-                    "name": "약왕곡 (Medicine King Valley)",
+                    "name": "약왕곡",
                     "type": "Neutral (중도)",
                     "description": "세속과 단절된 의술의 성지. 사람을 살리는 활인검(활인술)을 추구한다.",
                     "martial_arts_style": "침술, 독공(치료용)",
-                    "location": "심산유곡 (Deep Mountain Valley) - 위치 불명",
+                    "location": "심산유곡",
                     "key_figures": [
-                        "곡주(Valley Lord): 약왕 (Medicine King) - 신의(Divine Doctor).",
-                        "수제자(Disciple): 한설희 (Han Seol-hee) - 소의선."
+                        "곡주: 약왕 - 신의.",
+                        "수제자: 한설희 - 소의선."
                     ],
                     "key_heroines": [
-                        "한설희 (Han Seol-hee)"
+                        "한설희"
                     ]
                 },
                 {
-                    "name": "황실 (Imperial Court)",
+                    "name": "황실",
                     "type": "Imperial (관군)",
                     "description": "중원을 지배하는 절대 권력. 무림에 직접 개입하지 않지만 은밀히 감시한다.",
                     "martial_arts_style": "황실 비전 무공, 금의위 무공",
-                    "location": "수도 자금성 (Forbidden City, Capital)",
+                    "location": "수도 자금성",
                     "key_figures": [
-                        "황제(Emperor): 주원장 (Zhu Yuanzhang) - (배경 인물)",
-                        "금의위 지휘사(Commander): 주예서 (Ju Ye-seo) - 황실의 검."
+                        "황제: 주원장 - (배경 인물)",
+                        "금의위 지휘사: 주예서 - 황실의 검."
                     ],
                     "key_heroines": [
-                        "주예서 (Ju Ye-seo)"
+                        "주예서"
                     ]
                 },
                 {
-                    "name": "무소속 (Independent)",
+                    "name": "무소속",
                     "type": "Neutral (중도)",
                     "description": "어떤 문파에도 속하지 않고 강호를 유람하는 낭인이나 기인들.",
                     "martial_arts_style": "다양함",
                     "location": "강호 전역",
                     "key_figures": [
-                        "천하제일미(Beauty): 설하은 (Seol Ha-eun)"
+                        "천하제일미: 설하은"
                     ],
                     "key_heroines": [
-                        "설하은 (Seol Ha-eun)"
+                        "설하은"
                     ]
-                }
-            ]
-        }
-    ],
-    "commercial_factions": [
-        {
-            "group_name": "4대 표국 (Four Great Escort Agencies)",
-            "description": "물품과 사람의 호송을 책임지는 전문 무력 집단. 신용을 목숨처럼 여긴다.",
-            "factions": [
-                {
-                    "name": "천운표국 (Cheon-Woon Escort Agency)",
-                    "type": "Escort (표국)",
-                    "description": "천하에서 가장 규모가 큰 표국. '천운'이 따른다는 말처럼 사고가 없기로 유명하다.",
-                    "martial_arts_style": "천운검법, 칠성보",
-                    "location": "북경 (Beijing) / 총타",
-                    "key_figures": [
-                        "국주(Head): 이천운 (Lee Cheon-un)"
-                    ],
-                    "key_heroines": []
-                },
-                {
-                    "name": "만승표국 (Man-Seung Escort Agency)",
-                    "type": "Escort (표국)",
-                    "description": "만 번 싸워 승리한다는 무패의 표국. 고수들을 다수 보유하고 있다.",
-                    "martial_arts_style": "숭산검법, 철사장",
-                    "location": "남경 (Nanjing)",
-                    "key_figures": [
-                        "국주(Head): 조만승 (Jo Man-seung)"
-                    ],
-                    "key_heroines": []
-                },
-                {
-                    "name": "진위표국 (Jin-Wi Escort Agency)",
-                    "type": "Escort (표국)",
-                    "description": "군부 출신들이 세운 표국. 규율이 엄격하고 화력을 중시한다.",
-                    "martial_arts_style": "군용 창술, 연환권",
-                    "location": "서안 (Xi'an)",
-                    "key_figures": [
-                        "국주(Head): 박진위 (Park Jin-wi)"
-                    ],
-                    "key_heroines": []
-                },
-                {
-                    "name": "장풍표국 (Jang-Pung Escort Agency)",
-                    "type": "Escort (표국)",
-                    "description": "바람처럼 빠른 배송을 자랑하는 표국. 경공술에 특화되어 있다.",
-                    "martial_arts_style": "비연신법, 쾌검",
-                    "location": "무한 (Wuhan)",
-                    "key_figures": [
-                        "국주(Head): 김장풍 (Kim Jang-pung)"
-                    ],
-                    "key_heroines": []
-                }
-            ]
-        },
-        {
-            "group_name": "5대 상단 (Five Great Merchant Guilds)",
-            "description": "강호의 경제를 움직이는 거대 상인 연합.",
-            "factions": [
-                {
-                    "name": "대통상회 (Dae-Tong Guild)",
-                    "type": "Merchant (상단)",
-                    "description": "물류와 유통을 장악한 최대의 상단. 없는 물건이 없다.",
-                    "location": "개봉 (Kaifeng)",
-                    "key_figures": [
-                        "상회주(Guild Master): 금만수 (Geum Man-su) - 금채월의 아버지."
-                    ],
-                    "key_heroines": [
-                        "금채월 (Geum Chae-wol)"
-                    ]
-                },
-                {
-                    "name": "금만상단 (Geum-Man Guild)",
-                    "type": "Merchant (상단)",
-                    "description": "금융과 전장을 주름잡는 돈의 제국. 황실과도 끈이 닿아 있다.",
-                    "location": "낙양 (Luoyang)",
-                    "key_figures": [
-                        "대주(Master): 황금성 (Hwang Geum-seong)"
-                    ],
-                    "key_heroines": []
-                },
-                {
-                    "name": "운몽상단 (Un-Mong Guild)",
-                    "type": "Merchant (상단)",
-                    "description": "비단, 도자기, 예술품 등 사치품을 취급하는 고급 상단.",
-                    "location": "항주 (Hangzhou)",
-                    "key_figures": [
-                        "대주(Master): 유운몽 (Yu Un-mong)"
-                    ],
-                    "key_heroines": []
-                },
-                {
-                    "name": "약선상회 (Yak-Seon Guild)",
-                    "type": "Merchant (상단)",
-                    "description": "약재와 의약품을 독점적으로 유통한다. 약왕곡과 협력 관계.",
-                    "location": "성도 (Chengdu)",
-                    "key_figures": [
-                        "대주(Master): 박약선 (Park Yak-seon)"
-                    ],
-                    "key_heroines": []
-                },
-                {
-                    "name": "해룡상단 (Hae-Ryong Guild)",
-                    "type": "Merchant (상단)",
-                    "description": "해상 무역을 통해 막대한 부를 축적한 상단. 이국적인 물품을 취급한다.",
-                    "location": "광주 (Guangzhou)",
-                    "key_figures": [
-                        "대주(Master): 장해룡 (Jang Hae-ryong)"
-                    ],
-                    "key_heroines": []
                 }
             ]
         }

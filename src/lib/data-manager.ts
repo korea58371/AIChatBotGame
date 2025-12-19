@@ -15,6 +15,7 @@ export interface GameData {
     extraMap?: Record<string, string>;
     constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
     lore?: any;
+    characterCreationQuestions?: any[];
 }
 
 export class DataManager {
@@ -150,8 +151,8 @@ export class DataManager {
                 world: worldModule.default || worldModule,
                 characters: charactersModule.default || charactersModule,
                 backgroundList: bgListModule.default || bgListModule,
-                events: eventsModule.GAME_EVENTS || [],
                 scenario: scenarioModule.START_SCENARIO_TEXT || "",
+                characterCreationQuestions: (scenarioModule as any).CHARACTER_CREATION_QUESTIONS || null,
                 backgroundMappings: bgMappingsModule.backgroundMappings || {},
                 getSystemPromptTemplate: systemPromptModule.getSystemPromptTemplate,
                 getRankInfo: systemPromptModule.getRankInfo,

@@ -115,7 +115,13 @@ interface GameState {
   characterMap?: Record<string, string>;
   extraMap?: Record<string, string>;
   constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
+  constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
   lore?: any;
+  characterCreationQuestions?: any[]; // [NEW] Added for generic creation support
+
+  // [New] Dynamic Extra Character Mappings
+  extraOverrides?: Record<string, string>;
+  setExtraOverride: (name: string, imageKey: string) => void;
 }
 
 export interface PlayerStats {
@@ -129,6 +135,8 @@ export interface PlayerStats {
   fame: number;
   fate: number;
   playerRank: string;
+  neigong: number; // [Wuxia] Internal Energy (Years)
+  faction: string;
   personalitySummary: string;
   str: number; agi: number; int: number; vit: number; luk: number;
   skills: string[];
@@ -138,6 +146,7 @@ export interface PlayerStats {
     leadership: number; humor: number; lust: number;
   };
   relationships: Record<string, number>;
+  injuries: string[]; // [New] List of active injuries e.g. ["Right Arm Broken", "Internal bleeding"]
 }
 
 export interface Item {
@@ -155,7 +164,9 @@ const INITIAL_STATS: PlayerStats = {
   level: 1, exp: 0,
   fame: 0,
   fate: 0,
-  playerRank: '일반인',
+  playerRank: '02_second_rate',
+  neigong: 10,
+  faction: '무소속',
   personalitySummary: "",
   str: 10, agi: 10, int: 10, vit: 10, luk: 10,
   skills: [],
@@ -164,7 +175,8 @@ const INITIAL_STATS: PlayerStats = {
     lifestyle: 0, openness: 0, warmth: 0, eloquence: 0,
     leadership: 0, humor: 0, lust: 0
   },
-  relationships: {}
+  relationships: {},
+  injuries: [] // [New] Initialize empty injuries
 };
 
 export const useGameStore = create<GameState>()(
@@ -221,6 +233,7 @@ export const useGameStore = create<GameState>()(
             extraMap: data.extraMap, // Added
             constants: data.constants, // Added
             lore: data.lore, // Added
+            characterCreationQuestions: data.characterCreationQuestions, // Added
           });
 
           // If we are switching games, we should probably reset the session unless it's just a reload.
@@ -378,6 +391,13 @@ export const useGameStore = create<GameState>()(
       language: null,
       setLanguage: (lang) => set({ language: lang }),
 
+
+
+      extraOverrides: {},
+      setExtraOverride: (name, imageKey) => set((state) => ({
+        extraOverrides: { ...state.extraOverrides, [name]: imageKey }
+      })),
+
       resetGame: () => set({
         chatHistory: [],
         displayHistory: [],
@@ -398,7 +418,8 @@ export const useGameStore = create<GameState>()(
         choices: [],
         textMessageHistory: {},
         triggeredEvents: [],
-        activeEvent: null
+        activeEvent: null,
+        extraOverrides: {}
       }),
     }),
     {

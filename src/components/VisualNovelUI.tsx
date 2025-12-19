@@ -7,6 +7,8 @@ import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary,
 import { getCharacterImage } from '@/lib/image-mapper';
 import { resolveBackground } from '@/lib/background-manager'; // Added import // Added import
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
+import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
+
 import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -325,7 +327,8 @@ export default function VisualNovelUI() {
         availableExtraImages,
         turnCount,
         incrementTurnCount,
-        initialScenario
+        initialScenario,
+        characterCreationQuestions // Added
     } = useGameStore();
 
     const supabase = createClient();
@@ -395,6 +398,10 @@ export default function VisualNovelUI() {
 
     // Auth State (Event-Based)
     const [session, setSession] = useState<any>(null);
+
+    // Character Creation State
+    const [creationStep, setCreationStep] = useState(0);
+    const [creationData, setCreationData] = useState<Record<string, string>>({});
 
     // Track Session & Fetch Coins on Mount
     useEffect(() => {
@@ -709,6 +716,11 @@ export default function VisualNovelUI() {
         setCurrentSegment(nextSegment);
 
         if (nextSegment.type === 'dialogue' && nextSegment.expression) {
+            // [New] Dynamic Override for Extra Characters
+            if (nextSegment.characterImageKey && nextSegment.character) {
+                useGameStore.getState().setExtraOverride(nextSegment.character, nextSegment.characterImageKey);
+            }
+
             if (nextSegment.character && nextSegment.expression) {
                 // Determine Name and Emotion from AI output
                 // AI is instructed to output Korean Name and Korean Emotion.
@@ -764,7 +776,7 @@ export default function VisualNovelUI() {
     // Response Time Tracking
     const [avgResponseTime, setAvgResponseTime] = useState(60000); // Default 1 minute as per request
 
-    const handleSend = async (text: string, isDirectInput: boolean = false) => {
+    const handleSend = async (text: string, isDirectInput: boolean = false, isHidden: boolean = false) => {
         if (!text.trim()) return;
 
         setIsProcessing(true);
@@ -812,7 +824,9 @@ export default function VisualNovelUI() {
                     });
             }
 
-            addMessage({ role: 'user', text });
+            if (!isHidden) {
+                addMessage({ role: 'user', text });
+            }
             setChoices([]);
 
             const currentState = useGameStore.getState();
@@ -885,6 +899,8 @@ export default function VisualNovelUI() {
                 availableCharacterImages: currentState.availableCharacterImages,
                 availableExtraImages: currentState.availableExtraImages,
                 activeGameId: currentState.activeGameId, // [FIX] Pass GameID for Server Re-hydration
+                constants: currentState.constants, // [CRITICAL] Helper constants (Rules/Famous Chars)
+                lore: currentState.lore, // [CRITICAL] Full Lore Data
                 isDirectInput: isDirectInput // Inject Flag
             }));
 
@@ -930,25 +946,40 @@ export default function VisualNovelUI() {
                 let costPer1M_Output = 0;
                 let modelType = 'Pro';
 
-                if (usedModel.includes('flash')) {
-                    // Flash Pricing
-                    costPer1M_Input = 0.075;
-                    costPer1M_Cached = 0.01875;
-                    costPer1M_Output = 0.30;
-                    modelType = 'Flash';
-                } else {
-                    // Pro Pricing (Approx)
-                    costPer1M_Input = 1.25;
-                    costPer1M_Cached = 0.3125; // ~75% discount
-                    costPer1M_Output = 5.00;
-                    modelType = 'Pro';
-                }
+                // Pricing Table (Based on Google AI Studio Pricing) - Per 1M Tokens
+                const PRICING_TABLE = [
+                    // Gemini 3 Series (Preview)
+                    { id: 'gemini-3-flash', input: 0.50, output: 3.00, cache: 0.05, name: 'Gemini 3 Flash' },
+                    { id: 'gemini-3-pro', input: 2.00, output: 12.00, cache: 0.20, name: 'Gemini 3 Pro' },
+
+                    // Gemini 2.5 Series
+                    { id: 'gemini-2.5-flash-lite', input: 0.10, output: 0.40, cache: 0.01, name: 'Gemini 2.5 Flash-Lite' },
+                    { id: 'gemini-2.5-flash', input: 0.30, output: 2.50, cache: 0.03, name: 'Gemini 2.5 Flash' },
+                    { id: 'gemini-2.5-pro', input: 1.25, output: 10.00, cache: 0.125, name: 'Gemini 2.5 Pro' },
+
+                    // Gemini 2.0 Series
+                    { id: 'gemini-2.0-flash-lite', input: 0.075, output: 0.30, cache: 0.00, name: 'Gemini 2.0 Flash-Lite' },
+                    { id: 'gemini-2.0-flash', input: 0.10, output: 0.40, cache: 0.025, name: 'Gemini 2.0 Flash' },
+
+                    // Legacy (Gemini 1.5)
+                    { id: 'gemini-1.5-flash', input: 0.075, output: 0.30, cache: 0.01875, name: 'Gemini 1.5 Flash' },
+                    { id: 'gemini-1.5-pro', input: 1.25, output: 5.00, cache: 0.3125, name: 'Gemini 1.5 Pro' },
+                ];
+
+                // Dynamic Lookup
+                const priceConfig = PRICING_TABLE.find(p => usedModel.includes(p.id)) ||
+                    PRICING_TABLE.find(p => p.id === 'gemini-2.5-flash'); // Default Fallback
+
+                costPer1M_Input = priceConfig?.input || 0;
+                costPer1M_Output = priceConfig?.output || 0;
+                costPer1M_Cached = priceConfig?.cache || 0;
+                modelType = priceConfig?.name || 'Unknown Model';
 
                 const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
                 const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
                 const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
                 const totalCost = costInput + costCached + costOutput;
-                const totalCostKRW = totalCost * 1450; // Exchange rate
+                const totalCostKRW = totalCost * 1480; // Exchange rate
 
                 // [Verification Log]
                 console.log(`Token Usage (${usedModel}):`);
@@ -1147,7 +1178,7 @@ export default function VisualNovelUI() {
 
     const handleStartGame = () => {
         // Replace Placeholder with Real Name
-        const effectiveName = playerName || '김현준';
+        const effectiveName = playerName || '성현우';
         const processedScenario = (initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
 
         // Parse the raw text scenario
@@ -1184,6 +1215,11 @@ export default function VisualNovelUI() {
 
             // Set character expression if the first segment is dialogue
             if (first.type === 'dialogue' && first.expression && first.character) {
+                // [New] Override check for first segment
+                if (first.characterImageKey && first.character) {
+                    useGameStore.getState().setExtraOverride(first.character, first.characterImageKey);
+                }
+
                 const charName = first.character === playerName ? '주인공' : first.character;
                 const emotion = first.expression;
 
@@ -1267,6 +1303,12 @@ export default function VisualNovelUI() {
             if (c.leadership) p.leadership = Math.min(100, Math.max(-100, (p.leadership || 0) + c.leadership));
         }
 
+        // [Wuxia] Neigong Update
+        if (logicResult.neigongChange) {
+            newStats.neigong = Math.max(0, (newStats.neigong || 0) + logicResult.neigongChange);
+            addToast(`내공(Internal Energy) ${logicResult.neigongChange > 0 ? '+' : ''}${logicResult.neigongChange}년`, logicResult.neigongChange > 0 ? 'success' : 'warning');
+        }
+
         // Skills
         if (logicResult.newSkills) {
             logicResult.newSkills.forEach((skill: string) => {
@@ -1282,6 +1324,34 @@ export default function VisualNovelUI() {
         }
 
         console.log('New Stats after update:', newStats);
+
+        // [New] Injuries Update
+        if (logicResult.injuriesUpdate) {
+            let currentInjuries = [...(newStats.injuries || [])];
+
+            // Add
+            if (logicResult.injuriesUpdate.add) {
+                logicResult.injuriesUpdate.add.forEach((injury: string) => {
+                    if (!currentInjuries.includes(injury)) {
+                        currentInjuries.push(injury);
+                        addToast(`부상 발생(Injury): ${injury}`, 'warning');
+                    }
+                });
+            }
+
+            // Remove
+            if (logicResult.injuriesUpdate.remove) {
+                logicResult.injuriesUpdate.remove.forEach((injury: string) => {
+                    const initialLen = currentInjuries.length;
+                    currentInjuries = currentInjuries.filter(i => i !== injury);
+                    if (currentInjuries.length < initialLen) {
+                        addToast(`부상 회복(Healed): ${injury}`, 'success');
+                    }
+                });
+            }
+            newStats.injuries = currentInjuries;
+        }
+
         setPlayerStats(newStats);
 
         // Toasts
@@ -1562,10 +1632,51 @@ export default function VisualNovelUI() {
                                     style={{ width: `${(playerStats.mp / playerStats.maxMp) * 100}%` }}
                                 />
                                 <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-12">
-                                    <span className="text-[10px] font-bold text-blue-200 drop-shadow-sm">정신력</span>
+                                    <span className="text-[10px] font-bold text-blue-200 drop-shadow-sm">정신력 (MP)</span>
                                     <span className="text-[10px] font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
                                 </div>
                             </div>
+
+                            {/* [Wuxia] Neigong Display */}
+                            <div className="flex items-center gap-2 ml-1 mt-1">
+                                <div className="px-2 py-0.5 bg-black/60 border border-blue-500/30 rounded text-[11px] text-blue-200 font-bold tracking-wider shadow-sm flex items-center gap-1 backdrop-blur-sm">
+                                    <span className="text-blue-400">⚡ 내공</span>
+                                    <span className="text-white font-mono">
+                                        {playerStats.neigong < 60
+                                            ? `${(playerStats.neigong || 0).toFixed(1)}년`
+                                            : `${Math.floor(playerStats.neigong / 60)}갑자 ${(playerStats.neigong % 60).toFixed(1)}년`
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* [New] Rank & Faction Badges */}
+                            <div className="flex gap-2 mt-1 ml-1">
+                                {/* Rank Badge */}
+                                <div className="px-2 py-0.5 bg-zinc-900/80 border border-zinc-700 rounded text-[10px] text-zinc-300 font-bold tracking-wider shadow-sm flex items-center gap-1">
+                                    <span className="text-yellow-500/80">경지</span>
+                                    <span className="text-white">
+                                        {((martialArtsLevels as any).realm_hierarchy[playerStats.playerRank]?.name || playerStats.playerRank || '미정').split('(')[0].trim()}
+                                    </span>
+                                </div>
+                                {/* Faction Badge */}
+                                <div className="px-2 py-0.5 bg-zinc-900/80 border border-zinc-700 rounded text-[10px] text-zinc-300 font-bold tracking-wider shadow-sm flex items-center gap-1">
+                                    <span className="text-blue-400/80">소속</span>
+                                    <span className="text-white">{playerStats.faction || '무소속'}</span>
+                                </div>
+                            </div>
+
+                            {/* [New] Injuries Display */}
+                            {playerStats.injuries && playerStats.injuries.length > 0 && (
+                                <div className="mt-1 ml-1 flex flex-col gap-1">
+                                    {playerStats.injuries.map((injury, idx) => (
+                                        <div key={idx} className="px-2 py-0.5 bg-red-900/60 border border-red-500/50 rounded text-[10px] text-red-100 font-bold tracking-wider shadow-sm flex items-center gap-1 animate-pulse">
+                                            <span className="text-red-400">🩸</span>
+                                            <span>{injury}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -1809,32 +1920,172 @@ export default function VisualNovelUI() {
 
                 {/* Fallback for stuck state or Start Screen */}
                 {
-                    !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && (
+                    isMounted && !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-auto z-10">
                             {chatHistory.length === 0 ? (
-                                // Start Screen
-                                <div className="bg-black/80 p-12 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center">
-                                    <h1 className="text-4xl font-bold text-yellow-400 mb-2">Game Title</h1>
-                                    <p className="text-gray-300 text-lg">Welcome to the interactive story.</p>
+                                // Creation or Start Screen
+                                (() => {
+                                    const creationQuestions = useGameStore.getState().characterCreationQuestions;
+                                    const { playerName } = useGameStore.getState();
 
-                                    <div className="flex flex-col gap-2 w-full max-w-xs">
-                                        <label className="text-yellow-500 text-sm font-bold text-left">Player Name</label>
-                                        <input
-                                            type="text"
-                                            className="bg-gray-800 border border-yellow-600 text-white px-4 py-2 rounded focus:outline-none focus:border-yellow-400 text-center"
-                                            placeholder="주인공"
-                                            onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
-                                            defaultValue={useGameStore.getState().playerName}
-                                        />
-                                    </div>
+                                    // If we have creation questions and we haven't finished creation (checked by simple local state or similar)
+                                    // Actually, we use 'creationStep' state. If it's < creationQuestions.length, show question.
+                                    if (creationQuestions && creationQuestions.length > 0) {
+                                        const currentQuestion = creationQuestions[creationStep];
 
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleStartGame(); }}
-                                        className="px-8 py-4 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-black text-xl shadow-[0_0_20px_rgba(234,179,8,0.5)] hover:scale-105 transition-transform animate-pulse"
-                                    >
-                                        Game Start
-                                    </button>
-                                </div>
+                                        const handleOptionSelect = (qId: string, value: string) => {
+                                            const updatedData = { ...creationData, [qId]: value };
+                                            setCreationData(updatedData);
+
+                                            if (creationStep < creationQuestions.length - 1) {
+                                                setCreationStep(prev => prev + 1);
+                                            } else {
+                                                // Finished
+                                                // Construct Prompt
+                                                // 1. Format Profile
+                                                let profileText = "사용자 캐릭터 프로필:\n";
+                                                Object.entries(updatedData).forEach(([key, val]) => {
+                                                    // Find label for better context? Or just use value.
+                                                    // Let's use the value codes for simplicity, AI understands context if I provide key.
+                                                    // Better: Find the label corresponding to value
+                                                    const q = creationQuestions.find(q => q.id === key);
+                                                    const opt = q?.options.find((o: any) => o.value === val);
+                                                    profileText += `- ${q?.id}: ${opt?.label || val}\n`;
+                                                });
+
+                                                // [Default Name Logic]
+                                                const activeGameId = useGameStore.getState().activeGameId;
+                                                let finalName = playerName;
+                                                if (activeGameId === 'wuxia') {
+                                                    if (!finalName || finalName.trim() === '' || finalName === '주인공') {
+                                                        finalName = '무명';
+                                                        useGameStore.getState().setPlayerName(finalName);
+                                                    }
+                                                }
+
+                                                profileText += `이름: ${finalName || playerName || '성현우'}\n`;
+
+                                                const prompt = `
+[SYSTEM: Game Start Protocol]
+The player has created a new character with the following profile:
+${profileText}
+
+Instructions:
+1. Ignore any previous static Start Scenario.
+2. Start the story immediately from the Prologue or Chapter 1.
+3. Reflect the chosen Identity, Goal, Specialty, and Personality in the narrative.
+4. Output the first scene now.
+`;
+                                                // Call handleSend with isDirectInput=true (hidden from history usually? No, handleSend adds to history)
+                                                // We want this to be a system instruction.
+                                                // But handleSend treats input as User Message.
+                                                // Let's manually add a system message to history OR just send it as user message but formatted as System.
+                                                // The AI prompt handles [SYSTEM] tags well usually.
+
+                                                // [Fix] handleSend(prompt, true) adds it as user message.
+                                                // We will add a "System" message to history manually first? 
+                                                // Actually, let's just use handleSend but maybe show a different toast.
+
+                                                // Update Player Name if valid
+                                                // (Already updated in store via input below)
+
+                                                handleSend(prompt, true, true);
+                                            }
+                                        };
+
+                                        if (!isMounted) return null; // [Fix] Prevent Hydration Mismatch for Client-Only UI
+
+                                        return (
+                                            <div className="bg-black/90 p-8 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center max-w-2xl w-full">
+                                                <h1 className="text-3xl font-bold text-yellow-400 mb-2">캐릭터 생성</h1>
+
+                                                {/* Progress */}
+                                                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-yellow-500 transition-all duration-300"
+                                                        style={{ width: `${((creationStep + 1) / creationQuestions.length) * 100}%` }}
+                                                    />
+                                                </div>
+
+                                                {/* Name Input (Only on first step or separate?) 
+                                                    Let's put name input at the top always or just on step 0
+                                                  */}
+                                                {creationStep === 0 && (
+                                                    <div className="flex flex-col gap-2 w-full max-w-xs mb-4">
+                                                        <label className="text-yellow-500 text-sm font-bold text-left">이름 (Name)</label>
+                                                        <input
+                                                            type="text"
+                                                            className="bg-gray-800 border border-yellow-600 text-white px-4 py-2 rounded focus:outline-none focus:border-yellow-400 text-center"
+                                                            placeholder="이름을 입력하세요"
+                                                            onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
+                                                            defaultValue={playerName}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <h2 className="text-xl text-white font-bold leading-relaxed whitespace-pre-wrap">
+                                                    {currentQuestion.question}
+                                                </h2>
+
+                                                <div className="grid grid-cols-1 w-full gap-3 mt-4">
+                                                    {currentQuestion.options.map((opt: any) => {
+                                                        // Check Condition
+                                                        if (opt.condition) {
+                                                            const { key, value } = opt.condition;
+                                                            if (creationData[key] !== value) return null;
+                                                        }
+
+                                                        return (
+                                                            <button
+                                                                key={opt.value}
+                                                                onClick={() => handleOptionSelect(currentQuestion.id, opt.value)}
+                                                                className="px-6 py-4 bg-gray-800 hover:bg-yellow-900/50 border border-gray-600 hover:border-yellow-500 rounded-lg text-left text-gray-200 hover:text-white transition-all shadow-md group"
+                                                            >
+                                                                <span className="font-bold text-yellow-500 mr-2 group-hover:text-yellow-300">▶</span>
+                                                                {opt.label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {creationStep > 0 && (
+                                                    <button
+                                                        onClick={() => setCreationStep(prev => prev - 1)}
+                                                        className="mt-4 text-gray-500 hover:text-white text-sm"
+                                                    >
+                                                        이전 단계로
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    // Fallback to Standard Start Screen
+                                    return (
+                                        <div className="bg-black/80 p-12 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center">
+                                            <h1 className="text-4xl font-bold text-yellow-400 mb-2">Game Title</h1>
+                                            <p className="text-gray-300 text-lg">Welcome to the interactive story.</p>
+
+                                            <div className="flex flex-col gap-2 w-full max-w-xs">
+                                                <label className="text-yellow-500 text-sm font-bold text-left">Player Name</label>
+                                                <input
+                                                    type="text"
+                                                    className="bg-gray-800 border border-yellow-600 text-white px-4 py-2 rounded focus:outline-none focus:border-yellow-400 text-center"
+                                                    placeholder="주인공"
+                                                    onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
+                                                    defaultValue={useGameStore.getState().playerName}
+                                                />
+                                            </div>
+
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleStartGame(); }}
+                                                className="px-8 py-4 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-black text-xl shadow-[0_0_20px_rgba(234,179,8,0.5)] hover:scale-105 transition-transform animate-pulse"
+                                            >
+                                                Game Start
+                                            </button>
+                                        </div>
+                                    );
+                                })()
                             ) : (
                                 // Error/Paused Screen
                                 <div className="bg-black/80 p-8 rounded-xl border border-red-500 text-center shadow-2xl backdrop-blur-md">
@@ -2025,7 +2276,9 @@ export default function VisualNovelUI() {
 
                                                                     {seg.type === 'dialogue' && (
                                                                         <div className="mb-1">
-                                                                            <span className="text-yellow-500 font-bold text-lg">{seg.character}</span>
+                                                                            <span className="text-yellow-500 font-bold text-lg">
+                                                                                {(seg.character || 'Unknown').split('(')[0].trim()}
+                                                                            </span>
                                                                         </div>
                                                                     )}
                                                                     {seg.type === 'system_popup' && (

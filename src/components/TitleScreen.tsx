@@ -203,7 +203,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 {/* ... (Top Bar skipped) ... */}
 
                 {/* Logo Area */}
-                <div className="absolute right-0 top-[45%] w-full flex justify-end pr-10 md:pr-32 z-10 pointer-events-none transform -translate-y-1/2">
+                <div className={`absolute top-[30%] w-full flex z-10 pointer-events-none transform -translate-y-1/2 ${activeGameId === 'wuxia' ? 'justify-center' : 'right-0 justify-end pr-10 md:pr-32'}`}>
                     <motion.img
                         key={`title-${activeGameId}`} // Re-animate on switch
                         initial={{ opacity: 0, x: 50 }}
@@ -216,7 +216,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                             // e.currentTarget.src = "/assets/god_bless_you/interface/title/Title.png";
                         }}
                         alt="Title"
-                        className="w-[340px] md:w-[560px] object-contain drop-shadow-[0_4px_30px_rgba(0,0,0,0.6)]"
+                        className={`object-contain ${activeGameId === 'wuxia' ? 'w-[450px] md:w-[730px]' : 'w-[340px] md:w-[560px]'}`}
                     />
                 </div>
 

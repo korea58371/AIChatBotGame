@@ -38,8 +38,30 @@ export async function generateResponse(
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // Generate dynamic system prompt based on current game state
-    const staticPrompt = PromptManager.getSharedStaticContext(gameState);
+
+    // [SERVER REHYDRATION FIX]
+    // If getSystemPromptTemplate is missing (because functions don't survive network serialization),
+    // and we have activeGameId, we try to reload it dynamically.
+    if (!gameState.getSystemPromptTemplate && gameState.activeGameId) {
+        console.log(`[Gemini] Rehydrating System Prompt for game: ${gameState.activeGameId}`);
+        try {
+            // Dynamic import based on game ID
+            const systemModule = await import(`@/data/games/${gameState.activeGameId}/prompts/system`);
+            if (systemModule && systemModule.getSystemPromptTemplate) {
+                gameState.getSystemPromptTemplate = systemModule.getSystemPromptTemplate;
+            }
+        } catch (e) {
+            console.warn(`[Gemini] Failed to rehydrate system prompt for ${gameState.activeGameId}:`, e);
+        }
+    }
+
+    const staticPrompt = await PromptManager.getSharedStaticContext(gameState);
     const dynamicPrompt = PromptManager.generateSystemPrompt(gameState, language, userMessage);
+
+    // [DEBUG] Check Lore Injection
+    console.log("--- [Main Model Static Input (Lore & Context)] ---");
+    console.log(staticPrompt.substring(0, 3000) + "\n... (Truncated for readability) ...");
+    console.log("----------------------------------------------");
 
     // [DEBUG] Check Lore Injection
     if (gameState.lore) {
@@ -59,7 +81,7 @@ export async function generateResponse(
 
     // Main Story Model: Gemini 3 Pro (Prioritize quality)
     const modelsToTry = [
-        'gemini-3-pro-preview', // Correct ID from documentation
+        'gemini-3-flash-preview', // Correct ID from documentation, gemini-3-pro-preview
         'gemini-2.5-flash', // Stable fallback
         'gemini-2.5-flash', // Fast fallback
     ];
@@ -136,9 +158,9 @@ export async function generateGameLogic(
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // [CONTEXT CACHING] Reuse the SAME static prefix
-    const staticPrompt = PromptManager.getSharedStaticContext(gameState);
+    const staticPrompt = await PromptManager.getSharedStaticContext(gameState);
 
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash']; // Logic uses 2.5 Flash
+    const modelsToTry = ['gemini-3-pro-preview', 'gemini-3-pro-preview']; // Logic uses 2.5 Flash
 
     for (const modelName of modelsToTry) {
         try {
@@ -175,7 +197,14 @@ export async function generateGameLogic(
             // Get lightweight context for Logic Model
             const logicContext = PromptManager.getLogicModelContext(gameState);
 
-            const prompt = getLogicPrompt(prunedStats, lastUserMessage, lastAiResponse, logicContext, worldData);
+            const prompt = getLogicPrompt(
+                prunedStats,
+                lastUserMessage,
+                lastAiResponse,
+                logicContext,
+                worldData,
+                gameState.activeGameId // [FIX] separate logic prompt
+            );
 
             // [DEBUG LOG] Verify Logic Model Prompt Size
             console.log("--- [Logic Model Input Prompt] ---");
@@ -289,7 +318,8 @@ export async function preloadCache(apiKey: string, initialState: any) {
         console.log("[Gemini] Pre-loading cache...");
 
         // 1. Get the Exact Same Static Prompt as normal requests
-        const staticPrompt = PromptManager.getSharedStaticContext(initialState);
+        const staticPrompt = await PromptManager.getSharedStaticContext(initialState, initialState.activeChars, initialState.spawnCandidates);
+
 
         // 2. Configure Model
         // MATCH THE MAIN MODEL: gemini-3-pro-preview
@@ -322,7 +352,8 @@ export async function handleGameTurn(
     history: Message[],     // UI display history
     userInput: string
 ) {
-    console.log(`[handleGameTurn] Turn: ${state.turnCount}, Summary Length: ${state.scenarioSummary?.length || 0}`);
+    console.log(`[handleGameTurn] Turn: ${state.turnCount}, Summary Length: ${state.scenarioSummary?.length || 0
+        }`);
 
     // 1. Add user message to a temporary history for the AI call
     // Note: The caller updates the actual UI history. This is for the AI logic.

@@ -1,4 +1,4 @@
-import { MOOD_PROMPTS, MoodType } from '@/data/prompts/moods';
+import { getMoodPrompts, MoodType } from '@/data/prompts/moods';
 import { RelationshipManager } from './relationship-manager';
 
 interface SpawnRules {
@@ -63,10 +63,15 @@ interface GameState {
     getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
     constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
     lore?: any;
+    activeGameId?: string; // Added for game-specific logic
 }
 
 export class PromptManager {
-    static getSharedStaticContext(state: GameState): string {
+    static async getSharedStaticContext(
+        state: GameState,
+        activeChars?: string, // e.g. "Ju Ye-seo (Affection: 50), ..."
+        spawnCandidates?: string
+    ): Promise<string> {
         // [CONTEXT CACHING PREFIX]
         // This section is designed to be STATIC and IDENTICAL across multiple turns and models (Story & Logic).
         // It contains the heavy reference data (Characters, Backgrounds, World).
@@ -80,6 +85,15 @@ export class PromptManager {
         const availableExtra = PromptManager.getAvailableExtraCharacters(state) || "None";
         const availableBackgrounds = PromptManager.getAvailableBackgrounds(state); // Heavy list
 
+        // [Dynamic Emotion List]
+        let emotionListString = "자신감, 의기양양, 진지함, 짜증, 삐짐, 혐오, 고민, 박장대소, 안도, 놀람, 부끄러움, 결의, 거친호흡, 글썽거림, 고통, 공포, 오열, 수줍음, 지침, 폭발직전";
+        if (state.activeGameId === 'wuxia') {
+            emotionListString = `
+    - **기본 감정 (단계별)**: 기쁨1, 기쁨2, 기쁨3, 화남1, 화남2, 화남3, 슬픔1, 슬픔2, 슬픔3, 부끄1, 부끄2, 부끄3
+    - **특수 표정**: 고양이, 음침, 경멸, 어지러움, 멍함, 당황, 충격, 반짝
+    - **기타**: 기본, 결의, 혐오, 취함, 기대, 하트, 고통, 유혹, 졸림, 놀람, 고민, 광기`;
+        }
+
         // [WUXIA LORE INJECTION]
         let loreContext = "";
         if (state.lore) {
@@ -87,11 +101,22 @@ export class PromptManager {
             // For now, we inject the entire Knowledge Base as a Reference.
             // We use JSON stringify with indentation for readability (LLMs understand formatted JSON well).
             // [FIX] Use deterministic sort for Cache Stability
-            loreContext = `
+            try {
+                const { LoreConverter } = await import('@/lib/lore-converter');
+                // [Optimization] Convert JSON to Markdown to save 30-40% tokens
+                loreContext = `
+## [🌏 WORLD KNOWLEDGE BASE (LORE)]
+Use this detailed information to maintain consistency in the world setting, martial arts, systems, and factions.
+${LoreConverter.convertToMarkdown(state.lore)}
+`;
+            } catch (e) {
+                console.error("Failed to convert lore to markdown, falling back to JSON", e);
+                loreContext = `
 ## [🌏 WORLD KNOWLEDGE BASE (LORE)]
 Use this detailed information to maintain consistency in the world setting, martial arts, systems, and factions.
 ${JSON.stringify(PromptManager.deepSort(state.lore), null, 2)}
 `;
+            }
         }
 
         return `
@@ -134,15 +159,32 @@ ${availableBackgrounds}
 **4. Character Emotions (사용 가능 감정)**
 # Character Dialogue Rules
 1. Format: \`<대사>CharacterName_Emotion: Dialogue Content\`
-2. Name must be Korean (e.g. 천서윤).
+2. **Decoupled Name/Image**: To use a specific image asset (e.g. 'Drunk_Ronin') while displaying a valid name (e.g. 'Yeop Mun'), use: \`<대사>DisplayName(AssetKey)_Emotion: ...\`
+   - Example: \`<대사>엽문(낭인무사(술좋아하는))_기쁨: 어이!\` (Image: 낭인무사(술좋아하는), Name: 엽문)
+   - Note: The Asset Key must match exactly or partially match an available Extra Image.
+3. Name must be Korean (e.g. 천서윤).
 3. Emotion must be one of:
-   - 자신감, 의기양양, 진지함, 짜증, 삐짐, 혐오, 고민, 박장대소, 안도, 놀람, 부끄러움, 결의, 거친호흡, 글썽거림, 고통, 공포, 오열, 수줍음, 지침, 폭발직전
+   - ${emotionListString}
 
 ---
 `;
     }
 
     static generateSystemPrompt(state: GameState, language: 'ko' | 'en' | null, userMessage?: string): string {
+
+        // ... (rest of the prompt construction)
+        // I need to verify where to insert `emotionListString`.
+        // The original code has the prompt inside `getPromptTemplate`?
+        // Wait, the previous view_file showed `generateSystemPrompt` starts at 160.
+        // And the static property or method `getPromptTemplate` wasn't fully visible or I missed it.
+        // The user pointed to LINES 149-154 which seemed to be inside a template literal, possibly returned by a helper method?
+        // Let's look at the file content again. `view_file` showed lines 140-160.
+        // It seems `generateSystemPrompt` calls something or constructs the string.
+        // Ah, `generateSystemPrompt` likely USES the string defined earlier?
+        // Or the lines 140-158 were part of a CONSTANT or a private method?
+        // Let's assume it is inside `getBasePrompt` or similar.
+        // I should view the file `src/lib/prompt-manager.ts` around line 160 to see HOW the system prompt is assembled.
+
         // [NOW DYNAMIC ONLY]
         // The static part is handled separately by getSharedStaticContext
         let prompt = "";
@@ -294,7 +336,8 @@ ${availableBackgrounds}
 
         // 9. Mood Injection
         const currentMood = state.currentMood || 'daily';
-        let moodPrompt = MOOD_PROMPTS[currentMood] || MOOD_PROMPTS['daily'];
+        const moodPrompts = getMoodPrompts(state.activeGameId);
+        let moodPrompt = moodPrompts[currentMood] || moodPrompts['daily'];
 
         // Special handling for Combat: Inject detailed stats for comparison
         if (currentMood === 'combat') {

@@ -2,6 +2,8 @@
 
 import { generateResponse, generateGameLogic, generateSummary, preloadCache } from '@/lib/gemini';
 import { Message } from '@/lib/store';
+import fs from 'fs';
+import path from 'path';
 
 const API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
@@ -55,8 +57,6 @@ export async function serverGenerateSummary(
 
 export async function getExtraCharacterImages(gameId: string = 'god_bless_you') {
     try {
-        const fs = require('fs');
-        const path = require('path');
         const extraCharDir = path.join(process.cwd(), 'public', 'assets', gameId, 'ExtraCharacters');
 
         if (!fs.existsSync(extraCharDir)) {
@@ -79,8 +79,6 @@ export async function getExtraCharacterImages(gameId: string = 'god_bless_you') 
 
 export async function getBackgroundList(gameId: string) {
     try {
-        const fs = require('fs');
-        const path = require('path');
         const bgDir = path.join(process.cwd(), 'public', 'assets', gameId, 'backgrounds');
 
         if (!fs.existsSync(bgDir)) {
