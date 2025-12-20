@@ -1,4 +1,4 @@
-import { CORE_RULES, WUXIA_SYSTEM_PROMPT_CONSTANTS, FACTION_BEHAVIOR_GUIDELINES, WUXIA_ALLOWED_EMOTIONS } from '../constants';
+import { CORE_RULES, WUXIA_SYSTEM_PROMPT_CONSTANTS, FACTION_BEHAVIOR_GUIDELINES, WUXIA_ALLOWED_EMOTIONS, WUXIA_FIRST_TURN_EXAMPLE } from '../constants';
 import martialArtsLevels from '../jsons/martial_arts_levels.json';
 import factionsData from '../jsons/factions.json';
 import { backgroundMappings } from '../backgroundMappings';
@@ -56,6 +56,8 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
 
     return `
 ${WUXIA_SYSTEM_PROMPT_CONSTANTS}
+
+${(!state.messages || state.messages.length === 0) ? WUXIA_FIRST_TURN_EXAMPLE : ""}
 
 ${FACTION_BEHAVIOR_GUIDELINES}
 
