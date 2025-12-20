@@ -31,6 +31,7 @@ interface Character {
         speechStyle: string;
         endingStyle: string;
     };
+    relationships?: Record<string, string>; // Added: Inter-character relationships
 }
 
 // Lightweight character structure for Logic Model to save tokens
@@ -302,6 +303,11 @@ ${availableBackgrounds}
                 const secretStr = typeof char.secret === 'string' ? char.secret : JSON.stringify(char.secret, null, 2);
                 charInfo += `\n\n[HIDDEN SECRETS (The Player DOES NOT KNOW this)]:\n${secretStr}`;
                 charInfo += `\n\n**WARNING**: The player is UNAWARE of the [HIDDEN SECRETS] above. You MUST NOT reference them as common knowledge. Only use them to guide the character's internal motives or reactions. Reveal them ONLY if the narrative naturally leads to a discovery event.`;
+            }
+
+            // [New] Static Relationships (Inter-Character Dynamics)
+            if (char.relationships) {
+                charInfo += `\n\n[Human Relationships (How this character views others)]:\n${JSON.stringify(char.relationships, null, 2)}`;
             }
 
             if (char.relationshipInfo) {
@@ -591,6 +597,11 @@ ${spawnCandidates || "None"}
             // Relationship Info (Static Base)
             if (c.relationshipInfo) {
                 info += `\n- Social Specs: CallSign=${c.relationshipInfo.callSign}, Tone=${c.relationshipInfo.speechStyle}`;
+            }
+
+            // [New] Static Relationships
+            if (c.relationships) {
+                info += `\n- Relationships: ${JSON.stringify(c.relationships)}`;
             }
 
             // Secrets (Marked as Hidden)

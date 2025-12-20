@@ -108,8 +108,18 @@ export async function generateResponse(
 
             const model = genAI.getGenerativeModel(modelConfig);
 
+            // [OPTIMIZATION]
+            // If we have a summary, we don't need the full history.
+            // Truncate to recent dialogue (e.g., last 10 messages = 5 turns).
+            // This prevents "Double Counting" (Summary + Full History) and saves massive tokens.
+            let effectiveHistory = history;
+            if (gameState.scenarioSummary && gameState.scenarioSummary.length > 50) {
+                // Keep last 10 messages
+                effectiveHistory = history.slice(-10);
+            }
+
             // Sanitize history for Gemini API (Must start with 'user')
-            let processedHistory = history.map(msg => ({
+            let processedHistory = effectiveHistory.map(msg => ({
                 role: msg.role,
                 parts: [{ text: msg.text }],
             }));

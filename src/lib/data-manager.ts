@@ -136,6 +136,49 @@ export class DataManager {
                         // @ts-ignore
                         const extraMap = await import('@/data/games/wuxia/extra_map.json');
                         extraMapModule = extraMap.default || extraMap;
+
+                        // [Enrichment] Merge Detailed Lore Data into Character State
+                        // The simplified 'characters.json' lacks appearance/relationships/etc.
+                        // We pull that from 'loreModule.WuxiaLore.charactersDetail'.
+                        if (charactersModule && loreModule?.WuxiaLore?.charactersDetail) {
+                            const mainChars = loreModule.WuxiaLore.charactersDetail.characters_main || [];
+                            const suppChars = loreModule.WuxiaLore.charactersDetail.characters_supporting || [];
+                            const detailedList = [...mainChars, ...suppChars];
+
+                            const detailedMap = new Map();
+                            detailedList.forEach((d: any) => {
+                                const rawName = d.basic_profile?.이름 || "";
+                                // Extract "연화린" from "연화린 (延花凛)"
+                                const cleanName = rawName.split('(')[0].trim();
+                                if (cleanName) detailedMap.set(cleanName, d);
+                            });
+
+                            // Helper to access default export if it exists
+                            const simpleList = (charactersModule as any).default || charactersModule;
+
+                            if (Array.isArray(simpleList)) {
+                                const enriched = simpleList.map((simple: any) => {
+                                    const detail = detailedMap.get(simple.name);
+                                    if (detail) {
+                                        return {
+                                            ...simple,
+                                            // Merge Key Fields for PromptManager
+                                            appearance: detail.appearance,
+                                            personality: detail.personality,
+                                            relationships: detail.relationships, // [Target Field]
+                                            profile: detail.basic_profile,
+                                            social: detail.social,
+                                            preferences: detail.preferences,
+                                            secret: detail.secret,
+                                            job: detail.job
+                                        };
+                                    }
+                                    return simple;
+                                });
+                                // Override charactersModule to return the Enriched List
+                                charactersModule = enriched;
+                            }
+                        }
                     } catch (e) {
                         console.error(`[DataManager] IMPORT ERROR in 'wuxia':`, e);
                         throw e;
@@ -149,14 +192,14 @@ export class DataManager {
 
             return {
                 world: worldModule.default || worldModule,
-                characters: charactersModule.default || charactersModule,
+                characters: (charactersModule as any).default || charactersModule,
                 backgroundList: (bgListModule as any).default || bgListModule,
                 events: (eventsModule as any).default || (eventsModule as any).events || [],
                 scenario: scenarioModule.START_SCENARIO_TEXT || "",
                 characterCreationQuestions: (scenarioModule as any).CHARACTER_CREATION_QUESTIONS || null,
                 backgroundMappings: bgMappingsModule.backgroundMappings || {},
                 getSystemPromptTemplate: systemPromptModule.getSystemPromptTemplate,
-                getRankInfo: systemPromptModule.getRankInfo,
+                getRankInfo: (systemPromptModule.getRankInfo as any),
                 wikiData: wikiDataModule || {},
                 characterMap: charMapModule || {},
                 extraMap: extraMapModule || {},
