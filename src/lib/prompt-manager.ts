@@ -1,5 +1,6 @@
-import { getMoodPrompts, MoodType } from '@/data/prompts/moods';
+import { getMoodPrompts, MoodType } from '../data/prompts/moods';
 import { RelationshipManager } from './relationship-manager';
+import { LoreConverter } from './lore-converter';
 
 interface SpawnRules {
     locations?: string[];
@@ -62,9 +63,10 @@ interface GameState {
     availableExtraImages?: string[]; // Added
     isDirectInput?: boolean;
     getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
-    constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
+    constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string;[key: string]: string };
     lore?: any;
     activeGameId?: string; // Added for game-specific logic
+    backgroundMappings?: Record<string, string>; // Added for Wuxia Korean keys
 }
 
 export class PromptManager {
@@ -82,7 +84,7 @@ export class PromptManager {
         // If state.constants is missing, we should NOT fallback to God Bless You data.
         const famousCharactersDB = state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded.";
 
-        const availableChars = PromptManager.getAvailableCharacters(state); // Usually 20~30KB
+        // const availableChars = PromptManager.getAvailableCharacters(state); // [REMOVED] Redundant with LoreConverter
         const availableExtra = PromptManager.getAvailableExtraCharacters(state) || "None";
         const availableBackgrounds = PromptManager.getAvailableBackgrounds(state); // Heavy list
 
@@ -103,7 +105,6 @@ export class PromptManager {
             // We use JSON stringify with indentation for readability (LLMs understand formatted JSON well).
             // [FIX] Use deterministic sort for Cache Stability
             try {
-                const { LoreConverter } = await import('@/lib/lore-converter');
                 // [Optimization] Convert JSON to Markdown to save 30-40% tokens
                 loreContext = `
 ## [🌏 WORLD KNOWLEDGE BASE (LORE)]
@@ -133,28 +134,24 @@ ${loreContext}
 
 ---
 
-${state.constants?.CORE_RULES || ""}
+${state.constants?.WUXIA_SYSTEM_PROMPT_CONSTANTS || state.constants?.CORE_RULES || ""}
 
 ---
 
 ### [📚 Reference Data (Context Caching Optimized)]
-**1. Available Characters (추가 등장 가능 인물)**
-⚠️ **WARNING**: When introducing a new character from this list, YOU MUST STRICTLY ADHERE to the provided [Appearance] details (Hair, Eyes, Impression).
-- DO NOT invent or change their hair color/eye color.
-- If appearance is not specified, describe them vaguely (e.g., "A mysterious aura") rather than making up specifics.
-${availableChars}
+
 
 **2. Available Extra Characters (엑스트라/단역)**
 ${availableExtra}
 
 **3. Available Backgrounds (사용 가능 배경)**
 # Background Output Rule
-- When the location changes, output the \`<배경>\` tag with an **English Keyword**.
+- When the location changes, output the \`<배경>\` tag with a **Korean Keyword** from the list below.
 - **STRICT RULE**: You must SELECT from the provided list below. **Do NOT invent new background filenames.**
 - If you cannot find an exact match, use the most similar existing background from the list.
-- **Format**: \`<배경>Category_Location_Detail\`
-- **Variant Handling**: If the list shows \`Store(Convenience, laundry)\`, valid outputs are \`<배경>Store_Convenience\` or \`<배경>Store_laundry\`. DO NOT output \`<배경>Store_Restaurant\`.
-- \`<배경>반지하\` (X) - DO NOT use Korean.
+- **Format**: \`<배경>Category_Location\` (e.g., \`<배경>객잔_1층\`)
+- **Variant Handling**: Match the exact key provided.
+- \`<배경>반지하\` (X) - DO NOT use invalid keys.
 ${availableBackgrounds}
 
 **4. Character Emotions (사용 가능 감정)**
@@ -659,6 +656,31 @@ ${spawnCandidates || "None"}
     }
 
     static getAvailableBackgrounds(state: GameState): string {
+        // [New] Support for Korean Keys (Wuxia)
+        if (state.activeGameId === 'wuxia' && state.backgroundMappings) {
+            const keys = Object.keys(state.backgroundMappings).sort();
+
+            // Group by Prefix (e.g. "객잔_")
+            const groups: Record<string, string[]> = {};
+
+            keys.forEach(key => {
+                const parts = key.split('_');
+                const prefix = parts[0];
+                const detail = parts.slice(1).join('_'); // Rest
+
+                if (!groups[prefix]) groups[prefix] = [];
+                if (detail) groups[prefix].push(detail);
+                else groups[prefix].push('[기본]'); // No detail
+            });
+
+            const sortedPrefixes = Object.keys(groups).sort();
+
+            return sortedPrefixes.map(prefix => {
+                const details = groups[prefix].sort().join(', ');
+                return `- [${prefix}] ${details}`;
+            }).join('\n');
+        }
+
         const relevantBackgrounds = state.availableBackgrounds || [];
 
         // Group by Category to save tokens and improve AI understanding

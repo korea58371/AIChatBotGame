@@ -1,66 +1,66 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Gu-pa / Orthodox)",
+    "sub_domain": "문파 (구파일방 / 정파)",
     "faction_profile": {
-        "name": "아미파 (Emei Sect / 峨嵋派)",
+        "name": "아미파 (峨嵋派)",
         "location": {
-            "province": "Sichuan (사천성 / 四川省)",
-            "mountain": "Mt. Emei (Emeishan / 峨嵋山) - Known for its steep cliffs and sea of clouds."
+            "province": "사천성 (四川省)",
+            "mountain": "아미산 (峨嵋山) - 가파른 절벽과 운해로 유명."
         },
         "heritage": {
-            "founder": "Guo Xiang (곽양) in some lore, or a Buddhist Nun master.",
-            "philosophy": "Buddhist (Female Monks / Bhikkhuni). Strong moral code but can be dogmatic.",
-            "trait": "Predominantly female. Men can join as lay disciples but rarely hold high power."
+            "founder": "곽양 (郭襄) 혹은 불교 비구니.",
+            "philosophy": "불가 (비구니/여승). 도덕적 잣대가 엄격하고 때로 독선적임.",
+            "trait": "여초 문파. 남성 속가제자도 있으나 핵심 권력은 여승이 쥠."
         },
         "status": {
-            "tier": "Major Sect (One of the Nine Great Sects).",
-            "political_role": "A strong voice in the Alliance. Often conflicts with Wudang or Shaolin over philosophy."
+            "tier": "구파일방의 일원 (명문).",
+            "political_role": "맹 내에서 발언권이 강함. 철학적 차이로 무당이나 소림과 자주 대립함."
         }
     },
     "characteristics": {
-        "archetype": "Battle Nun / Swordstress",
+        "archetype": "전투 승려 / 여검객 (戰鬪僧侶 / 女劍客)",
         "combat_style": {
-            "summary": "Fast, Sharp, and Ruthless against evil.",
-            "weapons": "Sword (Geom) and Whisk (Bul-jin).",
-            "attribute": "Sharpness and Illusion."
+            "summary": "빠르고 날카로우며, 악에게 무자비함.",
+            "weapons": "검 (劍) 및 불진 (拂塵).",
+            "attribute": "예리함과 환영."
         }
     },
     "martial_arts_library": {
         "signature_ultimate": {
-            "name": "멸절검법 (Extinction Sword / 滅絕劒法)",
-            "description": "Cruel and overwhelming sword art designed to eradicate evil completely.",
-            "type": "Offensive Sword"
+            "name": "멸절검법 (滅絕劒法)",
+            "description": "악을 완전히 근절하기 위해 창안된 잔혹하고 압도적인 검법.",
+            "type": "공격형 검법"
         },
         "internal_energy": {
             "list": [
-                "아미구음공 (Emei Nine Yin Art)",
-                "보리심법 (Bodhi Heart Method)"
+                "아미구음공 (峨嵋九陰功)",
+                "보리심법 (菩提心法)"
             ]
         },
         "sword_arts": {
             "list": [
-                "아미구파일방검 (Emei Nine Six One Sword)",
-                "표설천운검 (Drifting Snow Cloud Sword)",
-                "금정신검 (Golden Top Divine Sword)"
+                "아미구파일방검 (峨嵋九派一榜劍)",
+                "표설천운검 (瓢雪穿雲劍)",
+                "금정신검 (金頂神劍)"
             ]
         },
         "palm_and_fist": {
             "list": [
-                "금광장 (Golden Light Palm)",
-                "표설적운장 (Snow Drifting Cloud Palm)"
+                "금광장 (金光掌)",
+                "표설적운장 (瓢雪積雲掌)"
             ]
         },
         "movement": {
             "list": [
-                "흑정령 (Black Spirit Crossing)"
+                "흑정령 (黑精靈)"
             ]
         }
     },
     "narrative_role": {
         "role": [
-            "The strict, conservative faction that opposes the protagonist's unconventional methods.",
-            "Home of a heroine who is torn between her sect's strict rules and her love for the protagonist.",
-            "A powerful ally that provides swift justice."
+            "주인공의 파격적인 행보에 반대하는 엄격하고 보수적인 세력.",
+            "규율과 사랑 사이에서 갈등하는 히로인의 소속 문파.",
+            "악을 신속하게 처단하는 강력한 아군."
         ]
     }
 }

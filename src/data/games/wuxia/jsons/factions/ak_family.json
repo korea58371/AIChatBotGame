@@ -1,55 +1,55 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Families (Minor or Major Families depending on setting)",
+    "sub_domain": "세가 (설정에 따라 중소 혹은 대형 세가)",
     "faction_profile": {
-        "name": "산동악가 (Shandong Ak Family / 山東岳家)",
+        "name": "산동악가 (山東岳家)",
         "alias": [
-            "Descendants of Yue Fei (악왕의 후예)",
-            "The Spear of Loyalty (충절의 창)"
+            "악왕의 후예 (岳王後裔)",
+            "충절의 창 (忠節之槍)"
         ],
         "location": {
-            "province": "Shandong (산동성 / 山東省)",
-            "city": "Jinan (제남 / 濟南)",
+            "province": "산동성 (山東省)",
+            "city": "제남 (濟南)",
             "landmarks": [
-                "Daming Lake (대명호 / 大明湖) - A scenic retreat for training.",
-                "Thousand Buddha Mountain (천불산 / 天佛山)",
-                "Yellow River (황하 / 黃河) - Symbol of their rough and grand spirit."
+                "대명호 (大明湖) - 수련을 위한 절경.",
+                "천불산 (天佛山)",
+                "황하 (黃河) - 거칠고 웅장한 기백의 상징."
             ],
-            "meta_note": "Historically, General Yue Fei was from Henan, not Shandong. In Korean Wuxia, this is accepted as a fictional adaptation or explained as descendants moving to Shandong."
+            "meta_note": "역사적으로 악비 장군은 산동 출신이 아니나, 한국 무협에서는 창작적 허용으로 받아들여짐."
         },
         "heritage": {
-            "ancestor": "General Yue Fei (악비 / 岳飛) - The God of War and symbol of loyalty.",
-            "ideology": "Serve the country with utmost loyalty (Jingchungboguk / 盡忠報國)."
+            "ancestor": "악비 (岳飛) - 군신(軍神)이자 충절의 상징.",
+            "ideology": "진충보국 (盡忠報國) - 나라에 충성을 다함."
         },
         "status": {
-            "tier": "Often depicted as a prestigous martial family, sometimes rivalling the Five Great Families.",
-            "specialty": "Spear Arts (Chang-beop) - Rare among noble families who usually prefer swords."
+            "tier": "오대세가에 필적하는 명문가로 묘사됨.",
+            "specialty": "창법 (槍法) - 검을 선호하는 명문가들 사이에서 드문 창 명가."
         }
     },
     "characteristics": {
-        "archetype": "General / Soldier / Patriot",
+        "archetype": "장군 / 군인 / 애국자 (將軍 / 軍人 / 愛國者)",
         "personality": [
-            "Rigid and upright (Military discipline).",
-            "Values honor and loyalty above life.",
-            "Often acts as a bridge between the Murim and the Imperial Military."
+            "엄격하고 강직함 (보수적인 군대식 규율).",
+            "목숨보다 명예와 충성을 중시함.",
+            "무림과 관군 사이의 가교 역할."
         ],
         "combat_style": {
-            "summary": "Military Spear Arts designed for war.",
-            "weapon": "Great Spear (Jang-chang / 長槍).",
-            "tactics": "Linear, destructive, and grand movements suitable for the battlefield rather than duels.",
-            "vibe": "Overwhelming momentum like the Yellow River."
+            "summary": "전쟁을 위해 고안된 실전 창법.",
+            "weapon": "장창 (長槍).",
+            "tactics": "개인 대결보다 전장에서의 파괴력과 직선적인 움직임 중시.",
+            "vibe": "황하와 같은 압도적인 기세."
         },
         "contradiction": {
-            "description": "Their loyalty to the Imperial Court can lead to conflicts with the independent spirit of the Murim world."
+            "description": "관부에 대한 충성심으로 인해 무림의 독립적인 기풍과 충돌하기도 함."
         }
     },
     "martial_arts_library": {
         "internal_energy": {
-            "style": "Explosive and masculine",
+            "style": "폭발적이고 남성적임 (양강)",
             "list": [
                 {
-                    "name": "폭렬심법 (Explosive Heat Heart Method)",
-                    "effect": "Generates explosive Yang energy."
+                    "name": "폭렬심법 (爆烈心法)",
+                    "effect": "폭발적인 양기를 생성함."
                 },
                 {
                     "name": "일원심법 (One Origin Heart Method)"
@@ -60,34 +60,34 @@
             ]
         },
         "spear_arts": {
-            "style": "Battlefield Spear (Grand and Fierce)",
+            "style": "전장 창법 (웅장하고 맹렬함)",
             "list": [
                 {
-                    "name": "사십구식악가창법 (49-Style Ak Family Spear)",
-                    "description": "The foundation of their martial arts, derived from military drills."
+                    "name": "악가사십구식창법 (岳家四十九式槍法)",
+                    "description": "군사 훈련에서 유래한 악가 창법의 기초."
                 },
                 {
-                    "name": "구십육수광풍창 (96-Hand Mad Wind Spear)",
-                    "description": "Fast and chaotic attacks like a storm."
+                    "name": "구십육수광풍창 (九十六手狂風槍)",
+                    "description": "폭풍처럼 빠르고 변화무쌍한 공격."
                 },
                 {
-                    "name": "청룡천강창 (Blue Dragon Heavenly Descent Spear)",
-                    "description": "A striking technique that descends from above with heavy force."
+                    "name": "청룡천강창 (靑龍天降槍)",
+                    "description": "하늘에서 내려꽂는 묵직한 일격."
                 },
-                "조화풍운창 (Creation Wind and Cloud Spear)",
-                "홍주난비류 (Red Province Chaotic Flight Flow)",
-                "파천구창 (Heaven Breaking Nine Spear)"
+                "조화풍운창 (造化風雲槍)",
+                "홍주난비류 (紅洲亂飛流)",
+                "파천구창 (破天九槍)"
             ]
         },
         "related_arts": [
-            "Eagle Claw Fist (응조권) - Legend says Yue Fei created this.",
-            "Eight Section Brocade (팔단금) - Health exercise attributed to Yue Fei."
+            "응조권 (鷹爪拳) - 악비가 창안했다는 전설이 있음.",
+            "팔단금 (八段錦) - 악비가 전했다는 건강 기공법."
         ]
     },
     "narrative_role": [
-        "The 'Lawful Good' ally who is stubborn but reliable.",
-        "A character who questions the protagonist's morality based on 'Loyalty to the State'.",
-        "Rivals to the Hebei Peng Family (Blade vs Spear, Strength vs Discipline).",
-        "Guardians of the Shandong region against pirates or corrupt officials."
+        "우직하지만 믿음직한 '질서 선(Lawful Good)'의 아군.",
+        "주인공의 도덕성을 '국가에 대한 충성'의 관점에서 시험하는 역할.",
+        "하북팽가의 라이벌 (도 vs 창, 힘 vs 규율).",
+        "산동 지역을 왜구나 탐관오리로부터 지키는 수호자."
     ]
 }

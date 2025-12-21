@@ -1,109 +1,109 @@
 {
-    "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Power System & Realms (Gyeong-ji / 境地)",
-    "note": "Fame (명성) is merely social reputation. Internal Energy (내공) is the true indicator of strength.",
+    "domain": "무협 (武俠)",
+    "sub_domain": "힘의 체계 및 경지 (境地)",
+    "note": "명성은 사회적 평판일 뿐이다. 내공이야말로 강함의 진정한 척도이다.",
     "core_concepts": {
         "qi_states": {
-            "mist": "Gi-che (Failed to condense, hazy)",
-            "liquid": "Aek-che (Water-like flow)",
-            "mercury": "Solid Liquid (High density)",
-            "solid": "Go-che (Crystallized)",
-            "void": "Mu-hyeong (Returning to nature)"
+            "mist": "기체 (내공이 흐릿하게 퍼진 상태)",
+            "liquid": "액체 (물처럼 흐르는 상태)",
+            "mercury": "점성 액체 (수은처럼 밀도가 높은 상태)",
+            "solid": "고체 (결정화된 상태)",
+            "void": "무형 (자연으로 돌아간 상태)"
         }
     },
     "realm_hierarchy": {
         "삼류": {
-            "name": "삼류",
+            "name": "삼류 (三流)",
             "status": "입문 단계",
-            "capability": "Physical strength dependent. Mimicking forms.",
-            "min_internal_energy": "0~5 years",
-            "enlightenment": "Memorizing sequences. Understanding form over principle.",
-            "physical_changes": "Danjeon not formed or faint. Slightly stronger bones than commoners.",
-            "qi_quality": "Distracted/Scattered (산만함). Hard to gather.",
+            "capability": "육체적 힘에 의존한다. 초식의 겉모양만 흉내 내는 수준이다.",
+            "min_internal_energy": "0~5년",
+            "enlightenment": "초식 암기. 원리보다는 형태를 이해하는 단계.",
+            "physical_changes": "단전이 형성되지 않았거나 희미하다. 일반인보다 뼈가 약간 튼튼한 정도.",
+            "qi_quality": "산만함. 기를 모으기 어렵다.",
             "condition": {
                 "min_neigong": 0
             }
         },
         "이류": {
-            "name": "이류",
+            "name": "이류 (二流)",
             "status": "숙련 단계",
-            "capability": "Can use forms in combat. Concentrates Qi for impact.",
-            "min_internal_energy": "10 years (approx 1/6 Cycle)",
-            "enlightenment": "Understanding flow and linkage of techniques.",
-            "physical_changes": "Lower Danjeon (하단전) formed. Some of 12 Meridians opened.",
-            "qi_quality": "Gas/Mist (기체). Hazy fog. Cannot project externally.",
+            "capability": "실전에서 초식을 사용할 수 있다. 타격 시 기를 집중시킬 수 있다.",
+            "min_internal_energy": "10년 (약 1/6 갑자)",
+            "enlightenment": "기술의 흐름과 연계를 이해한다.",
+            "physical_changes": "하단전 형성. 십이정경의 일부가 개통되었다.",
+            "qi_quality": "기체 (안개). 희뿌연 안개. 기를 외부로 방출할 수 없다.",
             "condition": {
                 "min_neigong": 10
             }
         },
         "일류": {
-            "name": "일류",
+            "name": "일류 (一流)",
             "status": "고수 단계",
-            "capability": "Infusing Qi into weapons (Sword Threads/Haze).",
-            "min_internal_energy": "20~30 years",
-            "enlightenment": "Harmony of Art and Heart. Knowing when to change forms (Byeon-cho).",
-            "physical_changes": "12 Standard Meridians (십이정경) fully opened. Unimpeded flow.",
-            "qi_quality": "Compressed Gas (압축 기체). Thicker aura, destructive when infused.",
+            "capability": "무기에 기를 주입할 수 있다 (검사/검기).",
+            "min_internal_energy": "20~30년",
+            "enlightenment": "기예와 심법의 조화. 초식의 변화(변초)를 안다.",
+            "physical_changes": "십이정경 완전 개통. 기의 흐름이 원활하다.",
+            "qi_quality": "압축 기체. 오라가 짙어지며 주입 시 파괴력을 가진다.",
             "condition": {
                 "min_neigong": 20
             }
         },
         "절정": {
-            "name": "절정",
+            "name": "절정 (絶頂)",
             "status": "당주급",
-            "capability": "Projecting Qi (Sword Qi / Geom-gi). 'Sword and Self are One' (basic).",
-            "min_internal_energy": "40~50 years (Near 1 Cycle)",
-            "enlightenment": "External Projection (Bal-gyeong).",
-            "physical_changes": "8 Extraordinary Meridians (기경팔맥) opening. Massive capacity increase.",
-            "qi_quality": "Liquid (액체). Flows like water. Forms visible Sword Qi.",
+            "capability": "기를 외부로 방출한다 (검기). '검과 나는 하나다(신검합일)'의 기초.",
+            "min_internal_energy": "40~50년 (1갑자 근접)",
+            "enlightenment": "발경(기를 쏘아냄)을 깨우친다.",
+            "physical_changes": "기경팔맥 개통 시작. 내공 수용량이 대폭 증가한다.",
+            "qi_quality": "액체. 물처럼 흐른다. 육안으로 보이는 검기를 형성한다.",
             "condition": {
                 "min_neigong": 40
             }
         },
         "초절정": {
-            "name": "초절정",
+            "name": "초절정 (超絶頂)",
             "status": "무림 거두",
-            "capability": "Sword Flux (Geom-gang). Solidified energy.",
-            "min_internal_energy": "60 years+ (1 Cycle / 1 Gapja)",
-            "enlightenment": "Unity of Mind, Qi, and Body (심기체 일치). Immediate reaction.",
-            "physical_changes": "Ren & Du Meridians (임독양맥) Opened. Small Circulation (소주천) complete. Rapid recovery.",
-            "qi_quality": "Mercury/High-Density Liquid (점성 액체). Heavy and solid. Can break Sword Qi.",
+            "capability": "검강. 응축된 기의 결정체.",
+            "min_internal_energy": "60년 이상 (1갑자)",
+            "enlightenment": "심기체(마음, 기, 몸)의 일치. 즉각적인 반응.",
+            "physical_changes": "임독양맥 타통. 소주천 완성. 회복 속도가 빠르다.",
+            "qi_quality": "점성 액체(수은). 무겁고 단단하다. 검기를 부술 수 있다.",
             "condition": {
                 "min_neigong": 60
             }
         },
         "화경": {
-            "name": "화경",
+            "name": "화경 (化境)",
             "status": "탈인간",
-            "capability": "Telekinetic Sword (I-gi-eo-geom). Formless Intent.",
-            "min_internal_energy": "120 years+ (2 Cycles) or Natural Qi",
-            "enlightenment": "Mind moves the Sword. Will over Form.",
-            "physical_changes": "Metamorphosis (환골탈태). Impurities expelled. Body reconstructed. Heaven & Earth Bridge (천지교타).",
-            "qi_quality": "Solid/Crystal (고체) or Formless (무형). Elemental attacks (Sam-mae-jin-hwa).",
+            "capability": "이기어검. 형태 없는 뜻(의)을 쓴다.",
+            "min_internal_energy": "120년 이상 (2갑자) 혹은 자연의 기.",
+            "enlightenment": "마음으로 검을 움직인다. 형태보다 의지가 앞선다.",
+            "physical_changes": "환골탈태. 불순물이 배출되고 신체가 재구성된다. 천지교타.",
+            "qi_quality": "고체 혹은 무형. 원소 공격(삼매진화)이 가능하다.",
             "condition": {
                 "min_neigong": 120
             }
         },
         "현경": {
-            "name": "현경",
+            "name": "현경 (玄境)",
             "status": "전설",
-            "capability": "Mind Sword (Sim-geom). Cutting space/intent. Harmony with Nature (Ja-yeon-che).",
-            "min_internal_energy": "Infinite/Nature Synchronization",
-            "enlightenment": "I am Nature, Nature is Me (물아일체). Insight into Life/Death.",
-            "physical_changes": "Rejuvenation (반로환동). Aging stops. Return to prime/childhood.",
-            "qi_quality": "Void & Reality (허와 실). Presence erasure. Spatial pressure.",
+            "capability": "심검(마음의 검). 공간과 의념을 벤다. 자연체.",
+            "min_internal_energy": "무한 / 자연 동화",
+            "enlightenment": "내가 자연이고 자연이 곧 나다 (물아일체). 생사에 대한 통찰.",
+            "physical_changes": "반로환동. 노화가 멈추고 전성기나 유년기로 돌아간다.",
+            "qi_quality": "허와 실. 기척을 완전히 지우거나 공간을 압박한다.",
             "condition": {
                 "min_neigong": 200
             }
         },
         "생사경": {
-            "name": "생사경",
+            "name": "생사경 (生死境)",
             "status": "신의 영역",
-            "capability": "Creation/Destruction. Ascension (Deung-seon).",
-            "min_internal_energy": "Universe/Nature itself",
-            "enlightenment": "Transcendence of Life and Death. Liberation from the mortal coil.",
-            "physical_changes": "Immortality (불로불사). Indestructible Body (금강불괴).",
-            "qi_quality": "Nothingness/Creation (무/창조). Authority/Power (권능).",
+            "capability": "창조와 파괴. 등선(신선이 되어 하늘로 오름).",
+            "min_internal_energy": "우주 / 자연 그 자체",
+            "enlightenment": "생사를 초월함. 필멸의 고리에서 벗어난다.",
+            "physical_changes": "불로불사. 금강불괴.",
+            "qi_quality": "무(無) / 창조. 권능.",
             "condition": {
                 "min_neigong": 999
             }
@@ -111,59 +111,59 @@
     },
     "summary_table": {
         "columns": [
-            "Realm",
-            "Qi Quality",
-            "Physical Change",
-            "Power"
+            "경지",
+            "기의 성질",
+            "신체 변화",
+            "위력"
         ],
         "rows": [
             [
-                "Third Rate",
-                "Scattered",
-                "None",
-                "Strength"
+                "삼류",
+                "산만함",
+                "없음",
+                "근력"
             ],
             [
-                "Second Rate",
-                "Mist (Gas)",
-                "Lower Danjeon",
-                "Forms"
+                "이류",
+                "기체(안개)",
+                "하단전",
+                "초식"
             ],
             [
-                "First Rate",
-                "Compressed Gas",
-                "12 Meridians",
-                "Qi Infusion"
+                "일류",
+                "압축 기체",
+                "십이정경",
+                "기 주입"
             ],
             [
-                "Peak",
-                "Liquid",
-                "8 Extra Meridians",
-                "Sword Qi"
+                "절정",
+                "액체",
+                "기경팔맥",
+                "검기"
             ],
             [
-                "Super Peak",
-                "Mercury",
-                "Ren/Du Meridians",
-                "Sword Flux"
+                "초절정",
+                "수은(점성)",
+                "임독양맥",
+                "검강"
             ],
             [
-                "Transformation",
-                "Solid/Formless",
-                "Metamorphosis",
-                "Telekinesis"
+                "화경",
+                "고체/무형",
+                "환골탈태",
+                "이기어검"
             ],
             [
-                "Profound",
-                "Nature/Light",
-                "Rejuvenation",
-                "Mind Sword"
+                "현경",
+                "자연/빛",
+                "반로환동",
+                "심검"
             ],
             [
-                "Life & Death",
-                "Universe",
-                "Immortality",
-                "Ascension"
+                "생사경",
+                "우주",
+                "불로불사",
+                "등선"
             ]
         ]
     }

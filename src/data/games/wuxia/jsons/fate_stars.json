@@ -1,52 +1,52 @@
 {
-    "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Mythology / Astrological Fate",
-    "concept": "108 Stars of Destiny (108 Suhojeon Stars / 108 흉성)",
+    "domain": "무협 (武俠)",
+    "sub_domain": "운명 및 점술 (Astrological Fate)",
+    "concept": "108 흉성 (수호전의 108성)",
     "origin": {
-        "source": "Water Margin (Suhojeon / 水滸傳)",
-        "historical_reference": "Bandit Leader Song Jiang and his 36/108 followers.",
+        "source": "수호전 (水滸傳)",
+        "historical_reference": "송강과 108 호걸.",
         "composition": {
             "total": 108,
-            "heavenly_spirits": "36 Tiangang (36 천강성 / 天罡星)",
-            "earthly_fiends": "72 Disha (72 지살성 / 地煞星)"
+            "heavenly_spirits": "36 천강성 (天罡星)",
+            "earthly_fiends": "72 지살성 (地煞星)"
         }
     },
     "narrative_usage": {
-        "general_rule": "Rarely depicts all 108 stars. Usually selects specific stars to define a character's innate destiny or curse.",
-        "flexibility": "Except for well-known stars like Cheonsalseong, authors adapt the abilities based on the Chinese character's meaning."
+        "general_rule": "108성을 전부 다루는 경우는 드물다. 주로 캐릭터의 타고난 운명이나 저주를 정의하기 위해 특정 별을 차용한다.",
+        "flexibility": "천살성처럼 유명한 별을 제외하고는, 작가가 한자 뜻에 맞춰 능력을 각색하여 사용한다."
     },
     "major_archetypes": [
         {
-            "name": "천살성 (Cheonsalseong / Heavenly Killer Star / 天殺星)",
-            "category": "36 Tiangang",
-            "core_trait": "Innate Murderous Intent (Killing Aura / 殺氣)",
+            "name": "천살성 (天殺星)",
+            "category": "36 천강성",
+            "core_trait": "타고난 살기 (殺氣)",
             "characteristics": [
-                "Instinctive desire to harm humans.",
-                "Loss of reason/Berserk mode upon seeing blood.",
-                "Difficulty integrating into normal society."
+                "본능적인 살육 충동.",
+                "피를 보면 이성을 잃고 광폭화한다.",
+                "평범한 사회에 섞이기 힘들다."
             ],
             "typical_roles": [
-                "Born Assassin (Salsu)",
-                "Tragic Hero fighting their destiny"
+                "천재 살수",
+                "운명에 저항하는 비극적 영웅"
             ],
-            "awakening_trigger": "Traumatic event (e.g., Death of family), or realizing the destiny late in life."
+            "awakening_trigger": "충격적인 사건(가족의 죽음 등)이나 뒤늦은 자각."
         }
     ],
     "structural_template": {
-        "description": "Template for authors to create custom star effects.",
+        "description": "작가가 별의 효과를 창작하기 위한 템플릿.",
         "36_heavenly_spirits": {
-            "implication": "Major destinies, Leaders, Overpowering fates.",
+            "implication": "주요 운명, 지도자, 압도적인 힘.",
             "examples": [
-                "Cheongwigyeong (Leader)",
-                "Cheonsalseong (Killer)",
-                "Cheonyuseong"
+                "천괴성 (우두머리)",
+                "천살성 (살육)",
+                "천유성"
             ]
         },
         "72_earthly_fiends": {
-            "implication": "Minor destinies, Specialists, Supporting roles.",
+            "implication": "작은 운명, 전문가, 조연.",
             "examples": [
-                "Jigwistar",
-                "Jisalseong"
+                "지괴성",
+                "지살성"
             ]
         }
     }

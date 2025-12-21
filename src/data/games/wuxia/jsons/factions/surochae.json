@@ -1,56 +1,56 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Sa-pa / Unorthodox)",
+    "sub_domain": "문파 (사파 / 수적)",
     "faction_profile": {
-        "name": "장강수로채 (Yangtze River Water Fortress / 長江水路寨)",
-        "official_name": "Suro-maeng (Water Route League / 水路盟)",
+        "name": "장강수로채 (長江水路寨)",
+        "official_name": "수로맹 (水路盟)",
         "location": {
-            "region": "The Yangtze River (Jang-gang).",
-            "base": "Dongting Lake (Dongjeong-ho / 洞庭湖) - Hidden fortress within the vast lake.",
-            "territory": "Controls all shipping lanes on the major rivers."
+            "region": "장강 (長江).",
+            "base": "동정호 (洞庭湖) - 호수 깊은 곳의 요새.",
+            "territory": "주요 수로의 운송권 장악."
         },
         "heritage": {
-            "nature": "Pirates / Water Bandits turned into a massive cartel.",
-            "structure": "18 Water Fortresses (Sippal-surochae)."
+            "nature": "수적/해적 연합체.",
+            "structure": "18수로채 (十八水路寨)."
         },
         "status": {
-            "tier": "Major Unorthodox Faction.",
-            "political_role": "Economic powerhouse (tolls/smuggling). Rivals with Nokrim (Mountain Bandits)."
+            "tier": "사파 거대 세력.",
+            "political_role": "경제적 실세 (통행세/밀수). 녹림(산적)과 라이벌."
         }
     },
     "characteristics": {
-        "archetype": "Pirate / Marine",
+        "archetype": "수적 / 해적 (Pirate)",
         "combat_style": {
-            "summary": "Invincible on water. Specialists in swimming, breath holding, and fighting on rocking boats.",
-            "weapons": "Oars, Harpoons, Water-parting Blades.",
-            "advantage": "Can hold breath for hours (Gwi-sik-dae-beop)."
+            "summary": "수중전 최강. 수영, 잠수, 선상 전투 특화.",
+            "weapons": "노(櫓), 작살, 분수자(分水刺).",
+            "advantage": "귀식대법(잠수)을 통한 기습."
         }
     },
     "martial_arts_library": {
         "signature_ultimate": {
-            "name": "분수결 (Water Parting Formula)",
-            "description": "Technique to cut through water and move freely underwater.",
-            "type": "Utility / Movement"
+            "name": "분수결 (分水訣)",
+            "description": "물을 가르고 자유롭게 이동하는 수공(水功).",
+            "type": "이동 / 보조"
         },
         "skills": {
             "list": [
-                "사공도법 (Boatman Saber Art)",
-                "파랑검 (Wave Breaking Sword)",
-                "수룡음 (Water Dragon Roar) - Sonic attack."
+                "사공도법 (沙工刀法)",
+                "파랑검 (波浪劍)",
+                "수룡음 (水龍吟) - 음공."
             ]
         },
         "equipment": {
             "ships": [
-                "Cheon-wang-seon (Heavenly King Ship) - Massive flagship.",
-                "Gwae-so-seon (Fast Small Ship) - Speedbots."
+                "천왕선 (天王船) - 거대함.",
+                "쾌소선 (快小船) - 쾌속정."
             ]
         }
     },
     "narrative_role": {
         "role": [
-            "The obstacle for any journey involving a river crossing.",
-            "Smugglers of illegal goods or people.",
-            "Classic rivalry: 'Mountains have Nokrim, Waters have Surochae'."
+            "강을 건너야 하는 여정의 장애물.",
+            "밀수품이나 인신매매의 배후.",
+            "'산에는 녹림, 물에는 수로채'라는 클리셰의 한 축."
         ]
     }
 }

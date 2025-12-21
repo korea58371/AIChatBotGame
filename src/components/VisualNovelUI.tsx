@@ -1269,14 +1269,18 @@ export default function VisualNovelUI() {
 
         const newStats = { ...currentStats };
 
-        // Initialize if missing
-        // Initialize if missing
-        if (!newStats.personality) newStats.personality = {
-            morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
-            openness: 0, warmth: 0, eloquence: 0, leadership: 0,
-            humor: 0, lust: 0
+        // [Fix] Deep clone nested objects to prevent mutation of INITIAL_STATS
+        newStats.relationships = { ...(newStats.relationships || {}) };
+        newStats.personality = {
+            ...(newStats.personality || {
+                morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
+                openness: 0, warmth: 0, eloquence: 0, leadership: 0,
+                humor: 0, lust: 0
+            })
         };
-        if (!newStats.skills) newStats.skills = [];
+        newStats.skills = [...(newStats.skills || [])];
+
+        // Initialize if missing (Redundant but safe)
         if (!newStats.relationships) newStats.relationships = {};
 
         if (logicResult.hpChange) newStats.hp = Math.min(Math.max(0, newStats.hp + logicResult.hpChange), newStats.maxHp);
@@ -1491,21 +1495,33 @@ export default function VisualNovelUI() {
 
         // [New] Event System Check
         // Check events based on the NEW stats
-        const eventTrigger = EventManager.checkEvents({
+        const triggeredEvents = EventManager.checkEvents({
             ...useGameStore.getState(),
             playerStats: newStats // Use the updated stats for checking
         });
 
-        if (eventTrigger) {
-            console.log("Event Triggered:", eventTrigger.id);
-            useGameStore.getState().setActiveEvent(eventTrigger);
-            if (eventTrigger.once) {
-                useGameStore.getState().addTriggeredEvent(eventTrigger.id);
-            }
-            addToast(`Event Triggered: ${eventTrigger.id}`, 'info');
+        if (triggeredEvents.length > 0) {
+            console.log("Events Triggered:", triggeredEvents.map(e => e.id));
+
+            // Set the highest priority event as "Active" for UI purposes (if needed)
+            useGameStore.getState().setActiveEvent(triggeredEvents[0]);
+
+            // Combine prompts from ALL triggered events
+            const combinedPrompt = triggeredEvents.map(e => e.prompt).join('\n\n');
+            useGameStore.getState().setCurrentEvent(combinedPrompt);
+
+            // Process 'once' flags for all triggered events
+            triggeredEvents.forEach(event => {
+                if (event.once) {
+                    useGameStore.getState().addTriggeredEvent(event.id);
+                }
+            });
+
+            addToast(`${triggeredEvents.length} Event(s) Triggered`, 'info');
         } else {
-            // Clear active event if none triggered (so it doesn't persist forever)
+            // Clear active event if none triggered
             useGameStore.getState().setActiveEvent(null);
+            useGameStore.getState().setCurrentEvent('');
         }
     };
 

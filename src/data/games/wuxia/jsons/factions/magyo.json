@@ -1,94 +1,94 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Sa-pa / Evil Sects / Final Boss)",
+    "sub_domain": "문파 (사파 / 악의 축 / 최종 보스)",
     "faction_profile": {
-        "name": "마교 (Demonic Cult / 魔敎)",
-        "official_name": "천마신교 (Heavenly Demon Divine Cult / 天魔神敎)",
+        "name": "마교 (魔敎)",
+        "official_name": "천마신교 (天魔神敎)",
         "alias": [
-            "The Cult (신교 / 神敎)",
-            "Ming Cult (명교 / 明敎)",
-            "White Lotus Cult (백련교 / 白蓮敎)",
-            "Sun and Moon Divine Cult (일월신교 / 日月神敎)"
+            "신교 (神敎)",
+            "명교 (明敎)",
+            "백련교 (白蓮敎)",
+            "일월신교 (日月神敎)"
         ],
         "location": {
-            "region": "Xinjiang (신강성 / 新疆省) - Far West.",
-            "mountain": "Mt. Tian (천산 / 天山) or Shiwan Dashan (십만대산 / 十萬大山).",
-            "base": "Heavenly Demon Palace (천마궁 / 天魔宮).",
-            "geography": "Harsh, desolate environment that breeds strong warriors."
+            "region": "신강성 (新疆省) - 서역.",
+            "mountain": "천산 (天山) 혹은 십만대산 (十萬大山).",
+            "base": "천마궁 (天魔宮).",
+            "geography": "강한 전사를 길러내는 척박하고 황량한 환경."
         },
         "ideology": {
-            "core": "Survival of the Fittest (강자존 / 强者尊).",
-            "worship": "Cheon-ma (Heavenly Demon / 天魔). Not just a god, but an absolute ruler who possesses overwhelming power.",
+            "core": "강자존 (强者尊) - 힘이 곧 정의.",
+            "worship": "천마 (天魔). 단순한 신이 아닌 압도적인 힘을 가진 절대 지배자.",
             "slogans": [
-                "신교불패 (The Divine Cult is Undefeated)",
-                "천마재림 (Return of the Heavenly Demon)",
-                "만마앙복 (Ten Thousand Demons Bow Down)",
-                "군마영세 (Eternal Rule of the Demon Host)"
+                "신교불패 (神敎不敗)",
+                "천마재림 (天魔再臨)",
+                "만마앙복 (萬魔仰伏)",
+                "군마영세 (群魔永世)"
             ]
         }
     },
     "characteristics": {
-        "archetype": "The Final Boss / Absolute Ruler",
+        "archetype": "최종 보스 / 절대 지배자 (Final Boss)",
         "structure": {
-            "leader": "Cheon-ma (Heavenly Demon) - Usually the strongest being in the world.",
-            "hierarchy": "Strict hierarchy based on strength. Even a slave can become a leader if they are strong (e.g., Muk-hyang).",
-            "elite_forces": "Demonic Army (Ma-do-gwan), Blood Squads, etc."
+            "leader": "천마 (天魔) - 현 무림 최강자.",
+            "hierarchy": "철저한 힘의 논리. 노예라도 강하면 교주가 될 수 있음.",
+            "elite_forces": "마군 (魔軍), 흑풍회 (黑風會) 등."
         },
         "combat_style": {
-            "summary": "Destructive, Overwhelming, and Heaven-Defying.",
-            "attribute": "Ma-gi (Demonic Qi / 魔氣). Dark, oppressive, and chaotic energy.",
-            "tactics": "Crushing the opponent with sheer power rather than subtle tricks. 'Might makes Right'."
+            "summary": "파괴적, 압도적, 역천(逆天).",
+            "attribute": "마기 (魔氣). 어둡고 무거우며 혼란스러운 기운.",
+            "tactics": "기교보다는 압도적인 힘으로 찍어누름. 패도(覇道)."
         }
     },
     "martial_arts_library": {
         "signature_ultimate": {
-            "name": "천마신공 (Heavenly Demon Divine Art / 天魔神功)",
-            "description": "The ultimate art of the Cult. Only the Heavenly Demon can master it.",
-            "effect": "Grants god-like power but risks consuming the user's mind with demonic energy.",
-            "components": "Encompasses Sword, Palm, Movement, and Internal energy."
+            "name": "천마신공 (天魔神功)",
+            "description": "마교의 절대 무공. 오직 천마만이 완성할 수 있음.",
+            "effect": "신에 필적하는 힘을 부여하나 정신이 마기에 잠식될 위험.",
+            "components": "검, 권, 보법, 내공을 아우르는 무학."
         },
         "internal_energy": {
-            "style": "Dark and Infinite",
+            "style": "어둠과 무한함",
             "list": [
-                "광혈천마공 (Crazy Blood Heavenly Demon Art)",
-                "혼천마공 (Chaotic Heaven Demon Art)",
-                "빙천수라마공 (Ice Heaven Asura Demon Art) - Ice variant.",
-                "천장지옥마공 (Thousand Yard Hell Demon Art)"
+                "광혈천마공 (狂血天魔功)",
+                "혼천마공 (混天魔功)",
+                "빙천수라마공 (氷天修羅魔功)",
+                "천장지옥마공 (千丈地獄魔功)"
             ]
         },
         "sword_arts": {
-            "style": "Destructive Sword",
+            "style": "파괴적인 마검",
             "list": [
                 {
-                    "name": "천마삼검 (Heavenly Demon Three Swords)",
-                    "description": "Three strikes that can cut through anything. Simple yet unstoppable."
+                    "name": "천마삼검 (天魔三劍)",
+                    "description": "단 세 번의 검격으로 천하를 베는 절기."
                 },
-                "구천마검 (Nine Heavens Demon Sword)",
-                "아수라마검 (Asura Demon Sword)",
-                "천강혈룡검법 (Heaven Descending Blood Dragon Sword)"
+                "구천마검 (九天魔劍)",
+                "아수라마검 (阿修羅魔劍)",
+                "천강혈룡검법 (天降血龍劍法)"
             ]
         },
         "fist_and_palm": {
-            "style": "Annihilation",
+            "style": "파멸",
             "list": [
-                "아수라멸천장 (Asura Heaven Destroying Palm)",
-                "천마파천권 (Heavenly Demon Sky Breaking Fist)",
-                "혈수천마장 (Blood Hand Heavenly Demon Palm)",
-                "수라권 (Asura Fist)"
+                "아수라멸천장 (阿修羅滅天掌)",
+                "천마파천권 (天魔破天拳)",
+                "혈수천마장 (血手天魔掌)",
+                "수라권 (修羅拳)"
             ]
         },
         "movement": {
-            "style": "Domineering Walk",
+            "style": "군림하는 걸음",
             "list": [
-                "천마군림보 (Heavenly Demon King's Step) - Walking on air, suppressing enemies with pressure.",
-                "마룡비천신법 (Demon Dragon Soaring Sky Body Art)"
+                "천마군림보 (天魔君臨步) - 허공을 밟으며 적을 위압함.",
+                "마룡비천신법 (魔龍飛天身法)"
             ]
         }
     },
     "narrative_role": [
-        "The ultimate antagonist the protagonist must face at the end.",
-        "The faction the protagonist belongs to in 'Anti-Hero' or 'Villain Protagonist' stories.",
-        "A force of nature that forces the feuding Orthodox and Unorthodox factions to unite.",
-        "The symbol of 'Power vs Morality'."
+        "주인공이 마지막에 넘어야 할 거대한 산.",
+        "안티 히어로 혹은 악당 주인공이 소속된 세력.",
+        "정사(正邪)의 갈등을 강제 통합시키는 절대적인 공포.",
+        "'힘 vs 도덕'의 테마를 상징."
     ]
 }

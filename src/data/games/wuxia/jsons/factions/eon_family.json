@@ -1,97 +1,97 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Families (Major Families / Heterodox Families)",
+    "sub_domain": "세가 (대형 세가 / 사파 혹은 회색분자)",
     "faction_profile": {
-        "name": "진주언가 (Jinju Eon Family / 晉州彥家)",
+        "name": "진주언가 (晉州彥家)",
         "alias": [
-            "The Fist of Jinju (진주의 권)",
-            "Master of Jiangshi (강시의 주인)"
+            "진주의 주먹 (晉州之拳)",
+            "강시의 주인 (殭屍之主)"
         ],
         "location": {
-            "province": "Hebei (하북성 / 河北省)",
-            "city": "Jinju (진주현 / 晉州縣)",
-            "geo_political_conflict": "Shares the same province (Hebei) with the 'Hebei Peng Family'. Constant territorial and pride disputes."
+            "province": "하북성 (河北省)",
+            "city": "진주현 (晉州縣)",
+            "geo_political_conflict": "하북팽가와 같은 성(하북)에 위치하여 영역 및 자존심 싸움이 치열함."
         },
         "status": {
-            "tier": "High Tier (Often competes for a spot in the Five Great Families).",
-            "alignment": "Chaotic Neutral or Grey (Due to the taboo of Jiangshi arts).",
-            "reputation": "Known publicly for Fist Arts, but feared secretly for Necromancy."
+            "tier": "상위권 세가 (오대세가 진입을 노림).",
+            "alignment": "혼돈 중립 혹은 회색분자 (강시술이라는 금기 때문에).",
+            "reputation": "표면적으론 권법 명가이나, 뒤로는 사령술(강시)을 다룬다는 소문으로 공포의 대상."
         }
     },
     "characteristics": {
-        "archetype": "Necromancer Brawler / Musclehead with Dark Secrets",
+        "archetype": "강시 술사 / 어두운 비밀을 가진 역사 (力士)",
         "physique": [
-            "Born with Divine Strength (Sin-ryeok) similar to the Peng Family.",
-            "Giant stature, thick skin, large fists.",
-            "Often stereotyped as simple-minded or dull-witted (Muscle-brained)."
+            "팽가와 유사하게 천부적인 신력(神力)을 타고남.",
+            "거구, 두꺼운 피부, 큰 주먹.",
+            "단순무식하다는 편견이 있음."
         ],
         "duality": {
-            "surface": "Orthodox Fist Family (Honest, righteous, albeit rough).",
-            "hidden": "Practitioners of forbidden Jiangshi Arts (Manipulating corpses, hardening bodies like the undead)."
+            "surface": "정통 권법가 (우직하고 정의로움).",
+            "hidden": "금지된 강시술 연마 (시체 조종, 육체 경화)."
         },
         "rivalry": {
-            "target": "Hebei Peng Family (하북팽가)",
-            "dynamic": "Fist vs Blade. Both are 'Physical/Strength' families in Hebei. Eon Family is often the perennial #2."
+            "target": "하북팽가 (河北彭家)",
+            "dynamic": "권(拳) vs 도(刀). 하북의 패권을 다투는 라이벌이나 만년 2인자 취급."
         }
     },
     "martial_arts_library": {
         "internal_energy": {
-            "focus": "Body Hardening & Soul Manipulation",
+            "focus": "신체 경화 & 영혼 조작",
             "list": [
                 {
-                    "name": "대원신공 (Great Origin Divine Art)",
-                    "effect": "Hardens skin and meridians. Ultimate mastery leads to 'Blade/Sword Invulnerability'."
+                    "name": "대원신공 (大元神功)",
+                    "effect": "피부와 경락을 단단하게 함. 완성 시 도검불침."
                 },
-                "벽라환혼신공 (Jade Net Soul Return Divine Art)",
-                "환령소혼심결 (Spirit Calling Soul Dispersing Chant)"
+                "벽라환혼신공 (碧羅還魂神功)",
+                "환령소혼심결 (喚靈召魂心訣)"
             ]
         },
         "fist_arts": {
-            "style": "Destructive & Overwhelming",
+            "style": "파괴적이고 압도적임",
             "list": [
                 {
-                    "name": "언가권 (Eon Family Fist)",
-                    "description": "Signature Art. Crushes rocks with bare hands. Balanced offense and defense."
+                    "name": "언가권 (彥家拳)",
+                    "description": "언가의 대표 권법. 맨손으로 바위를 부숨. 공수 겸비."
                 },
                 {
-                    "name": "벽라신권 (Jade Net Divine Fist)",
-                    "description": "Manifests Blue Fist Qi (Kwon-gang). High damage but causes recoil damage to the user.",
+                    "name": "벽라신권 (碧羅神拳)",
+                    "description": "푸른 권강(拳罡)을 형상화. 위력이 강하나 사용자에게 반동 피해.",
                     "type": "High Risk, High Return"
                 },
-                "천횡권 (Heavenly Horizontal Fist)",
-                "강시일권 (Jiangshi One Fist)"
+                "천횡권 (天橫拳)",
+                "강시일권 (殭屍一拳)"
             ]
         },
         "qigong_body_arts": {
-            "style": "Transforming the living body into a weapon (like a Jiangshi)",
+            "style": "생체를 무기화 (강시처럼)",
             "list": [
                 {
-                    "name": "강시공 (Jiangshi Art)",
-                    "effect": "Deadens pain receptors and hardens skin. Side effects include loss of sensation and regret in old age.",
-                    "analogy": "Extreme conditioning (like Muay Thai shin conditioning) taken to a supernatural level."
+                    "name": "강시공 (殭屍功)",
+                    "effect": "통각을 차단하고 피부를 경화. 부작용으로 감각 상실 및 노년의 후회.",
+                    "analogy": "극한의 신체 단련을 초자연적인 수준으로 끌어올림."
                 },
-                "천왕법신공 (Heavenly King Dharma Body)",
-                "천산갑 (Pangolin Armor)"
+                "천왕법신공 (天王法身功)",
+                "천산갑 (穿山甲)"
             ]
         },
         "necromancy_jiangshi_arts": {
-            "status": "Forbidden / Secret Techniques",
+            "status": "금지된 비술 (Forbidden)",
             "list": [
-                "구유고혼대법 (Nine Underworlds Lone Soul Great Art)",
-                "사신박령대법 (Evil God Spirit Binding Great Art)",
-                "백골대법 (White Bone Great Art)",
-                "마령찰극구시대법 (Demon Spirit Corpse Driving Art)"
+                "구유고혼대법 (九幽孤魂大法)",
+                "사신박령대법 (邪神縛靈大法)",
+                "백골대법 (白骨大法)",
+                "마령찰극구시대법 (魔靈刹極驅屍大法)"
             ]
         },
         "movement": [
-            "마영귀신보 (Demon Shadow Ghost God Step)",
-            "귀허보 (Ghost Void Step)",
-            "귀영유유보 (Ghost Shadow Flowing Step)"
+            "마영귀신보 (魔影鬼神步)",
+            "귀허보 (鬼虛步)",
+            "귀영유유보 (鬼影悠悠步)"
         ]
     },
     "narrative_role": [
-        "The 'Dark Mirror' of the Hebei Peng Family.",
-        "A faction that tempts the protagonist with forbidden power (Jiangshi arts).",
-        "Comedic relief (Dumb muscleheads) or Horror elements (Undead soldiers), depending on the tone."
+        "하북팽가의 '어두운 거울'.",
+        "주인공을 금지된 힘(강시술)으로 유혹하는 세력.",
+        "분위기에 따라 '멍청한 근육뇌' 개그 캐릭터 혹은 '언데드 군단'을 부리는 공포의 대상이 됨."
     ]
 }

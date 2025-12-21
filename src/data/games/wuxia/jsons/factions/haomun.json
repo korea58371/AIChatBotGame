@@ -1,103 +1,103 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Organizations (Sa-pa / Unorthodox / Underworld)",
+    "sub_domain": "문파 (사파 / 암흑가 / 하오문)",
     "faction_profile": {
-        "name": "하오문 (Haomun / Lower Five Families / 下五門)",
+        "name": "하오문 (下五門)",
         "alias": [
-            "The Underworld's Eyes and Ears",
-            "Street Rats",
-            "Masters of the Red Light District"
+            "뒷골목의 눈과 귀",
+            "거리의 쥐떼",
+            "환락가의 지배자"
         ],
         "location": {
-            "region": "Distributed throughout the Central Plains (Jungwon).",
-            "bases": "Brothels (Giru), Gambling Dens (Dobak-jang), Inns (Gaekjan), Markets.",
-            "connectivity": "Ubiquitous but loosely connected compared to the Beggars' Sect."
+            "region": "중원 전역 (점조직 형태).",
+            "bases": "기루(妓樓), 도박장(賭博場), 객잔(客棧), 시장.",
+            "connectivity": "개방에 비해 조직력이 느슨함."
         },
-        "composition": "Composed of the Five Lowly Trades (Cha, Seon, Jeom, Gak, A).",
+        "composition": "하오문 오직 (차, 선, 점, 각, 아)으로 구성.",
         "structure": {
-            "Cha (車)": "Carriage Drivers (Mobility/Transport).",
-            "Seon (船)": "Boatmen (Water Transport).",
-            "Jeom (店)": "Waiters/Clerks (Jeom-so-i) in Inns and Restaurants (Eavesdropping).",
-            "Gak (腳)": "Porters/Laborers (Logistics).",
-            "A (牙)": "Brokers/Human Traffickers (Connections/Black Market)."
+            "Cha (車)": "차 (車): 마부 (운송/이동).",
+            "Seon (船)": "선 (船): 뱃사공 (수로 운송).",
+            "Jeom (店)": "점 (店): 점소이 (객잔 정보 수집).",
+            "Gak (腳)": "각 (腳): 짐꾼 (물류).",
+            "A (牙)": "아 (牙): 거간꾼 (중개/인신매매/암시장)."
         },
         "status": {
-            "alignment": "Chaotic Neutral / Mercenary.",
-            "reputation": "Despised as bottom-feeders but essential for information and illicit services.",
-            "rivalry": "Beggars' Sect (Gaebang) - Competes for info, though Haomun is less united."
+            "alignment": "혼돈 중립 / 용병 성향.",
+            "reputation": "천대받는 직업군이지만 정보와 불법 서비스의 핵심.",
+            "rivalry": "개방 (정보 경쟁)."
         }
     },
     "characteristics": {
-        "archetype": "Spy / Assassin / Courtesan",
+        "archetype": "첩자 / 암살자 / 기녀 (Spy / Assassin / Courtesan)",
         "core_business": [
-            "Information Trading: Processing fragmented gossip into valuable intel.",
-            "Assassination & Sabotage: Poisoning food, stabbing in sleep.",
-            "Entertainment & Vice: Prostitution, Gambling, Black Market."
+            "정보 거래: 흩어진 소문을 가치 있는 정보로 가공.",
+            "암살 및 사보타주: 독, 은신, 야습.",
+            "유흥 및 불법: 매춘, 도박, 암시장."
         ],
         "combat_style": {
-            "summary": "Dirty, Stealthy, and Indirect.",
+            "summary": "비열하고 은밀하며 간접적임.",
             "tactics": [
-                "Avoid fair fights. Use poison (Dok) and hidden weapons (Amgi).",
-                "Target enemies when they are eating, sleeping, or having sex.",
-                "Seduction (Saek-gong) to drain vitality or extract secrets."
+                "정면 승부를 피함. 독(毒)과 암기(暗器) 사용.",
+                "적의 식사, 수면, 성관계 등 취약한 순간을 노림.",
+                "미인계(美人計) 및 방중술(房中術)로 정기 흡수 혹은 정보 유출."
             ],
-            "weakness": "Individual combat power is low. They rely on numbers and treachery."
+            "weakness": "개인 무력이 낮아 쪽수와 속임수에 의존함."
         },
         "elite_unit": {
-            "name": "암영대 (Dark Shadow Unit)",
-            "description": "Elite assassins and spies of Haomun.",
-            "role": "Execution of high-value targets or silencing loose tongues."
+            "name": "암영대 (暗影隊)",
+            "description": "하오문의 정예 암살조.",
+            "role": "요인 암살 및 입막음."
         }
     },
     "martial_arts_library": {
         "assassination_arts": {
-            "style": "Silent and Deadly",
+            "style": "소리 없고 치명적임",
             "list": [
-                "무음검 (Soundless Sword)",
-                "밀영검 (Secret Shadow Sword)",
-                "무영삼식 (Shadowless Three Forms) - Simple but lethal moves.",
-                "암향표 (Dark Scent Throwing) - Hidden weapons."
+                "무음검 (無音劍)",
+                "밀영검 (密影劍)",
+                "무영삼식 (無影三式)",
+                "암향표 (暗香漂) - 독/암기."
             ]
         },
         "seduction_arts": {
-            "user": "Courtesans / High-ranking Female Agents",
+            "user": "기녀 / 고위 여성 요원",
             "list": [
                 {
-                    "name": "최혼염녀무 (Soul Urging Glamorous Dance)",
-                    "effect": "Hypnotic dance that lowers guard."
+                    "name": "최혼염녀무 (催魂艶女舞)",
+                    "effect": "최면을 거는 듯한 춤으로 경계심을 허묾."
                 },
-                "탕백환희소 (Soul Dissipating Joyful Laughter)",
-                "방중술 (Bedchamber Arts) - Energy draining or mind control.",
-                "몽란지염술 (Dream Orchid Extreme Glamour Art)"
+                "탕백환희소 (蕩魄歡喜笑)",
+                "방중술 (房中術) - 정기 흡수 및 세뇌.",
+                "몽란지염술 (夢蘭之艶術)"
             ]
         },
         "sound_arts": {
-            "user": "Musicians in Brothels",
+            "user": "기루의 악사",
             "list": [
-                "유명구혼 (Netherworld Soul Binding Sound)",
-                "천상신음 (Heavenly Groan/Sound)",
-                "마혼살음공 (Demon Soul Killing Sound Art)"
+                "유명구혼 (幽冥拘魂)",
+                "천상신음 (天上呻吟)",
+                "마혼살음공 (魔魂殺音功)"
             ]
         },
         "movement": {
-            "style": "Stealthy and Ghostly",
+            "style": "은신과 도주",
             "list": [
-                "무영보 (Shadowless Step)",
-                "귀허보 (Ghost Void Step)",
-                "신풍무영보 (Divine Wind Shadowless Step)"
+                "무영보 (無影步)",
+                "귀허보 (鬼虛步)",
+                "신풍무영보 (神風無影步)"
             ]
         },
         "internal_energy": {
             "list": [
-                "무영심법 (Shadowless Heart Method)",
-                "음혼신공 (Dark Soul Divine Art)"
+                "무영심법 (無影心法)",
+                "음혼신공 (陰魂神功)"
             ]
         }
     },
     "narrative_role": [
-        "The 'Information Broker' the protagonist visits when the Beggars' Sect is unavailable or too righteous.",
-        "The source of 'Poisoning' incidents in inns.",
-        "A faction that uses beauty (Courtesans) to entrap powerful figures.",
-        "The 'Underdog' faction that survives by being smarter and crueler than the orthodox masters."
+        "개방이 너무 정의로워 이용할 수 없을 때 찾는 '정보 상인'.",
+        "객잔 독살 사건의 배후.",
+        "미인계로 거물을 함정에 빠뜨리는 세력.",
+        "정파 고수들보다 더 영리하고 잔혹하게 살아남는 '언더독'."
     ]
 }

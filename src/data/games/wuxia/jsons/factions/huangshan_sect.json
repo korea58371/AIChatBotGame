@@ -1,89 +1,88 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Taoist / Artistic / Regional)",
+    "sub_domain": "문파 (도가 / 예술 / 지역 문파)",
     "faction_profile": {
-        "name": "황산파 (Huangshan Sect / 黃山派)",
+        "name": "황산파 (黃山派)",
         "alias": [
-            "Mt. Huang Sect",
-            "Descendants of Xuanyuan (헌원의 후예)",
-            "The Artistic Swordsmen"
+            "헌원의 후예",
+            "예술적인 검객들"
         ],
         "location": {
-            "province": "Anhui (안휘성 / 安徽省)",
-            "mountain": "Mt. Huang (Huangshan / 黃山)",
-            "reputation": "Known as the 'Number One Wondrous Mountain under Heaven' (중국제일기산). A holy site for Taoism and Art."
+            "province": "안휘성 (安徽省)",
+            "mountain": "황산 (黃山)",
+            "reputation": "천하제일기산 (天下第一奇山). 도가와 예술의 성지."
         },
         "heritage": {
-            "mythology": "Associated with the Yellow Emperor (Gongsun Xuanyuan / 공손헌원).",
-            "culture": "A gathering place for artists (painters, calligraphers) due to the scenery."
+            "mythology": "황제 공손헌원 (公孫軒轅)과 관련된 전설.",
+            "culture": "화가, 서예가 등이 모이는 예술의 산실."
         },
         "status": {
-            "tier": "Tier 2 or Hidden Tier (Often excluded from the 'Nine Great Sects' in Korean Wuxia despite the mountain's fame).",
-            "reasoning": "Overshadowed by the standardized '9 Sects 1 Gang' trope, but holds immense potential due to the Xuanyuan legend."
+            "tier": "2군 혹은 은거 기인 문파 (구파일방에는 보통 포함되지 않으나 명성은 높음).",
+            "reasoning": "보편적인 '구파일방' 설정에 가려져 있으나 잠재력은 높음."
         }
     },
     "characteristics": {
-        "archetype": "Artistic Hermit / Elegant Warrior",
+        "archetype": "예술가적 은둔자 / 우아한 검객 (藝術隱遁者)",
         "combat_style": {
-            "summary": "Beautiful, delicate, yet domineering.",
-            "visuals": "Movements resemble calligraphy strokes or painting techniques.",
-            "duality": "Contains both righteous Taoist arts and surprisingly vicious/aggressive techniques (Poison, Demon Claws)."
+            "summary": "아름답고 섬세하며 패도적임.",
+            "visuals": "서예나 그림을 그리는 듯한 우아한 움직임.",
+            "duality": "이중성: 정파의 무공과 독/마공(혹은 헌원의 패도)이 공존."
         }
     },
     "martial_arts_library": {
         "sword_arts": {
-            "style": "Elegant and Illusionary",
+            "style": "우아하고 환상적임",
             "list": [
                 {
-                    "name": "무영검 (Shadowless Sword)",
-                    "description": "Signature Art. So fast and stealthy it leaves no shadow. Contains hidden beauty visible only to masters."
+                    "name": "무영검 (無影劍)",
+                    "description": "그림자조차 남기지 않는 쾌검. 고수에게만 보이는 숨겨진 아름다움."
                 },
-                "분광검 (Light Splitting Sword)",
-                "적성환월검 (Red Star Illusion Moon Sword)",
-                "폭풍검 (Storm Sword)",
-                "북두검 (Big Dipper Sword)"
+                "분광검 (分光劍)",
+                "적성환월검 (赤星幻月劍)",
+                "폭풍검 (暴風劍)",
+                "북두검 (北斗劍)"
             ]
         },
         "internal_energy": {
             "list": [
-                "삼합신공 (Three Union Divine Art)",
-                "금강이합신공 (Diamond Separation Union Divine Art)",
-                "금마신공 (Gold Demon Divine Art) - Suggests a darker or more aggressive side.",
-                "미리백환공 (Maze Hundred Illusion Art)",
-                "백독비무공 (Hundred Poison Flying Mist Art) - Atypical for a righteous sect; implies poison usage."
+                "삼합신공 (三合神功)",
+                "금강이합신공 (金剛二合神功)",
+                "금마신공 (金魔神功) - 어둡고 공격적인 이면.",
+                "미리백환공 (迷籬百幻功)",
+                "백독비무공 (百毒飛霧功) - 정파답지 않은 독공."
             ]
         },
         "movement": {
-            "style": "Cloud-like and Mysterious",
+            "style": "구름처럼 신비로움",
             "list": [
-                "운해환종보 (Cloud Sea Illusion Track Step) - Inspired by the famous Sea of Clouds of Mt. Huang.",
-                "현천구성보 (Dark Heaven Nine Star Step)"
+                "운해환종보 (雲海幻踪步) - 황산의 운해를 본뜸.",
+                "현천구성보 (玄天九星步)"
             ]
         },
         "other_weapons": {
             "spear": [
-                "회선창 (Whirling Spear)"
+                "회선창 (回旋槍)"
             ],
             "axe": [
-                "패왕부 (Tyrant Axe) - Domineering style contrasting with the sect's elegance."
+                "패왕부 (覇王斧) - 우아함과 대조되는 패도적인 무공."
             ]
         },
         "hand_and_finger_arts": {
             "list": [
-                "심화벽력수 (Heart Fire Thunderbolt Hand)",
-                "금광지 (Golden Light Finger)",
-                "추혼장 (Soul Chasing Palm)",
-                "쇄심마조 (Heart Crushing Demon Claw) - Vicious technique."
+                "심화벽력수 (心火霹靂手)",
+                "금광지 (金光指)",
+                "추혼장 (追魂掌)",
+                "쇄심마조 (碎心魔爪) - 잔혹한 수법."
             ]
         },
         "formations": [
-            "오행금검진 (Five Element Gold Sword Formation)",
-            "팔절쇄천진 (Eight Severing Lock Heaven Formation)"
+            "오행금검진 (五行金劍陣)",
+            "팔절쇄천진 (八絶碎天陣)"
         ]
     },
     "narrative_role": [
-        "A sect of 'Warrior-Artists' who judge the protagonist by their taste in art as well as martial skill.",
-        "Keeper of the Yellow Emperor's ancient legacy (Hidden Dungeon/Treasure).",
-        "A faction with a duality: Beautiful scenery on the outside, but hiding 'Demon' and 'Poison' arts within."
+        "주인공의 예술적 소양을 시험하는 '문인 무객' 집단.",
+        "헌원의 유산(던전/보물)을 지키는 문파.",
+        "겉은 아름다운 선경이나 내면에 독과 마를 품은 이중적인 세력."
     ]
 }

@@ -15,8 +15,10 @@ export class EventManager {
      * @param state The full Game State (from Zustand)
      * @returns The GameEvent to trigger, or null if none.
      */
-    static checkEvents(state: any): GameEvent | null {
-        if (!state || !state.events) return null;
+    static checkEvents(state: any): GameEvent[] {
+        if (!state || !state.events) return [];
+
+        const triggeredEvents: GameEvent[] = [];
 
         // Sort events by priority (High -> Low)
         const sortedEvents = [...state.events].sort((a: any, b: any) => b.priority - a.priority);
@@ -30,17 +32,17 @@ export class EventManager {
             // 2. Evaluate Condition
             try {
                 const isConditionMet = event.condition(state);
-                console.log(`[EventManager] Checking ${event.id}: Condition=${isConditionMet} (Turn: ${state.turnCount}, Rank: ${state.playerStats?.playerRank})`);
+                // console.log(`[EventManager] Checking ${event.id}: Condition=${isConditionMet}`);
 
                 if (isConditionMet) {
                     console.log(`[EventManager] Event Triggered: ${event.id}`);
-                    return event;
+                    triggeredEvents.push(event);
                 }
             } catch (err) {
                 console.error(`[EventManager] Error evaluating event ${event.id}:`, err);
             }
         }
 
-        return null;
+        return triggeredEvents;
     }
 }

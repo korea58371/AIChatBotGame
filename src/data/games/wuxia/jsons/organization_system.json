@@ -1,74 +1,74 @@
 {
-    "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Organizations & Naming Conventions",
+    "domain": "무협 (武俠)",
+    "sub_domain": "단체 및 명명법",
     "definitions": {
         "Munpa (문파 / Sect)": {
-            "core_concept": "Tradition & Lineage",
+            "core_concept": "전통과 대물림 (Lineage)",
             "characteristics": [
-                "Based on a specific founder or ancestor.",
-                "Strong religious or philosophical color (Taoism, Buddhism).",
-                "Emphasis on history and succession of specific martial arts."
+                "특정한 시조나 조사(祖師)를 기반으로 한다.",
+                "강한 종교적, 철학적 색채 (도가, 불가 등).",
+                "역사와 특정 무공의 계승을 중시한다."
             ],
             "examples": [
-                "Wudang Sect (무당파)",
-                "Mount Hua Sect (화산파)",
-                "Kongtong Sect (공동파)"
+                "무당파",
+                "화산파",
+                "공동파"
             ]
         },
         "Bangpa (방파 / Faction or Gang)": {
-            "core_concept": "Interest & Profit",
+            "core_concept": "이익과 목적 (Interest)",
             "characteristics": [
-                "Formed by individuals with shared interests or goals.",
-                "Less bound by ancient tradition or religion compared to Munpa.",
-                "Organizational structure is prioritized over lineage."
+                "공통된 이익이나 목표를 가진 개인들이 결성한다.",
+                "문파에 비해 전통이나 종교적 색채가 옅다.",
+                "혈통보다는 조직의 체계와 실리를 우선한다."
             ],
-            "note": "While distinct in definition, the terms are often used interchangeably in casual context."
+            "note": "엄밀한 정의는 다르지만, 일상적으로는 혼용되어 쓰이기도 한다."
         }
     },
     "naming_suffixes": {
-        "description": "The last character of an organization's name determines its type and scale.",
+        "description": "단체 이름의 마지막 글자는 그 성격과 규모를 결정한다.",
         "list": [
             {
-                "suffix": "Pa (파 / 派)",
-                "meaning": "Sect / School",
-                "nuance": "Religious or regional martial arts group. Usually located on a mountain.",
-                "example": "Hwasan-pa (화산파)"
+                "suffix": "파 (派)",
+                "meaning": "문파 / 학파",
+                "nuance": "종교적이거나 지역 기반의 무학 집단. 주로 산에 위치한다.",
+                "example": "화산파"
             },
             {
-                "suffix": "Bang (방 / 幇)",
-                "meaning": "Gang / Union",
-                "nuance": "Interest-based group, often lower class or street-level, but can be massive.",
-                "example": "Gaebang (Beggars' Sect / 개방), Ha-o-bang (하오방)"
+                "suffix": "방 (幇)",
+                "meaning": "조직 / 결사",
+                "nuance": "이익 기반 집단. 하층민이나 뒷골목 조직이 많지만 규모가 거대할 수도 있다.",
+                "example": "개방, 하오방"
             },
             {
-                "suffix": "Mun (문 / 門)",
-                "meaning": "Gate / Clan",
-                "nuance": "Family-based or a specific school of thought. Often implies a bloodline or strict master-disciple bond.",
-                "example": "Sacheon Tang-mun (Tang Family / 사천당문)"
+                "suffix": "문 (門)",
+                "meaning": "가문 / 학파",
+                "nuance": "혈연 중심의 가문이나 특정 사상을 공유하는 학파. 엄격한 사제 관계를 암시한다.",
+                "example": "사천당문"
             },
             {
-                "suffix": "Gung (궁 / 宮)",
-                "meaning": "Palace",
-                "nuance": "Grand, mysterious, isolated, or extremely powerful. Often implies royalty or divine status.",
-                "example": "Bukhae Bing-gung (North Sea Ice Palace / 북해빙궁), Podallap-gung (포달랍궁)"
+                "suffix": "궁 (宮)",
+                "meaning": "궁전",
+                "nuance": "웅장하고 신비롭거나, 고립된 초강대 세력. 왕족이나 신적 지위를 암시하기도 한다.",
+                "example": "북해빙궁, 포달랍궁"
             },
             {
-                "suffix": "Bo (보 / 堡)",
-                "meaning": "Fortress / Castle",
-                "nuance": "Military-style base or a heavily fortified family residence.",
-                "example": "Taewon Jin-bo (태원진보)"
+                "suffix": "보 (堡)",
+                "meaning": "요새 / 성채",
+                "nuance": "군사적 성격의 기지나 방비가 철저한 가문의 거주지.",
+                "example": "태원진보"
             },
             {
-                "suffix": "Jang (장 / 莊)",
-                "meaning": "Manor / Villa",
-                "nuance": "Wealthy private residence, merchant guild base, or a neutral territory.",
-                "example": "Myeong-wang-jang (명왕장)"
+                "suffix": "장 (莊)",
+                "meaning": "장원 / 별장",
+                "nuance": "부유한 사유지, 상단 본거지, 혹은 중립적인 영토.",
+                "example": "명왕장"
             },
             {
-                "suffix": "Hoe (회 / 會)",
-                "meaning": "Society / Association",
-                "nuance": "Alliance, merchant guild, or a gathering for a specific purpose.",
-                "example": "Cheon-ji-hoe (천지회)"
+                "suffix": "회 (會)",
+                "meaning": "협회 / 모임",
+                "nuance": "연합, 상인 조합, 또는 특정 목적을 위한 일시적/영구적 모임.",
+                "example": "천지회"
             }
         ]
     }

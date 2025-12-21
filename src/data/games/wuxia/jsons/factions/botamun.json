@@ -1,97 +1,97 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Buddhist / Island / Hidden Sects)",
+    "sub_domain": "문파 (불교 / 도서 / 은세 문파)",
     "faction_profile": {
-        "name": "보타문 (Botamun / Putuo Sect / 普陀門)",
+        "name": "보타문 (普陀門)",
         "alias": [
-            "South Sea Putuo Hermitage (남해 보타암)",
-            "Sanctuary of Avalokitesvara (관음성지)",
-            "Guardians of the East Sea (동해의 수호자)"
+            "남해 보타암 (南海普陀庵)",
+            "관음성지 (觀音聖地)",
+            "동해의 수호자 (東海守護者)"
         ],
         "location": {
-            "province": "Zhejiang (절강성 / 浙江省)",
-            "region": "Zhoushan Archipelago (주산열도 / 舟山列島)",
-            "mountain": "Mt. Putuo (보타산 / 普陀山) - One of the Four Sacred Mountains of Buddhism.",
-            "geography": "An island with an octagonal mountain shape. Scenic and isolated from the mainland.",
+            "province": "절강성 (浙江省)",
+            "region": "주산열도 (舟山列島)",
+            "mountain": "보타산 (普陀山) - 불교 4대 명산 중 하나.",
+            "geography": "팔각형 모양의 섬. 절경이며 육지와 격리됨.",
             "landmarks": [
-                "Mt. Buljeong (불정산 - Highest Peak)",
-                "Puji Temple (보제사), Fayu Temple (법우사), Huiji Temple (혜제사)",
-                "Sound Adjusting Cave (조음동 / 調音洞)"
+                "불정산 (佛頂山 - 최고봉)",
+                "보제사 (普濟寺), 법우사 (法雨寺), 혜제사 (慧濟寺)",
+                "조음동 (調音洞)"
             ]
         },
         "heritage": {
-            "religion": "Buddhism (Bul-ga / 不可).",
-            "worship": "Avalokitesvara (Gwan-eum Bosal / 観音菩薩).",
-            "composition": "Predominantly Nuns (Bhikkhuni) or Monks. Similar to Emei but more isolated."
+            "religion": "불가 (佛家).",
+            "worship": "관세음보살 (觀世音菩薩).",
+            "composition": "대부분 비구니(여승) 혹은 승려. 아미파와 비슷하나 더 폐쇄적임."
         },
         "status": {
-            "tier": "Hidden Master Sect (Not typically in the Nine Great Sects, but elite).",
-            "role": "Deus Ex Machina (Appears only during great crises).",
-            "reputation": "Mysterious defenders who specialize in exorcism (Anti-Demon)."
+            "tier": "은거 기인 문파 (구파일방에는 잘 포함되지 않으나 실력은 최상위).",
+            "role": "데우스 엑스 마키나 (큰 위기 때만 등장).",
+            "reputation": "퇴마(Anti-Demon)에 특화된 신비로운 수호자."
         }
     },
     "characteristics": {
-        "archetype": "Island Monastic Order / Demon Hunters",
+        "archetype": "도서 승려 집단 / 퇴마사 (島嶼僧侶 / 退魔師)",
         "combat_style": {
-            "summary": "Buddhist Divine Light & Vast Ocean Power.",
-            "specialty": "Demon Subduing (Hang-ma / 降魔) - Highly effective against Demonic Cults or evil spirits.",
-            "vibe": "Holy, majestic, and vast like the sea."
+            "summary": "불가의 신성한 빛과 바다의 웅장한 힘.",
+            "specialty": "항마 (降魔) - 마교나 악령에게 치명적.",
+            "vibe": "성스럽고, 바다처럼 웅장함."
         },
         "duality": {
-            "light": "Saviours appearing from the sea to stop the Demonic Cult.",
-            "shadow": "Corrupt monks hiding away from the world with dark secrets (optional twist)."
+            "light": "마교를 막기 위해 바다 건너 나타난 구원자.",
+            "shadow": "세상과 단절되어 어두운 비밀을 간직한 타락한 승려들 (선택적 반전)."
         }
     },
     "martial_arts_library": {
         "internal_energy": {
-            "style": "Oceanic and Vast",
+            "style": "바다와 같이 넓고 깊음",
             "list": [
                 {
-                    "name": "창해심법 (Azure Sea Heart Method)",
-                    "effect": "Accumulates Qi as vast and deep as the ocean."
+                    "name": "창해심법 (滄海心法)",
+                    "effect": "대해와 같이 넓고 깊은 기를 축적함."
                 },
-                "창해심결 (Azure Sea Heart Chant)"
+                "창해심결 (滄海心訣)"
             ]
         },
         "palm_arts": {
-            "style": "Anti-Evil / Holy",
+            "style": "항마 / 신성 (Anti-Evil)",
             "list": [
                 {
-                    "name": "항마수미신장 (Demon Subduing Sumeru Divine Palm)",
-                    "description": "Signature Ultimate. Rivals the 'Tathagata Palm'. Causes internal rupture in those with evil Qi (Demon detectors).",
-                    "effect": "Holy damage boost against Dark/Demonic alignment."
+                    "name": "항마수미신장 (降魔須彌神掌)",
+                    "description": "보타문의 절기. 여래신장에 필적함. 사악한 기운을 가진 자에게 내부 파열을 일으킴 (악인 탐지).",
+                    "effect": "암흑/마공 속성에 대한 신성 피해 증폭."
                 },
-                "동자배불 (Boy Worshipping Buddha)",
-                "복마앙불 (Demon Subduing Looking Up at Buddha)",
-                "항마불광 (Demon Subduing Buddha Light)",
-                "수미단열 (Sumeru Severing Heat)"
+                "동자배불 (童子拜佛)",
+                "복마앙불 (伏魔仰佛)",
+                "항마불광 (降魔佛光)",
+                "수미단열 (須彌斷熱)"
             ]
         },
         "sword_arts": {
-            "style": "Many Hands (Speed) & Enlightenment",
+            "style": "천수(千手)의 속도와 깨달음",
             "list": [
                 {
-                    "name": "대비천수검 (Great Compassion Thousand Hand Sword)",
-                    "description": "Creates an illusion of a thousand arms striking simultaneously."
+                    "name": "대비천수검 (大悲千手劍)",
+                    "description": "천 개의 팔이 동시에 공격하는 듯한 환영을 만듦."
                 },
                 {
-                    "name": "전광제석참 (Lightning Indra Slash)",
-                    "type": "Extreme Speed (Kwae-geom) / Finishing Move."
+                    "name": "전광제석참 (電光帝釋斬)",
+                    "type": "극쾌(極快) / 필살기."
                 },
-                "일백팔사검 (108 Temple Sword)",
-                "반야보리검법 (Prajna Bodhi Sword)",
-                "칠절항마검법 (Seven Severing Demon Subduing Sword)",
-                "팔만사천보리항마검법 (84,000 Bodhi Demon Subduing Sword) - Ultimate technique.",
-                "천수일천검형 (Thousand Hand One Thousand Sword Form) - Illusion Mastery.",
-                "마라백팔검형 (Mara 108 Sword Form) - Qi Mastery.",
-                "의형십팔검 (Intent Form 18 Sword) - Intent Mastery."
+                "일백팔사검 (一百八寺劍)",
+                "반야보리검법 (般若菩提劍法)",
+                "칠절항마검법 (七絶降魔劍法)",
+                "팔만사천보리항마검법 (八萬四千菩提降魔劍法) - 최강 절기.",
+                "천수일천검형 (千手一天劍形) - 환영.",
+                "마라백팔검형 (魔羅百八劍形)",
+                "의형십팔검 (意形十八劍) - 의념."
             ]
         }
     },
     "narrative_role": [
-        "The 'Reinforcements from the Sea' when the Orthodox faction is cornered.",
-        "A sect that tests the protagonist's morality (Buddhist koans).",
-        "Rivals to the Emei Sect (Mainland Nuns vs Island Nuns).",
-        "Keepers of ancient Buddhist artifacts sealed on the island."
+        "정파가 궁지에 몰렸을 때 '바다에서 온 지원군'.",
+        "주인공의 도덕성을 시험하는 선문답의 주체.",
+        "아미파의 라이벌 (대륙의 비구니 vs 섬의 비구니).",
+        "섬에 봉인된 고대 불교 유물의 수호자."
     ]
 }

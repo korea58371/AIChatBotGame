@@ -1,100 +1,100 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "sub_domain": "세가 (오대세가)",
     "faction_profile": {
-        "name": "모용세가 (Murong Family / 慕容世家)",
+        "name": "모용세가 (慕容世家)",
         "alias": [
-            "The Yan Royals (연나라 왕족)",
-            "Masters of Mechanics and Reflection"
+            "연나라 왕족 (燕國王族)",
+            "반탄의 대가"
         ],
-        "type": "Orthodox / Noble Clan (정파 무림맹 소속 명문세가)",
+        "type": "정파 무림맹 소속 명문세가.",
         "location": {
-            "province": "Liaoning (요녕성 / 遼寧省)",
-            "city": "Shenyang (심양현 / 沈陽縣)",
-            "geo_political_status": "Located in the Northeast (Gwan-oe / Outside the Pass), slightly removed from the Central Plains."
+            "province": "요녕성 (遼寧省)",
+            "city": "심양현 (沈陽縣)",
+            "geo_political_status": "관외(관동) 지방. 중원과 약간의 거리감이 있음."
         },
         "heritage": {
-            "origin": "Descendants of the Xianbei tribe (선비족) and the Royal Family of the Yan Kingdom (연나라).",
-            "pride": "Consider themselves royalty, superior to common martial artists."
+            "origin": "선비족 (鮮卑族)과 연나라 왕실의 후예.",
+            "pride": "자신들을 황족으로 여기며 일반 무림인을 하대함."
         },
-        "political_stance": "Orthodox Alliance Member (Generic) but Ambitious/Rebellious internally.",
-        "core_goal": "Reconstruction of the Yan Empire (대연 제국 재건).",
-        "rivalry": "Namgung Family (Competes for the title of the 'Best Sword Family')."
+        "political_stance": "겉으로는 정파 맹우이나, 내부적으로는 황실 재건의 야망을 품음.",
+        "core_goal": "대연 제국 재건 (大燕帝國再建).",
+        "rivalry": "남궁세가 (검의 패권을 둠)."
     },
     "characteristics": {
-        "archetype": "Fallen Royalty / Ambitious Schemer",
+        "archetype": "몰락한 왕족 / 야심가 (沒落王族 / 野心家)",
         "personality": [
-            "Extremely proud and aristocratic.",
-            "Obsessed with etiquette but ruthless in combat.",
-            "Operates in the shadows to build power for rebellion/restoration."
+            "지나친 귀족 의식과 오만함.",
+            "예법을 중시하지만 목적을 위해선 잔혹해짐.",
+            "반역을 위한 힘을 기르며 은밀하게 행동함."
         ],
         "combat_style": {
-            "summary": "Extreme Speed (Fast Sword) and Technique over brute strength.",
+            "summary": "극쾌(極快)와 반탄(反彈). 기교파.",
             "specialty": [
-                "Dual Wielding (Sword & Saber or Dual Swords).",
-                "Reflection (Returning the opponent's force against them).",
-                "Combination of Sword (Geom) and Saber (Do) arts."
+                "쌍검/도검 병용.",
+                "반탄 (Reflection): 상대의 힘을 이용해 되돌려 침.",
+                "검(劍)과 도(刀)의 융합."
             ]
         }
     },
     "martial_arts_library": {
         "signature_technique": {
-            "name": "두전성이 (Dou Zhuan Xing Yi / 斗轉星移)",
-            "effect": "Reflecting the opponent's attack back at them.",
-            "origin": "Famous technique from 'Demi-Gods and Semi-Devils' (Tian Long Ba Bu)."
+            "name": "두전성이 (斗轉星移)",
+            "effect": "피안(彼岸)의 수법. 상대의 공격 방향을 돌리거나 위력을 되돌려 칠 수 있음.",
+            "origin": "천룡팔부의 모용복."
         },
         "internal_energy": [
             {
-                "name": "건곤무양신공 (Heaven and Earth Unscathed Divine Art)",
-                "grade": "Supreme"
+                "name": "건곤무양신공 (乾坤無恙神功)",
+                "grade": "최상승"
             },
             {
-                "name": "일월광명신공 (Sun and Moon Bright Divine Art)",
-                "grade": "Advanced"
+                "name": "일월광명신공 (日月光明神功)",
+                "grade": "상급"
             }
         ],
         "sword_arts": {
-            "style": "Extreme Speed (쾌검 / Fast Sword)",
+            "style": "극쾌 (Fast Sword)",
             "list": [
-                "건곤파섬검 (Heaven Breaking Flash Sword) - Lightning speed.",
-                "섬광분운검 (Flash Cloud Splitting Sword)",
-                "염혈검 (Flame Blood Sword) - Rare fire attribute.",
-                "쌍용선풍검 (Twin Dragon Whirlwind Sword) - Dual sword technique.",
-                "교검절룡식 (Dragon Cutting Crafty Sword)",
-                "앙천검식 (Heaven Looking Sword)"
+                "건곤파섬검 (乾坤破閃劍) - 섬광 같은 속도.",
+                "섬광분운검 (閃光分雲劍)",
+                "염혈검 (炎血劍) - 드문 화염 속성.",
+                "쌍용선풍검 (雙龍旋風劍) - 쌍검술.",
+                "교검절룡식 (巧劍絶龍式)",
+                "앙천검식 (仰天劍式)"
             ]
         },
         "saber_arts": {
-            "style": "Sharp and Fast",
+            "style": "날카롭고 빠름",
             "list": [
-                "참풍도 (Wind Slashing Saber)",
-                "응익도법 (Hawk Wing Saber)",
-                "천랑도법 (Heavenly Wolf Saber) - Foundational art.",
-                "추혼쾌도법 (Soul Chasing Fast Saber)"
+                "참풍도 (斬風刀)",
+                "응익도법 (鷹翼刀法)",
+                "천랑도법 (天狼刀法) - 기초.",
+                "추혼쾌도법 (追魂快刀法)"
             ]
         },
         "fan_arts": {
-            "description": "Used by scholars or leaders to maintain dignity while fighting.",
+            "description": "품위를 지키기 위해 사용.",
             "list": [
-                "응익분풍선",
-                "기환선법",
-                "천랑선"
+                "응익분풍선 (鷹翼分風扇)",
+                "기환선법 (奇幻扇法)",
+                "천랑선 (天狼扇)"
             ]
         },
         "movement": [
-            "무영보 (Shadowless Step)",
-            "비류신보 (Flying Flow Godly Step)",
-            "비천신보 (Flying Sky Godly Step)"
+            "무영보 (無影步)",
+            "비류신보 (飛流神步)",
+            "비천신보 (飛天神步)"
         ],
         "other_skills": [
-            "적룡조 (Red Dragon Claw)",
-            "유성지법 (Meteor Finger)"
+            "적룡조 (赤龍爪)",
+            "유성지법 (流星指法)"
         ]
     },
     "narrative_role": [
-        "The 'Hidden Boss' plotting a rebellion.",
-        "A rival who looks down on the protagonist for being a commoner.",
-        "A tragic faction trapped in the glory of the past.",
-        "Users of 'Reflection' arts, making them tricky opponents for brute-force protagonists."
+        "반란을 획책하는 '숨겨진 보스'.",
+        "주인공을 천한 신분이라 무시하는 오만한 라이벌.",
+        "과거의 영광에 갇힌 비극적인 가문.",
+        "'반사' 능력을 사용하여 힘만 믿는 주인공을 고전시킴."
     ]
 }

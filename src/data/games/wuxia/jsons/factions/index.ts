@@ -1,3 +1,9 @@
+/**
+ * 문파 데이터 진입점 (Entry Point)
+ * 
+ * 이 파일은 개별 문파 JSON 데이터들을 한곳으로 모아 관리합니다.
+ * 외부 컴포넌트나 로직에서는 이 파일을 import하여 모든 문파 데이터에 접근할 수 있습니다.
+ */
 import ak_family from './ak_family.json';
 import baijiao from './baijiao.json';
 import beast_palace from './beast_palace.json';
@@ -31,6 +37,7 @@ import tang_family from './tang_family.json';
 import weiji_family from './weiji_family.json';
 import wudang_sect from './wudang_sect.json';
 
+// 모든 문파 데이터를 하나의 객체로 묶어서 내보냅니다.
 export {
     ak_family,
     baijiao,

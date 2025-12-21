@@ -30,6 +30,9 @@ export async function serverGenerateResponse(
                 console.log(`[ServerAction] Re-hydrated Lore for ${gameState.activeGameId}. Keys: ${Object.keys(data.lore).length}`);
                 gameState.lore = data.lore;
             }
+            if (data.backgroundMappings) {
+                gameState.backgroundMappings = data.backgroundMappings;
+            }
         } catch (e) {
             console.error(`[ServerAction] Failed to re-hydrate lore for ${gameState.activeGameId}:`, e);
         }

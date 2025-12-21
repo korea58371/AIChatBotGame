@@ -65,84 +65,129 @@ export class LoreConverter {
 
         let output = "## [Great Factions of Wulin]\n\n";
 
-        // Handle both dictionary and array styles if needed, but WuxiaLore seems to use individual exports grouped
-        // Or if it's a map. Let's assume values of the object.
-        const factions = Object.values(factionsDetail);
+        const groups: { [key: string]: any[] } = {
+            "🏳️ 정파 (Orthodox Sects)": [],
+            "🏴 사파 (Unorthodox Sects)": [],
+            "⚖️ 정사지간 (Neutral/Mixed)": [],
+            "🏔️ 세외무림 (Outer Realms)": [],
+            "👿 마교/혈교 (Demonic Cults)": [],
+            "❓ 기타 (Others)": []
+        };
 
-        factions.forEach((faction: any) => {
-            if (!faction || typeof faction !== 'object' || !faction.faction_profile) return;
-
-            const profile = faction.faction_profile;
-            const chars = faction.characteristics;
-            const martial = faction.martial_arts_library;
-            const rules = faction.rules_and_protocols;
-
-            output += `### ${profile.name || 'Unknown Faction'}\n`;
-            // [Fix] Include Type/Alignment for correct AI context
-            if (profile.type) {
-                output += `- **Type**: ${profile.type}\n`;
-            }
-            if (profile.political_stance) {
-                output += `- **Stance**: ${profile.political_stance}\n`;
-            }
-            if (profile.ideology) {
-                output += `- **Ideology**: ${profile.ideology.core || ''} (${profile.ideology.goal || ''})\n`;
-            }
-            if (chars && chars.combat_style) {
-                output += `- **Combat**: ${chars.combat_style.summary || ''}\n`;
-            }
-
-            // Martial Arts Summary - Capture ALL lists
-            if (martial) {
-                output += `- **Martial Arts**: `;
-                const arts: string[] = [];
-
-                // Ultimate
-                if (martial.signature_ultimate) {
-                    arts.push(`[Ultimate] ${martial.signature_ultimate.name.split('(')[0].trim()}`);
-                }
-
-                // Iterate ALL other keys in martial object to find lists
-                Object.keys(martial).forEach(key => {
-                    if (key === 'signature_ultimate') return;
-                    try {
-                        const section = martial[key];
-                        // If it has a 'list' array
-                        if (section && Array.isArray(section.list) && section.list.length > 0) {
-                            section.list.forEach((art: string) => {
-                                if (typeof art === 'string') arts.push(art.split('(')[0].trim());
-                            });
-                        }
-                    } catch (e) { }
-                });
-                output += arts.join(', ') + "\n";
-            }
-
-            // Rules
-            if (rules && rules.core_tenets) {
-                output += `- **Rules**: ${rules.core_tenets.map((r: string) => r).slice(0, 3).join(' / ')}\n`;
-            }
-
-            // Narrative Role
-            if (faction.narrative_role) {
-                if (Array.isArray(faction.narrative_role.role)) {
-                    output += `- **Role**: ${faction.narrative_role.role.join(' ')}\n`;
-                } else if (Array.isArray(faction.narrative_role)) {
-                    output += `- **Role**: ${faction.narrative_role[0]}\n`;
-                }
-            }
-
-            output += "\n";
+        // [FIX] Sort Factions by Name for Deterministic Order (Cache Stability)
+        const sortedFactions = Object.values(factionsDetail).sort((a: any, b: any) => {
+            const nameA = a.faction_profile?.name || "";
+            const nameB = b.faction_profile?.name || "";
+            return nameA.localeCompare(nameB);
         });
 
+        sortedFactions.forEach((faction: any) => {
+            if (!faction || typeof faction !== 'object' || !faction.faction_profile) return;
+
+            const sub = (faction.sub_domain || "").replace(/\s+/g, '');
+            const align = (faction.faction_profile.status?.alignment || faction.faction_profile.heritage?.alignment || "").replace(/\s+/g, '');
+            const name = faction.faction_profile.name || "";
+
+            // Classification Logic
+            if (sub.includes("정파") || sub.includes("구파일방") || sub.includes("일방") || align.includes("정파")) {
+                groups["🏳️ 정파 (Orthodox Sects)"].push(faction);
+            } else if (sub.includes("마교") || sub.includes("혈교") || sub.includes("신교") || name.includes("마교") || name.includes("혈교")) {
+                groups["👿 마교/혈교 (Demonic Cults)"].push(faction);
+            } else if (sub.includes("세외") || sub.includes("새외") || sub.includes("북해") || sub.includes("남만")) {
+                groups["🏔️ 세외무림 (Outer Realms)"].push(faction);
+            } else if (sub.includes("사파") || sub.includes("녹림") || sub.includes("하오문") || align.includes("사파")) {
+                groups["🏴 사파 (Unorthodox Sects)"].push(faction);
+            } else if (sub.includes("중립") || align.includes("중립")) {
+                groups["⚖️ 정사지간 (Neutral/Mixed)"].push(faction);
+            } else {
+                groups["❓ 기타 (Others)"].push(faction);
+            }
+        });
+
+        // Render groups
+        const renderGroup = (title: string, list: any[]) => {
+            if (list.length === 0) return "";
+            let groupStr = `### [${title}]\n`;
+            // List is already sorted because we iterated sortedFactions
+            list.forEach(faction => {
+                groupStr += this.formatFactionDetail(faction);
+            });
+            return groupStr + "\n";
+        };
+
+        output += renderGroup("🏳️ 정파 (Orthodox Sects)", groups["🏳️ 정파 (Orthodox Sects)"]);
+        output += renderGroup("🏴 사파 (Unorthodox Sects)", groups["🏴 사파 (Unorthodox Sects)"]);
+        output += renderGroup("⚖️ 정사지간 (Neutral/Mixed)", groups["⚖️ 정사지간 (Neutral/Mixed)"]);
+        output += renderGroup("🏔️ 세외무림 (Outer Realms)", groups["🏔️ 세외무림 (Outer Realms)"]);
+        output += renderGroup("👿 마교/혈교 (Demonic Cults)", groups["👿 마교/혈교 (Demonic Cults)"]);
+        output += renderGroup("❓ 기타 (Others)", groups["❓ 기타 (Others)"]);
+
+        return output;
+    }
+
+    static formatFactionDetail(faction: any): string {
+        let output = "";
+        const profile = faction.faction_profile;
+        const chars = faction.characteristics;
+        const martial = faction.martial_arts_library;
+        const rules = faction.rules_and_protocols;
+
+        output += `#### ${profile.name || 'Unknown Faction'}\n`;
+
+        if (profile.type) output += `- **Type**: ${profile.type}\n`;
+        if (profile.political_stance) output += `- **Stance**: ${profile.political_stance}\n`;
+        if (profile.ideology) output += `- **Ideology**: ${profile.ideology.core || ''} (${profile.ideology.goal || ''})\n`;
+        if (chars && chars.combat_style) output += `- **Combat**: ${chars.combat_style.summary || ''}\n`;
+
+        // Martial Arts Summary
+        if (martial) {
+            output += `- **Martial Arts**: `;
+            const arts: string[] = [];
+
+            if (martial.signature_ultimate) {
+                arts.push(`[Ultimate] ${martial.signature_ultimate.name.split('(')[0].trim()}`);
+            }
+
+            // [FIX] Sort keys for deterministic output
+            Object.keys(martial).sort().forEach(key => {
+                if (key === 'signature_ultimate') return;
+                try {
+                    const section = martial[key];
+                    if (section && Array.isArray(section.list) && section.list.length > 0) {
+                        section.list.forEach((art: string) => {
+                            if (typeof art === 'string') arts.push(art.split('(')[0].trim());
+                        });
+                    }
+                } catch (e) { }
+            });
+            output += arts.join(', ') + "\n";
+        }
+
+        if (rules && rules.core_tenets) {
+            output += `- **Rules**: ${rules.core_tenets.map((r: string) => r).slice(0, 3).join(' / ')}\n`;
+        }
+
+        if (faction.narrative_role) {
+            if (Array.isArray(faction.narrative_role.role)) {
+                output += `- **Role**: ${faction.narrative_role.role.join(' ')}\n`;
+            } else if (Array.isArray(faction.narrative_role)) {
+                output += `- **Role**: ${faction.narrative_role[0]}\n`;
+            }
+        }
+        output += "\n";
         return output;
     }
 
     static convertMartialArtsLevels(levels: any): string {
         if (!levels || !levels.realm_hierarchy) return "";
 
-        let output = "### Power System & Realms\n"; // Changed to h3 to fit under systems if needed, but keeping separate for now
-        const realms = Object.values(levels.realm_hierarchy);
+        let output = "### Power System & Realms\n";
+        // [FIX] Sort Realms by Power Level (or Name if level missing) to ensure order
+        const realms = Object.values(levels.realm_hierarchy).sort((a: any, b: any) => {
+            const lvA = a.power_level || 0;
+            const lvB = b.power_level || 0;
+            return lvA - lvB;
+        });
 
         // Compact list
         realms.forEach((r: any) => {
@@ -169,6 +214,13 @@ export class LoreConverter {
             allChars = charactersDetail;
         }
 
+        // [FIX] Sort Characters by Name ensures deterministic string regardless of load order
+        allChars.sort((a: any, b: any) => {
+            const nameA = a.basic_profile?.이름 || "";
+            const nameB = b.basic_profile?.이름 || "";
+            return nameA.localeCompare(nameB);
+        });
+
         allChars.forEach((char: any) => {
             if (!char || !char.basic_profile) return;
             const p = char.basic_profile;
@@ -190,7 +242,9 @@ export class LoreConverter {
 
             // Social Roles
             if (social) {
-                const roles = Object.entries(social).map(([k, v]) => `${k}: ${v}`).join(' / ');
+                const roles = Object.entries(social)
+                    .sort((a, b) => a[0].localeCompare(b[0])) // Sort keys
+                    .map(([k, v]) => `${k}: ${v}`).join(' / ');
                 output += `- **Social Role**: ${roles}\n`;
             }
 
@@ -209,6 +263,15 @@ export class LoreConverter {
                 output += `- **Likes**: ${char.preferences['좋아하는 것']}\n`;
             }
 
+            // Relationships
+            if (char.relationships) {
+                const rels = Object.entries(char.relationships)
+                    .sort((a, b) => a[0].localeCompare(b[0])) // Sort keys
+                    .map(([name, desc]) => `${name}: ${desc}`)
+                    .join(' / ');
+                output += `- **Relationships**: ${rels}\n`;
+            }
+
             output += "\n";
         });
 
@@ -220,17 +283,26 @@ export class LoreConverter {
         let output = "## [World Geography & Regions]\n\n";
 
         if (geo.regions) {
-            Object.values(geo.regions).forEach((region: any) => {
-                const provinces = region.provinces.map((p: any) => {
-                    const factions = p.factions ? ` (${p.factions.map((f: string) => f.split('(')[0].trim()).join(', ')})` : '';
-                    return `${p.name.split('(')[0].trim()}${factions}`;
-                }).join(' / ');
+            // [FIX] Sort Regions
+            const sortedRegions = Object.values(geo.regions).sort((a: any, b: any) => {
+                return (a.name || "").localeCompare(b.name || "");
+            });
+
+            sortedRegions.forEach((region: any) => {
+                const provinces = region.provinces
+                    .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")) // Sort Provinces
+                    .map((p: any) => {
+                        const factions = p.factions ? ` (${p.factions.sort().map((f: string) => f.split('(')[0].trim()).join(', ')})` : '';
+                        return `${p.name.split('(')[0].trim()}${factions}`;
+                    }).join(' / ');
                 output += `- **${region.name.split('(')[0].trim()}**: ${provinces}\n`;
             });
         }
 
         if (geo.outer_realms && geo.outer_realms.factions) {
-            output += `- **Outer Realms**: ${geo.outer_realms.factions.map((f: any) => f.name.split('(')[0].trim()).join(', ')}\n`;
+            // Sort outer factions
+            const sortedOuter = [...geo.outer_realms.factions].sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+            output += `- **Outer Realms**: ${sortedOuter.map((f: any) => f.name.split('(')[0].trim()).join(', ')}\n`;
         }
         output += "\n";
         return output;
@@ -241,10 +313,16 @@ export class LoreConverter {
 
         if (weapons && weapons.weapon_categories) {
             output += "### Notable Weapons\n";
-            Object.values(weapons.weapon_categories).forEach((cat: any) => {
+            // [FIX] Sort Categories
+            const sortedCats = Object.values(weapons.weapon_categories).sort((a: any, b: any) => {
+                const s = a.summary || "";
+                return s.localeCompare(b.summary || "");
+            });
+
+            sortedCats.forEach((cat: any) => {
                 if (cat.list) {
                     const names = cat.list.map((w: any) => (typeof w === 'string' ? w : w.name).split('(')[0].trim());
-                    output += `- **${cat.summary ? cat.summary.split('.')[0] : 'Category'}**: ${names.slice(0, 5).join(', ')}\n`;
+                    output += `- **${cat.summary ? cat.summary.split('.')[0] : 'Category'}**: ${names.sort().slice(0, 5).join(', ')}\n`; // Sort items
                 }
             });
         }
@@ -255,7 +333,7 @@ export class LoreConverter {
                 const balanced = elixirs.legendary_natural_treasures.balanced_holy_items?.list || [];
                 const extreme = elixirs.legendary_natural_treasures.extreme_element_items?.list || [];
                 const all = [...balanced, ...extreme].map((e: any) => e.name.split('(')[0].trim());
-                output += `- **Legendary**: ${all.join(', ')}\n`;
+                output += `- **Legendary**: ${all.sort().join(', ')}\n`; // Sort Elixirs
             }
         }
         output += "\n";

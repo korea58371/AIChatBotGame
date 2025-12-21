@@ -6,7 +6,7 @@
             "factions": [
                 {
                     "name": "무림맹",
-                    "type": "Alliance (정파 연합)",
+                    "type": "연합 (장파)",
                     "description": "구파일방과 오대세가를 주축으로 결성된 정파 무림의 연합체. 마교와 사파의 발호를 막고 무림의 위계를 세운다.",
                     "martial_arts_style": "각 문파의 정수",
                     "location": "하남성 숭산 근처 무림맹 본단",
@@ -18,7 +18,7 @@
                 },
                 {
                     "name": "패천맹",
-                    "type": "Alliance (사파 연합)",
+                    "type": "연합(사파)",
                     "description": "녹림, 장강수로채, 하오문 등 사파 세력들이 정파와 마교에 대항하기 위해 결성한 거대 연합. 힘과 이익을 숭상한다.",
                     "martial_arts_style": "실전 무공, 암수, 독공",
                     "location": "중원 각지의 거점 (총타는 비밀)",
@@ -36,7 +36,7 @@
             "factions": [
                 {
                     "name": "소림사",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "천하무공의 발원지이자 무림의 태산북두. 불심을 바탕으로 한 강력한 권법과 지팡이술을 사용한다.",
                     "martial_arts_style": "백보신권, 여래신장, 금강불괴",
                     "location": "하남성 숭산",
@@ -51,7 +51,7 @@
                 },
                 {
                     "name": "무당파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "태극의 이치를 깨달은 도가 문파. 부드러움으로 강함을 제압하는 검술과 내공이 특징이다.",
                     "martial_arts_style": "태극검, 태극권, 제운종",
                     "location": "호북성 무당산",
@@ -64,7 +64,7 @@
                 },
                 {
                     "name": "화산파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "매화의 아름다움과 변화무쌍함을 검에 담은 문파. 험준한 산세처럼 날카롭고 빠르다.",
                     "martial_arts_style": "매화검법, 자霞강기",
                     "location": "섬서성 화산",
@@ -79,7 +79,7 @@
                 },
                 {
                     "name": "아미파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "여성들로만 이루어진 불가의 문파. 부드러우면서도 매서운 검술을 구사한다.",
                     "martial_arts_style": "아미구파일방검, 멸절검",
                     "location": "사천성 아미산",
@@ -94,7 +94,7 @@
                 },
                 {
                     "name": "곤륜파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "서역의 신비로운 산에 위치한 도가 문파. 용과 봉황의 기세를 담은 무공을 쓴다.",
                     "martial_arts_style": "운룡대팔식, 태청검법",
                     "location": "청해성 곤륜산",
@@ -109,7 +109,7 @@
                 },
                 {
                     "name": "종남파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "천하제일의 쾌검을 추구하는 문파. 화산파와 라이벌 관계이다.",
                     "martial_arts_style": "천하삼십육검, 태을신공",
                     "location": "섬서성 종남산",
@@ -121,7 +121,7 @@
                 },
                 {
                     "name": "점창파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "날카롭고 직선적인 검법이 특징인 문파.",
                     "martial_arts_style": "사일검법",
                     "location": "운남성 점창산",
@@ -130,7 +130,7 @@
                 },
                 {
                     "name": "청성파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "변화무쌍한 검법과 도술에 능한 문파.",
                     "martial_arts_style": "청성십구파, 최심장",
                     "location": "사천성 청성산",
@@ -141,7 +141,7 @@
                 },
                 {
                     "name": "공동파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "음과 양을 조화시키는 권법과 검술을 사용한다.",
                     "martial_arts_style": "복마검법, 칠상권",
                     "location": "감숙성 공동산",
@@ -150,7 +150,7 @@
                 },
                 {
                     "name": "개방",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "거지들로 이루어진 정보 조직이자 무력 단체. 천하에서 가장 많은 제자를 거느리고 있다.",
                     "martial_arts_style": "타구봉법, 항룡십팔장",
                     "location": "강호 전역 (총타는 이동함)",
@@ -162,7 +162,7 @@
                 },
                 {
                     "name": "해남파",
-                    "type": "Orthodox (정파)",
+                    "type": "정파",
                     "description": "검과 권을 모두 수련하는 검권쌍절의 문파.",
                     "martial_arts_style": "남해삼십육검",
                     "location": "해남성 보타산",
@@ -177,7 +177,7 @@
             "factions": [
                 {
                     "name": "남궁세가",
-                    "type": "Noble Clan (명문 세가)",
+                    "type": "명문 세가",
                     "description": "검의 종가. 웅장하고 패도적인 제왕검형을 추구한다.",
                     "martial_arts_style": "창궁무애검법, 제왕검형",
                     "location": "안휘성 합비",
@@ -189,7 +189,7 @@
                 },
                 {
                     "name": "모용세가",
-                    "type": "Noble Clan (명문 세가)",
+                    "type": "명문 세가",
                     "description": "상대방의 무공을 되돌려주는 '이피지도 환시피신'으로 유명한 가문. 귀족적이고 오만하다.",
                     "martial_arts_style": "두전성이, 참합지",
                     "location": "연자오",
@@ -201,7 +201,7 @@
                 },
                 {
                     "name": "사천당가",
-                    "type": "Noble Clan (명문 세가)",
+                    "type": "명문 세가",
                     "description": "독과 암기의 명가. 비밀스럽고 위험한 가문으로 알려져 있다.",
                     "martial_arts_style": "만천화우, 각종 독공",
                     "location": "사천성 성도",
@@ -216,7 +216,7 @@
                 },
                 {
                     "name": "하북팽가",
-                    "type": "Noble Clan (명문 세가)",
+                    "type": "명문 세가",
                     "description": "도법의 명가. 호탕하고 거친 성격의 사내들이 많다.",
                     "martial_arts_style": "오호단문도",
                     "location": "하북성",
@@ -228,7 +228,7 @@
                 },
                 {
                     "name": "제갈세가",
-                    "type": "Noble Clan (명문 세가)",
+                    "type": "명문 세가",
                     "description": "지략과 진법의 가문. 무공보다는 머리로 싸우는 책사들의 집안.",
                     "martial_arts_style": "천기미리보, 각종 진법",
                     "location": "호북성 융중",
@@ -248,7 +248,7 @@
             "factions": [
                 {
                     "name": "천마신교",
-                    "type": "Demonic Cult (마교)",
+                    "type": "마교",
                     "description": "십만대산에 위치한 마교의 본산. 강자존의 법칙이 지배한다.",
                     "martial_arts_style": "천마신공, 아수라패황권",
                     "location": "십만대산",
@@ -268,7 +268,7 @@
             "factions": [
                 {
                     "name": "녹림",
-                    "type": "Unorthodox (사파)",
+                    "type": "사파",
                     "description": "산적들의 연합체. 산을 거점으로 통행세를 걷거나 약탈을 한다.",
                     "martial_arts_style": "녹림십팔채 무공",
                     "location": "전국 각지의 산채",
@@ -280,7 +280,7 @@
                 },
                 {
                     "name": "장강수로채",
-                    "type": "Unorthodox (사파)",
+                    "type": "사파",
                     "description": "장강을 지배하는 수적들의 연합체. 물 위에서는 무림맹도 함부로 못한다.",
                     "martial_arts_style": "수중전 특화 무공",
                     "location": "장강 유역",
@@ -291,7 +291,7 @@
                 },
                 {
                     "name": "하오문",
-                    "type": "Unorthodox (사파)",
+                    "type": "사파",
                     "description": "점소이, 기녀, 소매치기 등 밑바닥 인생들의 정보 조직. 정보력만큼은 개방에 버금간다.",
                     "martial_arts_style": "암습, 도주술",
                     "location": "각 도시의 뒷골목",
@@ -302,7 +302,7 @@
                 },
                 {
                     "name": "무영살막",
-                    "type": "Unorthodox (사파/청부업)",
+                    "type": "사파 (청부업)",
                     "description": "돈을 받고 의뢰를 수행하는 살수 집단. 그림자처럼 흔적을 남기지 않는다.",
                     "martial_arts_style": "무영보, 일격필살",
                     "location": "비밀 (위치 불명)",
@@ -316,7 +316,7 @@
                 },
                 {
                     "name": "모산파",
-                    "type": "Unorthodox/Taoist (사파/도술)",
+                    "type": "사파 (도술)",
                     "description": "강시를 부리고 영혼을 다루는 주술 문파. 음산한 분위기 때문에 정파에서 배척받는다.",
                     "martial_arts_style": "강시술, 흑마술",
                     "location": "강소성 모산",
@@ -328,7 +328,7 @@
                 },
                 {
                     "name": "금전방",
-                    "type": "Unorthodox/Criminal (사파/범죄)",
+                    "type": "사파 (범죄)",
                     "description": "돈을 최고의 가치로 여기는 거대 범죄 조직. 압도적인 재력으로 고수들을 고용하여 세력을 넓힌다.",
                     "martial_arts_style": "금전표, 용병 무공",
                     "location": "본거지 불명",
@@ -345,7 +345,7 @@
             "factions": [
                 {
                     "name": "북해빙궁",
-                    "type": "Foreign (새외)",
+                    "type": "새외",
                     "description": "북해의 만년설로 뒤덮인 곳에 위치한 문파. 냉기를 다루는 빙공을 사용한다.",
                     "martial_arts_style": "빙백신공, 한빙장",
                     "location": "북해 빙궁",
@@ -359,7 +359,7 @@
                 },
                 {
                     "name": "남만야수궁",
-                    "type": "Foreign (새외)",
+                    "type": "새외",
                     "description": "남만의 밀림에 위치한 문파. 맹수들을 부리며 야수와 같은 무공을 쓴다.",
                     "martial_arts_style": "야수변, 독공",
                     "location": "남만 밀림",
@@ -370,7 +370,7 @@
                 },
                 {
                     "name": "포달랍궁",
-                    "type": "Foreign (새외)",
+                    "type": "새외",
                     "description": "서장(티베트)의 라마교 무림 세력. 강력한 내공과 밀종 무공을 지녔다.",
                     "martial_arts_style": "밀종大手인, 용상반야공",
                     "location": "서장 포달랍궁",
@@ -387,7 +387,7 @@
             "factions": [
                 {
                     "name": "살막",
-                    "type": "Independent (독립)",
+                    "type": "독립",
                     "description": "돈을 받고 사람을 죽이는 살수 청부 집단. 한번 의뢰를 받으면 끝까지 추적한다.",
                     "martial_arts_style": "암살술, 독술",
                     "location": "불명",
@@ -398,7 +398,7 @@
                 },
                 {
                     "name": "관청",
-                    "type": "Government (관부)",
+                    "type": "관부",
                     "description": "황실과 관군. 원칙적으로 무림 불간섭이지만, 역모 등 큰 사건에는 개입한다.",
                     "martial_arts_style": "군대식 무공, 금의위 무공",
                     "location": "황궁 및 각 관아",
@@ -411,7 +411,7 @@
                 },
                 {
                     "name": "약왕곡",
-                    "type": "Neutral (중도)",
+                    "type": "중도",
                     "description": "세속과 단절된 의술의 성지. 사람을 살리는 활인검(활인술)을 추구한다.",
                     "martial_arts_style": "침술, 독공(치료용)",
                     "location": "심산유곡",
@@ -425,7 +425,7 @@
                 },
                 {
                     "name": "황실",
-                    "type": "Imperial (관군)",
+                    "type": "관군",
                     "description": "중원을 지배하는 절대 권력. 무림에 직접 개입하지 않지만 은밀히 감시한다.",
                     "martial_arts_style": "황실 비전 무공, 금의위 무공",
                     "location": "수도 자금성",
@@ -439,7 +439,7 @@
                 },
                 {
                     "name": "무소속",
-                    "type": "Neutral (중도)",
+                    "type": "중도",
                     "description": "어떤 문파에도 속하지 않고 강호를 유람하는 낭인이나 기인들.",
                     "martial_arts_style": "다양함",
                     "location": "강호 전역",

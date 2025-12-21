@@ -1,126 +1,125 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects)",
+    "sub_domain": "문파 (구파일방 / 정파)",
     "faction_profile": {
-        "name": "무당파 (Wudang Sect / 武當派)",
+        "name": "무당파 (武當派)",
         "alias": [
-            "Mt. Wudang Sect",
-            "North Star of the Martial Forest (Mu-rim Tae-san-buk-du / often shared with Shaolin)",
-            "Origin of Taiji (태극의 본산)"
+            "무림태산북두 (武林泰山北斗)",
+            "태극의 본산 (太極之本山)"
         ],
         "location": {
-            "province": "Hubei (호북성 / 湖北省)",
-            "city": "Junzhou, Xiangyang Prefecture (양양부 균주성)",
-            "mountain": "Mt. Wudang (무당산 / 武當派) - Combines the grandeur of Tai and danger of Hua.",
-            "base": "Golden Summit (Geumjeong) on Heavenly Pillar Peak (Cheonju-bong / 1612m).",
+            "province": "호북성 (湖北省)",
+            "city": "양양부 균주성 (襄陽府 均州城)",
+            "mountain": "무당산 (武當山) - 태산의 웅장함과 화산의 험준함을 겸비.",
+            "base": "천주봉 (天柱峰) 금정 (金頂).",
             "landmarks": [
-                "Taihe Palace (Taehwa-gung / 太和宮) - The Golden Hall built by Emperor Yongle.",
-                "Purple Cloud Palace (Jaso-gung / 紫霄宮)",
-                "Nanyan Palace (Nam-am-gung / 南岩宮)"
+                "태화궁 (太和宮) - 영락제가 지은 금색 전각.",
+                "자소궁 (紫霄宮)",
+                "남암궁 (南岩宮)"
             ]
         },
         "heritage": {
-            "founder": "Zhang Sanfeng (Jang Sam-bong / 張三豊) - A legendary Taoist Immortal.",
-            "philosophy": "Taoism (Do-ga). Emphasizes 'Softness overcomes Hardness' (Yu-neung-je-gang) and 'Harmony of Yin and Yang'.",
-            "symbol": "Taiji (Yin-Yang Symbol) and the Tortoise/Snake (Symbol of Xuanwu/Jinmu)."
+            "founder": "장삼봉 (張三豊) - 전설적인 도인.",
+            "philosophy": "도가 (道家). 유능제강 (柔能制剛 - 부드러움이 강함을 제압) 및 음양조화.",
+            "symbol": "태극 (太極)과 거북/뱀 (현무)."
         },
         "status": {
-            "tier": "Top Tier (Rivals Shaolin).",
-            "specialty": "Internal Arts (Nae-gong) and Sword Arts (Geom).",
-            "reputation": "The standard of Taoist martial arts. Known for defensive and counter-attacking styles."
+            "tier": "최상위 (소림사와 양대산맥).",
+            "specialty": "내공 (內功)과 검법 (劍法).",
+            "reputation": "도가 무공의 표준. 방어와 반격의 미학."
         }
     },
     "characteristics": {
-        "archetype": "Taoist Master / Soft Counter-Attacker",
+        "archetype": "도사 / 후발제인 (Counter-Attacker)",
         "structure": {
             "hierarchy": [
-                "Munhasaeng (Official Disciple): Learns Taiji/Wudang Sword.",
-                "Dosa (Taoist Priest): Remains in the mountain.",
-                "Doin (Taoist Walker): Active in Jianghu.",
-                "Sokga-jeja (Lay Disciple): Wealthy patrons learning basic arts."
+                "문하생 (門下生) - 정식 제자.",
+                "도사 (道士) - 산에 머무는 자.",
+                "도인 (道人) - 강호를 유람하는 자.",
+                "속가제자 (俗家弟子) - 재가 제자."
             ],
-            "places": "Divided into 8 Palaces (Pal-gung), 2 Temples (I-gwan), 36 Nunneries (Am-dang), 72 Shrines (Am-myo)."
+            "places": "8궁 2관 36암 72묘."
         },
         "combat_style": {
-            "visuals": "Slow but unstoppable. Circles (Taiji) deflecting straight attacks.",
+            "visuals": "느린 듯하나 멈출 수 없음. 원(Circle)을 그리며 공격을 흘림.",
             "core_mechanics": [
-                "Taiji (太極): Using the opponent's force against them.",
-                "Liangyi (Two Ultimates / 兩儀): Coordination of Yin and Yang."
+                "태극 (太極): 상대의 힘을 이용.",
+                "양의 (兩儀): 음양의 조화."
             ],
-            "tactics": "Waiting for the opponent to move first, then arriving first (Hu-bal-je-in)."
+            "tactics": "후발제인 (後發制人) - 상대가 먼저 움직이기를 기다려 제압함."
         }
     },
     "martial_arts_library": {
         "signature_ultimate": {
-            "name": "태극권 & 태극검 (Taiji Fist & Taiji Sword)",
-            "description": "The pinnacle of Wudang arts. Created by Zhang Sanfeng. Understanding the circular flow of nature.",
+            "name": "태극권 & 태극검 (太極拳 & 太極劍)",
+            "description": "장삼봉이 창안한 무당 무학의 정점. 자연의 섭리를 따르는 무공.",
             "variations": [
-                "태극혜검 (Taiji Wisdom Sword)",
-                "태극만월검 (Taiji Full Moon Sword)"
+                "태극혜검 (太極慧劍)",
+                "태극만월검 (太極滿月劍)"
             ]
         },
         "sword_arts": {
-            "style": "Soft, Circular, and Continuous",
+            "style": "부드럽고, 둥글고, 끊어지지 않음",
             "list": [
                 {
-                    "name": "양의검 (Two Ultimates Sword)",
-                    "description": "Exploits the harmony of Yin and Yang. Often used as a dual-person formation."
+                    "name": "양의검 (兩儀劍)",
+                    "description": "음양의 조화. 2인 합동 검진으로도 사용됨."
                 },
                 {
-                    "name": "요지유검 (Soft Finger Winding Sword)",
-                    "description": "A flexible sword art that can bend around defenses like a ribbon."
+                    "name": "요지유검 (繞指柔劍)",
+                    "description": "검이 손가락을 감을 정도로 유연하게 휘어짐."
                 },
-                "삼재검 (Three Powers Sword) - Foundation.",
-                "칠성검 (Seven Star Sword)",
-                "유운검 (Flowing Cloud Sword)",
-                "신문십삼검 (Divine Gate 13 Sword)",
-                "연환탈명검 (Chain Life Stealing Sword)"
+                "삼재검 (三才劍) - 기초.",
+                "칠성검 (七星劍)",
+                "유운검 (流雲劍)",
+                "신문십삼검 (神門十三劍)",
+                "연환탈명검 (連環奪命劍)"
             ]
         },
         "fist_and_palm": {
-            "style": "Internal Damage (Myeon-jang)",
+            "style": "내상 (면장)",
             "list": [
                 {
-                    "name": "면장 (Cotton Palm / Myeon-jang)",
-                    "effect": "Soft touch that destroys internal organs. 'Needle hidden in cotton'."
+                    "name": "면장 (綿掌)",
+                    "description": "솜처럼 부드러우나 내부의 장기를 파괴함. 솜 속에 숨긴 바늘."
                 },
-                "무당장권 (Wudang Long Fist) - Foundation.",
-                "태극신권 (Taiji Divine Fist)",
-                "배운신권 (Cloud Pushing Divine Fist)",
-                "진천철장 (Heaven Shaking Iron Palm)"
+                "무당장권 (武當長拳) - 기초.",
+                "태극신권 (太極神拳)",
+                "배운신권 (排雲神拳)",
+                "진천철장 (震天鐵掌)"
             ]
         },
         "internal_energy": {
-            "style": "Pure Yang (Sun-yang) & Infinite (Mu-geuk)",
+            "style": "순양(純陽) & 무극(無極)",
             "list": [
                 {
-                    "name": "순양무극공 (Pure Yang Limitless Art)",
-                    "grade": "Supreme. Builds massive, pure internal energy."
+                    "name": "순양무극공 (純陽無極功)",
+                    "grade": "최상승. 방대하고 순수한 내공."
                 },
-                "태극신공 (Taiji Divine Art)",
-                "무당구양신공 (Wudang Nine Yang Art) - Reference to H 의천도룡기.",
-                "현허칠성신공 (Mysterious Void Seven Star Art)"
+                "태극신공 (太極神功)",
+                "무당구양신공 (武當九陽神功)",
+                "현허칠성신공 (玄虛七星神功)"
             ]
         },
         "movement": {
-            "signature": "제운종 (Cloud Ladder Leap / Je-un-jong)",
-            "effect": "Allows the user to step on air/their own foot to jump higher mid-air. Famous gravity-defying art.",
+            "signature": "제운종 (梯雲縱)",
+            "effect": "공중에서 발을 딛고 다시 도약하는 허공답보의 절기.",
             "others": [
-                "호종보 (Tiger Leap Step)",
-                "유운신법 (Flowing Cloud Body Art)"
+                "호종보 (虎縱步)",
+                "유운신법 (流雲身法)"
             ]
         },
         "formations": {
             "list": [
-                "진무칠절진 (True Martial Seven Severing Formation) - Extremely powerful 7-man formation.",
-                "오행검진 (Five Element Sword Formation)"
+                "진무칠절진 (眞武七絶陣) - 7인이 펼치는 최강의 검진.",
+                "오행검진 (五行劍陣)"
             ]
         }
     },
     "narrative_role": [
-        "The 'Older Brother' of the Orthodox faction (Serious, heavy, reliable).",
-        "A sect that emphasizes internal cultivation over flashy moves.",
-        "The usual rival to Shaolin for the title of 'Number One Sect'.",
-        "A place where the protagonist learns the true meaning of 'Softness' and 'Nature'."
+        "정파의 믿음직한 맏형 (중후함).",
+        "화려한 기교보다는 내공 수련을 강조하는 문파.",
+        "소림사와 함께 무림 1인자 자리를 다투는 라이벌.",
+        "주인공이 '부드러움'과 '자연'의 이치를 깨닫는 장소."
     ]
 }

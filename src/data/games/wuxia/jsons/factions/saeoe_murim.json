@@ -1,88 +1,88 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Regions (Sae-oe / Outer Realms)",
+    "sub_domain": "문파 (새외무림 / 이민족)",
     "general_profile": {
-        "concept": "Sae-oe Murim (새외무림 / Outside the Great Wall)",
-        "definition": "Martial arts factions located outside the Central Plains (Jungwon/China).",
+        "concept": "새외무림 (塞外武林)",
+        "definition": "중원(中原) 바깥에 위치한 무림 세력.",
         "characteristics": [
-            "Exotic & Foreign: Different customs, clothing, and martial arts philosophies.",
-            "Unorthodox Alignment: Often treated as Sapa (Unorthodox) or Neutral because they don't follow Jungwon's moral codes.",
-            "Family/Tribe Structure: Often organized by bloodlines or religious hierarchies rather than sect master/disciple relationships."
+            "이국적(Exotic): 중원과 다른 독특한 복식과 문화를 가짐.",
+            "사파 취급: 중원의 도덕률을 따르지 않아 종종 사파나 마도로 오해받음.",
+            "부족/가문 중심: 사제 관계보다는 혈연이나 종교적 위계가 강함."
         ]
     },
     "regions_and_factions": {
         "north_bukhae": {
-            "region_name": "Bukhae (North Sea / 北海)",
-            "geography": "Lake Baikal or Por-Bajin Ruins. Eternal winter, ice storms.",
+            "region_name": "북해 (北海)",
+            "geography": "바이칼 호수 혹은 북극. 영원한 겨울과 눈보라.",
             "factions": [
                 {
-                    "name": "북해빙궁 (North Sea Ice Palace / 北海氷宮)",
-                    "specialty": "Ice Arts (Bing-gong), Yin Energy. Rulers of the North."
+                    "name": "북해빙궁 (北海氷宮)",
+                    "specialty": "빙공 (氷功)과 음한지기. 북쪽의 지배자."
                 }
             ]
         },
         "south_nanman": {
-            "region_name": "Nanman (Southern Wilds / 南蠻)",
-            "geography": "Southeast of Yunnan (Vietnam, Laos borders). Dense jungles, poisonous swamps.",
-            "vibe": "Primitive, Amazonian, Beast-taming.",
+            "region_name": "남만 (南蠻)",
+            "geography": "운남성 이남의 밀림과 늪지대.",
+            "vibe": "원시적, 야수 길들이기, 독.",
             "factions": [
                 {
-                    "name": "남만야수궁 (Southern Beast Palace / 南蠻野獸宮)",
-                    "specialty": "Taming Beasts (Tigers, Elephants, Snakes). Brutal physical arts."
+                    "name": "남만야수궁 (南蠻野獸宮)",
+                    "specialty": "맹수(호랑이, 코끼리, 독사) 조련 및 야성적인 체술."
                 },
                 {
-                    "name": "독곡 / 오독문 (Poison Valley / Five Poison Sect)",
-                    "specialty": "Using Gu (poison insects) and venomous plants."
+                    "name": "독곡 (毒谷) / 오독문 (五毒門)",
+                    "specialty": "고독(蠱毒)과 독초 사용."
                 }
             ]
         },
         "west_seojang": {
-            "region_name": "Seojang (Tibet / 西藏)",
-            "geography": "Tibetan Plateau. High altitude, spiritual atmosphere.",
+            "region_name": "서장 (西藏 / 티베트)",
+            "geography": "티베트 고원. 높은 고도와 종교적 분위기.",
             "factions": [
                 {
-                    "name": "포달랍궁 (Potala Palace / 布達拉宮)",
-                    "specialty": "Lamaism (Tibetan Buddhism), Red Handprints (Blood Arts). The political and religious center."
+                    "name": "포달랍궁 (布達拉宮)",
+                    "specialty": "라마교(티베트 불교) 무공. 대수인(大手印) 등."
                 }
             ]
         },
         "far_west_cheonchuk": {
-            "region_name": "Cheonchuk (India / 天竺)",
-            "geography": "India. The origin of Buddhism.",
+            "region_name": "천축 (天竺 / 인도)",
+            "geography": "인도. 불교의 발원지.",
             "factions": [
                 {
-                    "name": "뇌음사 (Thunder Sound Temple / 雷音寺)",
-                    "specialty": "Ancient Buddhist Arts. Often rivals Shaolin. Divided into Great (Good) and Small (Evil) factions.",
-                    "conflict": "Hindu influence (sometimes linked to Demonic Arts origin)."
+                    "name": "뇌음사 (雷音寺)",
+                    "specialty": "고대 불교 무공. 소림사의 기원 혹은 라이벌. 대뢰음사(선)와 소뢰음사(악)로 나뉨.",
+                    "conflict": "힌두교 영향 (마공의 기원으로 묘사되기도 함)."
                 }
             ]
         },
         "northwest_daemak": {
-            "region_name": "Daemak (Great Desert / 大漠)",
-            "geography": "Gobi & Taklamakan Deserts.",
+            "region_name": "대막 (大漠)",
+            "geography": "고비 사막 및 타클라마칸 사막.",
             "factions": [
                 {
-                    "name": "광풍사 (Mad Wind Sand / 狂風沙)",
-                    "type": "Bandit/Mercenary group using sandstorms."
+                    "name": "광풍사 (狂風沙)",
+                    "type": "모래폭풍을 이용하는 사막의 도적/용병단."
                 },
                 {
-                    "name": "살막 (Murder Screen / 殺幕)",
-                    "type": "Assassin Guild hiding in the desert."
+                    "name": "살막 (殺幕)",
+                    "type": "사막에 숨겨진 전설적인 암살 길드."
                 }
             ]
         },
         "excluded_regions": {
-            "note": "Often excluded or minimized in Korean Wuxia to maintain immersion.",
+            "note": "한국 무협에서는 몰입을 위해 축소되거나 언급만 되는 경우가 많음.",
             "list": [
-                "Haedong (Korea)",
-                "Dong-yeong (Japan / Wae-gu)",
-                "Persia (Pasa)"
+                "해동 (海東 / 고려-조선)",
+                "동영 (東瀛 / 일본-왜구)",
+                "파사 (波斯 / 페르시아 - 명교의 기원)"
             ]
         }
     },
     "narrative_role": [
-        "Invaders: A massive invasion force (e.g., Beast Palace riding elephants) challenging the Murim Alliance.",
-        "Exotic Allies: A character with strange abilities (Ice/Beast Taming) joining the protagonist's party.",
-        "The Unknown: A source of ancient, lost, or forbidden techniques (e.g., Origin of Demonic Arts from India or Persia)."
+        "침략자: 무림맹에 도전하는 거대한 외세 (예: 코끼리를 탄 야수궁).",
+        "이국적인 동료: 특이한 능력(빙공/맹수)을 가진 동료 합류.",
+        "미지의 존재: 고대/금지된 무공(마공의 기원 등)의 출처."
     ]
 }

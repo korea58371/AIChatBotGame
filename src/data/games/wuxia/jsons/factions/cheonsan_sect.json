@@ -1,89 +1,89 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Sa-oe / Outer Realms)",
+    "sub_domain": "문파 (새외무림)",
     "faction_profile": {
-        "name": "천산파 (Tianshan Sect / 天山派)",
+        "name": "천산파 (天山派)",
         "alias": [
-            "The Snowy Mountain Sect",
-            "Gatekeepers of the Heavenly Lake"
+            "설산파 (雪山派)",
+            "천지의 수문장 (天池守門將)"
         ],
         "location": {
-            "region": "Xinjiang (신강자치구 / 新疆自治區) - Far West/Northwest.",
-            "mountain": "Mt. Tian (Tian Shan / 天山) - Near the Gobi Desert (Daemak).",
-            "landmark": "Cheonji (Heavenly Lake / 天池) - A giant lake at the summit.",
-            "geo_political_issue": "Often shares the same mountain range as the 'Demonic Cult' (Cheonma-singyo/Ming Cult), causing them to be overshadowed or mistaken for evil."
+            "region": "신강자치구 (新疆自治區) - 서북쪽 끝.",
+            "mountain": "천산 (天山) - 고비 사막 인근.",
+            "landmark": "천지 (天池) - 산 정상의 거대한 호수.",
+            "geo_political_issue": "마교(천마신교/명교)와 같은 산맥을 공유하는 경우가 많아, 마교로 오해받거나 가려지는 비운의 문파."
         },
         "status": {
-            "alignment": "Neutral / Unorthodox (due to cultural differences).",
-            "obscurity": "Rarely appears in novels because the location is usually reserved for the Demonic Cult's HQ.",
-            "culture": "Distinct from Central Plains (Jungwon). They disregard the hypocritical 'Jianghu morals' of the Orthodox factions."
+            "alignment": "중립 / 사파 (문화적 이질감).",
+            "obscurity": "소설 내 비중이 적음 (천산은 주로 마교 본거지로 묘사되므로).",
+            "culture": "중원과 구별됨. 정파의 위선적인 강호 도의를 무시함."
         }
     },
     "characteristics": {
-        "archetype": "Mystic Hermits / Cold & Soul Manipulators",
+        "archetype": "신비로운 은둔자 / 냉기와 영혼을 다루는 자",
         "combat_style": {
-            "summary": "Fast Swords, Bird Mimicry (Movement), and Yin/Ghost Arts.",
-            "attributes": "Ice (Cold / 寒), Sound (Soul / 魂), Speed (Wind / 風)."
+            "summary": "쾌검(快劍), 조류 모방(경공), 음공(혹은 영혼).",
+            "attributes": "냉기 (寒), 소리/영혼 (魂), 속도 (風)."
         },
-        "atmosphere": "Mysterious, cold, and slightly eerie due to their soul-manipulating arts."
+        "atmosphere": "신비롭고 차가우며, 영혼을 다루는 무공 때문에 다소 으스스함."
     },
     "martial_arts_library": {
         "sword_arts": {
-            "style": "Fast and Illusionary (Fast Sword)",
+            "style": "환영과 쾌검",
             "list": [
                 {
-                    "name": "삼분검 (Three Part Sword)",
-                    "description": "Signature Art. One sword strike appears as three. Emphasizes extreme speed."
+                    "name": "삼분검 (三分劍)",
+                    "description": "천산파의 대표 무공. 한 번의 검격이 세 개로 보임. 극한의 속도."
                 },
-                "천금검 (Heavenly Bird Sword)",
-                "냉매검 (Cold Plum Sword)",
-                "추풍검 (Chasing Wind Sword)",
-                "빙혼검 (Ice Soul Sword)",
-                "단천비검 (Severing Heaven Flying Sword)",
-                "호접몽환검 (Butterfly Dream Illusion Sword)"
+                "천금검 (天禽劍)",
+                "냉매검 (冷梅劍)",
+                "추풍검 (秋風劍)",
+                "빙혼검 (氷魂劍)",
+                "단천비검 (斷天飛劍)",
+                "호접몽환검 (胡蝶夢幻劍)"
             ]
         },
         "internal_energy": {
-            "style": "Yin (Cold) and Spirit (Soul)",
+            "style": "음(陰)과 영혼(Soul)",
             "list": [
                 {
-                    "name": "미혼공 (Confusing Soul Art)",
-                    "effect": "Manipulates Yin energy. Draws in vengeful spirits (Wonhon) to build internal power.",
-                    "vibe": "Borderline Demonic/Necromantic."
+                    "name": "미혼공 (迷魂功)",
+                    "effect": "음기를 조작. 원혼을 불러들이거나 내력을 증폭시킴.",
+                    "vibe": "마공이나 사술에 가까움."
                 },
                 {
-                    "name": "한음신공 (Cold Yin Divine Art)",
-                    "grade": "Supreme (Sect Leader only). The completed form of Mihon-gong."
+                    "name": "한음신공 (寒陰神功)",
+                    "grade": "최상승 (문주 전용). 미혼공의 완성형."
                 }
             ]
         },
         "movement": {
-            "style": "Mimicking Birds (Avian Movements)",
+            "style": "새의 움직임 모방",
             "list": [
                 {
-                    "name": "칠금신법 (Seven Birds Body Art)",
-                    "description": "Signature Art. Dazzling movements mimicking seven types of birds."
+                    "name": "칠금신법 (七禽身法)",
+                    "description": "일곱 종류 새의 움직임을 본뜬 현란한 보법."
                 },
-                "비금백팔무 (Flying Bird 108 Dance)"
+                "비금백팔무 (飛禽百八舞)"
             ]
         },
         "palm_and_claw": {
             "list": [
-                "칠금장 (Seven Birds Palm)",
-                "신조중장 (Divine Eagle Heavy Palm)",
-                "표설천운장 (Drifting Snow Piercing Cloud Palm)",
-                "절수구조 (Severing Hand Nine Claw)"
+                "칠금장 (七禽掌)",
+                "신조중장 (神彫重掌)",
+                "표설천운장 (漂雪穿雲掌)",
+                "절수구조 (切手九爪)"
             ]
         },
         "sound_arts": {
-            "name": "신마소 (God Demon Whistle)",
-            "effect": "A sound that sounds like ghost cries. Confuses the enemy's mind. Requires 'Mihon-gong'."
+            "name": "신마소 (神魔 c)",
+            "effect": "귀신의 울음소리 같은 소리로 적의 정신을 혼란시킴. 미혼공 필요."
         }
     },
     "narrative_role": [
-        "The 'Third Force' located in the desolate West.",
-        "Neighbors to the Demonic Cult who have survived through grit and strange arts.",
-        "Users of 'Soul' and 'Ice' arts, providing a different flavor from standard elemental arts.",
-        "A sect that challenges the protagonist's view on 'Righteousness' vs 'Evil' due to their unique methods."
+        "황량한 서쪽의 '제3세력'.",
+        "척박한 환경에서 끈기와 기이한 무공으로 살아남은 마교의 이웃.",
+        "'영혼'과 '냉기' 속성 무공 사용자.",
+        "독특한 방식으로 주인공의 '정사(正邪)' 관념에 도전하는 문파."
     ]
 }

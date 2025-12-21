@@ -1,56 +1,17 @@
 
 
-export const getLogicPrompt = (
-    prunedStats: any,
-    lastUserMessage: string,
-    lastAiResponse: string,
-    logicContext: string,
-    worldData: any,
-    activeGameId: string = 'god_bless_you'
-) => {
-    // ---------------------------------------------------------------------------
-    // [GAME: WUXIA] Cheonhajaeil (Martial Arts)
-    // ---------------------------------------------------------------------------
+// [OPTIMIZATION] Static Context for Caching (Rules, Format, Role)
+export const getStaticLogicPrompt = (activeGameId: string = 'god_bless_you', rankCriteria: any = null) => {
+    const rankGuide = rankCriteria ? JSON.stringify(rankCriteria, null, 2) : "Check martial_arts_levels.json";
+
     if (activeGameId === 'wuxia') {
         return `
 You are the **Game Logic Engine** for a Wuxia (Martial Arts) Visual Novel. Your role is to analyze the user's action and the previous story context to update the game state.
 You are responsible for maintaining consistency, enforcing martial arts realism (no sudden power-ups), and calculating the consequences of actions.
 
-**Current Game State:**
-- **Gold**: ${prunedStats.playerStats?.gold || 0}
-${JSON.stringify(prunedStats, null, 2)}
-
-**Recent Context:**
-- User Action: "${lastUserMessage}"
-- AI Story Output: "${lastAiResponse}"
-
-**Reference Data:**
-${logicContext}
-- Valid Locations: ${Object.keys(worldData.locations || {}).join(', ')}
-- Valid Items: ${Object.keys(worldData.items || {}).join(', ')}
-
----
-
-**YOUR TASKS:**
-1. **Analyze Action**: Determine the outcome (Success/Fail) based on Stats and Martial Arts Proficiency.
-2. **Update Stats**: Calculate changes for HP, Internal Energy (MP), Gold, Stats (STR/AGI/INT/VIT), Fame, Fate, and Personality.
-   - **[CRITICAL] Neigong (Internal Energy Years)**: If the player meditates or consumes an elixir, increase \`neigong\`.
-   - **Rank Up**: Check against \`martial_arts_levels.json\` (Min Fame + Min Neigong + Enlightenment). If ALL conditions met, update \`playerRank\`.
-3. **Manage Inventory**: Add/remove items.
-4. **Manage Characters**: Update memories, secrets, and relationships (favor).
-5. **Manage World**: Update location details and secrets.
-6. **[CRITICAL] GENERATE STATUS DESCRIPTION**: 
-    - Describe the protagonist's physical/mental state naturally.
-    - **No numbers**.
-    - **Physical**: "Muscles aching from training," "Internal energy flowing smoothly."
-    - **Mental**: "Clear mind like a still lake," "Distracted by worldly desires."
-    - **Luck/Fate**: "The heavens seem indifferent," "Ominous wind blows."
-    - **Overall**: Combine into 1-2 sentences.
-
-7. **[CRITICAL] GENERATE PERSONALITY DESCRIPTION**:
-    - Describe the protagonist's mindset (e.g., "Righteous and unwavering," "Cunning and opportunistic").
-
----
+**[RANK UP CRITERIA]**:
+To advance to the next rank, the player must meet specific Neigong (Years) and Enlightenment requirements.
+${rankGuide}
 
 **RULES (WUXIA SPECIFIC):**
 
@@ -71,9 +32,24 @@ ${logicContext}
 
 3. **Relationships**:
     - **Sects/Factions**: Actions affecting a member affect the whole sect's opinion (though simpler logic here).
-    - **Pacing**: Trust is hard to earn in Jianghu. Max +/- 5 per turn.
+    - **Pacing (Psychological Model)**: Do NOT use fixed caps. Use **Diminishing Returns** and **Context**.
+      - **Dramatic Impact (High Stakes)**: Saving a life, a grand confession in front of the world, or a shocking betrayal CAN change affinity by **20~50 points** instantly.
+      - **Diminishing Returns (The "Hand-Holding" Rule)**: 
+        - **[CRITICAL STEP] CHECK CURRENT AFFINITY FIRST**: Before calculating change, look at \`playerStats.relationships[characterId]\`.
+        - **Low (0~30)**: Small actions (compliments, gifts, holding hands) have HIGH impact (+3~+10).
+        - **High (70+)**: Small actions have MINIMAL impact (+0~+1). Only Major Events matter now.
+        - **Rule**: "To increase affinity at higher levels, the player must do *more* than before." 
+      - **Resilience & Betrayal**:
+        - **Deep Love Buffer**: If affinity is high (80+), minor mistakes are forgiven easily.
+        - **Fatal Flaws**: If the character is **Possessive/Jealous**, cheating/betrayal causes massive drops (-50 or Breakup), regardless of history. If they are **Open-minded**, the drop is smaller.
+      - **Consistency Checking**:
+        - "Did this EXACT event happen recently?" -> If yes, reduce impact to 0. (e.g., Saving her life twice in 10 minutes is suspicious/less dramatic).
 
-4. **Output Format**: Same JSON structure.
+4. **Event Triggering**:
+    - Only trigger ONE event per turn.
+    - If \`triggerEventId\` is set, the Main Story Model will be forced to adapt the next response to this event.
+
+5. **Output Format**: Same JSON structure.
 
 **OUTPUT FORMAT (JSON ONLY):**
 {
@@ -126,6 +102,7 @@ ${logicContext}
             "secrets": [ string ]
         }
     ],
+    "triggerEventId": string | null, // [NEW] Returns the ID of the event to trigger (or null for daily life)
     "newMood": "daily" | "combat" | "romance" | "comic" | "tension" | "erotic" | null,
     "playerRank": string | null, 
     "activeCharacters": [ string ],
@@ -135,48 +112,10 @@ ${logicContext}
 `;
     }
 
-    // ---------------------------------------------------------------------------
-    // [GAME: GOD BLESS YOU] (Default)
-    // ---------------------------------------------------------------------------
+    // Default Game (God Bless You)
     return `
 You are the **Game Logic Engine**. Your role is to analyze the user's action and the previous story context to update the game state.
 You are responsible for maintaining consistency and calculating the consequences of actions.
-
-**Current Game State:**
-- **Gold**: ${prunedStats.playerStats?.gold || 0}
-${JSON.stringify(prunedStats, null, 2)}
-
-**Recent Context:**
-- User Action: "${lastUserMessage}"
-- AI Story Output: "${lastAiResponse}"
-
-**Reference Data:**
-${logicContext}
-- Valid Locations: ${Object.keys(worldData.locations || {}).join(', ')}
-- Valid Items: ${Object.keys(worldData.items || {}).join(', ')}
-
----
-
-**YOUR TASKS:**
-1. **Analyze Action**: Determine the outcome of the user's action (Success/Fail) based on stats.
-2. **Update Stats**: Calculate changes for HP, MP, Gold, Stats, Fame, Fate, and Personality.
-3. **Manage Inventory**: Add/remove items.
-4. **Manage Characters**: Update memories, secrets, and relationships.
-5. **Manage World**: Update location details and secrets.
-6. **[CRITICAL] GENERATE STATUS DESCRIPTION**: 
-    - Based on the current (updated) attribute values, generate a **Natural Language Description** of the protagonist's state.
-    - **Do NOT output numbers** in this description. Focus on the *feeling* and *capabilities*.
-    - This description will be passed to the Story AI to guide the narrative.
-    - **Physical (Str/Agi/Vit)**: Describe their physical condition (e.g., "Muscles brimming with power," "Exhausted and trembling," "Fast as lightning").
-    - **Mental (Int/Mp)**: Describe their mental clarity and will (e.g., "Sharp and focused," "On the verge of a breakdown").
-    - **Luck (Luk/Fate)**: Describe their fortune (e.g., "The universe seems to align for you," "Death follows your footsteps").
-    - **Overall**: Combine these into a concise sentence or two.
-
-7. **[CRITICAL] GENERATE PERSONALITY DESCRIPTION**:
-    - Based on the current personality values, describe the protagonist's *current* mindset or behavioral tendency.
-    - Example: "You are acting like a cold-blooded calculator," "You feel a surge of heroic courage."
-
----
 
 **RULES:**
 
@@ -206,8 +145,6 @@ ${logicContext}
     - **Max Change**: Do NOT increase/decrease affinity by more than **5 points** per turn, unless a major event occurred.
     - **No Rushing**: Real relationships take time. Do NOT jump to high affinity instantly.
     - **Context**: Consider the current "Tier". A stranger gaining +10 is suspicious. A lover gaining +5 is normal.
-
----
 
 **OUTPUT FORMAT (JSON ONLY):**
 {
@@ -265,4 +202,76 @@ ${logicContext}
     "personalityDescription": string // [NEW] Natural language description of current mindset
 }
 `;
+};
+
+// [NEW] Dynamic Context for Logic Model (Uncached Part)
+export const getDynamicLogicPrompt = (
+    prunedStats: any,
+    lastUserMessage: string,
+    lastAiResponse: string,
+    logicContext: string,
+    worldData: any,
+    availableEvents: any[] = []
+) => {
+    return `
+**Current Game State:**
+- **Gold**: ${prunedStats.playerStats?.gold || 0}
+${JSON.stringify(prunedStats, null, 2)}
+
+**Recent Context:**
+- User Action: "${lastUserMessage}"
+- AI Story Output: "${lastAiResponse}"
+
+**Reference Data:**
+${logicContext}
+- Valid Locations: ${Object.keys(worldData.locations || {}).join(', ')}
+- Valid Items: ${Object.keys(worldData.items || {}).join(', ')}
+
+**[AVAILABLE EVENTS]** (Conditions met):
+The following events are currently eligible to trigger. 
+${availableEvents.length > 0 ? JSON.stringify(availableEvents.map(e => ({ id: e.id, name: e.name, type: e.type })), null, 2) : "None (Daily Life Only)"}
+
+---
+
+**YOUR TASKS:**
+1. **Analyze Action**: Determine the outcome (Success/Fail) based on Stats.
+2. **Update Stats**: Calculate changes for HP, Internal Energy (MP), Gold, Stats (STR/AGI/INT/VIT), Fame, Fate, and Personality.
+   - **[CRITICAL] Neigong (Internal Energy Years)**: If the player meditates or consumes an elixir, increase \`neigong\`.
+   - **Rank Up**: Compare current \`neigong\` and \`fame\` against **[RANK UP CRITERIA]**. If conditions met AND the user has gained a "Realization" moment, update \`playerRank\`.
+3. **Manage Inventory**: Add/remove items.
+4. **Manage Characters**: Update memories, secrets, and relationships (favor).
+5. **Manage World**: Update location details and secrets.
+6. **[CRITICAL] SELECT EVENT**:
+   - Review \`[AVAILABLE EVENTS]\`.
+   - **Selection Logic**: 
+     - If the list contains an event, you MAY select it by returning its ID in \`triggerEventId\`.
+     - **Pacing Rule (Slow Tempo)**: The user prefers a slow, slice-of-life tempo. Do NOT trigger major events unless context is perfect.
+     - **Prioritize**: Daily life, character interactions > Major Plot Twists.
+     - If you decide to remain in daily life, return \`null\` for \`triggerEventId\`.
+
+7. **[CRITICAL] GENERATE STATUS DESCRIPTION**: 
+    - Describe the protagonist's physical/mental state naturally. NO NUMBERS.
+    - **Physical**: "Muscles aching from training," "Internal energy flowing smoothly."
+    - **Mental**: "Clear mind like a still lake," "Distracted by worldly desires."
+    - **Luck/Fate**: "The heavens seem indifferent," "Ominous wind blows."
+
+8. **[CRITICAL] GENERATE PERSONALITY DESCRIPTION**:
+    - Describe the protagonist's mindset (e.g., "Righteous and unwavering").
+
+Respond with the JSON object defined in the static instructions.
+`;
+};
+
+// Backward Compatibility
+export const getLogicPrompt = (
+    prunedStats: any,
+    lastUserMessage: string,
+    lastAiResponse: string,
+    logicContext: string,
+    worldData: any,
+    activeGameId: string = 'god_bless_you',
+    availableEvents: any[] = [],
+    rankCriteria: any = null
+) => {
+    return getStaticLogicPrompt(activeGameId, rankCriteria) + "\n\n" + getDynamicLogicPrompt(prunedStats, lastUserMessage, lastAiResponse, logicContext, worldData, availableEvents);
 };

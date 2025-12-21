@@ -1,63 +1,63 @@
 {
-    "domain": "Wuxia (Martial Arts Fiction)",
-    "category": "Fictional Diseases / Constitutions",
-    "term": "절맥증 (Jeolmaekjeung / Severed Meridian Syndrome)",
+    "domain": "무협 (武俠)",
+    "category": "가상의 질병 및 체질",
+    "term": "절맥증 (絶脈症)",
     "definition": {
-        "summary": "A congenital, incurable condition where excessive specific energy (usually Yin) blocks the meridians.",
-        "nature": "Congenital (Born with it), Terminal (Short lifespan).",
-        "core_mechanism": "Blood vessels and meridians malfunction due to an overflow of Yin (Cold) energy."
+        "summary": "선천적으로 특정 기운(주로 음기)이 과도하여 경락을 막는 불치병.",
+        "nature": "선천성, 시한부.",
+        "core_mechanism": "음기나 양기의 폭주로 인해 혈관과 경락이 기능을 상실한다."
     },
     "general_characteristics": {
         "symptoms": [
-            "Chronic pain throughout life.",
-            "Dysfunctional blood flow and energy circulation.",
-            "Early death (Terminal illness)."
+            "평생 만성적인 고통에 시달린다.",
+            "혈액 순환과 기의 흐름이 막힌다.",
+            "요절한다 (불치병)."
         ],
         "hidden_trait": [
-            "Genius Potential: Patients often possess extraordinary intelligence or latent martial talent.",
-            "High Risk, High Return: If cured, the blocked energy often converts into massive internal power."
+            "천재성: 환자는 종종 비상한 지능이나 잠재된 무학적 재능을 보인다.",
+            "위험과 보상: 치료에 성공하면 막혀 있던 기운이 거대한 내공으로 전환된다."
         ],
         "demographics": {
-            "traditional": "Mostly females (due to Yin association).",
-            "modern_wuxia": "Gender-neutral (Males also affected)."
+            "traditional": "주로 여성 (음기와 관련됨).",
+            "modern_wuxia": "성별 무관 (남성도 발병 가능)."
         }
     },
     "treatment_methods": {
-        "principle": "Neutralization of Yin with strong Yang energy.",
+        "principle": "강한 양기로 음기를 중화한다 (음양조화).",
         "items": [
-            "Rare Elixirs (영약).",
-            "Neidan (Internal Core) of Yang spiritual creatures (e.g., Fire Carp / 태양화리)."
+            "희귀한 영약.",
+            "양기를 띤 영물의 내단 (예: 태양화리)."
         ],
-        "interaction": "Transfer of Yang energy from a master (Protagonist) or Dual Cultivation."
+        "interaction": "고수(주인공)의 내공 주입 혹은 음양화합(방중술)."
     },
     "narrative_role": [
-        "Protagonist's motivation (Searching for a cure).",
-        "Reason for a character's sudden power-up or genius intellect.",
-        "Tragic heroine/hero archetype."
+        "주인공의 동기 (치료법을 찾기 위한 여행).",
+        "캐릭터의 급격한 파워업이나 천재성의 근거.",
+        "비련의 주인공/히로인 설정."
     ],
     "variations": [
         {
-            "name": "구음절맥 (Gu-eum Jeolmaek / Nine Yin Severed Meridian)",
-            "severity": "High",
-            "description": "Body filled with irresistible Yin energy.",
-            "cure_condition": "Requires massive Yang energy (e.g., 10,000-year Fire Carp) or a supreme master's aid.",
+            "name": "구음절맥 (九陰絶脈)",
+            "severity": "상(上)",
+            "description": "몸이 감당할 수 없는 음기로 가득 찬 상태.",
+            "cure_condition": "막대한 양기(만년화리 등)나 절세고수의 도움이 필요하다.",
             "sub_types": [
-                "Sam-eum (3)",
-                "Dan-eum (Single)",
-                "Il-eum (1)"
+                "삼음절맥",
+                "단음절맥",
+                "일음절맥"
             ]
         },
         {
-            "name": "태음신맥 (Tae-eum Sinmaek / Great Yin Divine Meridian)",
-            "severity": "High",
-            "description": "Yin energy increases over time until meridians snap.",
-            "special_cure_case": "Reference 'Gunlimcheonha': Can be cured/utilized via sexual union with a male practicing Yin Arts (Energy transfer/harmony)."
+            "name": "태음신맥 (太陰神脈)",
+            "severity": "상(上)",
+            "description": "시간이 지날수록 음기가 증폭되어 결국 경락이 끊어진다.",
+            "special_cure_case": "참고: 음공을 익힌 남성과의 결합(음양조화)을 통해 치료 및 활용 가능."
         },
         {
-            "name": "천음절맥 (Cheon-eum Jeolmaek / Heavenly Yin Severed Meridian)",
-            "severity": "Extreme / Fated",
-            "description": "A variation of Gu-eum, implying 'Heaven's Will' (Fate). Considered harder to cure.",
-            "nuance": "Emphasizes the inevitability of the condition."
+            "name": "천음절맥 (天陰絶脈)",
+            "severity": "최상 / 천명(天命)",
+            "description": "구음절맥의 변형으로, 하늘의 뜻(운명)임을 강조한다. 치료가 더 어렵다.",
+            "nuance": "운명의 불가항력성을 강조한다."
         }
     ]
 }

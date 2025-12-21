@@ -1,114 +1,114 @@
 {
-    "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Martial Skills & Arts (Giye / 技藝)",
-    "definition": "High-level techniques combining skill and art, usually requiring advanced Internal Energy (Qi).",
+    "domain": "무협 (武俠)",
+    "sub_domain": "기예 및 무공 (技藝)",
+    "definition": "내공(기)을 필요로 하는 고차원적인 기술과 예술의 결합.",
     "skills_database": {
         "telekinesis_and_manipulation": [
             {
-                "name": "허공섭물 (Void Grabbing / 虛空攝物)",
-                "type": "Utility / Control",
-                "mechanic": "Moving objects without physical contact using invisible Qi.",
-                "difficulty": "High (Requires Master level)",
+                "name": "허공섭물 (虛空攝物)",
+                "type": "보조 / 제어",
+                "mechanic": "보이지 않는 기로 물체를 접촉 없이 움직인다.",
+                "difficulty": "상 (최소 고수 단계 필요)",
                 "synonyms": [
                     "능공섭물",
                     "격공섭물"
                 ]
             },
             {
-                "name": "어검술 (Sword Control / 馭劍術)",
-                "type": "Combat / Weapon Mastery",
-                "mechanic": "Telekinetic manipulation of a sword for combat.",
-                "comparison": "Advanced version of Void Grabbing. Can handle heavy weapons and complex maneuvers.",
+                "name": "어검술 (馭劍術)",
+                "type": "전투 / 무기 숙련",
+                "mechanic": "염동력으로 검을 조종하여 공격한다.",
+                "comparison": "허공섭물의 심화형. 무거운 무기와 복잡한 기동을 다룰 수 있다.",
                 "sub_skills": [
                     "이기어검",
                     "심어검",
-                    "어검비행 (Flying on sword)"
+                    "어검비행 (검을 타고 비행)"
                 ]
             }
         ],
         "physics_and_impact": [
             {
-                "name": "격산타우 (Mountain Hitting Ox / 隔山打牛)",
-                "type": "Offensive (Penetration)",
-                "mechanic": "Delivering shockwaves through an obstacle to hit the target behind/inside.",
-                "advantage": "Ignores armor/defense. Destroys internal organs while leaving the surface intact.",
+                "name": "격산타우 (隔山打牛)",
+                "type": "공격 (관통)",
+                "mechanic": "장애물을 통과하여 뒤쪽이나 내부의 목표에게 충격을 전달한다.",
+                "advantage": "갑옷이나 방어를 무시한다. 겉은 멀쩡하지만 내부 장기를 파괴한다.",
                 "synonyms": [
                     "백보신권",
                     "내가중수법"
                 ]
             },
             {
-                "name": "사량발천근 (Four Ounces Move 1000 Pounds / 四兩撥千斤)",
-                "type": "Defensive / Counter",
-                "mechanic": "Using minimal force to deflect massive power.",
-                "concept": "Softness overcomes Hardness (Yu-Neung-Je-Gang / 柔能制剛)."
+                "name": "사량발천근 (四兩撥千斤)",
+                "type": "방어 / 반격",
+                "mechanic": "작은 힘으로 거대한 힘을 흘려내거나 튕겨낸다.",
+                "concept": "부드러움이 강함을 제압한다 (유능제강)."
             },
             {
-                "name": "천근추 (Thousand Pound Drop / 千斤錘)",
-                "type": "Weight Manipulation",
-                "mechanic": "Instantly increasing body weight using Qi.",
+                "name": "천근추 (千斤錘)",
+                "type": "중량 조절",
+                "mechanic": "기로 몸의 무게를 순간적으로 늘린다.",
                 "usage": [
-                    "Rapid descent",
-                    "Anchoring stance",
-                    "Crushing enemies"
+                    "빠른 하강",
+                    "자세 고정 (말뚝처럼 박힘)",
+                    "적을 짓누름"
                 ],
-                "variation": "Can be reversed to lighten body for water walking."
+                "variation": "반대로 몸을 가볍게 하여 둥둥 뜰 수도 있다."
             }
         ],
         "energy_interaction": [
             {
-                "name": "삼매진화 (Samadhi True Fire / 三昧眞火)",
-                "type": "Elemental (Fire)",
-                "mechanic": "Generating intense heat or flame using Internal Energy.",
-                "utility": "Burning toxins (Detoxification) or incineration."
+                "name": "삼매진화 (三昧眞火)",
+                "type": "원소 (화염)",
+                "mechanic": "내공으로 강력한 열기나 불꽃을 일으킨다.",
+                "utility": "독을 태우거나(해독), 적을 소각한다."
             },
             {
-                "name": "차기미기 (Borrowing Qi / 借氣彌氣)",
-                "type": "Absorption",
-                "mechanic": "Absorbing opponent's Qi into one's own.",
-                "meta_note": "Old-school trope. Often considered 'Dark Arts' or balance-breaking. Similar to 'Star Sucking Great Art (흡성대법)'.",
-                "status": "Rare in modern Wuxia."
+                "name": "차기미기 (借氣彌氣)",
+                "type": "흡수",
+                "mechanic": "상대의 기를 흡수하여 자신의 것으로 만든다.",
+                "meta_note": "고전적인 클리셰. 사파의 '흡성대법'과 유사하여 사도로 취급받기도 한다.",
+                "status": "현대 무협에서는 드물다."
             }
         ],
         "body_and_growth": [
             {
-                "name": "환골탈태 (Rebirth / 換骨奪胎)",
-                "type": "Transformation / Power-up",
-                "condition": "Reaching a legendary realm (Hwagyeong/Hyeongyeong).",
-                "effect": "Physical reconstruction for optimal martial arts. Rejuvenation (Ban-ro-hwan-dong).",
-                "role": "Major plot climax or reward."
+                "name": "환골탈태 (換骨奪胎)",
+                "type": "변신 / 파워업",
+                "condition": "전설적인 경지(화경/현경) 도달 시.",
+                "effect": "무공에 최적화된 신체로 재구성된다. 회춘(반로환동) 효과가 있다.",
+                "role": "주요 플롯의 절정이나 보상."
             },
             {
-                "name": "벌모세수 (Marrow Cleansing / 伐毛洗髓)",
-                "type": "Foundation Building",
-                "mechanic": "A master uses Qi to cleanse a disciple's meridians/impurities.",
-                "target": "Beginners or those too old to start training.",
-                "distinction": "Do not confuse with 'Geumbunsesu (Retirement)'."
+                "name": "벌모세수 (伐毛洗髓)",
+                "type": "기반 다지기",
+                "mechanic": "고수가 기로 제자의 경락을 뚫고 불순물을 씻어낸다.",
+                "target": "초심자나 나이가 많아 입문이 늦은 자.",
+                "distinction": "은퇴를 뜻하는 '금분세수'와 혼동하지 말 것."
             }
         ],
         "interaction_with_others": [
             {
-                "name": "격체전공 (Energy Transmission / 隔體傳功)",
-                "type": "Inheritance",
-                "mechanic": "Transferring one's lifetime cultivation to another via physical contact.",
+                "name": "격체전공 (隔體傳功)",
+                "type": "계승",
+                "mechanic": "신체 접촉을 통해 평생 쌓은 내공을 타인에게 물려준다.",
                 "constraints": [
-                    "Efficiency loss (e.g., only 50% transfers)",
-                    "Requires same cultivation method"
+                    "효율 손실 (예: 50%만 전달됨)",
+                    "동일한 심법이나 기운이 필요할 수 있음"
                 ],
-                "narrative_use": "Dying master passing legacy to protagonist."
+                "narrative_use": "죽어가는 스승이 주인공에게 유산을 남길 때 사용."
             },
             {
-                "name": "추궁과혈 (Pushing Palace Crossing Acupoints / 推宮過穴)",
-                "type": "Healing",
-                "mechanic": "Massaging acupoints with Qi to heal internal injuries.",
-                "risk": "High energy consumption. Requires absolute trust (defenseless state).",
-                "trope": "Romantic tension builder (Male hero healing injured female)."
+                "name": "추궁과혈 (推宮過穴)",
+                "type": "치유",
+                "mechanic": "기로 혈도를 자극하여 내상을 치료한다.",
+                "risk": "내공 소모가 심하다. 무방비 상태가 되므로 절대적인 신뢰가 필요하다.",
+                "trope": "남녀 간의 로맨틱한 텐션을 조성하는 장치."
             },
             {
-                "name": "분근착골 (Bone Splitting / 分筋錯骨)",
-                "type": "Interrogation / Torture",
-                "mechanic": "Dislocating joints and twisting muscles via acupoint manipulation.",
-                "usage": "Forcing enemies to confess information."
+                "name": "분근착골 (分筋錯骨)",
+                "type": "심문 / 고문",
+                "mechanic": "혈도를 조작하여 관절을 탈골시키고 근육을 비튼다.",
+                "usage": "적으로부터 정보를 캐낼 때 사용한다."
             }
         ]
     }

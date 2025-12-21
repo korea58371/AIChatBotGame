@@ -1,145 +1,145 @@
 {
-    "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Equipment & Weapons (Byeong-gi / 兵器)",
+    "domain": "무협 (武俠)",
+    "sub_domain": "장비 및 병기 (兵器)",
     "weapon_categories": {
         "blade_and_sword": {
-            "summary": "The most common weapons. Sword (Geom) is for gentlemen, Saber (Do) is for soldiers/bandits.",
+            "summary": "가장 흔한 무기. 검(劍)은 군자나 협객이, 도(刀)는 군인이나 산적이 주로 쓴다.",
             "list": [
                 {
-                    "name": "단검 (Dagger / 短劍)",
-                    "usage": "Close combat, assassination, secondary weapon for women/Haomun."
+                    "name": "단검 (短劍)",
+                    "usage": "근접전, 암살, 혹은 여성이나 하오문도의 보조 무기."
                 },
                 {
-                    "name": "금도 (Gold Saber / 金刀)",
-                    "usage": "Wealthy young masters. Show-off weapon made of gold."
+                    "name": "금도 (金刀)",
+                    "usage": "부유한 집안의 공자용. 금으로 장식된 과시용 무기."
                 },
                 {
-                    "name": "귀두도 (Ghost Head Saber / 鬼頭刀)",
-                    "usage": "Bandits/Executers. Heavy, blunt tip, ghost head decoration on hilt."
+                    "name": "귀두도 (鬼頭刀)",
+                    "usage": "산적이나 망나니용. 칼끝이 뭉툭하고 무거우며, 손잡이에 귀신의 머리 장식이 있다."
                 },
                 {
-                    "name": "면도 (Soft Saber / 緬刀)",
-                    "usage": "Flexible blade like a belt. Hard to master, unpredictable trajectory."
+                    "name": "면도 (緬刀)",
+                    "usage": "벨트처럼 허리에 감을 수 있는 연검. 궤 적을 예측하기 힘들고 다루기 어렵다."
                 },
                 {
-                    "name": "계도 (Precept Saber / 戒刀)",
-                    "usage": "Shaolin Monks. Used to cut earthly ties/vines, not kill (ideally)."
+                    "name": "계도 (戒刀)",
+                    "usage": "소림 승려용. 살생보다는 인연(번뇌)을 끊기 위한 칼."
                 },
                 {
-                    "name": "연검 (Soft Sword / 軟劍)",
-                    "usage": "Wrapped around the waist. Requires internal energy to straighten."
+                    "name": "연검 (軟劍)",
+                    "usage": "허리에 감는 검. 내공을 주입해야 펴진다."
                 },
                 {
-                    "name": "강도 (Steel Saber / 鋼刀)",
-                    "usage": "Hebei Peng Family. Heavy and durable."
+                    "name": "강도 (鋼刀)",
+                    "usage": "하북팽가의 주력 무기. 무겁고 튼튼하다."
                 }
             ]
         },
         "polearms_and_blunt": {
-            "summary": "Weapons for heavy impact or reach. Favored by Shaolin, Beggars, and Bandits.",
+            "summary": "파괴력이나 사거리를 중시하는 무기. 소림, 개방, 산적이 선호한다.",
             "list": [
                 {
-                    "name": "봉 & 곤 (Staff & Cudgel / 棒 & 棍)",
-                    "usage": "Beggars (Dog Beating Staff), Shaolin (Monk Staff). Non-lethal crushing."
+                    "name": "봉 & 곤 (棒 & 棍)",
+                    "usage": "개방(타구봉), 소림(봉술). 타격을 주되 살생을 피하기 위함."
                 },
                 {
-                    "name": "타구봉 (Dog Beating Staff / 打狗棒)",
-                    "usage": "Symbol of the Beggar Sect Leader. Used to hit 'dogs' (enemies)."
+                    "name": "타구봉 (打狗棒)",
+                    "usage": "개방 방주의 상징. 미친 개(적)를 때려잡는 봉."
                 },
                 {
-                    "name": "낭아봉 (Wolf Tooth Mace / 狼牙棒)",
-                    "usage": "Brute force. Covered in spikes like wolf teeth. Inflicts severe trauma."
+                    "name": "낭아봉 (狼牙棒)",
+                    "usage": "단순한 파괴력. 이리의 이빨 같은 가시가 박혀 있다. 맞으면 치명상이다."
                 },
                 {
-                    "name": "선장 (Zen Staff / 禪杖)",
-                    "usage": "Shaolin Monks. Often has rings that jingle to warn insects/animals."
+                    "name": "선장 (禪杖)",
+                    "usage": "소림 고승용. 고리가 달려 있어 움직일 때 소리가 난다(살생 경고)."
                 },
                 {
-                    "name": "창 (Spear / 長槍)",
-                    "usage": "Military/General. King of Hundred Weapons. Penetration focused."
+                    "name": "창 (長槍)",
+                    "usage": "군인/장수용. 백병전의 왕. 관통력에 특화됨."
                 },
                 {
-                    "name": "철퇴 (Iron Hammer / 鐵槌)",
-                    "usage": "Crushing armor."
+                    "name": "철퇴 (鐵槌)",
+                    "usage": "갑옷을 부수는 둔기."
                 }
             ]
         },
         "exotic_and_scholar": {
-            "summary": "Weapons for specialists, scholars, or eccentrics.",
+            "summary": "전문가, 학자, 혹은 괴짜들을 위한 무기.",
             "list": [
                 {
-                    "name": "부채 (Fan / 扇)",
-                    "usage": "Scholars/Strategists (Zhuge). Iron ribs, hidden blades, or wind attacks."
+                    "name": "부채 (扇)",
+                    "usage": "학자나 책사(제갈세가). 철로 된 살이나 숨겨진 칼날, 바람 공격을 쓴다."
                 },
                 {
-                    "name": "판관필 & 철필 (Judge's Pen & Iron Brush / 判官筆 & 鐵筆)",
-                    "usage": "Scholars. Used for sealing acupoints (Jeom-hyeol)."
+                    "name": "판관필 & 철필 (判官筆 & 鐵筆)",
+                    "usage": "학자풍 고수. 혈도를 짚어 제압하는 점혈법에 쓴다."
                 },
                 {
-                    "name": "철주판 (Iron Abacus / 鐵珠板)",
-                    "usage": "Merchants/Strategists. Beads are shot as projectiles."
+                    "name": "철주판 (鐵珠板)",
+                    "usage": "상인이나 책사. 주판알을 암기처럼 튕겨 공격한다."
                 },
                 {
-                    "name": "편 (Whip / 鞭) & 연편 (Soft Whip)",
-                    "usage": "Women or cruel masters. Long reach, entangling."
+                    "name": "편 & 연편 (鞭)",
+                    "usage": "여성이나 사파의 고수. 사거리가 길고 상대를 묶을 수 있다."
                 },
                 {
-                    "name": "륜 (Chakram/Wheel / 輪)",
-                    "usage": "Rotating bladed wheels. Thrown or held."
+                    "name": "륜 (輪)",
+                    "usage": "날이 달린 회전하는 바퀴. 던지거나 손에 쥐고 벤다."
                 },
                 {
-                    "name": "유성추 (Meteor Hammer / 流星鎚)",
-                    "usage": "Ball on a chain. High centrifugal force."
+                    "name": "유성추 (流星鎚)",
+                    "usage": "사슬에 매달린 철퇴. 원심력을 이용한 강력한 한 방."
                 },
                 {
-                    "name": "혈적자 (Blood Guillotine / 血摘刺)",
-                    "usage": "Flying guillotine. Captures the head and decapitates. Fear factor: Max."
+                    "name": "혈적자 (血摘刺)",
+                    "usage": "나는 기요틴. 상대의 머리를 씌워 목을 벤다. 공포의 상징."
                 }
             ]
         },
         "hidden_weapons": {
-            "category": "Amgi (暗器)",
-            "summary": "Projectiles used for surprise attacks. Sichuan Tang Family specialty.",
+            "category": "암기 (暗器)",
+            "summary": "기습용 투척 무기. 사천당가의 주특기.",
             "list": [
                 {
-                    "name": "비표 & 표창 (Throwing Star/Knife)",
-                    "usage": "Standard projectile."
+                    "name": "비표 & 표창",
+                    "usage": "표준적인 투척 무기."
                 },
                 {
-                    "name": "비황석 (Flying Locust Stone / 飛蝗石)",
-                    "usage": "Shaped like locusts. Blunt trauma."
+                    "name": "비황석 (飛蝗石)",
+                    "usage": "메뚜기 모양의 돌. 날카로움보다는 타격을 준다."
                 },
                 {
-                    "name": "매화수전 (Plum Blossom Sleeve Arrow / 梅花手箭)",
-                    "usage": "Spring-loaded or wrist-flick mechanism. Hidden in sleeves."
+                    "name": "매화수전 (梅花手箭)",
+                    "usage": "소매 속에 숨겨진 통에서 발사되는 화살. 스프링/기계 장치."
                 },
                 {
-                    "name": "수노 (Hand Crossbow / 手弩)",
-                    "usage": "Mechanical repeating crossbow."
+                    "name": "수노 (手弩)",
+                    "usage": "한 손으로 쏘는 연발 석궁."
                 },
                 {
-                    "name": "독질려 (Poison Caltrop / 毒疾藜)",
-                    "usage": "Spiked caltrops on the floor to stop pursuit. Poisoned."
+                    "name": "독질려 (毒疾藜)",
+                    "usage": "바닥에 뿌리는 마름쇠. 밟으면 독이 퍼진다. 추격 저지용."
                 },
                 {
-                    "name": "단혼사 (Soul Severing Sand / 斷魂沙)",
-                    "usage": "Poison sand. Creates a cloud of pain."
+                    "name": "단혼사 (斷魂沙)",
+                    "usage": "독모래. 뿌리면 고통스러운 독구름을 형성한다."
                 },
                 {
-                    "name": "만천화우 (Sky Filled with Flower Rain / 滿天花雨)",
-                    "usage": "The ultimate hidden weapon technique. Filling the sky with unavoidable projectiles."
+                    "name": "만천화우 (滿天花雨)",
+                    "usage": "최강의 암기 수법. 하늘을 가득 메우는 피할 수 없는 암기의 비."
                 }
             ]
         },
         "water_weapons": {
             "list": [
-                "분수도/분수자 (Water Parting Blade/Spike) - For underwater combat."
+                "분수도/분수자 - 수중 전투용 무기."
             ]
         }
     },
     "narrative_role": [
-        "Characterization: A scholar with a fan looks elegant; a bandit with a wolf tooth mace looks brutal.",
-        "Tactical Variety: Whip vs Sword (Reach vs Speed), Hammer vs Shield (Crush vs Block).",
-        "Surprise Factor: The 'Merchant' suddenly shooting beads from his abacus."
+        "캐릭터성: 부채를 든 학자는 우아해 보이고, 낭아봉을 든 산적은 무식해 보인다.",
+        "전략적 다양성: 편 vs 검 (사거리 vs 속도), 철퇴 vs 방패 (파괴 vs 방어).",
+        "반전 요소: 점잖은 상인이 갑자기 주판알을 쏘아 공격한다."
     ]
 }

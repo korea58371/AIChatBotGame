@@ -1,7 +1,5 @@
-import { CORE_RULES, WUXIA_SYSTEM_PROMPT_CONSTANTS, FACTION_BEHAVIOR_GUIDELINES, WUXIA_ALLOWED_EMOTIONS, WUXIA_FIRST_TURN_EXAMPLE } from '../constants';
+import { WUXIA_SYSTEM_PROMPT_CONSTANTS, WUXIA_FIRST_TURN_EXAMPLE } from '../constants';
 import martialArtsLevels from '../jsons/martial_arts_levels.json';
-import factionsData from '../jsons/factions.json';
-import { backgroundMappings } from '../backgroundMappings';
 
 const realmHierarchy = martialArtsLevels.realm_hierarchy as Record<string, any>;
 
@@ -9,7 +7,7 @@ export const getRankInfo = (rankKey: string = '이류') => {
     // 1. Determine Rank Key (Default: '이류' - Rule #1)
     let currentRankKey = '이류';
 
-    // Check if the provided key is valid in the hierarchy
+    // Check if the provide key is valid in the hierarchy
     if (rankKey && realmHierarchy[rankKey]) {
         currentRankKey = rankKey;
     }
@@ -46,29 +44,10 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     // Construct Skill List
     const skillList = (stats.skills || []).join(', ') || "없음 (기본 주먹질)";
 
-    // Construct Realm Hierarchy Description for Context
-    const hierarchyDesc = Object.values(realmHierarchy).map((r: any) =>
-        `- **${r.name}**: ${r.capability} (Gap: ${r.power_gap || 'Significant'})`
-    ).join('\n');
-
-    // Get Background List
-    const backgroundList = Object.keys(backgroundMappings).join(', ');
-
     return `
-${WUXIA_SYSTEM_PROMPT_CONSTANTS}
 
-${(!state.messages || state.messages.length === 0) ? WUXIA_FIRST_TURN_EXAMPLE : ""}
 
-${FACTION_BEHAVIOR_GUIDELINES}
-
-${WUXIA_ALLOWED_EMOTIONS}
-
-### [사용 가능한 배경 목록 (Backgrounds)]
-**반드시 아래 목록에 있는 배경 키(Key)만 사용하라:**
-[ ${backgroundList} ]
-
-### [무협 세계관: 무공 경지]
-${hierarchyDesc}
+${(!state.turnCount || state.turnCount <= 1) ? WUXIA_FIRST_TURN_EXAMPLE : ""}
 
 ---
 
@@ -77,7 +56,8 @@ ${hierarchyDesc}
 **경지**: ${playerRank}
    - **단계**: ${rankData.status}
    - **능력**: ${rankData.capability}
-**내공**: ${stats.mp} (MP)
+**기력(MP)**: ${stats.mp}
+**내공(갑자)**: ${stats.neigong || 0}년 
 **보유 무공**:
 - **무공**: ${skillList}
 - **내공심법**: ${stats.internalArt || '기본 토납법'}
@@ -98,6 +78,9 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 
 ## [등장 인물]
 {{CHARACTER_INFO}}
+
+## [이벤트 가이드]
+{{EVENT_GUIDE}}
 
 - **<선택지N>Content**
 - Choices for the user at the end.

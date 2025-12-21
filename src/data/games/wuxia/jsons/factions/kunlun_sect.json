@@ -1,62 +1,62 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Gu-pa / Orthodox)",
+    "sub_domain": "문파 (구파일방 / 정파)",
     "faction_profile": {
-        "name": "곤륜파 (Kunlun Sect / 昆崙派)",
+        "name": "곤륜파 (昆崙派)",
         "location": {
-            "province": "Qinghai (청해성 / 青海省)",
-            "mountain": "Mt. Kunlun (Kunlunshan / 昆崙山) - The 'Ancestor of Ten Thousand Mountains'.",
-            "geography": "Remote, high altitude, mystical atmosphere. Far west of the Central Plains."
+            "province": "청해성 (青海省)",
+            "mountain": "곤륜산 (昆崙山) - 만산의 조종 (萬山之祖).",
+            "geography": "중원 서쪽 끝, 높고 신비로운 고산 지대."
         },
         "heritage": {
-            "founder": "Legendary figures (He Zudao etc. depending on lore).",
-            "philosophy": "Taoist. Pursuit of immortality and dragon/sky imagery.",
-            "trait": "Mysterious and powerful. Often disconnected from daily worldly affairs."
+            "founder": "하족도 (何足道) 혹은 전설적인 신선.",
+            "philosophy": "도가 (道家). 신선과 용, 하늘을 숭상함.",
+            "trait": "속세와 동떨어진 신비롭고 강력한 기풍."
         },
         "status": {
-            "tier": "Major Sect (One of the Nine Great Sects).",
-            "political_role": "Guardian of the West. Often deals with threats from the Demonic Cult (Xinjiang is nearby)."
+            "tier": "구파일방의 명문.",
+            "political_role": "서역의 수호자. 마교(신강)와 인접하여 마교의 동진을 막는 제1저지선 역할."
         }
     },
     "characteristics": {
-        "archetype": "Dragon / Sky Warrior",
+        "archetype": "용의 전사 / 천공의 무인 (龍-天空)",
         "combat_style": {
-            "summary": "Grand, Sweeping, and Soaring.",
-            "visuals": "Lots of jumping/air combat capabilities. Dragon-shaped Qi.",
-            "attribute": "Cloud and Dragon."
+            "summary": "웅장하고 비상하는 기세.",
+            "visuals": "경공과 공중전 특화. 용 형상의 기(氣).",
+            "attribute": "운(雲)과 용(龍)."
         }
     },
     "martial_arts_library": {
         "signature_ultimate": {
-            "name": "운룡대팔식 (Cloud Dragon Great Eight Forms / 雲龍大八式)",
-            "description": "The ultimate movement technique allowing the user to step on air and change direction mid-flight.",
-            "type": "Movement / Aerial Combat"
+            "name": "운룡대팔식 (雲龍大八式)",
+            "description": "천하 제일의 경공/신법. 허공을 밟고 비행하며 방향을 자유자재로 바꿈.",
+            "type": "경공 / 공중전"
         },
         "internal_energy": {
             "list": [
-                "태청신공 (Great Clarity Divine Art)",
-                "상청무상검신공 (Supreme Clarity Formless Sword Divine Art)"
+                "태청신공 (太淸神功)",
+                "상청무상검신공 (上淸無上劍神功)"
             ]
         },
         "sword_arts": {
             "list": [
-                "태청검법 (Great Clarity Sword)",
-                "운룡검 (Cloud Dragon Sword)",
-                "분광검 (Splitting Light Sword) - Creates illusions/afterimages."
+                "태청검법 (太淸劍法)",
+                "운룡검 (雲龍劍)",
+                "분광검 (分光劍) - 환영과 잔상."
             ]
         },
         "palm_and_fist": {
             "list": [
-                "낙안장 (Falling Goose Palm)",
-                "건곤오행장 (Heaven and Earth Five Elements Palm)"
+                "낙안장 (落雁掌)",
+                "건곤오행장 (乾坤五行掌)"
             ]
         }
     },
     "narrative_role": {
         "role": [
-            "The sect with the best movement techniques (Qinggong).",
-            "Usually aloof and arrogant due to their remote location.",
-            "The first line of defense against the Demonic Cult's eastern expansion."
+            "최고의 경공(신법)을 보유한 문파.",
+            "외진 곳에 위치하여 오만하거나 독자적인 태도를 보임.",
+            "마교와의 전쟁 최전선."
         ]
     }
 }

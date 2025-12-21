@@ -1,113 +1,113 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Gu-pa / The Origin / Orthodox)",
+    "sub_domain": "문파 (구파일방 / 정파의 태두)",
     "faction_profile": {
-        "name": "소림사 (Shaolin Temple / 少林寺)",
+        "name": "소림사 (少林寺)",
         "alias": [
-            "The North Star of Wulin (무림의 태산북두)",
-            "Origin of All Martial Arts (천하공부출소림 / 天下功夫出少林)",
-            "The First Sect (천하제일문)"
+            "무림의 태산북두 (泰山北斗)",
+            "천하공부출소림 (天下功夫出少林)",
+            "천하제일문 (天下第一門)"
         ],
         "location": {
-            "province": "Henan (하남성 / 河南省)",
-            "county": "Dengfeng (등봉현 / 登封縣)",
-            "mountain": "Mt. Song (Songshan / 숭산) - Specifically the Shaoshi Peak (소실봉).",
-            "geography": "Surrounded by forests (hence 'Shaolin'). To the north is the Yellow River (Hwang-ho).",
+            "province": "하남성 (河南省)",
+            "county": "등봉현 (登封縣)",
+            "mountain": "숭산 (嵩山) - 소실봉 (少室峰).",
+            "geography": "울창한 숲(林) 속에 위치.",
             "landmarks": [
-                "Mountain Gate (Sanmun / 山門) - The imposing main entrance with the black-gold signboard written by Emperor Kangxi.",
-                "Dharma Hall (Daeungbojeon / 大雄寶殿) - Main gathering hall.",
-                "Tower Forest (Taprim / 塔林) - Graveyard of pagodas for past masters.",
-                "Scripture Library (Janggyeonggak / 藏經閣) - Stores 72 Arts and Sutras.",
-                "Bodhidharma Cave (Chamhoe-dong / 懺悔洞) - Prison for sinners/Wall-gazing training.",
-                "36 Chambers (Samsipyuk-bang) - Training grounds."
+                "산문 (山門) - 강희제가 쓴 현판.",
+                "대웅보전 (大雄寶殿) - 본당.",
+                "탑림 (塔林) - 역대 고승들의 사리탑.",
+                "장경각 (藏經閣) - 무공 비급과 불경 보관소.",
+                "달마동 (참회동 / 懺悔洞) - 면벽 수련 및 감옥.",
+                "소림 36방 (三十六房) - 수련장."
             ]
         },
         "heritage": {
-            "founder": "Bhadra (Balta / 발타선사) historically; Bodhidharma (Dalma / 달마대사) in Wuxia lore.",
-            "philosophy": "Chan (Zen) Buddhism (선불교). Compassion (Ja-bi) and Deliverance (Je-do).",
-            "history": "Famous for the 13 Stick Monks saving Emperor Li Shimin (Tang Dynasty)."
+            "founder": "달마대사 (보리달마).",
+            "philosophy": "선불교 (禪佛敎). 자비(慈悲)와 제도(濟度).",
+            "history": "13 곤승이 당 태종 이세민을 구한 설화로 유명."
         },
         "status": {
-            "tier": "God Tier (The Absolute Standard).",
-            "political_role": "Leader or Spiritual Anchor of the Murim Alliance. Usually stays neutral until a crisis threatens the world."
+            "tier": "절대지존 (무림의 영원한 1인자).",
+            "political_role": "무림맹의 정신적 지주. 평소엔 중립을 지키다 세상이 어지러울 때 나섬."
         }
     },
     "characteristics": {
-        "archetype": "Monk / Tank / Paladin",
+        "archetype": "승려 / 탱커 / 성기사 (Monk / Tank)",
         "structure": {
-            "leader": "Abbot (Bangjang / 方丈).",
+            "leader": "방장 (方丈).",
             "elites": [
-                "18 Arhats (Sippal-nahan / 十八羅漢) - Formation specialists.",
-                "4 Guardian Kings (Sadae-geumgang / 四大金剛) - Top tier guardians.",
-                "8 Great Protectors (Paldae-howon) - Guard the Abbot.",
-                "Discipline Hall (Gyeyul-won) - Internal police."
+                "십팔나한 (十八羅漢) - 진법 특화.",
+                "사대금강 (四大金剛) - 수호신.",
+                "팔대호원 (八大護院) - 방장 호위.",
+                "계율원 (戒律院) - 내부 감찰 및 처벌."
             ]
         },
         "combat_style": {
-            "summary": "Hard External Arts transforming into Supreme Internal Arts.",
-            "visuals": "Golden Body (Geumgang), crushing palm strikes, immovable defense.",
-            "core_mechanic": "72 Supreme Arts (72 Jeol-ye). A vast library of techniques for every body part."
+            "summary": "강한 외공(육체)에서 시작하여 최상의 내공(불심)으로 완성됨.",
+            "visuals": "금강불괴 (황금빛 신체), 묵직한 장법, 부동심.",
+            "core_mechanic": "72절기 (七十二絶技). 신체 모든 부위를 무기화."
         }
     },
     "martial_arts_library": {
         "signature_ultimate": {
-            "name": "역근경 & 세수경 (Yi Jin Jing & Xi Sui Jing)",
-            "description": "The ultimate internal arts of Bodhidharma. Reinforces tendons/meridians (Yi Jin) and cleanses bone marrow (Xi Sui).",
-            "effect": "Provides infinite internal energy and perfect physical condition."
+            "name": "역근경 & 세수경 (易筋經 & 洗髓經)",
+            "description": "달마대사의 신공. 근골을 바꾸고(역근) 골수를 씻어내어(세수) 환골탈태.",
+            "effect": "무한한 내공과 완벽한 신체."
         },
         "body_hardening": {
-            "name": "금강불괴 (Diamond Indestructible Body / 金剛不壞)",
-            "description": "The pinnacle of hard qigong. The body becomes invulnerable to blades and poison.",
+            "name": "금강불괴 (金剛不壞)",
+            "description": "외공의 극치. 칼과 창이 뚫지 못하고 만독이 침범하지 못함.",
             "related_arts": [
-                "철포삼 (Iron Cloth Shirt)",
-                "금종罩 (Golden Bell Cover)"
+                "철포삼 (鐵布衫)",
+                "금종조 (金鐘罩)"
             ]
         },
         "fist_and_palm": {
-            "style": "Heavy and Yang-filled",
+            "style": "묵직하고 양강(陽剛)함",
             "list": [
                 {
-                    "name": "백보신권 (Hundred Step Divine Fist)",
-                    "effect": "Punching energy travels 100 steps."
+                    "name": "백보신권 (百步神拳)",
+                    "effect": "백 보 밖에서 권풍으로 적을 타격."
                 },
                 {
-                    "name": "여래신장 (Tathagata Palm)",
-                    "note": "Often depicted as a lost or supreme Buddhist palm art."
+                    "name": "여래신장 (如來神掌)",
+                    "note": "불가의 최강 장법으로 묘사됨."
                 },
-                "나한권 (Arhat Fist) - Foundation.",
-                "대력금강장 (Great Strength Diamond Palm)",
-                "수미산장 (Mt. Sumeru Palm)"
+                "나한권 (羅漢拳) - 기초.",
+                "대력금강장 (大力金剛掌)",
+                "수미산장 (須彌山掌)"
             ]
         },
         "finger_arts": {
-            "style": "Piercing",
+            "style": "관통력",
             "list": [
-                "일지선공 (One Finger Zen / 一指禪功) - Shooting Qi from a finger.",
-                "다라엽지 (Pattra Leaf Finger)",
-                "금강지 (Diamond Finger)",
-                "탄지신통 (Flicking Finger Divine Skill)"
+                "일지선공 (一指禪功)",
+                "다라엽지 (多羅葉指)",
+                "금강지 (金剛指)",
+                "탄지신통 (彈指神通)"
             ]
         },
         "weapon_arts": {
-            "signature": "Staff (Bong/Gon)",
+            "signature": "봉/곤 (Bong/Staff)",
             "list": [
-                "달마십팔로 (Bodhidharma 18 Staff)",
-                "복마장법 (Demon Subduing Staff)"
+                "달마십팔로 (達摩十八路)",
+                "복마장법 (伏魔杖法)"
             ]
         },
         "movement": {
-            "signature": "일위도강 (One Reed Crossing the River)",
-            "description": "Crossing a river on a single reed. The symbol of extreme lightness skill."
+            "signature": "일위도강 (一葦渡江)",
+            "description": "갈대 한 잎을 타고 강을 건넘. 경공의 극치."
         },
         "formations": {
-            "name": "십팔나한진 (18 Arhat Formation)",
-            "description": "Unbreakable formation used to trap supreme masters."
+            "name": "십팔나한진 (十八羅漢陣)",
+            "description": "절대고수도 빠져나갈 수 없는 소림 최고의 진법."
         }
     },
     "narrative_role": [
-        "The 'Final Wall' that protects the justice of the Wulin.",
-        "The place where the protagonist finds a 'Secret Manual' (e.g., Yi Jin Jing) in the library.",
-        "The arbiter of disputes (The Abbot's word is law).",
-        "A place of penance for powerful villains (imprisoned in the caves)."
+        "무림 정의의 최후 보루.",
+        "주인공이 도서관(장경각)에서 기연을 얻는 장소.",
+        "분쟁의 중재자.",
+        "대마두를 가두어 갱생시키는 감옥."
     ]
 }

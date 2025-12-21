@@ -13,14 +13,24 @@ export interface GameData {
     wikiData?: any;
     characterMap?: Record<string, string>;
     extraMap?: Record<string, string>;
-    constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
+    constants?: {
+        FAMOUS_CHARACTERS: string;
+        CORE_RULES: string;
+        FACTION_BEHAVIOR_GUIDELINES?: string;
+        WUXIA_ALLOWED_EMOTIONS?: string;
+    };
     lore?: any;
     characterCreationQuestions?: any[];
 }
 
 export class DataManager {
+    /**
+     * 게임 데이터를 로드하는 정적 메서드입니다.
+     * @param gameId 로드할 게임의 ID (예: 'wuxia', 'god_bless_you')
+     * @returns 로드된 게임 데이터 객체 (GameData)
+     */
     static async loadGameData(gameId: string): Promise<GameData> {
-        console.log(`[DataManager] Loading data for game: ${gameId}`);
+        console.log(`[DataManager] 게임 데이터 로딩 시작: ${gameId}`);
 
         try {
             // Validate gameId to prevent directory traversal
@@ -33,8 +43,9 @@ export class DataManager {
             // Note: We use template literals in import() - Webpack/Next.js supports this partial dynamic import
             // ensuring we only import from known data structure.
 
-            // 1. JSON Data & Scripts
-            // Explicitly handling imports to ensure bundler (Turbopack/Webpack) can trace them statically.
+            // 1. JSON 데이터 & 스크립트 명시적 import
+            // Turbopack/Webpack 번들러가 정적으로 경로를 추적할 수 있도록, 동적 import() 내부에 리터럴 경로를 사용해야 합니다.
+            // 변수로 경로를 조합하면 번들러가 파일을 찾지 못할 수 있습니다.
             let worldModule, charactersModule, bgListModule, eventsModule, scenarioModule, bgMappingsModule, systemPromptModule, wikiDataModule, charMapModule, extraMapModule, constantsModule, loreModule;
 
             console.log(`[DataManager] Starting explicit import for ${gameId}...`);
@@ -107,39 +118,55 @@ export class DataManager {
                 case 'wuxia':
                     try {
                         try {
-                            worldModule = await import('@/data/games/wuxia/world.json');
+                            worldModule = await import('../data/games/wuxia/world.json');
+                            // Handle ESM default export behavior for JSON
+                            if ((worldModule as any).default) worldModule = (worldModule as any).default;
                         } catch (e) {
                             console.warn('[DataManager] world.json not found for wuxia, using empty default.');
-                            worldModule = { default: { locations: {}, items: {} } };
+                            worldModule = { locations: {}, items: {} };
                         }
-                        charactersModule = await import('@/data/games/wuxia/characters.json');
-                        // Use Server Action for Dynamic Backgrounds
-                        const { getBackgroundList } = await import('@/app/actions/game');
-                        bgListModule = await getBackgroundList('wuxia');
+                        try {
+                            charactersModule = await import('../data/games/wuxia/characters.json');
+                            if ((charactersModule as any).default) charactersModule = (charactersModule as any).default;
+                        } catch (e) { console.error("[DataManager] Failed characters.json", e); }
 
-                        eventsModule = await import('@/data/games/wuxia/events');
-                        scenarioModule = await import('@/data/games/wuxia/start_scenario');
-                        bgMappingsModule = await import('@/data/games/wuxia/backgroundMappings');
-                        systemPromptModule = await import('@/data/games/wuxia/prompts/system');
+                        // Use Server Action for Dynamic Backgrounds
+                        try {
+                            const { getBackgroundList } = await import('../app/actions/game');
+                            bgListModule = await getBackgroundList('wuxia');
+                        } catch (e) {
+                            console.warn("[DataManager] Failed to load background list (script mode?), using empty list.");
+                            bgListModule = [];
+                        }
+
+                        try { eventsModule = await import('../data/games/wuxia/events'); } catch (e) { console.error("[DataManager] Failed events", e); }
+                        try { scenarioModule = await import('../data/games/wuxia/start_scenario'); } catch (e) { console.error("[DataManager] Failed scenario", e); }
+                        try { bgMappingsModule = await import('../data/games/wuxia/backgroundMappings'); } catch (e) { console.error("[DataManager] Failed bgMappings", e); }
+                        try { systemPromptModule = await import('../data/games/wuxia/prompts/system'); } catch (e) { console.error("[DataManager] Failed system prompt", e); }
+
 
                         // Constants
-                        constantsModule = await import('@/data/games/wuxia/constants');
+                        try { constantsModule = await import('../data/games/wuxia/constants'); } catch (e) { console.error("[DataManager] Failed constants", e); }
 
                         // Lore (Wuxia Only)
-                        loreModule = await import('@/data/games/wuxia/jsons');
+                        try { loreModule = await import('../data/games/wuxia/jsons'); } catch (e) { console.error("[DataManager] Failed lore", e); }
 
                         // Maps
-                        // @ts-ignore
-                        const charMap = await import('@/data/games/wuxia/character_map.json');
-                        charMapModule = charMap.default || charMap;
+                        try {
+                            // @ts-ignore
+                            const charMap = await import('../data/games/wuxia/character_map.json');
+                            charMapModule = charMap.default || charMap;
+                        } catch (e) { console.error("[DataManager] Failed charMap", e); }
 
-                        // @ts-ignore
-                        const extraMap = await import('@/data/games/wuxia/extra_map.json');
-                        extraMapModule = extraMap.default || extraMap;
+                        try {
+                            // @ts-ignore
+                            const extraMap = await import('../data/games/wuxia/extra_map.json');
+                            extraMapModule = extraMap.default || extraMap;
+                        } catch (e) { console.error("[DataManager] Failed extraMap", e); }
 
-                        // [Enrichment] Merge Detailed Lore Data into Character State
-                        // The simplified 'characters.json' lacks appearance/relationships/etc.
-                        // We pull that from 'loreModule.WuxiaLore.charactersDetail'.
+                        // [데이터 강화] 상세 설정(Lore) 데이터를 캐릭터 상태에 병합
+                        // 기본 'characters.json'에는 이름과 기본 정보만 있고, 외모 묘사나 성격, 관계도 등 자세한 정보가 부족할 수 있습니다.
+                        // 이를 'loreModule.WuxiaLore.charactersDetail'에서 가져와서 채워 넣습니다.
                         if (charactersModule && loreModule?.WuxiaLore?.charactersDetail) {
                             const mainChars = loreModule.WuxiaLore.charactersDetail.characters_main || [];
                             const suppChars = loreModule.WuxiaLore.charactersDetail.characters_supporting || [];
@@ -163,9 +190,11 @@ export class DataManager {
                                         return {
                                             ...simple,
                                             // Merge Key Fields for PromptManager
+                                            description: detail.basic_profile.martial_arts_realm.description,
+                                            // [상세 데이터 병합] 아래 필드들은 기본 데이터에 없던 상세 정보입니다.
                                             appearance: detail.appearance,
                                             personality: detail.personality,
-                                            relationships: detail.relationships, // [Target Field]
+                                            relationships: detail.relationships, // [중요] 관계도 데이터 병합
                                             profile: detail.basic_profile,
                                             social: detail.social,
                                             preferences: detail.preferences,
@@ -175,7 +204,7 @@ export class DataManager {
                                     }
                                     return simple;
                                 });
-                                // Override charactersModule to return the Enriched List
+                                // 캐릭터 모듈을 강화된 리스트로 교체합니다.
                                 charactersModule = enriched;
                             }
                         }
@@ -195,18 +224,20 @@ export class DataManager {
                 characters: (charactersModule as any).default || charactersModule,
                 backgroundList: (bgListModule as any).default || bgListModule,
                 events: (eventsModule as any).default || (eventsModule as any).events || [],
-                scenario: scenarioModule.START_SCENARIO_TEXT || "",
-                characterCreationQuestions: (scenarioModule as any).CHARACTER_CREATION_QUESTIONS || null,
-                backgroundMappings: bgMappingsModule.backgroundMappings || {},
-                getSystemPromptTemplate: systemPromptModule.getSystemPromptTemplate,
-                getRankInfo: (systemPromptModule.getRankInfo as any),
+                scenario: scenarioModule?.START_SCENARIO_TEXT || "",
+                characterCreationQuestions: (scenarioModule as any)?.CHARACTER_CREATION_QUESTIONS || null,
+                backgroundMappings: bgMappingsModule?.backgroundMappings || {},
+                getSystemPromptTemplate: systemPromptModule?.getSystemPromptTemplate || (() => ""),
+                getRankInfo: (systemPromptModule?.getRankInfo as any) || (() => ({ playerRank: 'Unknown', rankKey: 'unknown', rankData: {}, rankLogline: '', rankKeywords: '', rankGiftDesc: '', rankConflict: '' })),
                 wikiData: wikiDataModule || {},
                 characterMap: charMapModule || {},
                 extraMap: extraMapModule || {},
                 // Fix: Spread module into plain object to avoid serialization error
                 // Fix: Spread module into plain object to avoid serialization error
                 constants: constantsModule ? { ...constantsModule } as any : undefined,
-                // Fix: WuxiaLore contains nested modules (factionsDetail, charactersDetail) which need unwrapping
+                // [중요] 상세 설정(Lore) 데이터 구조 분해
+                // WuxiaLore 내부에는 factionsDetail, charactersDetail과 같은 중첩된 객체들이 있습니다.
+                // 이를 클라이언트에서 바로 사용할 수 있도록 펼쳐서(spread) 전달합니다.
                 lore: loreModule?.WuxiaLore ? {
                     ...loreModule.WuxiaLore,
                     factionsDetail: { ...loreModule.WuxiaLore.factionsDetail },

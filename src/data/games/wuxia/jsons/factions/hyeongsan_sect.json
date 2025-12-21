@@ -1,88 +1,88 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects or Five Sacred Mountains)",
+    "sub_domain": "문파 (구파일방 / 오악검파)",
     "faction_profile": {
-        "name": "형산파 (Mount Heng Sect / 衡山派)",
+        "name": "형산파 (衡山派)",
         "alias": [
-            "Nam-ak (Southern Sacred Mountain / 南岳)",
-            "The Solitary Beauty of the South (오악독수 / 南岳獨秀)"
+            "남악 (南岳)",
+            "남악독수 (南岳獨秀)"
         ],
         "location": {
-            "province": "Hunan (호남성 / 湖南省)",
-            "mountain": "Mt. Heng (형산 / 衡山) - Composed of 72 peaks.",
-            "climate": "Warm and scenic, located furthest south among the Five Sacred Mountains."
+            "province": "호남성 (湖南省)",
+            "mountain": "형산 (衡山) - 72개의 봉우리.",
+            "climate": "온화하고 수려함. 오악 중 가장 남쪽."
         },
         "status": {
-            "alliance_role": "Core member of the Five Sacred Mountain Sword Sects (Oh-ak Geom-pa).",
-            "ranking": "Often considered #2 in recognition within the Five Mountains (after Mount Hua), but sometimes excluded from the 'Nine Great Sects' depending on the author.",
-            "cultural_significance": "A joint sanctuary for Buddhism and Taoism, and the birthplace of the Huxiang School (Neo-Confucianism)."
+            "alliance_role": "오악검파의 핵심.",
+            "ranking": "오악 중 2인자(화산 다음)로 자주 묘사됨.",
+            "cultural_significance": "유불선(儒佛仙)이 조화된 성지이자, 호남 성리학의 발상지."
         },
         "heritage": {
-            "mythology": "Resting place of Zhurong (God of Fire / 축융). Associated with Sung Heuk-ho from 'Investiture of the Gods'.",
-            "literature": "Background for 'The Cloud Dream of the Nine' (Guunmong) and associated with poets like Du Fu and Zhu Xi."
+            "mythology": "축융 (祝融 - 불의 신)이 잠든 곳.",
+            "literature": "구운몽의 배경이자 두보, 주희 등 문인들의 자취가 남음."
         }
     },
     "characteristics": {
-        "archetype": "Artistic Swordsman / Mystic Illusionist",
-        "philosophical_blend": "Harmonious fusion of Confucianism, Buddhism, and Taoism.",
+        "archetype": "예술 검객 / 신비주의 환술사 (藝術劍客 / 幻術師)",
+        "philosophical_blend": "유불선의 조화.",
         "combat_style": {
-            "summary": "Illusion, Speed, and Variation.",
+            "summary": "환영(幻影), 속도(速度), 변화(變化).",
             "key_elements": [
-                "Mist & Cloud: Sword techniques that confuse the enemy like shifting clouds.",
-                "Sound & Vibration: Often associated with music (Zither/Flute) in some settings.",
-                "Fire: Secret techniques related to the Fire God Zhurong."
+                "운무(雲霧): 구름처럼 변환무쌍한 검.",
+                "음률(音律): 음악과 연관된 무공 (금/피리).",
+                "화(火): 축융의 전설과 관련된 화공."
             ],
-            "signature_visual": "Returning Wind and Falling Geese (visualizing the wind and birds)."
+            "signature_visual": "회풍낙안 (回風落雁) - 바람이 돌고 기러기가 내려앉음."
         }
     },
     "martial_arts_library": {
         "sword_arts": {
-            "style": "Fast, changeable, and deceptive",
+            "style": "빠르고, 변환무쌍하며, 기만적임",
             "signature": {
-                "name": "칠십이식 회풍낙안검 (72-Style Returning Wind Falling Wild Goose Sword)",
-                "description": "The most famous technique. A dazzling display of speed and change, mimicking a goose landing in a whirlwind."
+                "name": "칠십이식 회풍낙안검 (七十二式回風落雁劍)",
+                "description": "형산파 최고의 절기. 회오리바람에 기러기가 내려앉듯 현란한 변화와 속도."
             },
             "illusion_arts": [
-                "백변천환 형산운무십삼검 (100 Changes 1000 Illusions Mt. Heng Mist 13 Sword)",
-                "유혼검법 (Ghost Soul Sword)",
-                "백화검법 (Hundred Flower Sword)"
+                "백변천환 형산운무십삼검 (百變千幻衡山雲霧十三劍)",
+                "유혼검법 (幽魂劍法)",
+                "백화검법 (百花劍法)"
             ],
             "fire_arts": [
-                "축융검법 (Zhurong Fire God Sword) - Heavy and destructive, contrasting with their usual style.",
-                "화정단심검법 (Fire Righteousness Severing Heart Sword)"
+                "축융검법 (祝融劍法) - 묵직하고 파괴적임.",
+                "화정단심검법 (火晶丹心劍法)"
             ],
             "others": [
-                "오로검법 (Five Roads Sword)",
-                "원공검법 (Ape Lord Sword)",
-                "선학검법 (Immortal Crane Sword)",
-                "항마연화검법 (Demon Subduing Lotus Sword)"
+                "오로검법 (五路劍法)",
+                "원공검법 (猿公劍法)",
+                "선학검법 (仙鶴劍法)",
+                "항마연화검법 (降魔蓮花劍法)"
             ]
         },
         "internal_energy": {
             "list": [
-                "구전일기혼원공 (Nine Turn One Qi Mixed Origin Art)",
-                "응원공 (Condensing Origin Art)",
-                "유혼신공 (Ghost Soul Divine Art)"
+                "구전일기혼원공 (九轉一氣混元功)",
+                "응원공 (凝元功)",
+                "유혼신공 (幽魂神功)"
             ]
         },
         "movement": {
-            "style": "Ghostly and Elusive",
+            "style": "귀신같이 은밀함",
             "list": [
-                "잠형산보 (Hiding Shape Scattering Step)",
-                "환영구보 (Illusion Nine Step)",
-                "선풍보 (Whirlwind Step)"
+                "잠형산보 (潛形散步)",
+                "환영구보 (幻影九步)",
+                "선풍보 (旋風步)"
             ]
         },
         "palm_arts": {
             "list": [
-                "원공장법 (Ape Lord Palm)"
+                "원공장법 (猿公掌法)"
             ]
         }
     },
     "narrative_role": [
-        "The artistic rival to Mount Hua (Sword vs Sword).",
-        "A sect that provides 'Mystery' or 'Illusion' elements to the story.",
-        "Often portrayed as neutral or scholarly, avoiding dirty political fights.",
-        "The stage for events involving the 'Fire God's Treasure' or ancient musical scores."
+        "화산파의 예술적 라이벌 (검 vs 검).",
+        "이야기에 '신비'와 '환영' 요소를 더하는 문파.",
+        "정치 싸움을 피하는 중립적이고 학구적인 태도.",
+        "축융의 보물(불/화염)이나 고대 악보와 관련된 이벤트의 무대."
     ]
 }

@@ -1,173 +1,173 @@
 {
-    "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Honorifics & Address System",
-    "source_reference": "Korean Wuxia Standards",
+    "domain": "무협 (武俠)",
+    "sub_domain": "호칭 및 경어 체계",
+    "source_reference": "한국 무협 표준",
     "social_titles": {
-        "description": "General titles used in Jianghu (Martial World) between non-relatives.",
+        "description": "강호(무림)에서 타인 간에 사용하는 일반 호칭.",
         "female": [
             {
-                "term": "소저 (Sojeo / 小姐)",
-                "target": "Young Lady",
-                "usage": "Surname + Sojeo (e.g., Namgung Sojeo). Standard politeness."
+                "term": "소저 (小姐)",
+                "target": "아가씨 / 영애",
+                "usage": "성 + 소저 (예: 남궁 소저). 가장 일반적인 존칭."
             },
             {
-                "term": "낭자 (Nangja / 娘子)",
-                "target": "Young Lady",
-                "usage": "Slightly more intimate than Sojeo."
+                "term": "낭자 (娘子)",
+                "target": "아가씨 / 처자",
+                "usage": "소저보다 약간 더 친근하거나, 덜 격식적인 표현."
             }
         ],
         "male": [
             {
-                "term": "소협 (Sohyeop / 少俠)",
-                "target": "Young Hero / Young Man",
-                "usage": "Surname + Sohyeop (e.g., Jegal Sohyeop). Standard politeness."
+                "term": "소협 (少俠)",
+                "target": "젊은 협객",
+                "usage": "성 + 소협 (예: 제갈 소협). 가장 일반적인 존칭."
             },
             {
-                "term": "공자 (Gongja / 公子)",
-                "target": "Young Master",
-                "usage": "More respectful/intimate than Sohyeop."
+                "term": "공자 (公子)",
+                "target": "젊은 공자 / 도련님",
+                "usage": "소협보다 가문이나 학식을 높여 부르는 표현."
             },
             {
-                "term": "대협 (Daehyeop / 大俠)",
-                "target": "Great Hero / Respected Elder",
-                "usage": "Used for highly bidden figures or elders. Surname/Title + Daehyeop."
+                "term": "대협 (大俠)",
+                "target": "대협객 / 존경받는 연장자",
+                "usage": "명성이 높거나 나이가 많은 고수에게 사용. 성/호 + 대협."
             },
             {
-                "term": "가가 (Gaga / 哥哥)",
-                "target": "Brother / Lover",
-                "usage": "Literally 'older brother', but in KR Wuxia implies 'Darling/Honey' for lovers."
+                "term": "가가 (哥哥)",
+                "target": "오라버니 / 정인(연인)",
+                "usage": "문자 그대로는 '오라버니'지만, 무협 로맨스에서는 여성이 연인을 부르는 애칭으로 쓰인다."
             }
         ],
         "neutral": [
             {
-                "term": "선배 (Seonbae / 先輩)",
-                "target": "Senior Martial Artist",
-                "usage": "Surname + Seonbae (Casual) or 'No-Seonbaenim' (Respectful to unknown elder)."
+                "term": "선배 (先輩)",
+                "target": "선배 무인",
+                "usage": "성 + 선배 (평범) 또는 '노선배님' (모르는 원로에게 존칭)."
             }
         ]
     },
     "sect_system": {
         "hierarchy_positions": [
             {
-                "term": "장문인 (Jangmunin / 掌門人)",
-                "role": "Sect Leader",
-                "note": "Supreme leader. The title itself is an honorific (no 'nim' added)."
+                "term": "장문인 (掌門人)",
+                "role": "문파의 수장",
+                "note": "최고 지도자."
             },
             {
-                "term": "장로 (Jangro / 長老)",
-                "role": "Elder",
-                "note": "Core decision maker. High authority."
+                "term": "장로 (長老)",
+                "role": "장로",
+                "note": "핵심 의사결정권자. 높은 권위를 가진다."
             },
             {
-                "term": "원로 (Wonro / 元老)",
-                "role": "Grand Elder",
-                "note": "Generation higher than Sect Leader. Only appears in crises."
+                "term": "원로 (元老)",
+                "role": "원로",
+                "note": "장문인보다 배분이 높은 전대 고수. 위기 상황에만 등장한다."
             }
         ],
         "peer_relations": {
-            "rule": "Based on entry date (Seniority), not biological age.",
+            "rule": "생물학적 나이가 아닌, 입문 순서(배분)를 따른다.",
             "terms": [
                 {
-                    "term": "대사형 (Daesahyeong / 大師兄)",
-                    "meaning": "Eldest Senior Brother (First Disciple)"
+                    "term": "대사형 (大師兄)",
+                    "meaning": "가장 먼저 입문한 맏형 (수석 제자)"
                 },
                 {
-                    "term": "사형 (Sahyeong / 師兄)",
-                    "meaning": "Senior Brother (Male)"
+                    "term": "사형 (師兄)",
+                    "meaning": "먼저 입문한 남성 제자"
                 },
                 {
-                    "term": "사저 (Sajeo / 師姐)",
-                    "meaning": "Senior Sister (Female)"
+                    "term": "사저 (師姐)",
+                    "meaning": "먼저 입문한 여성 제자"
                 },
                 {
-                    "term": "사제 (Saje / 師弟)",
-                    "meaning": "Junior Brother (Male)"
+                    "term": "사제 (師弟)",
+                    "meaning": "나중에 입문한 남성 제자"
                 },
                 {
-                    "term": "사매 (Samae / 師妹)",
-                    "meaning": "Junior Sister (Female)"
+                    "term": "사매 (師妹)",
+                    "meaning": "나중에 입문한 여성 제자"
                 },
                 {
-                    "term": "사질 (Sajil / 師姪)",
-                    "meaning": "Disciple of one's peer (Martial Nephew/Niece)"
+                    "term": "사질 (師姪)",
+                    "meaning": "동문(사형제)의 제자 (조카뻘)"
                 }
             ]
         },
         "master_lineage": {
             "terms": [
                 {
-                    "term": "사부 (Sabu / 師父)",
-                    "meaning": "Master / Teacher"
+                    "term": "사부 (師父)",
+                    "meaning": "스승 / 아버지 같은 스승"
                 },
                 {
-                    "term": "사모 (Samo / 師母)",
-                    "meaning": "Master's Wife"
+                    "term": "사모 (師母)",
+                    "meaning": "스승의 부인"
                 },
                 {
-                    "term": "사조 (Sajo / 師祖)",
-                    "meaning": "Master's Master (Grandmaster)"
+                    "term": "사조 (師祖)",
+                    "meaning": "스승의 스승 (할아버지뻘)"
                 },
                 {
-                    "term": "태사조 (Taesajo / 太師祖)",
-                    "meaning": "Master's Grandmaster (Great Grandmaster)"
+                    "term": "태사조 (太師祖)",
+                    "meaning": "사조의 스승 (증조할아버지뻘)"
                 },
                 {
-                    "term": "사백 (Sabaek / 師伯)",
-                    "meaning": "Master's Senior Peer (Senior Uncle)"
+                    "term": "사백 (師伯)",
+                    "meaning": "스승의 사형 (큰아버지뻘)"
                 },
                 {
-                    "term": "사숙 (Sasuk / 師叔)",
-                    "meaning": "Master's Junior Peer (Junior Uncle)"
+                    "term": "사숙 (師叔)",
+                    "meaning": "스승의 사제 (작은아버지뻘)"
                 }
             ]
         }
     },
     "family_kinship": {
-        "context": "Used in Family Clans (e.g., Namgung, Tang, Jegal).",
+        "context": "세가(남궁, 사천당문, 제갈 등)에서 사용하는 가족 호칭.",
         "offspring": [
             {
-                "term": "여식 (Yeosik / 女息)",
-                "meaning": "My Daughter (Humble)"
+                "term": "여식 (女息)",
+                "meaning": "제 딸 (겸양어)."
             },
             {
-                "term": "가아 (Gaa / 家兒)",
-                "meaning": "My Son (Humble, rarely used)"
+                "term": "가아 (家兒)",
+                "meaning": "제 아들 (겸양어, 잘 쓰이지 않음)."
             }
         ],
         "paternal_relatives": [
             {
-                "term": "백부 (Baekbu / 伯父)",
-                "meaning": "Father's Older Brother"
+                "term": "백부 (伯父)",
+                "meaning": "큰아버지 (아버지의 형)"
             },
             {
-                "term": "백모 (Baekmo / 伯母)",
-                "meaning": "Wife of Father's Older Brother"
+                "term": "백모 (伯母)",
+                "meaning": "큰어머니"
             },
             {
-                "term": "숙부 (Sukbu / 叔父)",
-                "meaning": "Father's Younger Brother"
+                "term": "숙부 (叔父)",
+                "meaning": "작은아버지 (아버지의 동생)"
             },
             {
-                "term": "숙모 (Sukmo / 叔母)",
-                "meaning": "Wife of Father's Younger Brother"
+                "term": "숙모 (叔母)",
+                "meaning": "작은어머니"
             },
             {
-                "term": "당숙 (Dangsuk / 堂叔)",
-                "meaning": "Father's Cousin (1st cousin once removed)"
+                "term": "당숙 (堂叔)",
+                "meaning": "아버지의 사촌 형제 (5촌 아저씨)"
             },
             {
-                "term": "재당숙 (Jaedangsuk / 再堂叔)",
-                "meaning": "Father's Second Cousin"
+                "term": "재당숙 (再堂叔)",
+                "meaning": "아버지의 육촌 형제 (7촌 아저씨)"
             }
         ],
         "maternal_relatives": [
             {
-                "term": "외숙 (Oesuk / 外叔)",
-                "meaning": "Mother's Brother (Maternal Uncle)"
+                "term": "외숙 (外叔)",
+                "meaning": "외삼촌 (어머니의 형제)"
             },
             {
-                "term": "외당질 (Oedangjil / 外堂姪)",
-                "meaning": "Maternal Cousin's Child"
+                "term": "외당질 (外堂姪)",
+                "meaning": "외사촌의 자녀"
             }
         ]
     }

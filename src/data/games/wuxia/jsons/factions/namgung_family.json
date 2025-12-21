@@ -1,112 +1,111 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "sub_domain": "세가 (오대세가)",
     "faction_profile": {
-        "name": "남궁세가 (Namgung Family / 南宮世家)",
+        "name": "남궁세가 (南宮世家)",
         "alias": [
-            "The Emperor of Swords (검의 제왕)",
-            "Leader of the Five Families (오대세가의 수장)",
-            "Sky of the Orthodox (정파의 하늘)"
+            "검의 제왕 (劍之帝王)",
+            "오대세가의 수장",
+            "정파의 하늘"
         ],
         "location": {
-            "province": "Anhui (안휘성 / 安徽省)",
+            "province": "안휘성 (安徽省)",
             "base_options": [
-                "Mt. Hwang (Yellow Mountain / 황산) - Traditional setting.",
-                "Mt. Cheonju (천주산) - Alternative mountain setting.",
-                "Hefei (합비 / 合肥) - City setting (Common in modern Wuxia for realism)."
+                "황산 (黃山) - 전통적인 설정.",
+                "천주산 (天柱山)",
+                "합비 (合肥) - 현대적 해석(도시)."
             ],
-            "significance": "Located centrally, symbolizing their central role in the Murim Alliance."
+            "significance": "중원의 중심에 위치하여 무림맹의 중추 역할을 함."
         },
         "status": {
-            "rank": "No.1 of the Five Great Families.",
-            "political_role": "Often holds the position of Murim Alliance Leader (Murim-Maengju).",
-            "symbol": "The standard of orthodox swordsmanship."
+            "rank": "오대세가 중 1위 (부동의 지위).",
+            "political_role": "무림맹주를 자주 배출하는 명문.",
+            "symbol": "정통 검학의 표준."
         }
     },
     "characteristics": {
-        "archetype": "The Perfect Elite / Noble Ruler",
+        "archetype": "완벽한 엘리트 / 고귀한 지배자 (完美精英)",
         "appearance": [
-            "Produces the most handsome men and beautiful women.",
-            "Young talents often claim spots in the 'Seven Dragons Five Phoenixes' (칠룡오봉)."
+            "미남미녀가 가장 많은 가문.",
+            "젊은 기재들이 칠룡오봉(七龍五鳳)에 자주 이름을 올림."
         ],
         "personality": [
-            "Values etiquette, righteousness, and order.",
-            "High pride (can be depicted as arrogance).",
-            "Obsessed with the 'Emperor' (Je-wang) imagery – dominating and retreating is not an option."
+            "예법, 대의명분, 질서를 중시함.",
+            "높은 긍지 혹은 오만함.",
+            "제왕(帝王)적 기질 - 지배하고 압도하며 물러서지 않음."
         ],
         "combat_style": {
-            "summary": "Heavy Sword (Jung-geom) & Lightning (Thunder) Attribute.",
-            "concept": "Majestic and Overwhelming. Crushing the enemy with the aura of a ruler.",
-            "element": "Thunder/Lightning (Brain / 뇌) & Wind (Pung / 풍)."
+            "summary": "중검(重劍) & 뇌전(雷電).",
+            "concept": "웅장하고 압도적임. 제왕의 기세로 찍어누름.",
+            "element": "뇌(雷) & 풍(風)."
         }
     },
     "martial_arts_library": {
         "internal_energy": {
-            "focus": "Thunder and Majesty",
+            "focus": "뇌전과 패기",
             "list": [
                 {
-                    "name": "천뢰제왕신공 (Heavenly Thunder Emperor Divine Art)",
-                    "grade": "Supreme (Family Head only)",
-                    "effect": "Imbues attacks with the power of lightning and a ruler's aura."
+                    "name": "천뢰제왕신공 (天雷帝王神功)",
+                    "grade": "최상승 (가주 전용). 공격에 뇌전과 제왕의 기를 실음."
                 },
                 {
-                    "name": "창궁대연신공 (Blue Sky Great Expansion Divine Art)"
+                    "name": "창궁대연신공 (蒼穹大衍神功)"
                 },
                 {
-                    "name": "천뢰기 (Heavenly Thunder Qi)"
+                    "name": "천뢰기 (天雷氣)"
                 }
             ]
         },
         "sword_arts": {
-            "style": "The Ruler's Sword (No retreat, heavy strikes)",
+            "style": "제왕의 검 (후퇴 없음, 묵직함)",
             "list": [
                 {
-                    "name": "제왕검형 (Emperor Sword Form)",
-                    "description": "Signature Ultimate. Unfolding heavy, majestic strikes. Never retreats.",
-                    "type": "Heavy Sword (Jung-geom)"
+                    "name": "제왕검형 (帝王劍形)",
+                    "description": "남궁세가의 절기. 묵직하고 웅장한 검격. 절대 물러서지 않음.",
+                    "type": "중검 (重劍)"
                 },
                 {
-                    "name": "창궁무애검법 (Blue Sky Limitless Sword)",
-                    "description": "Artistic sword art manifesting blue Sword Flux (Geom-gang). Cuts evil Qi.",
-                    "type": "Anti-Evil / High Technique"
+                    "name": "창궁무애검법 (蒼穹無涯劍法)",
+                    "description": "푸른 검강을 발하는 예술적인 검법. 사악한 기운을 벰.",
+                    "type": "파사 / 기교"
                 },
                 {
-                    "name": "천풍제왕검법 (Heaven Wind Emperor Sword)",
-                    "description": "Combines majesty with wind speed. Projectiles wind blades (Sword Wind).",
-                    "type": "Fast Sword (Kwae-geom) / Ranged"
+                    "name": "천풍제왕검법 (天風帝王劍法)",
+                    "description": "웅장함에 속도를 더함. 검풍을 날림.",
+                    "type": "쾌검 / 원거리"
                 },
-                "섬전십삼검뢰 (Lightning 13 Sword Thunder)",
-                "고혼일검 (Lonely Soul One Sword)",
-                "천뢰신검 (Heavenly Thunder God Sword)"
+                "섬전십삼검뢰 (閃電十三劍雷)",
+                "고혼일검 (孤魂一劍)",
+                "천뢰신검 (天雷神劍)"
             ]
         },
         "fist_and_palm": {
             "list": [
-                "폭뢰신권 (Explosive Thunder God Fist)",
-                "천뢰삼장 (Heavenly Thunder Three Palms)",
-                "천풍장력 (Heaven Wind Palm Force)",
-                "대연장 (Great Expansion Palm)"
+                "폭뢰신권 (爆雷神拳)",
+                "천뢰삼장 (天雷三掌)",
+                "천풍장력 (天風掌力)",
+                "대연장 (大衍掌)"
             ]
         },
         "movement": {
             "list": [
-                "천리호정 (Thousand Li Household Courtyard) - Shrinking distance.",
-                "천풍신법 (Heaven Wind Body Art)",
-                "구천비상신법 (Nine Heavens Soaring Body Art)"
+                "천리호정 (千里戶庭) - 천 리를 뜰 안처럼 좁힘 (축지법).",
+                "천풍신법 (天風身法)",
+                "구천비상신법 (九天飛翔身法)"
             ]
         },
         "finger_arts": [
-            "천뢰지 (Heavenly Thunder Finger)",
-            "삼합지 (Three Union Finger)"
+            "천뢰지 (天雷指)",
+            "삼합지 (三合指)"
         ],
         "formations": [
-            "대창궁무애검진 (Great Blue Sky Limitless Sword Formation)"
+            "대창궁무애검진 (大蒼穹無涯劍陣)"
         ]
     },
     "narrative_role": [
-        "The golden standard that the protagonist must surpass.",
-        "The 'Student Council President' of the Murim world.",
-        "Sometimes portrayed as hypocrites who use 'Righteousness' to hide greed.",
-        "A powerful ally whose name alone deters minor villains."
+        "주인공이 넘어야 할 '금수저' 라이벌.",
+        "무림의 '학생히장' 같은 존재.",
+        "'대의'를 위해 개인의 희생을 강요하는 위선적 면모.",
+        "이름만으로 조무래기 악당을 쫓아내는 강력한 배경."
     ]
 }

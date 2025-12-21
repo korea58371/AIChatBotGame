@@ -1,107 +1,107 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Gu-pa / Nine Great Sects)",
+    "sub_domain": "문파 (구파일방 / 정파)",
     "faction_profile": {
-        "name": "화산파 (Mount Hua Sect / 華山派)",
+        "name": "화산파 (華山派)",
         "alias": [
-            "The Plum Blossom Sword Sect (매화검파)",
-            "Leader of the Five Sacred Mountain Sword Sects (오악검파의 맹주)"
+            "매화검파 (梅花劍派)",
+            "오악검파(五嶽劍派)의 맹주"
         ],
         "location": {
-            "province": "Shaanxi (섬서성 / 陝西省)",
-            "mountain": "Mt. Hua (화산 / 華山) - Specifically the Lotus Peak (Yeonhwa-bong / 蓮花峰) at the summit.",
-            "geography": "Extremely precipitous granite peaks. Known for dangerous cliffs and narrow paths like 'Changryong-ryeong' (Blue Dragon Ridge).",
+            "province": "섬서성 (陝西省)",
+            "mountain": "화산 (華山) - 천하의 험지.",
+            "geography": "가파른 화강암 봉우리. 창룡령 등 좁고 위험한 길.",
             "landmarks": [
-                "West Peak (Seo-bong) / Lotus Peak (Yeonhwa-bong) - Main base.",
-                "East Peak (Dong-bong) / Chaoyang Peak - Best sunrise view.",
-                "Jade Maiden Cave (Oknyeo-seoksil / 옥녀석실) - Hidden training ground.",
-                "Blue Dragon Ridge (Changryong-ryeong) - 1m wide staircase ridge used for training balance."
+                "서봉(연화봉) - 본산.",
+                "동봉(조양봉) - 일출.",
+                "옥녀석실 (玉女石室) - 비동.",
+                "창룡령 (蒼龍嶺) - 극한의 균형 감각 수련장."
             ]
         },
         "heritage": {
-            "founder": "Hao Datong (Wang Chongyang's disciple) / 'Hak-seung' (Real name), 'Yeon-yeon-ja' (Taoist name).",
-            "alignment": "Taoist (Do-ga) / Orthodox (Jeongpa).",
-            "symbol": "Plum Blossom (Mae-hwa / 梅花). Represents resilience in winter and breathtaking beauty."
+            "founder": "학대통 (郝大通) - 전진칠자 중 일인. 혹은 매화검선.",
+            "alignment": "도가 (道家) / 정파 (正派).",
+            "symbol": "매화 (梅花). 겨울의 시련을 이겨내는 고결함과 아름다움."
         },
         "status": {
-            "tier": "Top Tier (Rivals Shaolin and Wudang).",
-            "specialty": "Sword Arts (Geom). Often called the 'Sword Sect of Mount Hua' (Hwasan Geom-pa).",
-            "reputation": "Known for the most beautiful and sharp sword arts. Home to the 'Plum Blossom Swordsmen' (Maehwa-geomsu)."
+            "tier": "최상위 명문 (소림, 무당과 어깨를 나란히 함).",
+            "specialty": "검법 (劍法). 화산검파(華山劍派)로 불림.",
+            "reputation": "가장 화려하고 날카로운 검술. '매화검수'들의 본산."
         }
     },
     "characteristics": {
-        "archetype": "Elegant Swordsman / Flowering Blade",
+        "archetype": "우아한 검객 / 매화검수 (梅花劍手)",
         "combat_style": {
-            "visuals": "Sword Qi manifests as scattering plum blossoms (pink/red aura).",
+            "visuals": "검기가 흩날리는 매화 꽃잎처럼 형상화됨 (분홍/붉은 오라).",
             "core_concepts": [
-                "Mae-hwa (Plum Blossom): Beauty concealing deadly sharpness.",
-                "Gi (Strange/Unique) & Heom (Dangerous/Steep): Reflecting the treacherous terrain of Mt. Hua."
+                "매화 (梅花): 아름다움 속에 숨겨진 치명적인 날카로움.",
+                "기(奇) & 험(險): 화산의 지형을 닮아 기이하고 가파른 검로."
             ],
-            "tactics": "Overwhelming the enemy with a dazzling flurry of sword strikes that look like flower petals."
+            "tactics": "눈부신 검격으로 시야를 가리고 압도함."
         },
         "elite_unit": {
-            "name": "매화검수 (Plum Blossom Swordsman / Maehwa-geomsu)",
-            "description": "The elite disciples of Mt. Hua. They wear plum blossom embroidered robes or tassels.",
-            "significance": "A status symbol. The Sect Leader is always chosen from among them."
+            "name": "매화검수 (梅花劍手)",
+            "description": "화산파의 정예 제자. 매화가 수놓아진 도복을 입음.",
+            "significance": "장문인 후보 자격이자 화산의 자랑."
         }
     },
     "martial_arts_library": {
         "signature_ultimate": {
-            "name": "이십사수매화검법 (24-Style Plum Blossom Sword Art)",
-            "description": "The most iconic art. Unfolds sword qi like blooming plum flowers.",
+            "name": "이십사수매화검법 (二十四手梅花劍法)",
+            "description": "가장 상징적인 검법. 매화가 만개하듯 검기를 펼침.",
             "variations": [
-                "설중암향부동매화검법 (Plum Scent in Snow Unfrozen Sword) - High-level art.",
-                "매화삼십육검 (Plum Blossom 36 Sword)",
-                "십방매화검진 (Ten Direction Plum Blossom Sword Formation)"
+                "설중암향부동매화검법 (雪中暗香不動梅花劍法) - 최상승 절기.",
+                "매화삼십육검 (梅花三十六劍)",
+                "십방매화검진 (十方梅花劍陣)"
             ]
         },
         "sword_arts": {
-            "style": "Fast, Sharp, and Flowery",
+            "style": "빠르고, 날카롭고, 화려함",
             "list": [
-                "육합검 (Six Harmony Sword)",
-                "칠매검 (Seven Plum Sword)",
-                "삼선검 (Three Immortal Sword)",
-                "자하검 (Purple Mist Sword) - Associated with 'Violet Mist Divine Art'.",
-                "옥녀검 (Jade Maiden Sword)",
-                "광풍쾌검 (Mad Wind Fast Sword) - Extremely fast and aggressive.",
-                "양오검 (Nurturing Self Sword)",
-                "청운적하검 (Blue Cloud Red Mist Sword)"
+                "육합검 (六合劍)",
+                "칠매검 (七梅劍)",
+                "삼선검 (三仙劍)",
+                "자하검 (紫霞劍) - 자하신공 기반.",
+                "옥녀검 (玉女劍)",
+                "광풍쾌검 (狂風快劍) - 극도로 빠르고 공격적.",
+                "양오검 (養吾劍)",
+                "청운적하검 (靑雲赤霞劍)"
             ]
         },
         "internal_energy": {
-            "style": "Violet Mist & Pure Taoist Qi",
+            "style": "자줏빛 기운 (자하/紫霞)",
             "list": [
                 {
-                    "name": "자하신공 (Violet Mist Divine Art / Purple Haze Divine Art)",
-                    "grade": "Supreme (Sect Leader only). Manifests purple qi on the face/skin."
+                    "name": "자하신공 (紫霞神功)",
+                    "grade": "최상승 (장문인 전용). 운용 시 얼굴에 자색 기류가 흐름."
                 },
-                "매화심법 (Plum Blossom Heart Method)",
-                "옥함신공 (Jade Box Divine Art)",
-                "건곤신공 (Heaven and Earth Divine Art)"
+                "매화심법 (梅花心法)",
+                "옥함신공 (玉函神功)",
+                "건곤신공 (乾坤神功)"
             ]
         },
         "movement": {
-            "style": "Drifting Scent & steep climbing",
+            "style": "그윽한 향기와 등반 능력",
             "list": [
-                "암향표 (Dark Scent Drifting) - Moving like a drifting scent.",
-                "칠성보 (Seven Star Step)",
-                "비류보 (Flying Flow Step)"
+                "암향표 (暗香漂) - 향기처럼 은은하게 이동.",
+                "칠성보 (七星步)",
+                "비류보 (飛流步)"
             ]
         },
         "fist_and_palm": {
-            "note": "Secondary to Sword Arts.",
+            "note": "검법의 보조 수단.",
             "list": [
-                "매화권 (Plum Blossom Fist)",
-                "옥녀장법 (Jade Maiden Palm)",
-                "매화청심장 (Plum Blossom Clear Heart Palm)",
-                "산화무영수 (Scattering Flower Shadowless Hand)"
+                "매화권 (梅花拳)",
+                "옥녀장법 (玉女掌法)",
+                "매화청심장 (梅花淸心掌)",
+                "산화무영수 (散花無影手)"
             ]
         }
     },
     "narrative_role": [
-        "The Protagonist's Sect (Most popular choice in Korean Wuxia).",
-        "A sect that has fallen and needs restoring (The 'Return of the Mount Hua Sect' trope).",
-        "The most 'Visual' sect, perfect for describing beautiful combat scenes.",
-        "Rivals to Wudang (Sword vs Sword, Taoist vs Taoist)."
+        "주인공의 소속 문파 (한국 무협 부동의 인기 1위).",
+        "몰락한 명문의 부활 ('화산귀환' 류 클리셰).",
+        "가장 '시각적'인 문파로, 아름다운 전투 묘사 담당.",
+        "무당파와 라이벌 (검 vs 검, 도가 vs 도가)."
     ]
 }

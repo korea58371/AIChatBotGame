@@ -1,89 +1,89 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Organizations (Gu-pa Il-bang / The One Gang)",
+    "sub_domain": "문파 (구파일방 / 일방)",
     "faction_profile": {
-        "name": "개방 (Beggars' Sect / Gaebang / 丐幇)",
+        "name": "개방 (丐幇)",
         "alias": [
-            "The One Gang (일방 / 一幇)",
-            "Gungga-bang (궁가방 / 窮家幇)",
-            "The Information Network of the World"
+            "일방 (一幇)",
+            "궁가방 (窮家幇)",
+            "천하의 정보망"
         ],
         "location": {
-            "region": "Everywhere in the Central Plains (Pan-Jungwon).",
-            "base": "Headquarters (Chong-ta) is mobile or hidden, but branches (Bun-ta) exist in every major city.",
-            "hideouts": "Under bridges, abandoned temples, slums."
+            "region": "중원 전역 (汎中原).",
+            "base": "총타 (總舵)는 이동하거나 숨겨져 있으며, 모든 도시에 분타 (分舵)가 존재.",
+            "hideouts": "다리 밑, 폐가, 빈민가."
         },
         "ideology": {
-            "core": "Justice (Ui / 義) and Anti-Materialism.",
-            "motto": "Punish evil, help the weak.",
-            "requirement": "Must renounce all wealth upon entry. Total poverty."
+            "core": "협의(俠義)와 무소유.",
+            "motto": "징악부약 (懲惡扶弱) - 악을 벌하고 약자를 돕는다.",
+            "requirement": "입문 시 모든 재산을 포기해야 함. 철저한 무소유."
         },
         "structure": {
-            "leader": "Bangju (Sect Leader) - Wielder of the Dog Beating Staff.",
-            "rank_system": "Knots (Gyeol / 結) tied on the waist sash.",
+            "leader": "방주 (幇主) - 타구봉의 주인.",
+            "rank_system": "매듭 (결 / 結) - 허리띠의 매듭 수로 계급 구분.",
             "hierarchy": [
-                "9 Knots: Sect Leader (Bangju)",
-                "8 Knots: Hu-gae (Successor)",
-                "7 Knots: Elders (Jang-ro)",
-                "6~2 Knots: Officials (Branch Leaders, Enforcers)",
-                "1 Knot: Newbie (White Clothes Beggar)",
-                "0 Knot: Trainee"
+                "9결: 방주 (幇主)",
+                "8결: 후개 (後丐 - 후계자)",
+                "7결: 장로 (長老)",
+                "6~2결: 분타주, 계목",
+                "1결: 평개 (일반 거지)",
+                "0결: 백의개 (입문자)"
             ]
         }
     },
     "characteristics": {
-        "archetype": "Beggar Hero / Information Broker",
+        "archetype": "거지 영웅 / 정보 상인 (乞丐英雄 / 情報商人)",
         "strengths": [
-            "Information: With beggars in every street corner, nothing happens without them knowing.",
-            "Numbers: Largest membership in the Wulin (Human Wave tactics).",
-            "Unity: Bound by brotherhood and strict rules despite chaotic appearance."
+            "정보력: 거리의 거지들을 통해 세상의 모든 일을 파악함.",
+            "쪽수: 무림 최대의 인원을 자랑하는 인해전술 (人海戰術).",
+            "결속력: 겉모습은 초라하나 의리와 규율로 뭉침."
         ],
         "customs": {
-            "induction_ritual": "Spitting Ritual (All members spit on the new leader to show equality and acceptance of filth).",
-            "dress_code": "Ragged clothes (patchwork), holding a bowl and a stick."
+            "induction_ritual": "침 뱉기 의식 (신임 방주에게 침을 뱉어 평등과 더러움을 수용함을 표시).",
+            "dress_code": "누더기 옷 (백납의), 깨진 바가지, 나무 지팡이."
         }
     },
     "martial_arts_library": {
         "signature_weapon_art": {
-            "name": "타구봉법 (Dog Beating Staff Technique / 打狗棒法)",
-            "description": "The supreme technique taught only to the Sect Leader. Uses a stick to strike 'dogs' (enemies).",
+            "name": "타구봉법 (打狗棒法)",
+            "description": "방주에게만 전승되는 절기. '개를 때려잡는' 묘리.",
             "forms": [
-                "봉타쌍견 (Strike Twin Dogs)",
-                "타초경사 (Beat Grass Startle Snake)",
-                "반자결 (Binding Word Formula) - Entangling the enemy weapon."
+                "봉타쌍견 (棒打雙犬)",
+                "타초경사 (打草驚蛇)",
+                "반자결 (絆字訣) - 얽히게 하여 무기를 제압."
             ],
-            "weapon": "타구봉 (Dog Beating Staff) - Usually made of green jade or dark iron. Symbol of authority."
+            "weapon": "타구봉 (打狗棒) - 녹옥이나 현철로 만든 방주의 상징."
         },
         "signature_palm_art": {
-            "name": "강룡십팔장 (Eighteen Dragon Subduing Palms / 降龍十八掌)",
-            "description": "The pinnacle of external hard Yang arts. Overwhelming destructive power.",
-            "pros": "Unstoppable force, creates dragon-shaped Qi.",
-            "cons": "Consumes massive internal energy. Hard to sustain for long battles."
+            "name": "강룡십팔장 (降龍十八掌)",
+            "description": "천하 제일의 양강(陽剛) 장법. 압도적인 파괴력.",
+            "pros": "멈출 수 없는 기세, 용 형상의 장력.",
+            "cons": "내력 소모가 극심함."
         },
         "formations": {
-            "name": "타구진 (Dog Beating Formation / 打狗陣)",
-            "style": "Chaotic Mob Attack.",
-            "tactics": "Distracting with begging, singing, crying, and spitting while attacking from all angles. Looks messy but is highly calculated."
+            "name": "타구진 (打狗陣)",
+            "style": "난전 (亂戰) 위주.",
+            "tactics": "구걸, 노래, 비명, 침 뱉기 등으로 정신을 산만하게 하며 다각도에서 공격."
         },
         "movement": {
-            "style": "Drunken & Unpredictable",
+            "style": "취권 & 예측 불가능",
             "list": [
-                "취팔선보 (Drunken Eight Immortals Step)",
-                "연화락 (Lotus Fall)",
-                "만리추풍신법 (Ten Thousand Li Chasing Wind)"
+                "취팔선보 (醉八仙步)",
+                "연화락 (蓮花落)",
+                "만리추풍신법 (萬里追風身法)"
             ]
         },
         "internal_energy": {
             "list": [
-                "혼천강룡신공 (Chaotic Heaven Descending Dragon Art)",
-                "옥현귀진현공 (Jade Mystery Return Truth Art)"
+                "혼천강룡신공 (混天降龍神功)",
+                "옥현귀진현공 (玉玄歸眞玄功)"
             ]
         }
     },
     "narrative_role": [
-        "The 'News Channel' of the Wulin world.",
-        "The faction that provides a 'Drunken Master' or 'Eccentric Mentor' for the protagonist.",
-        "A moral compass that proves 'Clothes do not make the man'.",
-        "Rivals to the Haomun (Underworld) in information gathering."
+        "무림의 '뉴스 채널'.",
+        "주인공에게 '취권 고수' 혹은 '괴짜 스승'을 제공하는 문파.",
+        "'옷이 사람을 만들지 않는다'는 교훈을 주는 도덕적 나침반.",
+        "하오문(정보 경쟁)의 라이벌."
     ]
 }

@@ -1,91 +1,91 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "sub_domain": "세가 (오대세가)",
     "faction_profile": {
-        "name": "하북팽가 (Hebei Peng Family / 河北彭家)",
+        "name": "하북팽가 (河北彭家)",
         "alias": [
-            "The King of Blades (도왕 / 刀王)",
-            "Tiger of Hebei (하북의 호랑이)"
+            "도왕 (刀王)",
+            "하북의 호랑이 (河北猛虎)"
         ],
         "location": {
-            "province": "Hebei (하북성 / 河北省)",
-            "city": "Beijing (북경 / 北京) - Capital of Ming Dynasty.",
-            "geo_political_status": "Located in the Imperial Capital. Inevitably linked with Imperial Court (Gwan-a) and politics."
+            "province": "하북성 (河北省)",
+            "city": "북경 (北京) - 명나라 수도.",
+            "geo_political_status": "제국 수도에 위치하여 관아(황실)와 정치적으로 엮임."
         },
-        "heritage": "A lineage of warlords and generals.",
-        "political_stance": "Orthodox (Jeongpa). Often ranked #1 or #2 in the Five Families due to pure destructive power."
+        "heritage": "무예가 가문이자 군벌의 후예.",
+        "political_stance": "정파. 단순 파괴력으로는 오대세가 최상위권."
     },
     "characteristics": {
-        "archetype": "Barbarian / Warlord / Tank",
+        "archetype": "패왕 / 군벌 / 탱커 (覇王 / 軍閥 / Tanker)",
         "personality": [
-            "Hot-blooded & Manly (열혈남아 / Macho).",
-            "Values loyalty (Uiri) and brotherhood.",
-            "Straightforward and aggressive, hating schemes."
+            "열혈남아 (熱血男兒) / 마초.",
+            "의리와 형제애를 중시.",
+            "직선적이고 공격적이며 음모를 싫어함."
         ],
         "physique": [
-            "Born with Divine Strength (신력 / Godly Strength).",
-            "Huge stature and heavy muscles (men and women alike).",
-            "Naturally tough skin and bones suitable for external arts."
+            "천부적인 신력 (神力).",
+            "남녀 불문하고 거구와 근육질.",
+            "외공 수련에 최적화된 강철 같은 신체."
         ],
         "combat_style": {
-            "summary": "Overwhelming Power & Heavy Weapons.",
-            "signature_weapon": "Great Saber / Dao (도 / 刀) - Often exaggerated in size and weight.",
-            "tactics": "Crushing opponents with sheer force and wide-range attacks. 'Slash first, ask later'."
+            "summary": "압도적인 힘과 중병기(대도).",
+            "signature_weapon": "대도 (大刀). 크고 무거운 도.",
+            "tactics": "힘으로 찍어누르고 광범위하게 베어버림. '선공필승'."
         },
         "contradiction": {
-            "description": "Although portrayed as muscleheads, their location (Beijing) implies high political acumen.",
-            "narrative_hook": "Are they pretending to be ignorant to survive in the capital? Or are they truly just powerful enough to ignore politics?"
+            "description": "근육뇌로 묘사되지만, 수도 북경에서 살아남은 세가라 정치 감각이 뛰어날 수 있음.",
+            "narrative_hook": "무식한 척하는 것인가, 힘이 곧 권력이라 무식해도 되는 것인가?"
         }
     },
     "martial_arts_library": {
         "internal_energy": {
-            "focus": "Body Hardening & Explosive Power",
+            "focus": "신체 경화 & 폭발력",
             "list": [
                 {
-                    "name": "건곤미허신공 (Heaven and Earth Void Divine Art)",
-                    "effect": "Hardens skin like armor. Optimizes body for external arts."
+                    "name": "건곤미허신공 (乾坤迷虛神功)",
+                    "effect": "피부를 갑옷처럼 경화시킴. 최상의 외공 편향 내공."
                 },
                 {
-                    "name": "혼원벽력신공 (Chaos Thunderbolt Divine Art)",
-                    "grade": "Supreme (Family Head only)",
-                    "risk": "Requires natural divine strength; otherwise, meridians may burst."
+                    "name": "혼원벽력신공 (混元霹靂神功)",
+                    "grade": "최상승 (가주 전용).",
+                    "risk": "신력이 없으면 경락이 파열될 수 있음."
                 }
             ]
         },
         "saber_arts": {
-            "style": "Destructive / Wide Area",
+            "style": "파괴 / 광역",
             "list": [
-                "철혈적성도 (Iron Blood Star Plucking Saber)",
-                "건곤연환탈백도 (Heaven and Earth Soul Stealing Chain Saber)",
-                "혼원벽력도 (Chaos Thunderbolt Saber) - Signature Ultimate.",
-                "오호단문도 (Five Tigers Broken Door Saber) - Foundational art.",
-                "왕자사도 (King Character Four Saber)",
-                "파황일도 (Desolate Breaking One Saber)",
-                "참마무영도법 (Demon Slashing Shadowless Saber)",
-                "염왕도 (Yama/Hell King Saber)"
+                "철혈적성도 (鐵血摘星刀)",
+                "건곤연환탈백도 (乾坤連環奪魄刀)",
+                "혼원벽력도 (混元霹靂刀) - 필살기.",
+                "오호단문도 (五虎斷門刀) - 기초.",
+                "왕자사도 (王者四刀)",
+                "파황일도 (破荒一刀)",
+                "참마무영도법 (斬魔無影刀法)",
+                "염왕도 (閻王刀)"
             ]
         },
         "palm_arts": {
-            "style": "Heavy / Bone Crushing",
+            "style": "중후함 / 분쇄",
             "list": [
-                "건곤신장 (Heaven and Earth Divine Palm)",
-                "혼원벽력장 (Chaos Thunderbolt Palm)",
-                "대력금강장 (Great Strength Diamond Palm) - Immense physical force."
+                "건곤신장 (乾坤神掌)",
+                "혼원벽력장 (混元霹靂掌)",
+                "대력금강장 (大力金剛掌)"
             ]
         },
         "movement": [
-            "미허신보 (Void Divine Step)",
-            "혼원보 (Chaos Step)",
-            "어기신풍 (Riding Qi Divine Wind)"
+            "미허신보 (迷虛神步)",
+            "혼원보 (混元步)",
+            "어기신풍 (御氣神風)"
         ],
         "formations": [
-            "연환패왕진 (Chain Tyrant Formation)"
+            "연환패왕진 (連環覇王陣)"
         ]
     },
     "narrative_role": [
-        "The reliable 'Tank' ally who clears minions.",
-        "A friction point with intellectual characters (like Zhuge Family).",
-        "A political buffer between the Murim Alliance and the Imperial Court.",
-        "Tragic figures who fight to the death for loyalty."
+        "든든한 '탱커' 아군.",
+        "지능형 캐릭터(제갈세가)와 티격태격하는 콤비.",
+        "무림맹과 황실 사이의 완충지대.",
+        "의리를 위해 목숨을 바치는 비장미 있는 가문."
     ]
 }

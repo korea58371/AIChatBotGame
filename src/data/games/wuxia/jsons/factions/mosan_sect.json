@@ -1,102 +1,102 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Sects (Taoist / Mystic / Occult)",
+    "sub_domain": "문파 (도가 / 주술 / 오컬트)",
     "faction_profile": {
-        "name": "모산파 (Mosan Sect / 茅山派)",
+        "name": "모산파 (茅山派)",
         "alias": [
-            "Mosan Fulu Sect (모산부록파 / 茅山符籙派)",
-            "Masters of Talismans and Spells",
-            "Taoist Necromancers"
+            "모산부록파 (茅山符籙派)",
+            "부적과 주술의 대가",
+            "도가 강시술사"
         ],
         "location": {
-            "province": "Jiangsu (강소성 / 江蘇省)",
-            "mountain": "Mt. Mao (Mosan / 茅山) - Originally Mt. Juqu (구곡산).",
-            "history": "Named after the Three Mao Brothers (Mao Ying, Mao Gu, Mao Zhong) who attained Tao here."
+            "province": "강소성 (江蘇省)",
+            "mountain": "모산 (茅山) - 구곡산.",
+            "history": "삼모군(모영, 모고, 모충)이 도를 얻은 곳."
         },
         "heritage": {
-            "founder": "Wei Huacun (위화존 / 魏華存) - A female Taoist, daughter of a Western Jin chancellor. Unique for having a female founder.",
-            "key_figure": "Tao Hongjing (도홍경 / 9th Grandmaster) - Known as 'Huayang Yinju'. Elevated the sect's magical prowess.",
-            "focus": "Bang-sul (Arts), Do-sul (Magic), Ju-sul (Sorcery) rather than physical Martial Arts."
+            "founder": "위화존 (魏華存) - 여성 도사.",
+            "key_figure": "도홍경 (陶弘景) - 제9대 종사. 주술을 체계화함.",
+            "focus": "방술(方術), 도술(道術), 주술(呪術). 육체적 무공보다는 법력."
         },
         "status": {
-            "alignment": "Neutral / Grey (Technically Taoist/Orthodox, but their methods involve ghosts and corpses, making them seem Unorthodox/Sapa).",
-            "role": "Exorcists (civilian level) or Occult Specialists (Murim level)."
+            "alignment": "중립 / 회색 (도교 정파이나 귀신과 시체를 다루는 방식 때문에 사파로 오해받기도 함).",
+            "role": "민간의 퇴마사 혹은 무림의 오컬트 전문가."
         }
     },
     "characteristics": {
-        "archetype": "Sorcerer / Warlock / Exorcist",
+        "archetype": "술사 / 강시술사 / 퇴마사 (Sorcerer / Warlock)",
         "combat_style": {
-            "summary": "Ranged Magic & Minion Control (Jiangshi/Ghosts).",
-            "weapon": "Talismans (Bu-jeok), Wooden Swords (Mok-geom), Bells.",
-            "weakness": "Physically weak compared to martial artists. Relies on preparations, formations, and distance."
+            "summary": "원거리 주술 및 소환수(강시/귀신/신장) 운용.",
+            "weapon": "부적 (符籍), 목검 (木劍), 요령.",
+            "weakness": "근접 무력이 약함. 준비(진법, 소환) 시간과 거리가 필요."
         },
         "specialty": [
-            "Jiangshi Control (강시술): Manipulating corpses to fight.",
-            "Illusion (Hwan-sul): Confusing enemies with formations.",
-            "Soul Manipulation: Calling or binding spirits."
+            "강시술 (殭屍術): 시체를 조종하여 싸우게 함.",
+            "환술 (幻術): 진법으로 적을 혼란시킴.",
+            "영혼 조작: 귀신을 부리거나 쫓음."
         ]
     },
     "arts_and_spells_library": {
         "core_scripture": {
-            "name": "상청경 태동진경 (Shangqing Scripture Taidong True Sutra)",
-            "description": "The ultimate grimoire of Mosan, compiling all their spells and methods."
+            "name": "상청경 태동진경 (上淸經太洞眞經)",
+            "description": "모산파의 모든 주문과 비술이 담긴 경전."
         },
         "utility_spells": {
             "sensory": [
                 {
-                    "name": "귀이술법 (Ghost Ear Art)",
-                    "effect": "Amplifies hearing by borrowing a ghost's ears. Hears whispers from afar."
+                    "name": "귀이술법 (鬼耳術法)",
+                    "effect": "귀신의 귀를 빌려 먼 곳의 소리를 도청함."
                 },
-                "미루사안 (Tearful Snake Eye)"
+                "미루사안 (迷淚蛇眼)"
             ],
             "stealth_and_movement": [
-                "은신과행술 (Invisibility Passing Art)",
-                "둔형천은술 (Hiding Form Heaven Concealment Art)",
-                "천마잠영술 (Heavenly Demon Hiding Shadow Art)",
-                "낙성지행술 (Falling Star Earth Travel Art)"
+                "은신과행술 (隱身過行術)",
+                "둔형천은술 (遁形天隱術)",
+                "천마잠영술 (天魔潛影術)",
+                "낙성지행술 (落星地行術)"
             ]
         },
         "offensive_spells": {
             "binding": [
                 {
-                    "name": "청룡박 (Blue Dragon Bind)",
-                    "effect": "Binds the opponent's body."
+                    "name": "청룡박 (靑龍縛)",
+                    "effect": "상대의 신체를 보이지 않는 힘으로 결박함."
                 },
-                "귀진박 (Ghost Tremor Bind)",
+                "귀진박 (鬼震縛)",
                 {
-                    "name": "반심술 (Reverse Heart Art)",
-                    "effect": "Blocks the flow of the opponent's Qi."
+                    "name": "반심술 (反心術)",
+                    "effect": "상대의 기 혈을 역류시킴."
                 }
             ],
             "sonic_mental": [
-                "귀혼소 (Ghost Soul Laugh)",
-                "귀호섭백음 (Ghost Cry Soul Stealing Sound)",
-                "마혼살음공 (Demon Soul Killing Sound Art)",
-                "사혼소음 (Dead Soul Flute Sound)"
+                "귀혼소 (鬼魂笑)",
+                "귀호섭백음 (鬼號攝魄音)",
+                "마혼살음공 (魔魂殺音功)",
+                "사혼소음 (死魂簫音)"
             ]
         },
         "necromancy_and_healing": {
             "list": [
                 {
-                    "name": "사령귀혼대법 (Evil Spirit Soul Return Great Art)",
-                    "effect": "Summons the souls of the dead."
+                    "name": "사령귀혼대법 (死靈歸魂大法)",
+                    "effect": "죽은 자의 혼을 부름."
                 },
-                "초혼소 (Soul Calling Laugh)",
+                "초혼소 (招魂嘯)",
                 {
-                    "name": "생사환위요상술 (Life Death Exchange Healing Art)",
-                    "effect": "Transfers injuries or life force (Mystic Healing)."
+                    "name": "생사환위요상술 (生死換位療傷術)",
+                    "effect": "상처나 생명력을 전이시킴 (신비한 치유/저주)."
                 },
-                "생사회혼대법 (Life Death Return Soul Great Art)"
+                "생사회혼대법 (生死回魂大法)"
             ]
         },
         "formations": [
-            "삼라환상기환술 (Forest of Illusions Strange Magic Art) - Traps enemies in hallucinations."
+            "삼라환상기환술 (森羅幻想奇幻術) - 환각을 보여주는 진법."
         ]
     },
     "narrative_role": [
-        "The 'Occult Detective' who solves supernatural mysteries (hauntings, curses).",
-        "A support character who buffs allies or debuffs enemies with talismans.",
-        "A faction that controls an army of Jiangshi (Hopping Vampires), serving as a terrifying force.",
-        "The bridge between the living and the dead, often misunderstood by the 'righteous' sword sects."
+        "초자연적 미스터리(원혼, 저주)를 해결하는 '오컬트 탐정'.",
+        "부적으로 아군을 강화하거나 적을 약화시키는 서포터.",
+        "강시 군단을 부리는 공포스러운 적대 세력.",
+        "이승과 저승의 중재자."
     ]
 }

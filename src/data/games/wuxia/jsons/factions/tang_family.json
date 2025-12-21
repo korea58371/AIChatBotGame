@@ -1,109 +1,109 @@
 {
     "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Factions & Families (Odaesega / Five Great Families)",
+    "sub_domain": "세가 (오대세가)",
     "faction_profile": {
-        "name": "사천당문 (Sichuan Tang Family / 四川唐門)",
+        "name": "사천당가 (四川唐家)",
         "alias": [
-            "Tang Family of Poison (당가 / 唐家)",
-            "Masters of Poison and Hidden Weapons"
+            "당문 (唐門)",
+            "독과 암기의 대가"
         ],
         "location": {
-            "province": "Sichuan (사천성 / 四川省)",
-            "city": "Chengdu (성도 / 成都)",
-            "base": "Tang Family Village (당가타 / 唐家陀) - A massive fortress-village solely for the Tang bloodline."
+            "province": "사천성 (四川省)",
+            "city": "성도 (成都)",
+            "base": "당가타 (唐家陀) - 당씨 일족만이 거주하는 요새 마을."
         },
         "heritage": {
-            "origin": "Recorded in history (Ming Dynasty) as masters of 'Tang Family Fist' (Dangmun-gwon).",
-            "wuxia_adaptation": "Evolved into masters of Poison and Hidden Weapons based on texts like 'Musul-hoejong'."
+            "origin": "명나라 시기 당문권(체술)으로 시작.",
+            "wuxia_adaptation": "무술회종 등의 기록을 바탕으로 독과 암기의 명가로 변모."
         },
-        "political_stance": "Grey / Neutral-Evil within the Orthodox faction. Often treated as semi-Sapa (Unorthodox) due to their use of poison.",
-        "social_structure": "Strict Patrilineal Bloodline. Uses 'Son-in-law entry' (Matrilocal marriage) to absorb outside talent, but power stays with the Tang surname."
+        "political_stance": "정파 내의 이단아 (회색 / 중립-악). 독을 쓴다는 이유로 배척받기도 함.",
+        "social_structure": "철저한 혈연 중심. 데릴사위(입췌) 제도를 통해 외부 인재를 흡수하나 권력은 당씨에게 있음."
     },
     "characteristics": {
-        "archetype": "Assassin / Alchemist / Technician",
+        "archetype": "암살자 / 연금술사 / 기술자",
         "personality": [
-            "Vindictive: 'Repay kindness, repay grudges tenfold' (Eun-won-bun-myeong).",
-            "Volatile: Quick-tempered but calculating when it comes to revenge.",
-            "Exclusive: Strongly distrusts outsiders. Divided into Inner Family (Bloodline) and Outer Family (Servants/In-laws)."
+            "은원분명 (恩怨分明) - 은혜와 원수는 반드시 갚는다 (주로 원수).",
+            "다혈질이며 복수심이 강함.",
+            "배타적: 내당(혈족)과 외당(하인/사위)의 차별이 심함."
         ],
         "combat_style": {
-            "summary": "Mid-to-Long range suppression using overwhelming barrage of projectiles and debilitating poisons.",
-            "fear_factor": "Enemies die without knowing how they were hit (Invisible poison/needles).",
-            "taboo": "In some settings, using poison is despised, so they claim it's 'Medicine' or 'Art'."
+            "summary": "중거리 투척 및 제압. 보이지 않는 독과 암기.",
+            "fear_factor": "언제 당했는지 모르게 죽음.",
+            "taboo": "스스로를 '독'이 아닌 '약'이나 '예술'을 다룬다고 포장함."
         }
     },
     "martial_arts_library": {
         "signature_ultimate": {
-            "name": "만천화우 (Ten Thousand Flower Rain / 滿天花雨)",
-            "description": "The ultimate technique covering the sky with hidden weapons. Inescapable death.",
-            "type": "Area of Effect (AOE) Annihilation"
+            "name": "만천화우 (滿天花雨)",
+            "description": "하늘을 뒤덮는 암기의 비. 피할 수 없는 죽음의 예술.",
+            "type": "광역 학살기 (AOE)"
         },
         "hidden_weapon_arts": {
             "manual": [
-                "만류귀종 (Ten Thousand Streams Return to Origin) - Controlling weapons to return to the user.",
-                "천녀산화 (Heavenly Maiden Scatters Flowers)",
-                "염왕첩 (King of Hell's Invitation) - Single target instant kill.",
-                "구환살 (Nine Illusion Kill)",
-                "배심정 (Heart Piercing Nail)"
+                "만류귀종 (萬流歸宗) - 던진 암기를 회수하거나 조종.",
+                "천녀산화 (天女散花)",
+                "염왕첩 (閻王帖) - 절대적인 살상력을 가진 초대장.",
+                "구환살 (九幻殺)",
+                "배심정 (背心釘)"
             ],
             "mechanized": [
-                "폭우이화침 (Torrential Rain Pear Blossom Needle) - Legendary mechanism firing hundreds of needles at once.",
-                "천뢰구 (Heavenly Thunder Ball) - Explosive projectile.",
-                "청린마화 (Blue Scale Demon Fire) - Chemical fire."
+                "폭우이화침 (暴雨梨花針) - 수백 개의 바늘을 동시에 발사하는 기계.",
+                "천뢰구 (天雷球) - 폭탄.",
+                "청린마화 (靑燐魔火) - 화학적 화염."
             ]
         },
         "poison_arts": {
-            "concept": "Poisons are divided by effect (melting, paralyzing, hallucinating).",
+            "concept": "독(Poison)과 약(Medicine)은 한 끗 차이.",
             "famous_poisons": [
                 {
-                    "name": "칠보단혼산 (Seven Steps Soul Breaking Powder)",
-                    "effect": "Death within 7 steps."
+                    "name": "칠보단혼산 (七步斷魂散)",
+                    "effect": "일곱 걸음을 걷기 전에 죽음."
                 },
                 {
-                    "name": "화혈왕독 (Blood Melting King Poison)",
-                    "effect": "Melts the body into blood."
+                    "name": "화혈왕독 (化血王毒)",
+                    "effect": "몸을 피고름으로 녹임."
                 },
                 {
-                    "name": "미인소 (Beauty's Smile)",
-                    "effect": "Corpse smiles after death (Neurotoxin)."
+                    "name": "미인소 (美人笑)",
+                    "effect": "죽을 때 웃으면서 죽게 만드는 신경독."
                 },
                 {
-                    "name": "비산탄 (Secret Acid Coal)",
-                    "effect": "Acid explosion."
+                    "name": "비산탄 (飛酸彈)",
+                    "effect": "강력한 산성 폭발."
                 }
             ],
             "antidotes_and_elixirs": [
-                "자오분심 (Midnight Noon Heart Burning) - Poison/Torture.",
-                "백초거독환 (Hundred Herb Detox Pill) - General antidote."
+                "자오분심 (子午焚心) - 고문용 독.",
+                "백초거독환 (百草去毒丸) - 해독제."
             ]
         },
         "internal_energy": [
             {
-                "name": "도반삼양귀원공 (Reverse Three Yang Return Art)"
+                "name": "도반삼양귀원공 (倒反三陽歸元功)"
             },
             {
-                "name": "만류귀원신공 (Ten Thousand Streams Return Divine Art)"
+                "name": "만류귀원신공 (萬流歸元神功)"
             }
         ],
         "movement": [
-            "미허신보 (Void Step) - Used to create distance for throwing."
+            "미허신보 (迷虛神步) - 거리를 벌리는 보법."
         ]
     },
     "item_database": {
         "projectiles": [
-            "유성혈 (Meteor Blood) - Specialized throwing star.",
-            "추혼비접 (Soul Chasing Butterfly)",
-            "자모표 (Mother and Son Dart) - A dart within a dart."
+            "유성혈 (流星血)",
+            "추혼비접 (追魂飛蝶)",
+            "자모표 (子母杓) - 표창 안에 작은 표창이 숨겨짐."
         ],
         "mechanisms": [
-            "파천연환노 (Heaven Breaking Chain Crossbow)",
-            "천독절명침통 (Thousand Poison Life Ending Needle Case)"
+            "파천연환노 (破天連環弩)",
+            "천독절명침통 (千毒絶命針筒)"
         ]
     },
     "narrative_role": [
-        "The 'Wild Card' in the Murim Alliance.",
-        "Providers of antidotes or rare poisons for the plot.",
-        "A romantic interest who is dangerous ('Rose with thorns').",
-        "Antagonists who use traps and ambushes rather than fair duels."
+        "무림맹의 '와일드 카드'.",
+        "이야기 진행을 위한 해독제 셔틀.",
+        "치명적인 매력을 가진 히로인/악녀 ('가시 돋친 장미').",
+        "정면 승부보다는 함정과 암습을 선호하는 적."
     ]
 }

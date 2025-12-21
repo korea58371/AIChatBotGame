@@ -1,105 +1,109 @@
 {
-    "domain": "Wuxia (Martial Arts Fiction)",
-    "sub_domain": "Measurement System (Cheokgwan-beop / Traditional East Asian Units)",
-    "source_reference": "Traditional Korean/Chinese Standards",
+    "domain": "무협 (武俠)",
+    "sub_domain": "도량형 (척관법)",
+    "source_reference": "전통 동아시아 표준",
     "time_system": {
         "basic_concept": {
-            "unit": "Sijin (시진 / 時辰)",
-            "value_metric": "2 hours",
-            "description": "Standard unit of time in Wuxia. 1 Sijin equals 2 modern hours."
+            "unit": "시진 (時辰)",
+            "value_metric": "2시간",
+            "description": "무협의 표준 시간 단위. 1시진은 현대의 2시간이다."
         },
         "sub_units": {
             "Gak (각 / 刻)": {
-                "value_metric": "15 minutes",
-                "calculation": "1 Sijin / 8"
+                "unit_name": "각 (刻)",
+                "value_metric": "15분",
+                "calculation": "1시진 / 8"
             },
             "Ban_Sijin (반 시진)": {
-                "value_metric": "1 hour",
-                "calculation": "1 Sijin / 2"
+                "unit_name": "반 시진",
+                "value_metric": "1시간",
+                "calculation": "1시진 / 2"
             }
         },
         "conceptual_units": {
             "Ildagyeong (일다경 / 一茶頃)": {
-                "value_metric": "~15 minutes",
-                "meaning": "Time to drink a cup of tea. Represents a very short duration."
+                "unit_name": "일다경 (一茶頃)",
+                "value_metric": "~15분",
+                "meaning": "차 한 잔 마실 시간. 매우 짧은 시간을 의미한다."
             },
             "Sikgyeong (식경 / 食頃)": {
-                "value_metric": "30 ~ 60 minutes",
-                "meaning": "Time to finish a meal. Represents a moderate duration."
+                "unit_name": "식경 (食頃)",
+                "value_metric": "30 ~ 60분",
+                "meaning": "밥 한 끼 먹을 시간. 적당한 시간을 의미한다."
             }
         },
         "daily_cycle_12_branches": {
-            "description": "The day is divided into 12 periods (Sijin). Each period is 2 hours.",
-            "sub_division_rule": "Each period is split into 'Cho (Beginning/First hr)' and 'Jeong (Middle/Second hr)'.",
+            "description": "하루는 12개의 시진, 즉 12지신으로 나뉜다.",
+            "sub_division_rule": "각 시진은 '초(初)'와 '정(正)'으로 나뉜다.",
             "periods": [
                 {
-                    "name": "Ja (자시 / 子時)",
+                    "name": "자시 (子時)",
                     "range": "23:00 ~ 01:00",
                     "cho": "23:00~24:00",
                     "jeong": "00:00~01:00"
                 },
                 {
-                    "name": "Chuk (축시 / 丑時)",
+                    "name": "축시 (丑時)",
                     "range": "01:00 ~ 03:00",
                     "cho": "01:00~02:00",
                     "jeong": "02:00~03:00"
                 },
                 {
-                    "name": "In (인시 / 寅時)",
+                    "name": "인시 (寅時)",
                     "range": "03:00 ~ 05:00",
                     "cho": "03:00~04:00",
                     "jeong": "04:00~05:00"
                 },
                 {
-                    "name": "Myo (묘시 / 卯時)",
+                    "name": "묘시 (卯時)",
                     "range": "05:00 ~ 07:00",
                     "cho": "05:00~06:00",
                     "jeong": "06:00~07:00"
                 },
                 {
-                    "name": "Jin (진시 / 辰時)",
+                    "name": "진시 (辰時)",
                     "range": "07:00 ~ 09:00",
                     "cho": "07:00~08:00",
                     "jeong": "08:00~09:00"
                 },
                 {
-                    "name": "Sa (사시 / 巳時)",
+                    "name": "사시 (巳時)",
                     "range": "09:00 ~ 11:00",
                     "cho": "09:00~10:00",
                     "jeong": "10:00~11:00"
                 },
                 {
-                    "name": "O (오시 / 午時)",
+                    "name": "오시 (午時)",
                     "range": "11:00 ~ 13:00",
                     "cho": "11:00~12:00",
                     "jeong": "12:00~13:00"
                 },
                 {
-                    "name": "Mi (미시 / 未時)",
+                    "name": "미시 (未時)",
                     "range": "13:00 ~ 15:00",
                     "cho": "13:00~14:00",
                     "jeong": "14:00~15:00"
                 },
                 {
-                    "name": "Sin (신시 / 申時)",
+                    "name": "신시 (申時)",
                     "range": "15:00 ~ 17:00",
                     "cho": "15:00~16:00",
                     "jeong": "16:00~17:00"
                 },
                 {
-                    "name": "Yu (유시 / 酉時)",
+                    "name": "유시 (酉時)",
                     "range": "17:00 ~ 19:00",
                     "cho": "17:00~18:00",
                     "jeong": "18:00~19:00"
                 },
                 {
-                    "name": "Sul (술시 / 戌時)",
+                    "name": "술시 (戌時)",
                     "range": "19:00 ~ 21:00",
                     "cho": "19:00~20:00",
                     "jeong": "20:00~21:00"
                 },
                 {
-                    "name": "Hae (해시 / 亥時)",
+                    "name": "해시 (亥時)",
                     "range": "21:00 ~ 23:00",
                     "cho": "21:00~22:00",
                     "jeong": "22:00~23:00"
@@ -110,121 +114,121 @@
     "physical_measurements": {
         "length": [
             {
-                "unit": "Mo (모 / 毛)",
+                "unit": "모 (毛)",
                 "value_metric": "0.303 mm"
             },
             {
-                "unit": "Chi / Chon (치, 촌 / 寸)",
+                "unit": "치 / 촌 (寸)",
                 "value_metric": "3.03 cm",
-                "description": "Finger knuckle length"
+                "description": "손가락 한 마디 길이"
             },
             {
-                "unit": "Cheok / Ja (척, 자 / 尺)",
+                "unit": "척 / 자 (尺)",
                 "value_metric": "30.30 cm",
-                "description": "Standard forearm length"
+                "description": "팔뚝 길이 (표준)"
             },
             {
-                "unit": "Gan (간 / 間)",
+                "unit": "간 (間)",
                 "value_metric": "1.81 m",
-                "conversion": "6 Cheok"
+                "conversion": "6척"
             },
             {
-                "unit": "Jang (장 / 丈)",
+                "unit": "장 (丈)",
                 "value_metric": "3 m",
-                "conversion": "10 Cheok"
+                "conversion": "10척"
             },
             {
-                "unit": "Jeong (정 / 町)",
+                "unit": "정 (町)",
                 "value_metric": "109 m",
-                "conversion": "60 Gan"
+                "conversion": "60간"
             },
             {
-                "unit": "Li (리 / 里)",
+                "unit": "리 (里)",
                 "value_metric": "400 m",
-                "description": "Standard distance unit for travel"
+                "description": "표준 이동 거리 단위"
             }
         ],
         "weight": [
             {
-                "unit": "Mo (모 / 毛)",
+                "unit": "모 (毛)",
                 "value_metric": "3.75 mg"
             },
             {
-                "unit": "Pun (푼 / 分)",
+                "unit": "푼 (分)",
                 "value_metric": "0.375 g"
             },
             {
-                "unit": "Don (돈)",
+                "unit": "돈",
                 "value_metric": "3.75 g"
             },
             {
-                "unit": "Nyang (냥 / 兩)",
+                "unit": "냥 (兩)",
                 "value_metric": "37.5 g"
             },
             {
-                "unit": "Geun (근 / 斤)",
-                "value_metric": "600g (Meat/Herbs) or 375g (Fruits/Veg)",
-                "description": "Variable unit depending on the object."
+                "unit": "근 (斤)",
+                "value_metric": "600g (고기/약재) 혹은 375g (과일/채소)",
+                "description": "물건에 따라 단위가 다르다."
             },
             {
-                "unit": "Gwan (관 / 貫)",
+                "unit": "관 (貫)",
                 "value_metric": "3.75 kg"
             }
         ],
         "volume": [
             {
-                "unit": "Jak (작 / 勺)",
+                "unit": "작 (勺)",
                 "value_metric": "18 mL"
             },
             {
-                "unit": "Hop (홉)",
+                "unit": "홉",
                 "value_metric": "180 mL"
             },
             {
-                "unit": "Doe / Seung (되, 승 / 升)",
+                "unit": "되 / 승 (升)",
                 "value_metric": "1.8 L"
             },
             {
-                "unit": "Mal / Du (말, 두 / 斗)",
+                "unit": "말 / 두 (斗)",
                 "value_metric": "18 L"
             },
             {
-                "unit": "Seom / Seok (섬, 석 / 石)",
+                "unit": "섬 / 석 (石)",
                 "value_metric": "180 L"
             }
         ],
         "area": [
             {
-                "unit": "Pyeong (평 / 坪)",
+                "unit": "평 (坪)",
                 "value_metric": "3.3058 m²",
-                "conversion": "Square of 6 Cheok"
+                "conversion": "사방 6척"
             },
             {
-                "unit": "Myo (묘 / 畝)",
+                "unit": "묘 (畝)",
                 "value_metric": "99.174 m²",
-                "conversion": "30 Pyeong"
+                "conversion": "30평"
             },
             {
-                "unit": "Dan (단 / 段)",
+                "unit": "단 (段)",
                 "value_metric": "991.74 m²",
-                "conversion": "300 Pyeong"
+                "conversion": "300평"
             },
             {
-                "unit": "Jeong (정 / 町)",
+                "unit": "정 (町)",
                 "value_metric": "9917.4 m²",
-                "conversion": "3000 Pyeong"
+                "conversion": "3000평"
             },
             {
-                "unit": "Majigi (마지기)",
-                "value_metric": "150~300 Pyeong (Rice paddy) / 100 Pyeong (Field)",
-                "description": "Farming area unit"
+                "unit": "마지기",
+                "value_metric": "150~300평 (논) / 100평 (밭)",
+                "description": "농지 면적 단위"
             }
         ]
     },
     "miscellaneous_units": {
-        "Mo (모)": "Counting unit for squared items like Tofu.",
-        "Sari (사리)": "Counting unit for coiled items like noodles or rope.",
-        "Cheop (첩)": "1 bag of herbal medicine.",
-        "Tol (톨)": "Counting unit for small grains/nuts (chestnut, garlic)."
+        "모": "두부 등을 세는 단위.",
+        "사리": "국수나 새끼줄 등을 사려 놓은 뭉치.",
+        "첩": "한약 한 봉지.",
+        "톨": "밤, 마늘 등 작은 알갱이나 열매."
     }
 }

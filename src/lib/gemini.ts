@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { Message } from './store';
 import { PromptManager } from './prompt-manager';
-import { getLogicPrompt } from '@/data/prompts/logic';
+import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from '@/data/prompts/logic';
 
 // Removed static SYSTEM_PROMPT in favor of dynamic generation
 
@@ -165,6 +165,32 @@ export async function generateGameLogic(
 ) {
     if (!apiKey) throw new Error('API Key is missing');
 
+    // [New] Dynamic Event Filtering
+    // 1. Load Events (If not in state, try to import)
+    // Note: State might have 'events' from DataManager
+    let validEvents = [];
+    if (gameState.activeGameId === 'wuxia') {
+        const events = gameState.events || [];
+        // Filter by condition
+        validEvents = events.filter((e: any) => {
+            if (e.once && e.triggered) return false; // Already triggered? (Needs persistence logic if 'triggered' flag exists)
+            // For now, simple condition check. Logic model will decide if it fits.
+            // We need to execute the condition function.
+            // PROBLEM: Functions don't survive serialization if events came from Client.
+            // DataManager loads valid functions on Server.
+            // If gameState.events has functions, we can run them.
+            // If condition code is serialized or missing, we can't run it.
+
+            // Fallback: If condition is a function, run it.
+            if (typeof e.condition === 'function') {
+                try { return e.condition(gameState); } catch (err) { return false; }
+            }
+            return false;
+        });
+
+        console.log(`[GeminiLogic] Valid Events: ${validEvents.length} / ${events.length}`);
+    }
+
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // [CONTEXT CACHING] Reuse the SAME static prefix
@@ -176,13 +202,15 @@ export async function generateGameLogic(
         try {
             console.log(`Trying logic model: ${modelName}`);
 
+            // [NEW] Static Prompt for Context Caching
+            const rankCriteria = gameState.lore?.martial_arts_levels || null;
+            const staticLogicPrompt = getStaticLogicPrompt(gameState.activeGameId, rankCriteria);
+
             const model = genAI.getGenerativeModel({
                 model: modelName,
                 safetySettings,
                 generationConfig: { responseMimeType: "application/json" },
-                // [OPTIMIZATION] Logic Model logic prompt is self-contained. 
-                // Do NOT pass staticPrompt (40k tokens) to Flash model as it wastes tokens and doesn't share cache.
-                // systemInstruction: staticPrompt 
+                systemInstruction: staticLogicPrompt // [OPTIMIZATION] Cache the Rules & Format
             });
 
             // Logic Prompt (Dynamic Suffix)
@@ -207,13 +235,14 @@ export async function generateGameLogic(
             // Get lightweight context for Logic Model
             const logicContext = PromptManager.getLogicModelContext(gameState);
 
-            const prompt = getLogicPrompt(
+            // [NEW] Dynamic Prompt (Stats & Action)
+            const prompt = getDynamicLogicPrompt(
                 prunedStats,
                 lastUserMessage,
                 lastAiResponse,
                 logicContext,
                 worldData,
-                gameState.activeGameId // [FIX] separate logic prompt
+                validEvents // [NEW] Pass filtered events to logic prompt
             );
 
             // [DEBUG LOG] Verify Logic Model Prompt Size
@@ -239,6 +268,17 @@ export async function generateGameLogic(
                 // Attach debug info
                 json._debug_prompt = prompt;
                 json._debug_raw_response = text;
+
+                // Post-Process: Event Trigger
+                // If Logic Model selected an event, we need to locate its prompt
+                if (json.triggerEventId && gameState.events) {
+                    const selectedEvent = gameState.events.find((e: any) => e.id === json.triggerEventId);
+                    if (selectedEvent) {
+                        console.log(`[GeminiLogic] TRIGGERING EVENT: ${selectedEvent.name} (${selectedEvent.id})`);
+                        // Inject the prompt into next state's currentEvent field
+                        json.currentEvent = selectedEvent.prompt;
+                    }
+                }
 
                 return json;
             } catch (e) {

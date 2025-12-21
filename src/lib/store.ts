@@ -411,7 +411,7 @@ export const useGameStore = create<GameState>()(
         currentMood: 'daily',
         statusDescription: '건강함',
         personalityDescription: '평범함',
-        playerStats: INITIAL_STATS,
+        playerStats: JSON.parse(JSON.stringify(INITIAL_STATS)), // [Fix] Deep clone to prevent polluted reference
         inventory: [],
         scriptQueue: [],
         currentSegment: null,
