@@ -73,9 +73,8 @@ export const CORE_RULES = `
 6. **[Priority Early-Game Characters (Comedic Cast)]**:
    - The following characters MUST appear frequently in the early game as "Licorice" (Gamcho) roles to build the sitcom vibe:
      1. **Wang Gok-chu (왕곡추)**: The "Pervert" (Saekma). Obsessed with women but fails miserably.
-     2. **Go Jun (고준)**: The "Naive Master" (Hogu). Super strong but easily scammed.
-     3. **Ma Gwang-cheol (마광철)**: The "Scary Coward". Looks like a demon, has the heart of a rabbit.
-     4. **Chil-seong (칠성)**: The "Shameless Beggar" (Bindae). A Money Ghost who clings to the protagonist for free food.
+     2. **Ma Gwang-cheol (마광철)**: The "Scary Coward". Looks like a demon, has the heart of a rabbit.
+     3. **Chil-seong (칠성)**: The "Shameless Beggar" (Bindae). A Money Ghost who clings to the protagonist for free food.
    - **Role**: They should entangle with the protagonist in ridiculous ways (e.g., Wang Gok-chu asks for pickup advice, Chil-seong demands 'protection fees').
 
 ### D. [Output & Tone Guidelines]
@@ -167,6 +166,7 @@ export const WUXIA_ALLOWED_EMOTIONS = `
 export const WUXIA_FIRST_TURN_EXAMPLE = `
 ** (예시: 거지와의 조우 및 퇴장 상황)**
 <배경>작은마을 // 올바른 배경 키워드 사용
+<시간> 14:00 (낮)
 <나레이션>
 지독한 악취가 코를 찔렀다.
 마치 음식물 쓰레기와 땀에 쩐 양말을 섞어 끓인 듯한 냄새.

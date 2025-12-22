@@ -1,4 +1,4 @@
-export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'unknown';
+export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'command' | 'unknown';
 
 export interface ScriptSegment {
     type: ScriptType;
@@ -6,8 +6,9 @@ export interface ScriptSegment {
     character?: string;
     expression?: string;
     choiceId?: number;
-    characterLeave?: boolean; // New flag for character exit
-    characterImageKey?: string; // [New] Helper for <대사> overrides
+    characterLeave?: boolean;
+    characterImageKey?: string;
+    commandType?: string; // [New] For generic commands like 'set_time'
 }
 
 // [Helper] Auto-format text for readability (User Request)
@@ -34,11 +35,20 @@ export function parseScript(text: string): ScriptSegment[] {
     const regex = /<([^>]+)>([\s\S]*?)(?=$|<[^>]+>)/g;
 
     let match;
+
     while ((match = regex.exec(text)) !== null) {
         const tagName = match[1].trim();
         const content = match[2].trim();
         if (tagName === '배경') {
             segments.push({ type: 'background', content: content });
+        } else if (tagName === '시간') {
+            // [New] Time Update Command
+            // format: <시간> 14:40 낮
+            segments.push({
+                type: 'command',
+                commandType: 'set_time',
+                content: content
+            });
         } else if (tagName === '시스템팝업' || tagName === '시스템') {
             segments.push({ type: 'system_popup', content: content });
         } else if (tagName === '나레이션') {

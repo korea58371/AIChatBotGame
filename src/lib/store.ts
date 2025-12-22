@@ -105,9 +105,9 @@ interface GameState {
 
   // Time & Day System
   day: number;
-  time: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+  time: string;
   setDay: (day: number) => void;
-  setTime: (time: 'Morning' | 'Afternoon' | 'Evening' | 'Night') => void;
+  setTime: (time: string) => void;
   incrementDay: () => void;
 
   resetGame: () => void;

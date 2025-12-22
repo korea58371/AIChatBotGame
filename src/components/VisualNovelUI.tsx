@@ -627,16 +627,24 @@ export default function VisualNovelUI() {
 
         let nextSegment = currentQueue[0];
 
-        // Process background segments iteratively to avoid recursion
-        while (nextSegment && nextSegment.type === 'background') {
-            // Resolve fuzzy tag to actual file path
-            console.log(`[Background Debug] AI Tag: "${nextSegment.content}"`);
-            const resolvedBg = resolveBackground(nextSegment.content);
-            console.log(`[Background Debug] Resolved to: "${resolvedBg}"`);
-            setBackground(resolvedBg);
-            setCharacterExpression(''); // Clear character on scene change
+        // Process background and command segments iteratively to avoid recursion
+        while (nextSegment && (nextSegment.type === 'background' || nextSegment.type === 'command')) {
+            if (nextSegment.type === 'background') {
+                // Resolve fuzzy tag to actual file path
+                console.log(`[Background Debug] AI Tag: "${nextSegment.content}"`);
+                const resolvedBg = resolveBackground(nextSegment.content);
+                console.log(`[Background Debug] Resolved to: "${resolvedBg}"`);
+                setBackground(resolvedBg);
+                setCharacterExpression(''); // Clear character on scene change
+            } else if (nextSegment.type === 'command') {
+                // [New] Handle Commands
+                if (nextSegment.commandType === 'set_time') {
+                    console.log(`[Command] Updating Time: ${nextSegment.content}`);
+                    useGameStore.getState().setTime(nextSegment.content);
+                }
+            }
 
-            currentQueue.shift(); // Remove processed background
+            currentQueue.shift(); // Remove processed segment
             if (currentQueue.length === 0) break;
             nextSegment = currentQueue[0];
         }
@@ -1045,12 +1053,20 @@ export default function VisualNovelUI() {
 
             // Start playing
             if (segments.length > 0) {
-                // Skip initial background segments
+                // Skip initial background and command segments
                 let startIndex = 0;
-                while (startIndex < segments.length && segments[startIndex].type === 'background') {
-                    // [Fix] Resolve background properly before setting
-                    const resolvedBg = resolveBackground(segments[startIndex].content);
-                    setBackground(resolvedBg);
+                while (startIndex < segments.length && (segments[startIndex].type === 'background' || segments[startIndex].type === 'command')) {
+                    const seg = segments[startIndex];
+                    if (seg.type === 'background') {
+                        // [Fix] Resolve background properly before setting
+                        const resolvedBg = resolveBackground(seg.content);
+                        setBackground(resolvedBg);
+                    } else if (seg.type === 'command') {
+                        if (seg.commandType === 'set_time') {
+                            useGameStore.getState().setTime(seg.content);
+                        }
+                    }
+
                     startIndex++;
                 }
 
@@ -1719,16 +1735,29 @@ export default function VisualNovelUI() {
                                 {/* Time (Wuxia Style) */}
                                 <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
                                     <span className="text-emerald-600/80 text-[10px] font-bold tracking-widest mb-1 uppercase">{day || 1}일차</span>
-                                    <span className="text-emerald-100 font-bold text-sm font-serif">
+                                    <span className="text-emerald-100 font-bold text-xs font-serif flex flex-col items-center">
                                         {(() => {
-                                            const wuxiaTime: Record<string, string> = {
-                                                morning: '진시(辰)',   // 7-9 AM
-                                                afternoon: '미시(未)', // 1-3 PM
-                                                evening: '술시(戌)',   // 7-9 PM
-                                                night: '자시(子)',     // 11 PM - 1 AM
-                                                dawn: '인시(寅)'       // 3-5 AM
+                                            const wuxiaTime: Record<string, { name: string, time: string }> = {
+                                                morning: { name: '진시(辰)', time: '07:00 ~ 09:00' },
+                                                afternoon: { name: '미시(未)', time: '13:00 ~ 15:00' },
+                                                evening: { name: '술시(戌)', time: '19:00 ~ 21:00' },
+                                                night: { name: '자시(子)', time: '23:00 ~ 01:00' },
+                                                dawn: { name: '인시(寅)', time: '03:00 ~ 05:00' }
                                             };
-                                            return wuxiaTime[time?.toLowerCase()] || wuxiaTime['morning'];
+                                            const timeKey = (time || 'morning').toLowerCase();
+                                            const t = wuxiaTime[timeKey];
+
+                                            // [New] Support Custom Time String (e.g. "14:40 낮")
+                                            if (!t) {
+                                                return <span className="text-sm">{time}</span>;
+                                            }
+
+                                            return (
+                                                <>
+                                                    <span>{t.name}</span>
+                                                    <span className="text-[10px] text-emerald-400/70 font-sans tracking-tight">({t.time})</span>
+                                                </>
+                                            );
                                         })()}
                                     </span>
                                 </div>

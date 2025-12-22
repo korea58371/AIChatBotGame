@@ -114,6 +114,11 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
   - **Bad**: \`<선택지1>"맛있다!"라며 그녀가 감탄한다.\` (Describing NPC)
   - **Good**: \`<선택지1>"맛이 어떠십니까?"라고 묻는다.\` (Describing Player)
 
+- **<시간> TimeString**
+- Use this tag to update the current time displayed on the HUD when a significant time progression occurs in the narrative.
+- Format: \`<시간> HH:MM (시간대)\`
+- Example: \`<시간> 14:30 (낮)\`
+
 ---
 이제 위 샘플 스타일을 따라 이야기를 시작하라.
 `;

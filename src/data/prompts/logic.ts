@@ -244,7 +244,7 @@ ${availableEvents.length > 0 ? JSON.stringify(availableEvents.map(e => ({ id: e.
    - **[CRITICAL] Neigong (Internal Energy Years)**: If the player meditates or consumes an elixir, increase \`neigong\`.
    - **Rank Up**: Compare current \`neigong\` and \`fame\` against **[RANK UP CRITERIA]**. If conditions met AND the user has gained a "Realization" moment, update \`playerRank\`.
    - **[TIME & SURVIVAL]**:
-     - **Advance Time**: If action takes time, set \`timeProgress: true\`.
+     - **Advance Time**: ALMOST ALWAYS set \`timeProgress: true\` for any conversation, travel, or combat. Only omit for instant thoughts or brief glances.
      - **Update Fatigue**: Calculate \`fatigueChange\`.
      - **Sleep**: If user sleeps, set \`isSleep: true\`.
      - **Night Penalty**: If Night + No Sleep -> High Fatigue, HP Damage.
