@@ -434,6 +434,51 @@ export async function handleGameTurn(
 
     let nextState = { ...state, ...logicResult };
 
+    // [New] Process Time & Survival Logic
+    const currentStats = nextState.playerStats || {};
+    let currentFatigue = currentStats.fatigue || 0;
+
+    // 1. Fatigue Update from Logic
+    if (logicResult.fatigueChange) {
+        currentFatigue = Math.max(0, Math.min(100, currentFatigue + logicResult.fatigueChange));
+    }
+
+    // 2. Time & Sleep Logic
+    let currentDay = nextState.day || 1;
+    let currentTime = nextState.time || 'Morning';
+    const timePhases = ['Morning', 'Afternoon', 'Evening', 'Night'];
+
+    if (logicResult.isSleep) {
+        // Sleep Action
+        if (currentTime === 'Night') {
+            // Full Rest: Next Day
+            currentDay++;
+            currentTime = 'Morning';
+            currentFatigue = 0; // Reset Fatigue
+            // Recover HP/MP bonus could be handled by Logic output, but we ensure fatigue reset here.
+        } else {
+            // Nap: Reduce Fatigue, Advance Time
+            currentFatigue = Math.max(0, currentFatigue - 30);
+            const nextIdx = (timePhases.indexOf(currentTime) + 1) % 4;
+            if (nextIdx === 0) currentDay++; // Wrapped around (unlikely for day nap but safe)
+            currentTime = timePhases[nextIdx];
+        }
+    } else if (logicResult.timeProgress) {
+        // Normal Time Progression
+        let idx = timePhases.indexOf(currentTime);
+        idx++;
+        if (idx >= timePhases.length) {
+            idx = 0;
+            currentDay++; // Night -> Morning triggers next day
+        }
+        currentTime = timePhases[idx];
+    }
+
+    // Apply Time/Fatigue Updates to State
+    nextState.day = currentDay;
+    nextState.time = currentTime;
+    nextState.playerStats = { ...currentStats, fatigue: currentFatigue };
+
     // Logic result might have specific fields like hpChange, etc. 
     // We are interested in 'turnCount' and 'scenarioSummary'.
     // The user's snippet implies we handle turn counting here or assume it's passed.

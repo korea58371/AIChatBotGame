@@ -103,6 +103,13 @@ interface GameState {
   language: 'ko' | 'en' | null;
   setLanguage: (lang: 'ko' | 'en') => void;
 
+  // Time & Day System
+  day: number;
+  time: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
+  setDay: (day: number) => void;
+  setTime: (time: 'Morning' | 'Afternoon' | 'Evening' | 'Night') => void;
+  incrementDay: () => void;
+
   resetGame: () => void;
 
   // Loaded Game Logic Functions (Not persisted, reloaded on init)
@@ -147,6 +154,7 @@ export interface PlayerStats {
   };
   relationships: Record<string, number>;
   injuries: string[]; // [New] List of active injuries e.g. ["Right Arm Broken", "Internal bleeding"]
+  fatigue: number; // [New] 0-100
 }
 
 export interface Item {
@@ -176,7 +184,8 @@ const INITIAL_STATS: PlayerStats = {
     leadership: 0, humor: 0, lust: 0
   },
   relationships: {},
-  injuries: [] // [New] Initialize empty injuries
+  injuries: [],
+  fatigue: 0
 };
 
 export const useGameStore = create<GameState>()(
@@ -393,6 +402,12 @@ export const useGameStore = create<GameState>()(
       language: null,
       setLanguage: (lang) => set({ language: lang }),
 
+      day: 1,
+      time: 'Morning',
+      setDay: (day) => set({ day }),
+      setTime: (time) => set({ time }),
+      incrementDay: () => set((state) => ({ day: state.day + 1, time: 'Morning' })),
+
 
 
       extraOverrides: {},
@@ -409,6 +424,8 @@ export const useGameStore = create<GameState>()(
         currentLocation: 'home',
         scenarioSummary: '',
         turnCount: 0,
+        day: 1,
+        time: 'Morning',
         currentEvent: '',
         currentMood: 'daily',
         statusDescription: '건강함',

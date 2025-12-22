@@ -215,6 +215,8 @@ export const getDynamicLogicPrompt = (
 ) => {
     return `
 **Current Game State:**
+- **In-Game Time**: Day ${prunedStats.day || 1}, ${prunedStats.time || 'Morning'}
+- **Fatigue**: ${prunedStats.fatigue || 0}%
 - **Gold**: ${prunedStats.playerStats?.gold || 0}
 ${JSON.stringify(prunedStats, null, 2)}
 
@@ -238,6 +240,11 @@ ${availableEvents.length > 0 ? JSON.stringify(availableEvents.map(e => ({ id: e.
 2. **Update Stats**: Calculate changes for HP, Internal Energy (MP), Gold, Stats (STR/AGI/INT/VIT), Fame, Fate, and Personality.
    - **[CRITICAL] Neigong (Internal Energy Years)**: If the player meditates or consumes an elixir, increase \`neigong\`.
    - **Rank Up**: Compare current \`neigong\` and \`fame\` against **[RANK UP CRITERIA]**. If conditions met AND the user has gained a "Realization" moment, update \`playerRank\`.
+   - **[TIME & SURVIVAL]**:
+     - **Advance Time**: If action takes time, set \`timeProgress: true\`.
+     - **Update Fatigue**: Calculate \`fatigueChange\`.
+     - **Sleep**: If user sleeps, set \`isSleep: true\`.
+     - **Night Penalty**: If Night + No Sleep -> High Fatigue, HP Damage.
 3. **Manage Inventory**: Add/remove items.
 4. **Manage Characters**: Update memories, secrets, and relationships (favor).
 5. **Manage World**: Update location details and secrets.

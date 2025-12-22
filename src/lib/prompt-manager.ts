@@ -327,8 +327,8 @@ ${availableBackgrounds}
             // 2. Hidden Secrets (Unknown to Player)
             if (char.secret) {
                 const secretStr = typeof char.secret === 'string' ? char.secret : JSON.stringify(char.secret, null, 2);
-                charInfo += `\n\n[HIDDEN SECRETS (The Player DOES NOT KNOW this)]:\n${secretStr}`;
-                charInfo += `\n\n**WARNING**: The player is UNAWARE of the [HIDDEN SECRETS] above. You MUST NOT reference them as common knowledge. Only use them to guide the character's internal motives or reactions. Reveal them ONLY if the narrative naturally leads to a discovery event.`;
+                charInfo += `\n\n[HIDDEN SECRETS (GM ONLY - DO NOT REVEAL)]:\n${secretStr}`;
+                charInfo += `\n\n**NARRATION RULE**: The Player DOES NOT KNOW these secrets. The Narrator MUST NOT mention them. Describe only what is outwardly visible (Appearance, Behavior). Reveal internal nature only through subtle hints or after specific events.`;
             }
 
             // [New] Static Relationships (Inter-Character Dynamics)
@@ -635,7 +635,8 @@ ${spawnCandidates || "None"}
             // but we instruct it to keep them hidden from the player until discovered.
             if (c.secret) {
                 const secretStr = typeof c.secret === 'string' ? c.secret : JSON.stringify(c.secret);
-                info += `\n- [HIDDEN TRUTH]: ${secretStr} (Player Unknown)`;
+                info += `\n- [HIDDEN TRUTH (GM ONLY)]: ${secretStr}`;
+                info += `\n  - **CRITICAL RULE**: The Narrator MUST NOT reveal this. The Player sees only the outer appearance. Describe ONLY what is visible.`;
             }
 
             return info;
