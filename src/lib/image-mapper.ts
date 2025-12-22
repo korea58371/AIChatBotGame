@@ -138,14 +138,14 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
 
     if (activeGameId === 'wuxia') {
         emotionKeyword = wuxiaEmotionMap[koreanEmotion] || 'Default';
-        // Wuxia Format: CharName_Emotion.png (No intermediate 'Default')
-        targetFilename = `${charId}_${emotionKeyword}.png`;
-        defaultFilename = `${charId}_Default.png`;
+        // Wuxia Format: CharName_Emotion (No extension for check)
+        targetFilename = `${charId}_${emotionKeyword}`;
+        defaultFilename = `${charId}_Default`;
     } else {
-        // Legacy (God Bless You) Format: CharName_Default_Emotion.png
+        // Legacy (God Bless You) Format: CharName_Default_Emotion
         emotionKeyword = emotionMap[koreanEmotion] || 'Default';
-        targetFilename = `${charId}_Default_${emotionKeyword}.png`;
-        defaultFilename = `${charId}_Default_Default.png`;
+        targetFilename = `${charId}_Default_${emotionKeyword}`;
+        defaultFilename = `${charId}_Default_Default`;
     }
 
     // A. Direct File Match (Priority for Wuxia Static Extras)
@@ -160,19 +160,19 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
     if (charId) {
         // 1) 정확한 이미지가 있는가?
         if (availableImages.includes(targetFilename)) {
-            return `${charBasePath}/${charId}/${targetFilename}`;
+            return `${charBasePath}/${charId}/${targetFilename}.png`;
         }
 
         // 2) 매핑된 감정이 없으면 'Default'를 시도
         if (availableImages.includes(defaultFilename)) {
-            return `${charBasePath}/${charId}/${defaultFilename}`;
+            return `${charBasePath}/${charId}/${defaultFilename}.png`;
         }
 
         // 3) List check fallback (Legacy logic, maybe unsafe for wuxia)
         // If we really can't find it, returning empty string is safer than a bad path.
         // But the original code returned targetFilename blind if list empty.
         if (availableImages.length === 0) {
-            return `${charBasePath}/${charId}/${targetFilename}`;
+            return `${charBasePath}/${charId}/${targetFilename}.png`;
         }
 
         return '';
