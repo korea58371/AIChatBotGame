@@ -33,8 +33,11 @@ export async function serverGenerateResponse(
             if (data.backgroundMappings) {
                 gameState.backgroundMappings = data.backgroundMappings;
             }
+            if (data.extraMap) {
+                gameState.extraMap = data.extraMap;
+            }
         } catch (e) {
-            console.error(`[ServerAction] Failed to re-hydrate lore for ${gameState.activeGameId}:`, e);
+            console.error(`[ServerAction] Failed to re-hydrate lore/maps for ${gameState.activeGameId}:`, e);
         }
     }
 

@@ -67,6 +67,7 @@ interface GameState {
     lore?: any;
     activeGameId?: string; // Added for game-specific logic
     backgroundMappings?: Record<string, string>; // Added for Wuxia Korean keys
+    extraMap?: Record<string, string>; // Added to interface
 }
 
 export class PromptManager {
@@ -187,8 +188,10 @@ ${availableBackgrounds}
    - Example: \`<대사>엽문(술좋아하는낭인무사남)_기쁨: 어이!\` (Image: 술좋아하는낭인무사남, Name: 엽문)
    - Note: The Asset Key must match exactly or partially match an available Extra Image.
 3. Name must be Korean (e.g. 천서윤).
-3. Emotion must be one of:
+4. Emotion must be one of:
    - ${emotionListString}
+5. **Narration**: If narration or monologue follows dialogue, use the tag: \`<나레이션>Content\`
+6. **Exit**: If a character leaves the scene after speaking, append the tag: \`<떠남>\`
 
 ---
 `;
@@ -639,24 +642,17 @@ ${spawnCandidates || "None"}
         }).join('\n\n');
     }
 
-    static getAvailableExtraCharacters(state: GameState & { extraMap?: Record<string, string> }): string {
+    static getAvailableExtraCharacters(state: GameState): string {
         // Load directly from the state (Loaded by DataManager)
         let extraNamesStr = "None";
 
-        if (state.extraMap) {
+        if (state.extraMap && Object.keys(state.extraMap).length > 0) {
             const extraNames = Object.keys(state.extraMap).sort(); // [FIX] Sort keys
-            if (extraNames.length > 0) {
-                extraNamesStr = extraNames.join(', ');
-            }
+            extraNamesStr = extraNames.join(', ');
+            // console.log(`[PromptManager] Found Extra Map Keys: ${extraNames.length}`);
         } else {
-            // Legacy Fallback (Hardcoded - likely to fail for new games but kept for safety)
-            try {
-                // Determine path based on active game? We don't have gameId here easily unless we add it to state.
-                // But state.extraMap SHOULD be present.
-                // If not, we skip the require to avoid error spam or wrong file.
-            } catch (e) {
-                console.warn("Failed to read extra map from state or fallback");
-            }
+            // Fallback
+            console.warn("[PromptManager] state.extraMap is missing. Falling back to simple file list.");
         }
 
         const extraImages = extraNamesStr !== "None" && extraNamesStr.length > 0
