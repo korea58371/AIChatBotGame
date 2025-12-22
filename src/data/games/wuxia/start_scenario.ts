@@ -1,62 +1,62 @@
 export const CHARACTER_CREATION_QUESTIONS = [
     {
-        id: 'identity',
-        question: "1문) 소협은 강호에서 어떤 신분으로 시작하시겠습니까?",
+        id: 'personality_tone',
+        question: "1문) [성격] 당신은 이 황당한 '무림' 세계를 어떤 태도로 대할 것인가?",
         options: [
-            { value: 'orthodox_elite', label: "1. [명문정파] 규율과 명예를 중시하며, 사형제들의 모범이 되고자 하는 바른 성품." },
-            { value: 'ronin_playboy', label: "2. [풍류낭인] 얽매임 없이 강호를 유람하며 술과 예술을 사랑하는 자유로운 영혼." },
-            { value: 'ruthless_overlord', label: "3. [사파무인] 강함과 실리를 최우선으로 여기며, 목적을 위해 수단을 가리지 않는 냉철함." },
-            { value: 'cute_shota', label: "4. [귀여운 막내] 천진난만한 외모와 성격으로 주변의 귀여움을 독차지하는 사랑스러운 성격." }
+            { value: 'humorous', label: "1. [유쾌] \"이왕 온 거 즐겨야지!\" 매사를 긍정적이고 유머러스하게 넘긴다." },
+            { value: 'serious', label: "2. [진지] \"장난이 아니야, 이건 생존이다.\" 신중하고 진지하게 상황을 분석한다." },
+            { value: 'cynical', label: "3. [시니컬] \"어차피 소설 속이잖아?\" 세상을 비꼬며 냉소적으로 바라본다." },
+            { value: 'timid', label: "4. [소심] \"무서워... 집에 갈래...\" 겁이 많아 매사에 조심스럽고 위축된다." },
+            { value: 'domineering', label: "5. [패도] \"내가 곧 법이다.\" 위압감 넘치는 태도로 상대를 찍어누른다." }
         ]
     },
     {
-        id: 'desire',
-        question: "2문) 소협이 무림에 나온 진정한 목적은 무엇입니까?",
+        id: 'morality_choice',
+        question: "2문) [도덕성] 눈앞에서 약한 사람이 괴롭힘을 당하고 있다. 당신의 선택은?",
         options: [
-            { value: 'supreme', label: "1. [천하제일] 무공의 끝을 보고 우화등선하는 것." },
-            { value: 'harem', label: "2. [영웅호색] 천하의 절세미녀들을 모두 나의 여인으로 만드는 것." },
-            { value: 'revenge', label: "3. [혈수복수] 가문을 멸문시킨 원수들을 찾아 처참하게 죽이는 것." },
-            { value: 'wealth', label: "4. [거상/유유자적] 막대한 부를 쌓아 평생 놀고 먹는 것." }
+            { value: 'good', label: "1. [선행] \"사람이 그러면 안 되지!\" 위험을 무릅쓰고라도 돕는다." },
+            { value: 'pragmatic', label: "2. [실리] \"돕고는 싶지만, 내 목숨이 먼저다.\" 안전할 때만 돕는다." },
+            { value: 'selfish', label: "3. [이기] \"내 코가 석 자다.\" 철저히 외면하고 내 갈 길만 간다." },
+            { value: 'calculation', label: "4. [계산] \"저걸 도와주면 콩고물이 떨어질까?\" 이득이 될 때만 움직인다." }
         ]
     },
     {
-        id: 'combat_style',
-        question: "3문) 소협이 선호하는 무공 스타일은 무엇입니까?",
+        id: 'speech_style',
+        question: "3문) [말투] 당신은 이 세계 사람들에게 어떻게 말을 걸 것인가?",
         options: [
-            { value: 'sword_art', label: "1. [검법/도법] 화려하고 빠른 변화, 혹은 묵직한 한 방." },
-            { value: 'fist_art', label: "2. [권각술] 강인한 신체를 무기로 삼는 투박하지만 강력한 무공." },
-            { value: 'internal_art', label: "3. [내공/기공] 장풍과 지법 등 원거리에서 기를 쏘아 제압하는 무공." },
-            { value: 'dirty_art', label: "4. [암기/독술] 승리를 위해서라면 수단과 방법을 가리지 않는 실전 무공." }
+            { value: 'polite', label: "1. [존댓말] \"안녕하십니까, 대협.\" 누구에게나 예의 바르고 정중하게 대한다." },
+            { value: 'casual', label: "2. [반말/현대어] \"야, 형씨! 이거 실화냐?\" 현대식 말투와 반말을 섞어 쓴다." },
+            { value: 'bluff', label: "3. [허세/권위] \"크크크... 내 눈을 바라봐라.\" 있어 보이는 척 무게를 잡는다." },
+            { value: 'mute', label: "4. [단답] \"...\" 말수를 줄이고 필요한 말만 짧게 한다." }
         ]
     },
     {
-        id: 'reaction_beauty',
-        question: "4문) [상황] 도적 떼에게 포위된 '절세미녀'를 발견했습니다. 소협의 선택은?",
+        id: 'desire_type',
+        question: "4문) [욕망] 이 세계에서 가장 먼저 얻고 싶은 것은 무엇인가?",
         options: [
-            { value: 'save_justice', label: "1. [협행] \"대낮에 무슨 짓이냐!\" 즉시 검을 뽑아 도적들을 베어버린다." },
-            { value: 'flirt_save', label: "2. [작업] \"이런 미인을 험하게 다루다니... 제가 모셔다 드리지요.\" 멋지게 등장해 호감을 산다." },
-            { value: 'ignore', label: "3. [외면] \"내 알 바 아니다.\" 득실이 없다면 조용히 지나간다." },
-            { value: 'weak_act', label: "4. [반전] \"히익! 살려주세요!\" 겁쟁이인 척하며 도적들을 방심시킨 뒤 기습한다." }
+            { value: 'money', label: "1. [재물] \"돈이 최고야!\" 현대 지식으로 떼돈을 벌고 싶다." },
+            { value: 'attention', label: "2. [관심/명예] \"내가 바로 주인공!\" 사람들의 관심을 받고 유명해지고 싶다." },
+            { value: 'safety', label: "3. [안전] \"안 다치고 싶어.\" 튼튼한 호위무사나 안전한 은신처가 절실하다." },
+            { value: 'pleasure', label: "4. [쾌락/음식] \"맛있는 거나 먹자.\" 맛집 탐방이나 유흥을 즐기고 싶다." }
         ]
     },
     {
-        id: 'secret_manual',
-        question: "5문) [상황] 전설의 마공서 '천마흡성공'을 손에 넣었습니다.",
+        id: 'final_goal',
+        question: "5문) 이 험난한 무림에서 당신의 최종 목표는?",
         options: [
-            { value: 'burn', label: "1. [파기] \"강호에 피바람을 몰고 올 물건이다.\" 미련 없이 태워버린다." },
-            { value: 'learn', label: "2. [습득] \"힘에는 선악이 없다. 내가 쓰면 정의다.\" 익혀서 내 것으로 만든다." },
-            { value: 'sell', label: "3. [판매] \"황궁 보물고에 팔면 평생 먹고 놀 수 있겠군!\" 비싸게 판다." },
-            { value: 'hide', label: "4. [은닉] 일단 숨겨두고 나중에 필요할 때를 대비한다." }
+            { value: 'go_home', label: "1. [귀환] \"다 필요 없어! 와이파이 터지는 내 방으로 돌아갈래!\"" },
+            { value: 'harem_king', label: "2. [하렘] \"이왕 온 거, 무림의 미녀란 미녀는 다 내 걸로 만들겠다.\"" },
+            { value: 'tycoon', label: "3. [재벌] \"현대의 지식(다단계, 주식)으로 무림 경제를 지배해주마.\"" },
+            { value: 'survival', label: "4. [생존] \"가늘고 길게 사는 게 최고다. 산속에 숨어서 만수무강하리라.\"" },
+            { value: 'murim_lord', label: "5. [천하제일] \"내 발 아래 모두 꿇어라.\" 무력으로 천하를 제패하는 천하제일인이 되겠다.\"" }
         ]
     },
     {
-        id: 'rival_fate',
-        question: "6문) [상황] 당신을 괴롭히던 원수를 결투 끝에 쓰러뜨렸습니다. 마무리는?",
+        id: 'narrative_perspective',
+        question: "6문) [시점] 당신의 이야기가 어떻게 서술되길 원하십니까?",
         options: [
-            { value: 'mercy', label: "1. [용서] \"승부는 났다. 다시는 내 앞에 나타나지 마라.\" 등을 돌려 떠난다." },
-            { value: 'kill', label: "2. [살해] \"후환은 남기지 않는다.\" 망설임 없이 숨통을 끊는다." },
-            { value: 'cripple', label: "3. [폐인] \"죽는 것보다 더한 고통을 주지.\" 단전을 파괴해 무공을 못 쓰게 만든다." },
-            { value: 'recruit', label: "4. [포섭] \"내 밑으로 들어와라. 더 큰 세상을 보여주지.\" 부하로 삼는다." }
+            { value: 'first_person', label: "1. [1인칭] \"나는 검을 뽑았다.\" (주인공의 내면 심리와 시야 중심)" },
+            { value: 'third_person', label: "2. [3인칭] \"주인공은 검을 뽑았다.\" (객관적인 상황 묘사와 전체적인 흐름 중심)" }
         ]
     }
 ];

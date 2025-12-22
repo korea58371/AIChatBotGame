@@ -121,32 +121,57 @@ ${JSON.stringify(PromptManager.deepSort(state.lore), null, 2)}
             }
         }
 
+        // [BEHAVIOR PROMPT INJECTION]
+        // Rules to prevent Metagaming and "Stupid" AI
+###[🧠 INTELLIGENCE & METAGAMING RULES(CRITICAL)]
+        1. ** [STRANGER PROTOCOL(초면 규칙)] **:
+        - Unless explicitly stated in [Active Characters] or[Relationships], ** NO ONE KNOWS THE PROTAGONIST.**
+            - Do NOT act friendly.Do NOT use nicknames.Do NOT share secrets.
+   - Treat the protagonist as a suspicious "unknown commoner"(Three - rate / Sam - ryu) until proven otherwise.
+
+2. ** [STATUS ADHERENCE(신분과 지능)] **:
+   - ** Masters(Masters / Leaders) **: They are geniuses who survived the bloody Murim.They are ** NOT IDIOTS **.
+   - ** Reaction to Unknown **: They do NOT just believe lies.They analyze: "Does this benefit me?" or "Is this a trap?"
+            - * Ex *: A lighter is viewed as a ** dangerous hidden weapon ** or a ** demonic artifact **, not a miracle.
+     - ** Response **: They will try to * seize * it or * kill * the user to silence them, rather than bowing down.
+   - ** Dignity **: Masters act with absolute arrogance.They do not get flustered easily.
+
+3. ** [RATIONAL SELF - INTEREST(개연성)] **:
+        - NPCs move for * their own benefit *, not to help the story.
+   - Merchants cheat, bandits rob, and nobles exploit.
+   - ** No Forced Comedy **: Do not make characters act stupid for a laugh.The humor comes from the * situation's irony*, not the character's foolishness.
+`;
+
         return `
-# [SHARED STATIC CONTEXT]
+#[SHARED STATIC CONTEXT]
 The following information is constant reference data.
 
-## [👥 고정된 유명인 DB (변경 불가)]
-아래 인물들은 세계관 내의 '상수'입니다. 이들의 이름이 언급되거나 등장할 경우, **반드시 아래 설정(등급/직업)을 유지**해야 합니다.
+##[👥 고정된 유명인 DB(변경 불가)]
+아래 인물들은 세계관 내의 '상수'입니다.이들의 이름이 언급되거나 등장할 경우, ** 반드시 아래 설정(등급 / 직업)을 유지 ** 해야 합니다.
 (주인공은 이들을 미디어로만 접해 알고 있으며, 개인적 친분은 없는 상태입니다.)
-${famousCharactersDB}
+${ famousCharactersDB }
 
-${loreContext}
+${ BEHAVIOR_RULES }
 
----
+${ loreContext }
 
-${state.constants?.WUXIA_SYSTEM_PROMPT_CONSTANTS || state.constants?.CORE_RULES || ""}
+        ---
 
----
+            ${ state.constants?.FACTION_BEHAVIOR_GUIDELINES || "" }
 
-### [📚 Reference Data (Context Caching Optimized)]
+${ state.constants?.WUXIA_SYSTEM_PROMPT_CONSTANTS || state.constants?.CORE_RULES || "" }
+
+        ---
+
+###[📚 Reference Data(Context Caching Optimized)]
 
 
-**2. Available Extra Characters (엑스트라/단역)**
-${availableExtra}
+** 2. Available Extra Characters(엑스트라 / 단역) **
+            ${ availableExtra }
 
-**3. Available Backgrounds (사용 가능 배경)**
+** 3. Available Backgrounds(사용 가능 배경) **
 # Background Output Rule
-- When the location changes, output the \`<배경>\` tag with a **Korean Keyword** from the list below.
+            - When the location changes, output the \`<배경>\` tag with a **Korean Keyword** from the list below.
 - **STRICT RULE**: You must SELECT from the provided list below. **Do NOT invent new background filenames.**
 - If you cannot find an exact match, use the most similar existing background from the list.
 - **Format**: \`<배경>Category_Location\` (e.g., \`<배경>객잔_1층\`)
@@ -158,7 +183,7 @@ ${availableBackgrounds}
 # Character Dialogue Rules
 1. Format: \`<대사>CharacterName_Emotion: Dialogue Content\`
 2. **Decoupled Name/Image**: To use a specific image asset (e.g. 'Drunk_Ronin') while displaying a valid name (e.g. 'Yeop Mun'), use: \`<대사>DisplayName(AssetKey)_Emotion: ...\`
-   - Example: \`<대사>엽문(낭인무사(술좋아하는))_기쁨: 어이!\` (Image: 낭인무사(술좋아하는), Name: 엽문)
+   - Example: \`<대사>엽문(술좋아하는낭인무사남)_기쁨: 어이!\` (Image: 술좋아하는낭인무사남, Name: 엽문)
    - Note: The Asset Key must match exactly or partially match an available Extra Image.
 3. Name must be Korean (e.g. 천서윤).
 3. Emotion must be one of:
@@ -633,9 +658,11 @@ ${spawnCandidates || "None"}
             }
         }
 
-        const extraImages = state.availableExtraImages && state.availableExtraImages.length > 0
-            ? [...state.availableExtraImages].sort().join(', ') // [FIX] Sort array
-            : extraNamesStr; // Fallback to loaded map if state is empty
+        const extraImages = extraNamesStr !== "None" && extraNamesStr.length > 0
+            ? extraNamesStr // Prioritize Map Keys (Reference/Interface)
+            : (state.availableExtraImages && state.availableExtraImages.length > 0
+                ? [...state.availableExtraImages].sort().join(', ') // Fallback to raw filenames
+                : "None");
 
         return extraImages;
     }

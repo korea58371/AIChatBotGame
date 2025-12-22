@@ -73,6 +73,7 @@ export const backgroundMappings: Record<string, string> = {
     '중원_나루터': 'Jianghu_Ferry.jpg',
     '중원_번화가': 'Jianghu_Downtown.jpg',
     '중원_시장': 'Jianghu_Market.jpg',
+    '시장': 'Jianghu_Market.jpg',
     '천마신교_교주집무실': 'Demonic_LeaderOffice.jpg',
     '천마신교_천마궁': 'Demonic_HeavenlyDemonPalace.jpg',
     '천마신교_천예령의방': 'Demonic_YeryeongRoom.jpg',
@@ -129,7 +130,7 @@ export const backgroundMappings: Record<string, string> = {
     "황실_어화원": "Imperial_Garden.jpg",
     "황실_태화전": "Imperial_ThroneHall.jpg",
     "황실_황실서고": "Imperial_Library.jpg",
-    "황실_황제침소": "Imperial_EmperorRoom.jpg"
+    "황실_황제침소": "Imperial_EmperorRoom.jpg",
 
     // [Auto-Registered] New Gemini Backgrounds
     '강호_평야': 'Jianghu_Plains.jpg',

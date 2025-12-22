@@ -1,11 +1,11 @@
-import { WUXIA_SYSTEM_PROMPT_CONSTANTS, WUXIA_FIRST_TURN_EXAMPLE } from '../constants';
+import { WUXIA_FIRST_TURN_EXAMPLE } from '../constants';
 import martialArtsLevels from '../jsons/martial_arts_levels.json';
 
 const realmHierarchy = martialArtsLevels.realm_hierarchy as Record<string, any>;
 
-export const getRankInfo = (rankKey: string = '이류') => {
+export const getRankInfo = (rankKey: string = '삼류') => {
     // 1. Determine Rank Key (Default: '이류' - Rule #1)
-    let currentRankKey = '이류';
+    let currentRankKey = '삼류';
 
     // Check if the provide key is valid in the hierarchy
     if (rankKey && realmHierarchy[rankKey]) {

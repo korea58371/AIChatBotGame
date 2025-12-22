@@ -164,8 +164,8 @@ const INITIAL_STATS: PlayerStats = {
   level: 1, exp: 0,
   fame: 0,
   fate: 0,
-  playerRank: '이류',
-  neigong: 10,
+  playerRank: '삼류',
+  neigong: 0,
   faction: '무소속',
   personalitySummary: "",
   str: 10, agi: 10, int: 10, vit: 10, luk: 10,
@@ -182,7 +182,7 @@ const INITIAL_STATS: PlayerStats = {
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      activeGameId: 'god_bless_you', // Default
+      activeGameId: 'wuxia', // Default
       isDataLoaded: false,
 
       setGameId: async (id: string) => {

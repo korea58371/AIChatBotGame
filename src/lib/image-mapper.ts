@@ -57,6 +57,7 @@ const wuxiaEmotionMap: Record<string, string> = {
     "혐오": "Disgust",
     "취함": "Drunk",
     "기대": "Expectant",
+    "여유": "Smug",
     "하트": "HeartEyes",
     "고통": "Pain",
     "유혹": "Seductive",
@@ -182,9 +183,9 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
         return `${extraBasePath}/${extraMap[koreanName]}`;
     }
 
-    // [Fix] Fallback search for Extra Characters (e.g. AI says "사파무인" but key is "사파무인(비열한)")
-    // Find first key that starts with "Name("
-    const partialMatch = Object.keys(extraMap).find(key => key.startsWith(`${koreanName}(`));
+    // [Fix] Fallback search for Extra Characters (e.g. AI says "낭인무사" but key is "낭인무사남")
+    // Find first key that starts with "Name"
+    const partialMatch = Object.keys(extraMap).find(key => key.startsWith(koreanName));
     if (partialMatch) {
         return `${extraBasePath}/${extraMap[partialMatch]}`;
     }
