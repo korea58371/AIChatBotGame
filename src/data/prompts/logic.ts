@@ -56,6 +56,9 @@ ${rankGuide}
     "hpChange": number,
     "mpChange": number,
     "neigongChange": number, // [NEW] Change in Internal Energy Years (Default 0)
+    "timeProgress": boolean, // [TIME & SURVIVAL] True if time advances
+    "fatigueChange": number, // [TIME & SURVIVAL] Change in fatigue (0-100)
+    "isSleep": boolean,      // [TIME & SURVIVAL] True if player sleeps (resets fatigue)
     "goldChange": number,
     "expChange": number,
     "fameChange": number,

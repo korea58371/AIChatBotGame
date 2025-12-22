@@ -44,12 +44,24 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     // Construct Skill List
     const skillList = (stats.skills || []).join(', ') || "없음 (기본 주먹질)";
 
+    const directInputConstraints = state.isDirectInput
+        ? `
+[유저 직접 입력 시 제약 사항]
+1. 유저는 신적인 개입을 할 수 없으며, 오직 주인공의 능력 한계 선에서 행동만 제어할 수 있다.
+2. 타인의 감정이나 행동을 제어하거나 유도할 수 없다. (예: "그녀가 나에게 반했다" -> 금지)
+3. 자신의 능력이나 별도의 추가 설정을 부여할 수 없다. (예: "갑자기 초절정 고수가 되었다" -> 금지)
+4. 유저는 직접 입력으로 위 1~3번 제한 사항을 지키되, 주인공 캐릭터에 한해서 캐릭터가 하지 않을 만한 행동을 억지로 실행시킬 수 있다.
+`
+        : "";
+
     return `
 
 
 ${(!state.turnCount || state.turnCount <= 1) ? WUXIA_FIRST_TURN_EXAMPLE : ""}
 
 ---
+
+${directInputConstraints}
 
 ### [특수 설정: 빙의자 (Possessor)]
 **정체**: 주인공은 무협 소설 **'천하제일(天下第一)'**을 읽다 잠든 현대인이다.
@@ -96,8 +108,11 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 
 - **<선택지N>Content**
 - Choices for the user at the end.
-- **STRICT RULE**: Do NOT include hints, stats, or effects in parentheses (e.g., "(Relationship + 1)" or "(Requires STR)").
-- Just describe the action simply. Example: \`<선택지1>그녀에게 말을 건다.\` (O) / \`<선택지1>그녀에게 말을 건다(호감도 상승)\` (X)
+- **STRICT RULE**: Do NOT include hints, stats, or effects in parentheses.
+- **CRITICAL RULE**: Choices must ONLY describe the **PLAYER'S** action (Speech/Behavior).
+  - NEVER describe the NPC's reaction or the outcome.
+  - **Bad**: \`<선택지1>"맛있다!"라며 그녀가 감탄한다.\` (Describing NPC)
+  - **Good**: \`<선택지1>"맛이 어떠십니까?"라고 묻는다.\` (Describing Player)
 
 ---
 이제 위 샘플 스타일을 따라 이야기를 시작하라.

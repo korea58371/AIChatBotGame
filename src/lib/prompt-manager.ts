@@ -189,8 +189,14 @@ ${availableBackgrounds}
    - Note: The Asset Key must match exactly or partially match an available Extra Image.
 3. Name must be Korean (e.g. 천서윤).
 4. Emotion must be one of:
+   - **[STRICT ENFORCEMENT]**: You MUST select an emotion from the list below. Do NOT invent new emotions (e.g. '냉소적', '무표정' -> Use '기본' or '화남1').
    - ${emotionListString}
-5. **Narration**: If narration or monologue follows dialogue, use the tag: \`<나레이션>Content\`
+5. **[CRITICAL] Narration Enforcement**: If narration, action, or monologue follows dialogue, you MUST prefix it with the \`<나레이션>\` tag.
+   - **Strict Rule**: Raw text is NOT allowed. ALL narrative text must use the tag.
+   - **Example**:
+     <대사>백소유_기본: 안녕하세요.
+     <나레이션>그녀가 고개를 숙여 인사했다. (O)
+     그녀가 고개를 숙여 인사했다. (X - Missing Tag)
 6. **Exit**: If a character leaves the scene after speaking, append the tag: \`<떠남>\`
 
 ---

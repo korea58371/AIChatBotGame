@@ -328,7 +328,9 @@ export default function VisualNovelUI() {
         turnCount,
         incrementTurnCount,
         initialScenario,
-        characterCreationQuestions // Added
+        characterCreationQuestions, // Added
+        day,
+        time
     } = useGameStore();
 
     const supabase = createClient();
@@ -1642,52 +1644,50 @@ export default function VisualNovelUI() {
                             </h1>
                         </div>
 
-                        <div className="flex flex-col gap-2 mt-2 items-start opacity-90 hover:opacity-100 transition-opacity">
+                        <div className="flex flex-col gap-3 mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[300px]">
                             {/* HP Bar */}
-                            <div className="relative w-48 h-8 transform -skew-x-12 overflow-hidden rounded-md border border-red-900/50 bg-black/60 backdrop-blur-md shadow-[0_0_10px_rgba(220,38,38,0.3)]">
+                            <div className="relative w-full h-9 transform -skew-x-6 overflow-hidden rounded-lg border border-red-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.4)]">
                                 <div className="absolute inset-0 bg-red-900/20" />
                                 <div
-                                    className="h-full bg-gradient-to-r from-red-700 via-red-600 to-red-500 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(220,38,38,0.6)]"
+                                    className="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(220,38,38,0.7)]"
                                     style={{ width: `${(playerStats.hp / playerStats.maxHp) * 100}%` }}
                                 />
-                                <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-12">
-                                    <span className="text-xs font-bold text-red-200 drop-shadow-sm">체력</span>
-                                    <span className="text-xs font-bold text-white drop-shadow-md">{Math.round((playerStats.hp / playerStats.maxHp) * 100)}%</span>
+                                <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-6">
+                                    <span className="text-sm font-bold text-red-100 drop-shadow-md">체력 (HP)</span>
+                                    <span className="text-sm font-bold text-white drop-shadow-md">{Math.round((playerStats.hp / playerStats.maxHp) * 100)}%</span>
                                 </div>
                             </div>
 
-                            {/* MP Bar (Reduced size ~60%) */}
-                            <div className="relative w-48 h-7 transform -skew-x-12 overflow-hidden rounded-md border border-blue-900/50 bg-black/60 backdrop-blur-md shadow-[0_0_10px_rgba(37,99,235,0.3)]">
+                            {/* MP Bar */}
+                            <div className="relative w-full h-8 transform -skew-x-6 overflow-hidden rounded-lg border border-blue-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(37,99,235,0.4)]">
                                 <div className="absolute inset-0 bg-blue-900/20" />
                                 <div
-                                    className="h-full bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(37,99,235,0.6)]"
+                                    className="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(37,99,235,0.7)]"
                                     style={{ width: `${(playerStats.mp / playerStats.maxMp) * 100}%` }}
                                 />
-                                <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-12">
-                                    <span className="text-[10px] font-bold text-blue-200 drop-shadow-sm">정신력 (MP)</span>
-                                    <span className="text-[10px] font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
+                                <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-6">
+                                    <span className="text-xs font-bold text-blue-100 drop-shadow-md">정신력 (MP)</span>
+                                    <span className="text-xs font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
                                 </div>
                             </div>
 
-                            {/* [Wuxia] Neigong Display */}
-                            <div className="flex items-center gap-2 ml-1 mt-1">
-                                <div className="px-2 py-0.5 bg-black/60 border border-blue-500/30 rounded text-[11px] text-blue-200 font-bold tracking-wider shadow-sm flex items-center gap-1 backdrop-blur-sm">
-                                    <span className="text-blue-400">⚡ 내공</span>
-                                    <span className="text-white font-mono">
-                                        {playerStats.neigong < 60
-                                            ? `${(playerStats.neigong || 0).toFixed(1)}년`
-                                            : `${Math.floor(playerStats.neigong / 60)}갑자 ${(playerStats.neigong % 60).toFixed(1)}년`
-                                        }
-                                    </span>
+                            {/* Fatigue Bar (Slimmer) */}
+                            <div className="relative w-full h-4 overflow-hidden rounded-full border border-purple-900/40 bg-black/60 backdrop-blur-sm mt-0.5">
+                                <div
+                                    className="h-full bg-gradient-to-r from-purple-900 via-purple-700 to-purple-500 transition-all duration-500 ease-out"
+                                    style={{ width: `${Math.min(100, (playerStats.fatigue || 0))}%` }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-purple-200/80 drop-shadow-sm tracking-widest">FATIGUE {playerStats.fatigue || 0}%</span>
                                 </div>
                             </div>
 
-                            {/* [New] Rank & Faction Badges */}
-                            <div className="flex gap-2 mt-1 ml-1">
-                                {/* Rank Badge */}
-                                <div className="px-2 py-0.5 bg-zinc-900/80 border border-zinc-700 rounded text-[10px] text-zinc-300 font-bold tracking-wider shadow-sm flex items-center gap-1">
-                                    <span className="text-yellow-500/80">경지</span>
-                                    <span className="text-white">
+                            {/* Status Grid (2x2) */}
+                            <div className="grid grid-cols-2 gap-2 w-full mt-1">
+                                {/* Rank */}
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-yellow-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
+                                    <span className="text-yellow-600/80 text-[10px] font-bold tracking-widest mb-1 uppercase">경지</span>
+                                    <span className="text-yellow-100 font-bold text-sm text-center leading-tight break-keep">
                                         {(() => {
                                             const rankKey = playerStats.playerRank || '';
                                             const hierarchy = (martialArtsLevels as any).realm_hierarchy;
@@ -1696,24 +1696,43 @@ export default function VisualNovelUI() {
                                         })()}
                                     </span>
                                 </div>
-                                {/* Faction Badge */}
-                                <div className="px-2 py-0.5 bg-zinc-900/80 border border-zinc-700 rounded text-[10px] text-zinc-300 font-bold tracking-wider shadow-sm flex items-center gap-1">
-                                    <span className="text-blue-400/80">소속</span>
-                                    <span className="text-white">{playerStats.faction || '무소속'}</span>
+
+                                {/* Neigong */}
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-blue-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
+                                    <span className="text-blue-500/80 text-[10px] font-bold tracking-widest mb-1 uppercase">내공</span>
+                                    <span className="text-blue-100 font-bold text-sm">
+                                        {playerStats.neigong < 60
+                                            ? `${(playerStats.neigong || 0).toFixed(0)}년`
+                                            : `${Math.floor(playerStats.neigong / 60)}갑자`
+                                        }
+                                    </span>
+                                </div>
+
+                                {/* Faction */}
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-indigo-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
+                                    <span className="text-indigo-500/80 text-[10px] font-bold tracking-widest mb-1 uppercase">소속</span>
+                                    <span className="text-indigo-100 font-bold text-sm text-center">
+                                        {(playerStats.faction || '방랑객').split(' ')[0]}
+                                    </span>
+                                </div>
+
+                                {/* Time (Wuxia Style) */}
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
+                                    <span className="text-emerald-600/80 text-[10px] font-bold tracking-widest mb-1 uppercase">{day || 1}일차</span>
+                                    <span className="text-emerald-100 font-bold text-sm font-serif">
+                                        {(() => {
+                                            const wuxiaTime: Record<string, string> = {
+                                                morning: '진시(辰)',   // 7-9 AM
+                                                afternoon: '미시(未)', // 1-3 PM
+                                                evening: '술시(戌)',   // 7-9 PM
+                                                night: '자시(子)',     // 11 PM - 1 AM
+                                                dawn: '인시(寅)'       // 3-5 AM
+                                            };
+                                            return wuxiaTime[time?.toLowerCase()] || wuxiaTime['morning'];
+                                        })()}
+                                    </span>
                                 </div>
                             </div>
-
-                            {/* [New] Injuries Display */}
-                            {playerStats.injuries && playerStats.injuries.length > 0 && (
-                                <div className="mt-1 ml-1 flex flex-col gap-1">
-                                    {playerStats.injuries.map((injury, idx) => (
-                                        <div key={idx} className="px-2 py-0.5 bg-red-900/60 border border-red-500/50 rounded text-[10px] text-red-100 font-bold tracking-wider shadow-sm flex items-center gap-1 animate-pulse">
-                                            <span className="text-red-400">🩸</span>
-                                            <span>{injury}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     </div>
 

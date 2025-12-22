@@ -15,7 +15,8 @@ export async function serverGenerateResponse(
     history: Message[],
     userMessage: string,
     gameState: any,
-    language: 'ko' | 'en' | null
+    language: 'ko' | 'en' | null,
+    isDirectInput: boolean = false
 ) {
     console.log(`[ServerAction] Received gameState. Luk: ${gameState.playerStats?.luk} (${typeof gameState.playerStats?.luk})`);
     if (!API_KEY) throw new Error("Server API Key is missing");
@@ -40,6 +41,9 @@ export async function serverGenerateResponse(
             console.error(`[ServerAction] Failed to re-hydrate lore/maps for ${gameState.activeGameId}:`, e);
         }
     }
+
+    // Pass isDirectInput to gameState for Prompt Logic
+    gameState.isDirectInput = isDirectInput;
 
     return generateResponse(API_KEY, history, userMessage, gameState, language);
 }
