@@ -77,6 +77,17 @@ export async function getExtraCharacterImages(gameId: string = 'god_bless_you') 
     }
 }
 
+export async function getCharacterImages(gameId: string = 'god_bless_you') {
+    try {
+        const gameAssets = (assetsManifest as any)[gameId];
+        if (!gameAssets || !gameAssets.characters) return [];
+        return gameAssets.characters;
+    } catch (e) {
+        console.error("Failed to load character images from manifest:", e);
+        return [];
+    }
+}
+
 export async function getBackgroundList(gameId: string) {
     try {
         const gameAssets = (assetsManifest as any)[gameId];

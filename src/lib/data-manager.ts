@@ -4,6 +4,8 @@ import { GameEvent } from './event-manager';
 export interface GameData {
     world: any;
     characters: any;
+    characterImageList: string[];
+    extraCharacterList: string[];
     backgroundList: any;
     events: GameEvent[];
     scenario: string;
@@ -47,8 +49,20 @@ export class DataManager {
             // Turbopack/Webpack 번들러가 정적으로 경로를 추적할 수 있도록, 동적 import() 내부에 리터럴 경로를 사용해야 합니다.
             // 변수로 경로를 조합하면 번들러가 파일을 찾지 못할 수 있습니다.
             let worldModule, charactersModule, bgListModule, eventsModule, scenarioModule, bgMappingsModule, systemPromptModule, wikiDataModule, charMapModule, extraMapModule, constantsModule, loreModule;
+            let characterImageList = [], extraCharacterList = [];
 
             console.log(`[DataManager] Starting explicit import for ${gameId}...`);
+
+            // [Common] Load Assets Lists
+            try {
+                const { getBackgroundList, getCharacterImages, getExtraCharacterImages } = await import('../app/actions/game');
+                bgListModule = await getBackgroundList(gameId);
+                characterImageList = await getCharacterImages(gameId);
+                extraCharacterList = await getExtraCharacterImages(gameId);
+            } catch (e) {
+                console.warn("[DataManager] Failed to load asset lists:", e);
+                bgListModule = [];
+            }
 
             switch (gameId) {
                 case 'god_bless_you':
@@ -64,8 +78,7 @@ export class DataManager {
                         console.log('- Importing characters.json...');
                         charactersModule = await import('@/data/games/god_bless_you/characters.json');
 
-                        console.log('- Importing background_list.json...');
-                        bgListModule = await import('@/data/games/god_bless_you/background_list.json');
+                        // bgListModule loaded above via action
 
                         console.log('- Importing events.ts...');
                         eventsModule = await import('@/data/games/god_bless_you/events');
@@ -130,14 +143,7 @@ export class DataManager {
                             if ((charactersModule as any).default) charactersModule = (charactersModule as any).default;
                         } catch (e) { console.error("[DataManager] Failed characters.json", e); }
 
-                        // Use Server Action for Dynamic Backgrounds
-                        try {
-                            const { getBackgroundList } = await import('../app/actions/game');
-                            bgListModule = await getBackgroundList('wuxia');
-                        } catch (e) {
-                            console.warn("[DataManager] Failed to load background list (script mode?), using empty list.");
-                            bgListModule = [];
-                        }
+                        // bgListModule loaded above
 
                         try { eventsModule = await import('../data/games/wuxia/events'); } catch (e) { console.error("[DataManager] Failed events", e); }
                         try { scenarioModule = await import('../data/games/wuxia/start_scenario'); } catch (e) { console.error("[DataManager] Failed scenario", e); }
@@ -223,6 +229,8 @@ export class DataManager {
                 world: worldModule.default || worldModule,
                 characters: (charactersModule as any).default || charactersModule,
                 backgroundList: (bgListModule as any).default || bgListModule,
+                characterImageList: characterImageList,
+                extraCharacterList: extraCharacterList,
                 events: (eventsModule as any).default || (eventsModule as any).events || [],
                 scenario: scenarioModule?.START_SCENARIO_TEXT || "",
                 characterCreationQuestions: (scenarioModule as any)?.CHARACTER_CREATION_QUESTIONS || null,

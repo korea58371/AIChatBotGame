@@ -36,17 +36,33 @@ try {
             const gameDir = path.join(assetsDir, gameId);
 
             // Define Standard Categories
-            const categories = ['ExtraCharacters', 'backgrounds'];
+            const categories = ['ExtraCharacters', 'backgrounds', 'characters'];
 
             assets[gameId] = {};
 
             categories.forEach(cat => {
                 const targetDir = path.join(gameDir, cat);
-                // Map internal keys to actual directory names if needed, but for now strict 1:1
-                // We map 'extraCharacters' in JSON to 'ExtraCharacters' folder content
-                // and 'backgrounds' to 'backgrounds'
-                const key = cat === 'ExtraCharacters' ? 'extraCharacters' : 'backgrounds';
-                assets[gameId][key] = getFiles(targetDir);
+                if (cat === 'characters') {
+                    // Recursive scan for characters (Subfolders)
+                    if (fs.existsSync(targetDir)) {
+                        const charFolders = fs.readdirSync(targetDir).filter(f => fs.statSync(path.join(targetDir, f)).isDirectory());
+                        let allCharFiles = [];
+                        charFolders.forEach(folder => {
+                            const files = getFiles(path.join(targetDir, folder));
+                            allCharFiles = [...allCharFiles, ...files];
+                        });
+                        assets[gameId]['mainCharacters'] = allCharFiles; // Store as mainCharacters or characters? store expects availableCharacterImages
+                        // map to 'characters' key in JSON to match store expectation (via accessor)
+                        // But wait, store uses 'availableCharacterImages'. 
+                        // Let's call it 'characters' in JSON. 
+                        assets[gameId]['characters'] = allCharFiles;
+                    } else {
+                        assets[gameId]['characters'] = [];
+                    }
+                } else {
+                    const key = cat === 'ExtraCharacters' ? 'extraCharacters' : 'backgrounds';
+                    assets[gameId][key] = getFiles(targetDir);
+                }
             });
 
             // Also support root level character folders if any (legacy)? 

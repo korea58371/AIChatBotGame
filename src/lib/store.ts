@@ -224,6 +224,8 @@ export const useGameStore = create<GameState>()(
 
             // Also update available backgrounds list
             availableBackgrounds: data.backgroundList,
+            availableCharacterImages: data.characterImageList || [],
+            availableExtraImages: data.extraCharacterList || [],
 
             // Reset game when switching? Maybe optional.
             // For now, let's reset to ensure clean state.
