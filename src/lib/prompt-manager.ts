@@ -123,23 +123,24 @@ ${JSON.stringify(PromptManager.deepSort(state.lore), null, 2)}
 
         // [BEHAVIOR PROMPT INJECTION]
         // Rules to prevent Metagaming and "Stupid" AI
-###[🧠 INTELLIGENCE & METAGAMING RULES(CRITICAL)]
-        1. ** [STRANGER PROTOCOL(초면 규칙)] **:
-        - Unless explicitly stated in [Active Characters] or[Relationships], ** NO ONE KNOWS THE PROTAGONIST.**
-            - Do NOT act friendly.Do NOT use nicknames.Do NOT share secrets.
-   - Treat the protagonist as a suspicious "unknown commoner"(Three - rate / Sam - ryu) until proven otherwise.
+        const BEHAVIOR_RULES = `
+### [🧠 INTELLIGENCE & METAGAMING RULES (CRITICAL)]
+1. **[STRANGER PROTOCOL (초면 규칙)]**:
+   - Unless explicitly stated in [Active Characters] or [Relationships], **NO ONE KNOWS THE PROTAGONIST.**
+   - Do NOT act friendly. Do NOT use nicknames. Do NOT share secrets.
+   - Treat the protagonist as a suspicious "unknown commoner" (Three-rate/Sam-ryu) until proven otherwise.
 
-2. ** [STATUS ADHERENCE(신분과 지능)] **:
-   - ** Masters(Masters / Leaders) **: They are geniuses who survived the bloody Murim.They are ** NOT IDIOTS **.
-   - ** Reaction to Unknown **: They do NOT just believe lies.They analyze: "Does this benefit me?" or "Is this a trap?"
-            - * Ex *: A lighter is viewed as a ** dangerous hidden weapon ** or a ** demonic artifact **, not a miracle.
-     - ** Response **: They will try to * seize * it or * kill * the user to silence them, rather than bowing down.
-   - ** Dignity **: Masters act with absolute arrogance.They do not get flustered easily.
+2. **[STATUS ADHERENCE (신분과 지능)]**:
+   - **Masters (Masters/Leaders)**: They are geniuses who survived the bloody Murim. They are **NOT IDIOTS**.
+   - **Reaction to Unknown**: They do NOT just believe lies. They analyze: "Does this benefit me?" or "Is this a trap?"
+     - *Ex*: A lighter is viewed as a **dangerous hidden weapon** or a **demonic artifact**, not a miracle.
+     - **Response**: They will try to *seize* it or *kill* the user to silence them, rather than bowing down.
+   - **Dignity**: Masters act with absolute arrogance. They do not get flustered easily.
 
-3. ** [RATIONAL SELF - INTEREST(개연성)] **:
-        - NPCs move for * their own benefit *, not to help the story.
+3. **[RATIONAL SELF-INTEREST (개연성)]**:
+   - NPCs move for *their own benefit*, not to help the story.
    - Merchants cheat, bandits rob, and nobles exploit.
-   - ** No Forced Comedy **: Do not make characters act stupid for a laugh.The humor comes from the * situation's irony*, not the character's foolishness.
+   - **No Forced Comedy**: Do not make characters act stupid for a laugh. The humor comes from the *situation's irony*, not the character's foolishness.
 `;
 
         return `
@@ -149,17 +150,17 @@ The following information is constant reference data.
 ##[👥 고정된 유명인 DB(변경 불가)]
 아래 인물들은 세계관 내의 '상수'입니다.이들의 이름이 언급되거나 등장할 경우, ** 반드시 아래 설정(등급 / 직업)을 유지 ** 해야 합니다.
 (주인공은 이들을 미디어로만 접해 알고 있으며, 개인적 친분은 없는 상태입니다.)
-${ famousCharactersDB }
+${famousCharactersDB}
 
-${ BEHAVIOR_RULES }
+${BEHAVIOR_RULES}
 
-${ loreContext }
+${loreContext}
 
         ---
 
-            ${ state.constants?.FACTION_BEHAVIOR_GUIDELINES || "" }
+            ${state.constants?.FACTION_BEHAVIOR_GUIDELINES || ""}
 
-${ state.constants?.WUXIA_SYSTEM_PROMPT_CONSTANTS || state.constants?.CORE_RULES || "" }
+${state.constants?.WUXIA_SYSTEM_PROMPT_CONSTANTS || state.constants?.CORE_RULES || ""}
 
         ---
 
@@ -167,7 +168,7 @@ ${ state.constants?.WUXIA_SYSTEM_PROMPT_CONSTANTS || state.constants?.CORE_RULES
 
 
 ** 2. Available Extra Characters(엑스트라 / 단역) **
-            ${ availableExtra }
+            ${availableExtra}
 
 ** 3. Available Backgrounds(사용 가능 배경) **
 # Background Output Rule
