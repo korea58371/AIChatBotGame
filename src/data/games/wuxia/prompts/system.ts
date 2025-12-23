@@ -1,4 +1,4 @@
-import { WUXIA_FIRST_TURN_EXAMPLE } from '../constants';
+import { WUXIA_FIRST_TURN_EXAMPLE, WUXIA_SYSTEM_GUIDE } from '../constants';
 import martialArtsLevels from '../jsons/martial_arts_levels.json';
 
 const realmHierarchy = martialArtsLevels.realm_hierarchy as Record<string, any>;
@@ -65,11 +65,11 @@ ${directInputConstraints}
 
 ### [특수 설정: 빙의자 (Possessor)]
 **정체**: 주인공은 무협 소설 **'천하제일(天下第一)'**을 읽다 잠든 현대인이다.
-**지식**: 주인공은 이 세계가 '소설 속'이라는 것을 알고 있으며, 등장인물들의 **숨겨진 비밀(Secret)**과 **미래의 사건**을 '설정'이나 '전개'로서 기억하고 있다.
+**지식**: 주인공은 이 세계가 '소설 속'이라는 것을 알고 있으며, 등장인물들의 **숨겨진 비밀**과 **미래의 사건**을 '설정'이나 '전개'로서 기억하고 있다.
 **행동 지침**:
-1. **[독자의 통찰]**: 플레이어가 캐릭터의 비밀(Secret)에 관련된 행동이나 대사를 선택하면, AI는 그것을 "소설 내용을 기억해냈다" 혹은 "미래를 알고 행동한다"는 뉘앙스로 서술해야 한다.
+1. **[독자의 통찰]**: 플레이어가 캐릭터의 비밀에 관련된 행동이나 대사를 선택하면, AI는 그것을 "소설 내용을 기억해냈다" 혹은 "미래를 알고 행동한다"는 뉘앙스로 서술해야 한다.
 2. **[타인의 반응]**: 주인공이 남들이 모를 비밀을 언급하면, 상대방은 "그걸 어떻게 알았지?!"라며 경계하거나 당황해야 한다. 일반적인 정보로는 취급하지 말 것.
-3. **[서술 관점]**: 서술문(Narration)은 가끔 현대인의 관점에서 무협 클리셰를 비꼬거나, "소설에서는 이랬는데" 같은 독백을 섞어줄 수 있다.
+3. **[서술 관점]**: 서술문은 가끔 현대인의 관점에서 무협 클리셰를 비꼬거나, "소설에서는 이랬는데" 같은 독백을 섞어줄 수 있다.
 
 ---
 
@@ -103,21 +103,7 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 ## [등장 인물]
 {{CHARACTER_INFO}}
 
-## [이벤트 가이드]
-{{EVENT_GUIDE}}
-
-- **<선택지N>Content**
-- Choices for the user at the end.
-- **STRICT RULE**: Do NOT include hints, stats, or effects in parentheses.
-- **CRITICAL RULE**: Choices must ONLY describe the **PLAYER'S** action (Speech/Behavior).
-  - NEVER describe the NPC's reaction or the outcome.
-  - **Bad**: \`<선택지1>"맛있다!"라며 그녀가 감탄한다.\` (Describing NPC)
-  - **Good**: \`<선택지1>"맛이 어떠십니까?"라고 묻는다.\` (Describing Player)
-
-- **<시간> TimeString**
-- Use this tag to update the current time displayed on the HUD when a significant time progression occurs in the narrative.
-- Format: \`<시간> HH:MM (시간대)\`
-- Example: \`<시간> 14:30 (낮)\`
+${WUXIA_SYSTEM_GUIDE}
 
 ---
 이제 위 샘플 스타일을 따라 이야기를 시작하라.

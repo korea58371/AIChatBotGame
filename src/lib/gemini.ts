@@ -464,23 +464,30 @@ export async function handleGameTurn(
             currentDay++;
             currentTime = 'Morning';
             currentFatigue = 0; // Reset Fatigue
-            // Recover HP/MP bonus could be handled by Logic output, but we ensure fatigue reset here.
         } else {
-            // Nap: Reduce Fatigue, Advance Time
+            // Nap: Reduce Fatigue, Advance Time (1 phase)
             currentFatigue = Math.max(0, currentFatigue - 30);
             const nextIdx = (timePhases.indexOf(currentTime) + 1) % 4;
-            if (nextIdx === 0) currentDay++; // Wrapped around (unlikely for day nap but safe)
+            if (nextIdx === 0) currentDay++;
             currentTime = timePhases[nextIdx];
         }
-    } else if (logicResult.timeProgress) {
-        // Normal Time Progression
-        let idx = timePhases.indexOf(currentTime);
-        idx++;
-        if (idx >= timePhases.length) {
-            idx = 0;
-            currentDay++; // Night -> Morning triggers next day
+    } else {
+        // Normal Time Progression (Support both new 'timeConsumed' and legacy 'timeProgress')
+        const timeAdvance = logicResult.timeConsumed || (logicResult.timeProgress ? 1 : 0);
+
+        if (timeAdvance > 0) {
+            let idx = timePhases.indexOf(currentTime);
+
+            // Advance by N steps
+            for (let i = 0; i < timeAdvance; i++) {
+                idx++;
+                if (idx >= timePhases.length) {
+                    idx = 0;
+                    currentDay++; // Night -> Morning triggers next day
+                }
+            }
+            currentTime = timePhases[idx];
         }
-        currentTime = timePhases[idx];
     }
 
     // Apply Time/Fatigue Updates to State

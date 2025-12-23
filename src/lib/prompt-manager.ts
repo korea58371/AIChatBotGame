@@ -20,43 +20,43 @@ interface Character {
     personality?: any;
     preferences?: any;
     secret?: any;
-    memories?: string[]; // Added: Character specific memories
-    discoveredSecrets?: string[]; // Added: Secrets the player has learned
+    memories?: string[]; // 추가됨: 캐릭터별 기억
+    discoveredSecrets?: string[]; // 추가됨: 플레이어가 알아낸 비밀들
     default_expression?: string;
     description?: string;
     spawnRules?: SpawnRules;
-    englishName?: string; // Added for image rule
+    englishName?: string; // 이미지 규칙을 위해 추가됨
     relationshipInfo?: {
         relation: string;
         callSign: string;
         speechStyle: string;
         endingStyle: string;
     };
-    relationships?: Record<string, string>; // Added: Inter-character relationships
+    relationships?: Record<string, string>; // 추가됨: 캐릭터 간 관계
     martial_arts_realm?: {
         name: string;
         power_level: number;
         description: string;
         skills?: string[];
     };
-    secret_data?: any; // [NEW] Detailed secret data for intimate contexts
+    secret_data?: any; // [신규] 친밀한 상황을 위한 상세 비밀 데이터
 }
 
-// Lightweight character structure for Logic Model to save tokens
+// 토큰 절약을 위한 로직 모델용 경량 캐릭터 구조체
 interface LightweightCharacter {
     name: string;
     englishName?: string;
     role?: string;
     spawnRules?: SpawnRules;
-    description?: string; // Short description
+    description?: string; // 짧은 설명
 }
 
 interface GameState {
-    activeCharacters: string[]; // IDs of characters currently in the scene
+    activeCharacters: string[]; // 현재 씬에 있는 캐릭터들의 ID
     currentLocation: string;
     scenarioSummary: string;
     currentEvent: string;
-    characterData?: Record<string, Character>; // Dynamic character data
+    characterData?: Record<string, Character>; // 동적 캐릭터 데이터
     worldData?: {
         locations: Record<string, string | { description: string, secrets: string[] }>;
         items: Record<string, string>;
@@ -67,15 +67,15 @@ interface GameState {
     playerName: string;
     availableBackgrounds?: string[];
     availableCharacterImages?: string[];
-    availableExtraImages?: string[]; // Added
+    availableExtraImages?: string[]; // 추가됨
     isDirectInput?: boolean;
     getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
     constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string;[key: string]: string };
     lore?: any;
-    activeGameId?: string; // Added for game-specific logic
-    backgroundMappings?: Record<string, string>; // Added for Wuxia Korean keys
-    extraMap?: Record<string, string>; // Added to interface
-    characterMap?: Record<string, string>; // [FIX] Added for ID Resolution
+    activeGameId?: string; // 게임별 로직을 위해 추가됨
+    backgroundMappings?: Record<string, string>; // 무협 한국어 키를 위해 추가됨
+    extraMap?: Record<string, string>; // 인터페이스에 추가됨
+    characterMap?: Record<string, string>; // [수정] ID 해결을 위해 추가됨
 }
 
 export class PromptManager {
@@ -84,20 +84,20 @@ export class PromptManager {
         activeChars?: string, // e.g. "Ju Ye-seo (Affection: 50), ..."
         spawnCandidates?: string
     ): Promise<string> {
-        // [CONTEXT CACHING PREFIX]
-        // This section is designed to be STATIC and IDENTICAL across multiple turns and models (Story & Logic).
-        // It contains the heavy reference data (Characters, Backgrounds, World).
-        // By placing this at the very top, we enable Gemini's Context Caching.
+        // [컨텍스트 캐싱 접두사]
+        // 이 섹션은 여러 턴과 모델(Story & Logic)에 걸쳐 정적이고 동일하도록 설계되었습니다.
+        // 무거운 참조 데이터(캐릭터, 배경, 월드)를 포함합니다.
+        // 이것을 맨 위에 배치함으로써 Gemini의 컨텍스트 캐싱을 활성화합니다.
 
-        // [FIXED] Use Game-Specific Constants
-        // If state.constants is missing, we should NOT fallback to God Bless You data.
+        // [수정됨] 게임별 상수 사용
+        // state.constants가 누락된 경우 God Bless You 데이터로 폴백하지 말 것.
         const famousCharactersDB = state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded.";
 
-        // const availableChars = PromptManager.getAvailableCharacters(state); // [REMOVED] Redundant with LoreConverter
+        // const availableChars = PromptManager.getAvailableCharacters(state); // [삭제됨] LoreConverter와 중복됨
         const availableExtra = PromptManager.getAvailableExtraCharacters(state) || "None";
-        const availableBackgrounds = PromptManager.getAvailableBackgrounds(state); // Heavy list
+        const availableBackgrounds = PromptManager.getAvailableBackgrounds(state); // 무거운 리스트
 
-        // [Dynamic Emotion List]
+        // [동적 감정 목록 (Dynamic Emotion List)]
         let emotionListString = "자신감, 의기양양, 진지함, 짜증, 삐짐, 혐오, 고민, 박장대소, 안도, 놀람, 부끄러움, 결의, 거친호흡, 글썽거림, 고통, 공포, 오열, 수줍음, 지침, 폭발직전";
         if (state.activeGameId === 'wuxia') {
             emotionListString = `
@@ -106,15 +106,15 @@ export class PromptManager {
     - **기타**: 기본, 결의, 혐오, 취함, 기대, 하트, 고통, 유혹, 졸림, 놀람, 고민, 광기`;
         }
 
-        // [WUXIA LORE INJECTION]
+        // [무협 로어 주입 (WUXIA LORE INJECTION)]
         let loreContext = "";
         if (state.lore) {
-            // Filter or format logic?
-            // For now, we inject the entire Knowledge Base as a Reference.
-            // We use JSON stringify with indentation for readability (LLMs understand formatted JSON well).
-            // [FIX] Use deterministic sort for Cache Stability
+            // 필터링 또는 포맷팅 로직?
+            // 현재로서는 전체 지식 베이스를 참조로 주입합니다.
+            // 가독성을 위해 들여쓰기가 된 JSON을 사용합니다 (LLM은 포맷팅된 JSON을 잘 이해합니다).
+            // [수정] 캐시 안정성을 위해 결정적인 정렬 사용
             try {
-                // [Optimization] Convert JSON to Markdown to save 30-40% tokens
+                // [최적화] 토큰을 30-40% 절약하기 위해 JSON을 마크다운으로 변환
                 loreContext = `
 ## [🌏 WORLD KNOWLEDGE BASE (LORE)]
 Use this detailed information to maintain consistency in the world setting, martial arts, systems, and factions.
@@ -131,33 +131,33 @@ ${JSON.stringify(PromptManager.deepSort(state.lore), null, 2)}
         }
 
         // [BEHAVIOR PROMPT INJECTION]
-        // Rules to prevent Metagaming and "Stupid" AI
+        // 메타게이밍 방지 및 "멍청한 AI" 방지 규칙
         const BEHAVIOR_RULES = `
-### [🧠 INTELLIGENCE & METAGAMING RULES (CRITICAL)]
-1. **[STRANGER PROTOCOL (초면 규칙)]**:
-   - Unless explicitly stated in [Active Characters] or [Relationships], **NO ONE KNOWS THE PROTAGONIST.**
-   - Do NOT act friendly. Do NOT use nicknames. Do NOT share secrets.
-   - Treat the protagonist as a suspicious "unknown commoner" (Three-rate/Sam-ryu) until proven otherwise.
+### [🧠 지능 및 메타게이밍 방지 규칙 (필수)]
+1. **[초면 프로토콜 (Stranger Protocol)]**:
+   - [현재 캐릭터]나 [관계]에서 명시되지 않았다면, **아무도 주인공을 모릅니다**.
+   - 친절하게 굴지 마십시오. 애칭을 쓰지 마십시오. 비밀을 공유하지 마십시오.
+   - 증명되기 전까지 주인공을 수상한 "미지의 평민(삼류)" 취급하십시오.
 
-2. **[STATUS ADHERENCE (신분과 지능)]**:
-   - **Masters (Masters/Leaders)**: They are geniuses who survived the bloody Murim. They are **NOT IDIOTS**.
-   - **Reaction to Unknown**: They do NOT just believe lies. They analyze: "Does this benefit me?" or "Is this a trap?"
-     - *Ex*: A lighter is viewed as a **dangerous hidden weapon** or a **demonic artifact**, not a miracle.
-     - **Response**: They will try to *seize* it or *kill* the user to silence them, rather than bowing down.
-   - **Dignity**: Masters act with absolute arrogance. They do not get flustered easily.
+2. **[신분과 지능 (Status Adherence)]**:
+   - **고수(Masters/Leaders)**: 그들은 피비린내 나는 무림에서 살아남은 천재들입니다. **멍청하지 않습니다**.
+   - **미지에 대한 반응**: 거짓말을 쉽게 믿지 않습니다. "이게 나한테 이득인가?" 또는 "함정인가?"를 분석합니다.
+     - *예*: 라이터를 보면 '기적'이 아니라 **위험한 암기**나 **마교의 물건**으로 봅니다.
+     - **대응**: 숭배하기보다는 침묵시키기 위해 *빼앗거나* *죽이려* 할 것입니다.
+   - **위엄**: 고수들은 절대적인 오만함을 가집니다. 쉽게 당황하지 않습니다.
 
-3. **[RATIONAL SELF-INTEREST (개연성)]**:
-   - NPCs move for *their own benefit*, not to help the story.
-   - Merchants cheat, bandits rob, and nobles exploit.
-   - **No Forced Comedy**: Do not make characters act stupid for a laugh. The humor comes from the *situation's irony*, not the character's foolishness.
+3. **[합리적 이기심 (Rational Self-Interest)]**:
+   - NPC는 스토리 진행이 아니라 *자신의 이익*을 위해 움직입니다.
+   - 상인은 속이고, 산적은 털고, 귀족은 착취합니다.
+   - **억지 개그 금지**: 웃음을 위해 캐릭터를 억지로 바보로 만들지 마십시오. 유머는 상황의 *아이러니*에서 나와야지, 캐릭터의 멍청함에서 나오면 안 됩니다.
 `;
 
         return `
 #[SHARED STATIC CONTEXT]
-The following information is constant reference data.
+다음 정보는 변하지 않는 참조 데이터입니다.
 
 ##[👥 고정된 유명인 DB(변경 불가)]
-아래 인물들은 세계관 내의 '상수'입니다.이들의 이름이 언급되거나 등장할 경우, ** 반드시 아래 설정(등급 / 직업)을 유지 ** 해야 합니다.
+아래 인물들은 세계관 내의 '상수'입니다. 이들의 이름이 언급되거나 등장할 경우, **반드시 아래 설정(등급/직업)을 유지**해야 합니다.
 (주인공은 이들을 미디어로만 접해 알고 있으며, 개인적 친분은 없는 상태입니다.)
 ${famousCharactersDB}
 
@@ -173,29 +173,29 @@ ${state.constants?.WUXIA_SYSTEM_PROMPT_CONSTANTS || state.constants?.CORE_RULES 
 
         ---
 
-###[📚 Reference Data(Context Caching Optimized)]
+###[📚 참조 데이터 (컨텍스트 캐싱 최적화)]
 
-### [Available Backgrounds]
+### [사용 가능한 배경]
 ${availableBackgrounds}
 
 
-**4. Character Emotions (사용 가능 감정)**
-# Character Dialogue Rules
-1. Format: \`<대사>CharacterName_Emotion: Dialogue Content\`
-2. **Decoupled Name/Image**: To use a specific image asset (e.g. 'Drunk_Ronin') while displaying a valid name (e.g. 'Yeop Mun'), use: \`<대사>DisplayName(AssetKey)_Emotion: ...\`
-   - Example: \`<대사>엽문(술좋아하는낭인무사남)_기쁨: 어이!\` (Image: 술좋아하는낭인무사남, Name: 엽문)
-   - Note: The Asset Key must match exactly or partially match an available Extra Image.
-3. Name must be Korean (e.g. 천서윤).
-4. Emotion must be one of:
-   - **[STRICT ENFORCEMENT]**: You MUST select an emotion from the list below. Do NOT invent new emotions (e.g. '냉소적', '무표정' -> Use '기본' or '화남1').
+**4. 캐릭터 감정 (사용 가능 감정)**
+# 캐릭터 대사 규칙
+1. 형식: \`<대사>캐릭터이름_감정: 대사 내용\`
+2. **이름/이미지 분리**: 특정 이미지 에셋(예: 'Drunk_Ronin')을 사용하면서 올바른 이름(예: '엽문')을 표시하려면 다음 형식을 사용하십시오: \`<대사>표시이름(에셋키)_감정: ...\`
+   - 예시: \`<대사>엽문(술좋아하는낭인무사남)_기쁨: 어이!\` (이미지: 술좋아하는낭인무사남, 이름: 엽문)
+   - 참고: 에셋 키는 사용 가능한 엑스트라 이미지와 정확히 또는 부분적으로 일치해야 합니다.
+3. 이름은 반드시 한국어여야 합니다 (예: 천서윤).
+4. 감정은 반드시 다음 중 하나여야 합니다:
+   - **[엄격 시행]**: 반드시 아래 목록에서 감정을 선택하십시오. 새로운 감정을 지어내지 마십시오 (예: '냉소적', '무표정' -> '기본' 또는 '화남1' 사용).
    - ${emotionListString}
-5. **[CRITICAL] Narration Enforcement**: If narration, action, or monologue follows dialogue, you MUST prefix it with the \`<나레이션>\` tag.
-   - **Strict Rule**: Raw text is NOT allowed. ALL narrative text must use the tag.
-   - **Example**:
+5. **[중요] 나레이션 강제**: 대사 뒤에 서술, 행동, 독백이 이어지면, 반드시 \`<나레이션>\` 태그를 앞에 붙여야 합니다.
+   - **엄격한 규칙**: 태그 없는 텍스트는 허용되지 않습니다. 모든 서술 텍스트는 태그를 사용해야 합니다.
+   - **예시**:
      <대사>백소유_기본: 안녕하세요.
      <나레이션>그녀가 고개를 숙여 인사했다. (O)
-     그녀가 고개를 숙여 인사했다. (X - Missing Tag)
-6. **Exit**: If a character leaves the scene after speaking, append the tag: \`<떠남>\`
+     그녀가 고개를 숙여 인사했다. (X - 태그 누락)
+6. **퇴장**: 캐릭터가 말을 마친 후 장면을 떠나면, 태그를 추가하십시오: \`<떠남>\`
 
 ---
 `;

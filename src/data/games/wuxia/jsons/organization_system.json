@@ -3,7 +3,7 @@
     "sub_domain": "단체 및 명명법",
     "definitions": {
         "Munpa (문파 / Sect)": {
-            "core_concept": "전통과 대물림 (Lineage)",
+            "core_concept": "전통과 대물림",
             "characteristics": [
                 "특정한 시조나 조사(祖師)를 기반으로 한다.",
                 "강한 종교적, 철학적 색채 (도가, 불가 등).",
@@ -16,7 +16,7 @@
             ]
         },
         "Bangpa (방파 / Faction or Gang)": {
-            "core_concept": "이익과 목적 (Interest)",
+            "core_concept": "이익과 목적",
             "characteristics": [
                 "공통된 이익이나 목표를 가진 개인들이 결성한다.",
                 "문파에 비해 전통이나 종교적 색채가 옅다.",
