@@ -33,6 +33,12 @@ interface Character {
         endingStyle: string;
     };
     relationships?: Record<string, string>; // Added: Inter-character relationships
+    martial_arts_realm?: {
+        name: string;
+        power_level: number;
+        description: string;
+        skills?: string[];
+    };
 }
 
 // Lightweight character structure for Logic Model to save tokens
@@ -167,19 +173,9 @@ ${state.constants?.WUXIA_SYSTEM_PROMPT_CONSTANTS || state.constants?.CORE_RULES 
 
 ###[📚 Reference Data(Context Caching Optimized)]
 
-
-** 2. Available Extra Characters(엑스트라 / 단역) **
-            ${availableExtra}
-
-** 3. Available Backgrounds(사용 가능 배경) **
-# Background Output Rule
-            - When the location changes, output the \`<배경>\` tag with a **Korean Keyword** from the list below.
-- **STRICT RULE**: You must SELECT from the provided list below. **Do NOT invent new background filenames.**
-- If you cannot find an exact match, use the most similar existing background from the list.
-- **Format**: \`<배경>Category_Location\` (e.g., \`<배경>객잔_1층\`)
-- **Variant Handling**: Match the exact key provided.
-- \`<배경>반지하\` (X) - DO NOT use invalid keys.
+### [Available Backgrounds]
 ${availableBackgrounds}
+
 
 **4. Character Emotions (사용 가능 감정)**
 # Character Dialogue Rules
@@ -286,64 +282,102 @@ ${availableBackgrounds}
             if (!char) return null;
 
             let charInfo = `Name: ${char.name} (${char.role || 'Unknown'})`;
-            if (char.title) charInfo += `\nTitle: ${char.title}`;
-            if (char.quote) charInfo += `\nQuote: "${char.quote}"`;
 
-            // [New] Relationship Pacing (Affinity Tier)
+            // [MOOD-BASED DYNAMIC CONTEXT INJECTION]
+            const currentMood = state.currentMood || 'daily';
+            const isErotic = currentMood === 'erotic';
+            const isRomance = currentMood === 'romance';
+            const isCombat = currentMood === 'combat' || currentMood === 'tension';
+            const isDaily = !isErotic && !isRomance && !isCombat;
+
+            // 1. Base Info (Always Included)
+            const age = char.profile?.['나이'] || '?';
+            const gender = char.profile?.['성별'] || '?';
+            charInfo += `\nProfile: Age ${age}, ${gender}`;
+
+            if (char.title) charInfo += `\nTitle: ${char.title}`;
+            if (char.appearance) {
+                // Flatten appearance for token efficiency
+                const app = char.appearance;
+                const appStr = Object.values(app).filter(v => typeof v === 'string').join(', ');
+                charInfo += `\nAppearance: ${appStr}`;
+            }
+
+            // 2. Mood-Specific Injections
+
+            // [EROTIC MOOD] -> Focus on Secrets and Hidden Desires
+            if (isErotic) {
+                if (char.secret) {
+                    const secretStr = typeof char.secret === 'string' ? char.secret : JSON.stringify(char.secret, null, 2);
+                    charInfo += `\n\n[SECRET DATA (Relevant to Intimacy)]:\n${secretStr}`;
+                }
+                // Include preferences for better context in intimate scenes
+                if (char.preferences) {
+                    charInfo += `\nPreferences: ${JSON.stringify(char.preferences)}`;
+                }
+            }
+
+            // [ROMANCE MOOD] -> Focus on Personality, Relations, and Emotional nuance
+            if (isRomance) {
+                if (char.personality) {
+                    charInfo += `\nPersonality: ${typeof char.personality === 'string' ? char.personality : JSON.stringify(char.personality)}`;
+                }
+                if (char.relationships) {
+                    charInfo += `\nRelationships: ${JSON.stringify(char.relationships)}`;
+                }
+                // Deep affection check
+                const relScore = state.playerStats.relationships?.[charId] || 0;
+                charInfo += `\nCurrent Affection: ${relScore}`;
+
+                if (char.relationshipInfo) {
+                    charInfo += `\nInteraction Style: ${JSON.stringify(char.relationshipInfo)}`;
+                }
+            }
+
+            // [COMBAT/TENSION MOOD] -> Focus on Martial Arts, Power, and Skills
+            if (isCombat) {
+                if (char.martial_arts_realm) {
+                    charInfo += `\n[MARTIAL ARTS]:\n- Rank: ${char.martial_arts_realm.name} (Level ${char.martial_arts_realm.power_level})\n- Description: ${char.martial_arts_realm.description}`;
+
+                    if (char.martial_arts_realm.skills && char.martial_arts_realm.skills.length > 0) {
+                        charInfo += `\n- Skills:\n  * ${char.martial_arts_realm.skills.join('\n  * ')}`;
+                    }
+                }
+                if (char.job) {
+                    charInfo += `\nAbilities/Job: ${JSON.stringify(char.job)}`;
+                }
+            }
+
+            // [DAILY MOOD] -> Balanced Summary
+            if (isDaily) {
+                // Simplified personality for daily life
+                let persona = "Unknown";
+                if (char.personality) {
+                    persona = typeof char.personality === 'string' ? char.personality : (char.personality['표면적 성격'] || JSON.stringify(char.personality));
+                }
+                charInfo += `\nPersonality Summary: ${persona}`;
+
+                if (char.job) {
+                    // Brief job info
+                    charInfo += `\nJob: ${JSON.stringify(char.job)}`;
+                }
+            }
+
+            // 3. Common crucial elements (always include if they exist)
+
+            // Relationship Instructions (Directives for speech/tone)
             const relScore = state.playerStats.relationships?.[charId] || 0;
             const relationshipInstructions = RelationshipManager.getCharacterInstructions(char.name, relScore);
             charInfo += `\n\n${relationshipInstructions}\n`;
 
-            if (char.profile) {
-                charInfo += `\nProfile: ${JSON.stringify(char.profile)}`;
-            }
-            if (char.appearance) {
-                charInfo += `\nAppearance: ${JSON.stringify(char.appearance)}`;
-            }
-            if (char.job) {
-                charInfo += `\nJob/Abilities: ${JSON.stringify(char.job)}`;
-            }
-
-            const desc = char.description || (char.appearance && char.appearance['전체적 인상']) || char.title || "No description available.";
-            charInfo += `\nDescription: ${desc}`;
-
-            if (char.personality) {
-                if (typeof char.personality === 'string') {
-                    charInfo += `\nPersonality: ${char.personality}`;
-                } else {
-                    charInfo += `\nPersonality: ${JSON.stringify(char.personality)}`;
-                }
-            }
-
-            if (char.preferences) {
-                charInfo += `\nPreferences: ${JSON.stringify(char.preferences)}`;
-            }
-
-            // [FIX] Inject Character Memories
+            // Memories (Context continuity)
             if (char.memories && char.memories.length > 0) {
-                charInfo += `\n[Memories (Events/Facts this character remembers)]:\n- ${char.memories.join('\n- ')}`;
+                charInfo += `\n[Memories]: ${char.memories.join(' / ')}`;
             }
 
-            // CRITICAL: SEPARATE SECRETS
-            // 1. Discovered Secrets (Known to Player)
+            // Discovered Secrets (Player already knows this, so it's part of the narrative reality)
             if (char.discoveredSecrets && char.discoveredSecrets.length > 0) {
-                charInfo += `\n\n[KNOWN FACTS (The Player KNOWS this)]:\n- ${char.discoveredSecrets.join('\n- ')}`;
-            }
-
-            // 2. Hidden Secrets (Unknown to Player)
-            if (char.secret) {
-                const secretStr = typeof char.secret === 'string' ? char.secret : JSON.stringify(char.secret, null, 2);
-                charInfo += `\n\n[HIDDEN SECRETS (GM ONLY - DO NOT REVEAL)]:\n${secretStr}`;
-                charInfo += `\n\n**NARRATION RULE**: The Player DOES NOT KNOW these secrets. The Narrator MUST NOT mention them. Describe only what is outwardly visible (Appearance, Behavior). Reveal internal nature only through subtle hints or after specific events.`;
-            }
-
-            // [New] Static Relationships (Inter-Character Dynamics)
-            if (char.relationships) {
-                charInfo += `\n\n[Human Relationships (How this character views others)]:\n${JSON.stringify(char.relationships, null, 2)}`;
-            }
-
-            if (char.relationshipInfo) {
-                charInfo += `\nRelationship: ${JSON.stringify(char.relationshipInfo)}`;
+                charInfo += `\n[Known Facts]: ${char.discoveredSecrets.join(' / ')}`;
             }
 
             charInfo += `\nDefault Expression: ${char.default_expression}`;
@@ -529,6 +563,14 @@ ${availableBackgrounds}
             // Pass existing Memories for consolidation
             if (c.memories && c.memories.length > 0) {
                 info += `\n  - Current Memories: ${JSON.stringify(c.memories)}`;
+            }
+
+            // [LOGIC_FIX] Pass Martial Arts Info for Power Scaling
+            if (c.martial_arts_realm) {
+                info += `\n  - Rank: ${c.martial_arts_realm.name} (Lv ${c.martial_arts_realm.power_level})`;
+                if (c.martial_arts_realm.skills && c.martial_arts_realm.skills.length > 0) {
+                    info += `\n  - Skills: ${c.martial_arts_realm.skills.join(', ')}`;
+                }
             }
 
             // Pass existing Discovered Secrets for accumulation

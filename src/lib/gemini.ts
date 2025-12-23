@@ -227,6 +227,15 @@ export async function generateGameLogic(
                 displayHistory,
                 worldData: _unusedWorldData, // [FIX] Exclude worldData from prunedStats (Renamed to avoid conflict)
                 lore, // [CRITICAL FIX] Exclude Lore from Logic Model (It uses huge tokens and isn't needed for logic)
+                wikiData, // [OPTIMIZATION] Exclude Wiki Data (Generic info not needed for step logic)
+                scriptQueue, // [OPTIMIZATION] Exclude Visual Novel Script Queue
+                textMessageHistory, // [OPTIMIZATION] Exclude SMS History
+                constants, // [OPTIMIZATION] Exclude Static Constants
+                events, // [OPTIMIZATION] Exclude Raw Events List (Passed filtered)
+                characterMap,
+                extraMap,
+                characterCreationQuestions,
+                backgroundMappings, // [OPTIMIZATION] Exclude Background Mappings
                 ...prunedStats
             } = gameState;
 

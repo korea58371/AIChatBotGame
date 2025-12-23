@@ -224,6 +224,7 @@ export const getDynamicLogicPrompt = (
 ${JSON.stringify(prunedStats, null, 2)}
 
 **Recent Context:**
+- **Scenario Summary**: "${prunedStats.scenarioSummary || "Start of game"}"
 - User Action: "${lastUserMessage}"
 - AI Story Output: "${lastAiResponse}"
 

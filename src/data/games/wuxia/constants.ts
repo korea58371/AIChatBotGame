@@ -108,6 +108,14 @@ export const CORE_RULES = `
     - **Famous Characters**: Do NOT spawn them unless explicitly introduced.
 
 
+### E. [Geography & Time Mechanics]
+13. **[Real Geography & Travel Rules]**:
+    - **Spatial Awareness**: The world maps to **Real Chinese Geography**. You MUST be aware of the distance and direction between locations (e.g., Mount Song to Hubei).
+    - **Travel Duration**: Narrative MUST reflect the travel time. Do NOT "teleport" characters instantly unless using specific magic/arrays (which are rare).
+    - **Speed Modifiers**:
+      - **Martial Realm**: Higher realms (Jeoljeong, Hwagyeong) allow continuous high-speed movement.
+      - **Qinggong**: Proficient Qinggong (Lightness Art) drastically reduces travel time and allows traversing difficult terrain.
+
 ### [⚠️ 처벌 시나리오 예시 (Punishment Examples)]
 AI는 아래 상황 발생 시 반드시 예시처럼 처리해야 한다.
 
