@@ -2,8 +2,8 @@
 
 import { generateResponse, generateGameLogic, generateSummary, preloadCache } from '@/lib/gemini';
 import { Message } from '@/lib/store';
-import fs from 'fs';
-import path from 'path';
+// import fs from 'fs';
+// import path from 'path';
 
 const API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
@@ -95,8 +95,18 @@ export async function getCharacterImages(gameId: string = 'god_bless_you') {
     }
 }
 
+// import fs from 'fs'; // Removed
+// import path from 'path'; // Removed
+// Ensure assetsManifest is loaded
+console.log(`[GameActions] Assets Manifest loaded: ${!!assetsManifest}`);
+
 export async function getBackgroundList(gameId: string) {
     try {
+        console.log(`[GameActions] getBackgroundList called for ${gameId}`);
+        if (!assetsManifest) {
+            console.error("[GameActions] assetsManifest is undefined!");
+            return [];
+        }
         const gameAssets = (assetsManifest as any)[gameId];
         if (!gameAssets || !gameAssets.backgrounds) return [];
         return gameAssets.backgrounds;

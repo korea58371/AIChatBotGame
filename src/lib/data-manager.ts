@@ -54,13 +54,22 @@ export class DataManager {
             console.log(`[DataManager] Starting explicit import for ${gameId}...`);
 
             // [Common] Load Assets Lists
+            let assetsManifest: any;
             try {
-                const { getBackgroundList, getCharacterImages, getExtraCharacterImages } = await import('../app/actions/game');
-                bgListModule = await getBackgroundList(gameId);
-                characterImageList = await getCharacterImages(gameId);
-                extraCharacterList = await getExtraCharacterImages(gameId);
+                // @ts-ignore
+                assetsManifest = (await import('../data/assets.json')).default;
             } catch (e) {
-                console.warn("[DataManager] Failed to load asset lists:", e);
+                console.warn("[DataManager] Failed to load assets.json:", e);
+                assetsManifest = {};
+            }
+
+            try {
+                const gameAssets = assetsManifest?.[gameId];
+                bgListModule = gameAssets?.backgrounds || [];
+                characterImageList = gameAssets?.characters || [];
+                extraCharacterList = gameAssets?.extraCharacters || [];
+            } catch (e) {
+                console.warn("[DataManager] Failed to parse asset lists:", e);
                 bgListModule = [];
             }
 
@@ -169,6 +178,18 @@ export class DataManager {
                             const extraMap = await import('../data/games/wuxia/extra_map.json');
                             extraMapModule = extraMap.default || extraMap;
                         } catch (e) { console.error("[DataManager] Failed extraMap", e); }
+
+                        // Wiki Data
+                        try {
+                            // @ts-ignore
+                            const wiki = await import('../data/games/wuxia/wiki_data.json');
+                            // @ts-ignore
+                            const wikiDataLoaded = wiki.default || wiki;
+                            wikiDataModule = wikiDataLoaded;
+                        } catch (e) {
+                            console.warn('[DataManager] wiki_data.json not found for wuxia');
+                            wikiDataModule = {};
+                        }
 
                         // [데이터 강화] 상세 설정(Lore) 데이터를 캐릭터 상태에 병합
                         // 기본 'characters.json'에는 이름과 기본 정보만 있고, 외모 묘사나 성격, 관계도 등 자세한 정보가 부족할 수 있습니다.

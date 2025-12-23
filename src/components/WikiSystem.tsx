@@ -303,7 +303,7 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
                                                     </div>
 
                                                     {/* Image */}
-                                                    {data.image && (
+                                                    {data.image && getCharacterImage(data.image.split('_')[0], data.image.split('_')[1] || '기본') && (
                                                         <div className="bg-white p-4 flex justify-center border-b border-gray-200">
                                                             <img
                                                                 src={getCharacterImage(data.image.split('_')[0], data.image.split('_')[1] || '기본')}
