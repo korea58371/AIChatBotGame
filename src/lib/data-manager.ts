@@ -226,6 +226,9 @@ export class DataManager {
                                             social: detail.social,
                                             preferences: detail.preferences,
                                             secret: detail.secret,
+                                            // [NEW] Inject detailed Secret Data and MA Realm for PromptManager
+                                            secret_data: detail.secret_data || detail.secret,
+                                            martial_arts_realm: detail.basic_profile?.martial_arts_realm,
                                             job: detail.job
                                         };
                                     }

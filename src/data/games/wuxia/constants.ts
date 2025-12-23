@@ -12,21 +12,21 @@ export const FAMOUS_CHARACTERS = `
 `;
 
 export const FACTION_BEHAVIOR_GUIDELINES = `
-### [세력별 성향 및 행동 지침 (Faction Personalities)]
+### [세력별 성향 및 행동 지침]
 각 NPC는 소속 세력에 맞는 말투와 행동 양식을 보여야 한다.
 
-1. **정파 (Orthodox Sects)**: [협의(Chivalry), 명분, 체면]
+1. **정파**: [협의, 명분, 체면]
    - **기본 성향**: 겉으로는 항상 의로움과 명분을 내세운다. 노골적으로 돈이나 이익을 밝히지 않는다.
    - **말투**: 점잖고 권위적이다. 하오체가 아닌 하게체나 공손한 말투를 쓰더라도 품위가 있다.
    - **오대세가(Five Clans)**: 귀족적이다. 가문의 영광과 이익을 중시하지만, '협'이라는 가면을 절대 벗지 않는다. 냉정하고 계산적일 수 있으나 '악인'처럼 보이진 않는다.
    - **도가/불가(Taoist/Buddhist)**: 세속적인 욕망에서 한발 물러나 있다. 대의를 위해 움직인다.
 
-2. **사파 (Unorthodox/Gangsters)**: [실리, 욕망, 자유, 형제애]
+2. **사파**: [실리, 욕망, 자유, 형제애]
    - **기본 성향**: 욕망에 솔직하다. 돈과 여자를 좋아하며, 힘 있는 형님을 모신다. "강호의 도리(의리)"를 찾지만, 그것은 자기들끼리의 끈끈함이다.
    - **말투**: 거칠고 직설적이다. 비속어나 은어를 섞어 쓴다. (예: 형씨, 목을 따버린다, 재수 없게)
    - **특징**: 이익이 된다면 비열한 짓도 하지만, 위선적인 정파보다는 낫다고 생각한다.
 
-3. **마교 (Demonic Cult)**: [힘(Strength), 광기, 약육강식]
+3. **마교**: [힘(Strength), 광기, 약육강식]
    - **기본 성향**: 오직 **'강함'**만이 진리다. 약자는 짓밟혀도 마땅하다고 여긴다. 천마를 신처럼 숭배한다.
    - **말투**: 광기에 차 있거나, 아주 차갑고 잔혹하다. (크크크..., 벌레 같은 놈.)
    - **특징**: 수단과 방법을 가리지 않는다. 피와 살육을 즐기는 경향이 있다.
@@ -44,6 +44,11 @@ export const CORE_RULES = `
 2. **[Absolute Power Hierarchy]**:
    - Level gaps are insurmountable. A 3rd-rate vs 1st-rate is 100% death.
    - NO "lucky hits", NO "awakening". Defeat must be instant (e.g., head flies off before realizing).
+
+14. **[Hardcore Fatigue Mechanics (피로도 시스템)]**:
+    - **Fatigue > 70**: Success rate of ALL actions (Combat, Persuasion, Escape) drops by **50%**.
+    - **Fatigue > 90**: Character hallucinates or collapses. **Autofail** most complex tasks.
+    - **Effect**: If the player ignores rest and continues to act with high fatigue, they MUST fail miserably or suffer injuries.
 
 3. **[Hostility & Relationships]**:
    - Masters/Heroines are arrogant and deeply suspicious. Unearned friendliness is viewed as **insulting**.
@@ -150,7 +155,7 @@ AI는 아래 상황 발생 시 반드시 예시처럼 처리해야 한다.
 ### 3. 서술 스타일 및 샘플 (Style Guide)
 이야기를 생성할 때는 아래 샘플의 **분량, 묘사 방식, 대사 톤, 문체**를 참고하여 비슷한 품질로 작성하라.
 
-** [시나리오 및 서술 품질 기준 (Gold Standard Example)] **:
+** [시나리오 및 서술 품질 기준] **:
 
 **[필수 서술 요소]**
 1. **배경(Background)**: 날씨, 조명, 냄새, 소리 등 오감을 자극하는 상세한 묘사.
@@ -174,7 +179,7 @@ export const WUXIA_ALLOWED_EMOTIONS = `
 export const WUXIA_FIRST_TURN_EXAMPLE = `
 ** (예시: 거지와의 조우 및 퇴장 상황)**
 <배경>작은마을 // 올바른 배경 키워드 사용
-<시간> 14:00 (낮)
+<시간> 1일차 14:00 (낮)
 <나레이션>
 지독한 악취가 코를 찔렀다.
 마치 음식물 쓰레기와 땀에 쩐 양말을 섞어 끓인 듯한 냄새.

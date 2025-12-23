@@ -213,7 +213,7 @@ export const useGameStore = create<GameState>()(
 
           // Transform for State
           const charState = Object.values(initialCharacterData).reduce((acc: any, char: any) => {
-            acc[char.name] = { ...char, id: char.name }; // ID is Name
+            acc[char.name] = { ...char, id: char.id || char.name }; // ID is English ID if exists, else Name
             return acc;
           }, {});
 

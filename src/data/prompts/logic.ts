@@ -30,7 +30,19 @@ ${rankGuide}
     - **Intervention**: If user declares "I found a hidden manual" without logic, punish them (Fate -, Luck -).
     - **Misfortune**: Gaining a powerful item often comes with a curse or enemy (Fate +).
 
-3. **Relationships**:
+3. **Time & Survival (Fatigue)**:
+    - **Time Progress**: Set \`"timeProgress": true\` for ANY action that takes time (Travel, Training, Long Conversation, Eating).
+    - **Sleep**: Set \`"isSleep": true\` if the user rests for a night. This resets Fatigue to 0 and advances Day.
+    - **Fatigue Accumulation**:
+      - **Training/Combat**: +20~40%
+      - **Travel**: +10~30% (Reduced by Qinggong)
+      - **Social/Minor**: +5%
+    - **[HARDCORE FATIGUE PENALTY]**: 
+      - If current Fatigue > 70: Force FAILURE on complex tasks (Combat/Persuasion).
+      - If current Fatigue > 90: Force collapse/fainting. Output "bad ending" warning or force sleep.
+      - **Logic**: You MUST check current fatigue \`playerStats.fatigue\`. Do NOT ignore it.
+
+4. **Relationships**:
     - **Sects/Factions**: Actions affecting a member affect the whole sect's opinion (though simpler logic here).
     - **Pacing (Psychological Model)**: Do NOT use fixed caps. Use **Diminishing Returns** and **Context**.
       - **Dramatic Impact (High Stakes)**: Saving a life, a grand confession in front of the world, or a shocking betrayal CAN change affinity by **20~50 points** instantly.
@@ -45,11 +57,11 @@ ${rankGuide}
       - **Consistency Checking**:
         - "Did this EXACT event happen recently?" -> If yes, reduce impact to 0. (e.g., Saving her life twice in 10 minutes is suspicious/less dramatic).
 
-4. **Event Triggering**:
+5. **Event Triggering**:
     - Only trigger ONE event per turn.
     - If \`triggerEventId\` is set, the Main Story Model will be forced to adapt the next response to this event.
 
-5. **Output Format**: Same JSON structure.
+6. **Output Format**: Same JSON structure.
 
 **OUTPUT FORMAT (JSON ONLY):**
 {

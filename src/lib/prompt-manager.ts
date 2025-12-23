@@ -39,6 +39,7 @@ interface Character {
         description: string;
         skills?: string[];
     };
+    secret_data?: any; // [NEW] Detailed secret data for intimate contexts
 }
 
 // Lightweight character structure for Logic Model to save tokens
@@ -74,6 +75,7 @@ interface GameState {
     activeGameId?: string; // Added for game-specific logic
     backgroundMappings?: Record<string, string>; // Added for Wuxia Korean keys
     extraMap?: Record<string, string>; // Added to interface
+    characterMap?: Record<string, string>; // [FIX] Added for ID Resolution
 }
 
 export class PromptManager {
@@ -277,118 +279,8 @@ ${availableBackgrounds}
             }
         });
 
-        const charInfos = Array.from(activeCharIds).map(charId => {
-            const char = charsData[charId];
-            if (!char) return null;
-
-            let charInfo = `Name: ${char.name} (${char.role || 'Unknown'})`;
-
-            // [MOOD-BASED DYNAMIC CONTEXT INJECTION]
-            const currentMood = state.currentMood || 'daily';
-            const isErotic = currentMood === 'erotic';
-            const isRomance = currentMood === 'romance';
-            const isCombat = currentMood === 'combat' || currentMood === 'tension';
-            const isDaily = !isErotic && !isRomance && !isCombat;
-
-            // 1. Base Info (Always Included)
-            const age = char.profile?.['나이'] || '?';
-            const gender = char.profile?.['성별'] || '?';
-            charInfo += `\nProfile: Age ${age}, ${gender}`;
-
-            if (char.title) charInfo += `\nTitle: ${char.title}`;
-            if (char.appearance) {
-                // Flatten appearance for token efficiency
-                const app = char.appearance;
-                const appStr = Object.values(app).filter(v => typeof v === 'string').join(', ');
-                charInfo += `\nAppearance: ${appStr}`;
-            }
-
-            // 2. Mood-Specific Injections
-
-            // [EROTIC MOOD] -> Focus on Secrets and Hidden Desires
-            if (isErotic) {
-                if (char.secret) {
-                    const secretStr = typeof char.secret === 'string' ? char.secret : JSON.stringify(char.secret, null, 2);
-                    charInfo += `\n\n[SECRET DATA (Relevant to Intimacy)]:\n${secretStr}`;
-                }
-                // Include preferences for better context in intimate scenes
-                if (char.preferences) {
-                    charInfo += `\nPreferences: ${JSON.stringify(char.preferences)}`;
-                }
-            }
-
-            // [ROMANCE MOOD] -> Focus on Personality, Relations, and Emotional nuance
-            if (isRomance) {
-                if (char.personality) {
-                    charInfo += `\nPersonality: ${typeof char.personality === 'string' ? char.personality : JSON.stringify(char.personality)}`;
-                }
-                if (char.relationships) {
-                    charInfo += `\nRelationships: ${JSON.stringify(char.relationships)}`;
-                }
-                // Deep affection check
-                const relScore = state.playerStats.relationships?.[charId] || 0;
-                charInfo += `\nCurrent Affection: ${relScore}`;
-
-                if (char.relationshipInfo) {
-                    charInfo += `\nInteraction Style: ${JSON.stringify(char.relationshipInfo)}`;
-                }
-            }
-
-            // [COMBAT/TENSION MOOD] -> Focus on Martial Arts, Power, and Skills
-            if (isCombat) {
-                if (char.martial_arts_realm) {
-                    charInfo += `\n[MARTIAL ARTS]:\n- Rank: ${char.martial_arts_realm.name} (Level ${char.martial_arts_realm.power_level})\n- Description: ${char.martial_arts_realm.description}`;
-
-                    if (char.martial_arts_realm.skills && char.martial_arts_realm.skills.length > 0) {
-                        charInfo += `\n- Skills:\n  * ${char.martial_arts_realm.skills.join('\n  * ')}`;
-                    }
-                }
-                if (char.job) {
-                    charInfo += `\nAbilities/Job: ${JSON.stringify(char.job)}`;
-                }
-            }
-
-            // [DAILY MOOD] -> Balanced Summary
-            if (isDaily) {
-                // Simplified personality for daily life
-                let persona = "Unknown";
-                if (char.personality) {
-                    persona = typeof char.personality === 'string' ? char.personality : (char.personality['표면적 성격'] || JSON.stringify(char.personality));
-                }
-                charInfo += `\nPersonality Summary: ${persona}`;
-
-                if (char.job) {
-                    // Brief job info
-                    charInfo += `\nJob: ${JSON.stringify(char.job)}`;
-                }
-            }
-
-            // 3. Common crucial elements (always include if they exist)
-
-            // Relationship Instructions (Directives for speech/tone)
-            const relScore = state.playerStats.relationships?.[charId] || 0;
-            const relationshipInstructions = RelationshipManager.getCharacterInstructions(char.name, relScore);
-            charInfo += `\n\n${relationshipInstructions}\n`;
-
-            // Memories (Context continuity)
-            if (char.memories && char.memories.length > 0) {
-                charInfo += `\n[Memories]: ${char.memories.join(' / ')}`;
-            }
-
-            // Discovered Secrets (Player already knows this, so it's part of the narrative reality)
-            if (char.discoveredSecrets && char.discoveredSecrets.length > 0) {
-                charInfo += `\n[Known Facts]: ${char.discoveredSecrets.join(' / ')}`;
-            }
-
-            charInfo += `\nDefault Expression: ${char.default_expression}`;
-
-            return charInfo;
-        }).filter(Boolean).join('\n\n');
-
-        prompt = prompt.replace('{{CHARACTER_INFO}}', charInfos || "No other characters are currently present.");
-
-        // 6. Active Character Info
-        const activeCharInfo = PromptManager.getActiveCharacterProps(state);
+        // Use the centralized method with ID resolution (Includes context-sniffed IDs)
+        const activeCharInfo = PromptManager.getActiveCharacterProps(state, Array.from(activeCharIds));
         prompt = prompt.replace('{{CHARACTER_INFO}}', activeCharInfo);
 
         // 7. Images / Extra / Backgrounds -> Already in Static Context
@@ -542,7 +434,9 @@ ${availableBackgrounds}
                 const age = c.profile?.['나이'] ? c.profile['나이'].replace(/[^0-9]/g, '') + '세' : '?';
                 const gender = c.profile?.['성별'] || '?';
 
-                return `- ${c.name} (${age}/${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr}${appearanceStr} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
+                // [LOGIC_FIX] Explicitly provide ID for Logic Model
+                const idStr = (c as any).id || c.englishName || "UnknownID";
+                return `- ${c.name} (ID: ${idStr} | ${age}/${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr}${appearanceStr} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
             })
             .join('\n');
     }
@@ -558,7 +452,9 @@ ${availableBackgrounds}
             const c = charsData[id.toLowerCase()]; // Normalize lookup
             if (!c) return null;
 
-            let info = `- ${c.name} (${c.role}): Active in scene.`;
+            // [LOGIC_FIX] Explicitly provide ID for Logic Model
+            const idStr = (c as any).id || c.englishName || "UnknownID";
+            let info = `- ${c.name} (ID: ${idStr} | ${c.role}): Active in scene.`;
 
             // Pass existing Memories for consolidation
             if (c.memories && c.memories.length > 0) {
@@ -808,25 +704,50 @@ ${spawnCandidates || "None"}
         }).join('\n');
     }
 
-    static getActiveCharacterProps(state: GameState): string {
+    static getActiveCharacterProps(state: GameState, activeIdsOverride?: string[]): string {
         const charsData = state.characterData || {};
-        // Normalization
-        const activeCharIds = new Set(state.activeCharacters.map(id => id.toLowerCase()));
+        // [FIX] Smart ID Resolution
+        // Logic Model might return English IDs (e.g. 'hwayeong'), but Store uses Korean Keys (e.g. '화영').
+        // We use characterMap to bridge this gap.
+        const charMap = state.characterMap || {};
 
-        // Helper to find Active Chars from State (already logic in generateSystemPrompt, moving here for reuse)
-        // Actually, let's keep it simple. `state.activeCharacters` should be the source of truth from Logic Model.
-        // But generateSystemPrompt had extra logic to "detect" characters from context.
-        // We will move that detection logic to here if we want `activeCharInfo` to be robust.
-        // For now, let's just format the IDs currently in `state.activeCharacters`.
+        const resolveChar = (id: string) => {
+            // 1. Direct Lookup (Legacy/Correct)
+            if (charsData[id]) return charsData[id];
 
-        const charInfos = Array.from(activeCharIds).map(charId => {
-            const char = charsData[charId];
+            // 2. Case-insensitive Lookup
+            const directKey = Object.keys(charsData).find(k => k.toLowerCase() === id.toLowerCase());
+            if (directKey) return charsData[directKey];
+
+            // 3. Map Resolution (English ID -> Korean Key)
+            // Map: { "화영": "HwaYeong", ... }
+            // Input: "hwayeong", "wang_noya"
+            const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normalizedId = normalize(id);
+
+            const foundName = Object.keys(charMap).find(key => {
+                const mapVal = charMap[key];
+                return mapVal && normalize(mapVal) === normalizedId;
+            });
+
+            if (foundName && charsData[foundName]) return charsData[foundName];
+
+            // 4. [FIX] Robust Fallback: Scan character values for ID match
+            // This handles cases where characterMap is outdated but character data has correct ID.
+            const valueMatch = Object.values(charsData).find((c: any) => c.id && normalize(c.id) === normalizedId);
+            if (valueMatch) return valueMatch;
+
+            return null;
+        };
+
+        const activeCharIds = activeIdsOverride || state.activeCharacters || [];
+        const currentMood = state.currentMood || 'daily';
+
+        const charInfos = activeCharIds.map(charId => {
+            const char = resolveChar(charId);
             if (!char) return null;
 
             // [OPTIMIZED DYNAMIC CONTEXT]
-            // Static info (Profile, Appearance, Job) is already in the Shared Static Context.
-            // Here we only provide "Who is here" and "Active State".
-
             let charInfo = `### [ACTIVE] ${char.name} (${char.role || 'Unknown'})`;
 
             // 1. Current Context / Status
@@ -834,8 +755,9 @@ ${spawnCandidates || "None"}
 
             // 2. Relationship Pacing (Dynamic)
             const relScore = state.playerStats.relationships?.[charId] || 0;
+            // Note: RelationshipManager might expect Name or ID. It usually handles Name.
             const relationshipInstructions = RelationshipManager.getCharacterInstructions(char.name, relScore);
-            charInfo += `\n- Relation: ${relationshipInstructions.replace(/\n/g, ' ')}`; // Inline for compactness
+            charInfo += `\n- Relation: ${relationshipInstructions.replace(/\n/g, ' ')}`;
 
             // 3. Memories (Dynamic)
             if (char.memories && char.memories.length > 0) {
@@ -847,10 +769,38 @@ ${spawnCandidates || "None"}
                 charInfo += `\n- [Player Knows]: ${char.discoveredSecrets.join(' / ')}`;
             }
 
-            // 5. Hidden Secrets (Dynamic Context - Player DOES NOT Know)
-            // We usually don't need to repeat this if it's in Static, BUT if secrets unlock dynamically, we might need logic.
-            // For now, assume Static holds the "Truth". If a secret is *revealed*, it moves to discoveredSecrets.
-            // So we can omit the hidden block here to save space, relying on Static Context for the "Truth" reference.
+            // 5. [NEW] Dynamic Mood Injection
+            // Inject heavy data only when relevant to save tokens and focus attention.
+
+            // [COMBAT MOOD] -> Inject Martial Arts Details
+            if (currentMood === 'combat' && char.martial_arts_realm) {
+                const ma = char.martial_arts_realm;
+                charInfo += `\n\n[MARTIAL ARTS INFO]`;
+                charInfo += `\n- Rank: ${ma.name} (Lv ${ma.power_level})`;
+                charInfo += `\n- Style: ${ma.description}`;
+                if (ma.skills && ma.skills.length > 0) {
+                    charInfo += `\n- Skills: ${ma.skills.join(', ')}`;
+                }
+            }
+
+            // [INTIMATE/EROTIC MOOD] -> Inject Secret Body Data
+            // We interpret 'romance' broadly or specific 'erotic' moods if defined.
+            // Assuming 'erotic' or high-stakes romance.
+            const isIntimate = ['erotic', 'sexual', 'romance'].includes(currentMood);
+            if (isIntimate) {
+                if (char.secret_data) {
+                    // Inject specific parts of secret data to avoid overwhelming
+                    // Or inject the whole object if it fits. 
+                    // Given the user request, we inject it for "reference".
+                    // However, we should be careful with huge JSONs.
+                    // Let's format it.
+                    const secretStr = JSON.stringify(char.secret_data, null, 2);
+                    charInfo += `\n\n[SECRET DATA (Private)]:\n${secretStr}`;
+                }
+                if (char.preferences) {
+                    charInfo += `\n- Preferences: ${JSON.stringify(char.preferences)}`;
+                }
+            }
 
             return charInfo;
         }).filter(Boolean).join('\n\n');
