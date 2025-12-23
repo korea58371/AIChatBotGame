@@ -240,8 +240,8 @@ ${logicContext}
 - 유효한 아이템: ${Object.keys(worldData.items || {}).join(', ')}
 
 **[가능한 이벤트]** (조건 충족됨):
-다음 이벤트들이 현재 트리거 가능합니다.
-${availableEvents.length > 0 ? JSON.stringify(availableEvents.map(e => ({ id: e.id, name: e.name, type: e.type })), null, 2) : "없음 (일상 생활)"}
+다음 이벤트들이 현재 트리거 가능합니다. 로직 모델은 **현재 스토리 맥락**과 가장 자연스럽게 연결되는 이벤트를 하나 선택해야 합니다.
+${availableEvents.length > 0 ? JSON.stringify(availableEvents.map(e => ({ id: e.id, name: e.name, type: e.type, prompt: e.prompt })), null, 2) : "없음 (일상 생활)"}
 
 ---
 
@@ -258,12 +258,12 @@ ${availableEvents.length > 0 ? JSON.stringify(availableEvents.map(e => ({ id: e.
 3. **인벤토리 관리**: 아이템 추가/제거.
 4. **캐릭터 관리**: 기억, 비밀, 관계(호감도) 업데이트.
 5. **세계 관리**: 장소 세부 정보 및 비밀 업데이트.
-6. **[중요] 이벤트 선택**:
-   - \`[가능한 이벤트]\`를 검토하십시오.
-   - **선택 로직**: 
-     - 목록에 이벤트가 있다면, \`triggerEventId\`에 해당 ID를 반환하여 선택할 수 있습니다.
-     - **속도 조절 규칙 (느린 템포)**: 유저는 느긋한 일상물 템포를 선호합니다. 맥락이 완벽하지 않다면 주요 이벤트를 트리거하지 마십시오.
-     - **우선순위**: 일상 생활, 캐릭터 상호작용 > 주요 플롯 반전.
+6. **[중요] 이벤트 트리거 결정**:
+   - 위 [가능한 이벤트] 목록을 검토하십시오.
+   - **맥락 분석**: 현재 유저의 행동과 시나리오 흐름에 가장 적합한 이벤트를 판단하십시오.
+   - **선택**: 가장 적절한 이벤트의 \`id\`를 \`triggerEventId\` 필드에 반환하십시오.
+   - 적절한 이벤트가 없다면 \`null\`을 반환하십시오 (일반 진행).
+   - *주의*: 이벤트 프롬프트(\`prompt\`)를 읽고 스토리에 자연스럽게 녹아들 수 있는지 확인하십시오.
      - 일상 생활을 유지하기로 결정했다면, \`triggerEventId\`에 \`null\`을 반환하십시오.
 
 7. **[중요] 상태 서술 생성 (Generate Status Description)**: 

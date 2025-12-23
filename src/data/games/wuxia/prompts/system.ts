@@ -103,6 +103,8 @@ ${state.scenarioSummary || "이야기가 시작됩니다."}
 ## [등장 인물]
 {{CHARACTER_INFO}}
 
+${state.currentEvent ? state.currentEvent : ""}
+
 ${WUXIA_SYSTEM_GUIDE}
 
 ---

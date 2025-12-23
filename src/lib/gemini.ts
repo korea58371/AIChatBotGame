@@ -169,8 +169,26 @@ export async function generateGameLogic(
     // 1. Load Events (If not in state, try to import)
     // Note: State might have 'events' from DataManager
     let validEvents = [];
+
+    // [SERVER REHYDRATION START]
+    // JSON 직렬화로 인해 'condition' 함수가 소실되므로, 서버 측에서 이벤트를 다시 로드합니다.
+    let events = gameState.events || [];
+    if (gameState.activeGameId) {
+        try {
+            // 게임 ID에 기반한 동적 임포트
+            const eventsModule = await import(`@/data/games/${gameState.activeGameId}/events`);
+            if (eventsModule && eventsModule.GAME_EVENTS) {
+                console.log(`[Gemini] Rehydrated Events for ${gameState.activeGameId}`);
+                events = eventsModule.GAME_EVENTS;
+            }
+        } catch (e) {
+            console.warn(`[Gemini] Failed to rehydrate events for ${gameState.activeGameId} (or no events file):`, e);
+        }
+    }
+    // [SERVER REHYDRATION END]
+
     if (gameState.activeGameId === 'wuxia') {
-        const events = gameState.events || [];
+
         // Filter by condition
         validEvents = events.filter((e: any) => {
             if (e.once && e.triggered) return false; // Already triggered? (Needs persistence logic if 'triggered' flag exists)
@@ -280,8 +298,9 @@ export async function generateGameLogic(
 
                 // Post-Process: Event Trigger
                 // If Logic Model selected an event, we need to locate its prompt
-                if (json.triggerEventId && gameState.events) {
-                    const selectedEvent = gameState.events.find((e: any) => e.id === json.triggerEventId);
+                // [FIX] Use local 'events' (rehydrated) instead of gameState.events (serialized)
+                if (json.triggerEventId && events) {
+                    const selectedEvent = events.find((e: any) => e.id === json.triggerEventId);
                     if (selectedEvent) {
                         console.log(`[GeminiLogic] TRIGGERING EVENT: ${selectedEvent.name} (${selectedEvent.id})`);
                         // Inject the prompt into next state's currentEvent field
