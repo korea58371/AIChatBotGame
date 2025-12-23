@@ -17,11 +17,11 @@ export const GAME_EVENTS: GameEvent[] = [
         type: 'narrative',
         once: true,
         name: '강호출두',
-        condition: (state) => (!state.turnCount || state.turnCount <= 1),
+        condition: (state) => (!state.turnCount || state.turnCount <= 3),
         prompt: `
         ## [EVENT: 강호출두 (Introduction)]
-        주인공은 이제 막 강호에 발을 디딘 강호초촐이다.
-        객잔에 앉아 주위를 둘러보며, 앞으로의 여정을 기대하거나 걱정하는 장면으로 시작하라.
+        주인공은 이제 막 강호에 발을 디딘 강호초출이다.
+        현재 자신이 처한 상황(객잔 안이든 밖이든)에서 주위를 둘러보며, 앞으로의 여정을 기대하거나 걱정하는 장면으로 자연스럽게 시작하라.
         주변의 소란스러운 분위기와 주인공의 초라한 행색을 대조적으로 묘사하라.
         `
     },

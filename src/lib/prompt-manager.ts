@@ -248,7 +248,7 @@ ${availableBackgrounds}
         prompt = prompt.replace('{{SCENARIO_SUMMARY}}', state.scenarioSummary || "The story has just begun.");
 
         // 3. Event Guide
-        prompt = prompt.replace('{{EVENT_GUIDE}}', state.currentEvent || "Introduce the world and the main character.");
+        prompt = prompt.replace('{{EVENT_GUIDE}}', state.currentEvent || "");
 
         // 4. Character Info
         // Use dynamic data from state, fallback to empty object if missing

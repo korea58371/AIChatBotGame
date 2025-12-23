@@ -1518,24 +1518,54 @@ export default function VisualNovelUI() {
             playerStats: newStats // Use the updated stats for checking
         });
 
+        // [CRITICAL FIX] Merge Server-Side Logic Events with Client-Side triggers
+        // If Logic Model explicitly returned a 'triggerEventId' and 'currentEvent' prompt, we MUST process it.
+        // This fixes the issue where 'wuxia_intro' (triggered by LLM) was ignored by client.
+
+        let activeEventPrompt = '';
+        let hasActiveEvent = false;
+
+        // 1. Prioritize Server-Side Event (Narrative Logic)
+        if (logicResult.triggerEventId && logicResult.currentEvent) {
+            console.log(`[Validating Logic] Server triggered event: ${logicResult.triggerEventId}`);
+
+            // Add to triggered list (so it doesn't trigger again if 'once')
+            useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
+
+            // Set as current prompt
+            activeEventPrompt = logicResult.currentEvent;
+            hasActiveEvent = true;
+
+            addToast(`Event Triggered: ${logicResult.triggerEventId}`, 'info');
+        }
+
+        // 2. Client-Side Stat Events (e.g. Low HP, Injuries)
         if (triggeredEvents.length > 0) {
-            console.log("Events Triggered:", triggeredEvents.map(e => e.id));
+            console.log("Client Events Triggered:", triggeredEvents.map(e => e.id));
 
-            // Set the highest priority event as "Active" for UI purposes (if needed)
-            useGameStore.getState().setActiveEvent(triggeredEvents[0]);
-
-            // Combine prompts from ALL triggered events
-            const combinedPrompt = triggeredEvents.map(e => e.prompt).join('\n\n');
-            useGameStore.getState().setCurrentEvent(combinedPrompt);
-
-            // Process 'once' flags for all triggered events
             triggeredEvents.forEach(event => {
+                // If it's the SAME event as server (duplicate), skip adding prompt again
+                if (event.id === logicResult.triggerEventId) return;
+
                 if (event.once) {
                     useGameStore.getState().addTriggeredEvent(event.id);
                 }
+
+                // Append prompt
+                activeEventPrompt += (activeEventPrompt ? '\n\n' : '') + event.prompt;
+                hasActiveEvent = true;
             });
 
-            addToast(`${triggeredEvents.length} Event(s) Triggered`, 'info');
+            if (!logicResult.triggerEventId) {
+                addToast(`${triggeredEvents.length} Event(s) Triggered`, 'info');
+            }
+        }
+
+        if (hasActiveEvent) {
+            console.log(`[VisualNovelUI] Setting Current Event Prompt (Length: ${activeEventPrompt.length})`);
+            useGameStore.getState().setCurrentEvent(activeEventPrompt);
+            // Optionally set active event object if needed for UI, prioritizing Server one if available
+            // For now, just ensuring the PROMPT is set is key for the Story Model.
         } else {
             // Clear active event if none triggered
             useGameStore.getState().setActiveEvent(null);
