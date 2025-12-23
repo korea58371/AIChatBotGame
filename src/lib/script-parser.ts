@@ -1,3 +1,4 @@
+import { useGameStore } from './store';
 export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'command' | 'unknown';
 
 export interface ScriptSegment {
@@ -40,7 +41,26 @@ export function parseScript(text: string): ScriptSegment[] {
         const tagName = match[1].trim();
         const content = match[2].trim();
         if (tagName === '배경') {
-            segments.push({ type: 'background', content: content });
+            let bgKey = content;
+            try {
+                // [Feature] Fuzzy matching for Backgrounds
+                // User might input "대장간" instead of "[마을] 대장간"
+                const state = useGameStore.getState();
+                const available = state.availableBackgrounds || [];
+
+                // 1. Check exact match first
+                if (!available.includes(bgKey)) {
+                    // 2. Check suffix match (e.g. "대장간" matches "[마을] 대장간")
+                    const match = available.find(k => k.endsWith(bgKey) || k.endsWith(` ${bgKey}`));
+                    if (match) {
+                        console.log(`[ScriptParser] Fuzzy matched background: '${bgKey}' -> '${match}'`);
+                        bgKey = match;
+                    }
+                }
+            } catch (e) {
+                console.warn("[ScriptParser] Failed to access store for fuzzy matching", e);
+            }
+            segments.push({ type: 'background', content: bgKey });
         } else if (tagName === '시간') {
             // [New] Time Update Command
             // format: <시간> 14:40 낮
