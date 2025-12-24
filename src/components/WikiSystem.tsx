@@ -196,7 +196,21 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
                     {/* Sidebar Navigation */}
                     <div className="w-full md:w-64 bg-gray-50 border-r-0 md:border-r border-b md:border-b-0 border-gray-200 overflow-y-auto p-4 shrink-0 h-48 md:h-auto">
                         {Object.keys(groupedData).length === 0 ? (
-                            <div className="text-gray-500 text-center text-sm py-4">검색 결과 없음</div>
+                            <div className="text-gray-500 text-center text-sm py-4 flex flex-col gap-2">
+                                <span>검색 결과 없음</span>
+                                <span className="text-xs text-red-400">Total Entries: {Object.keys(gameWikiData).length}</span>
+                                {Object.keys(gameWikiData).length === 0 && (
+                                    <button
+                                        onClick={() => {
+                                            console.log("🔄 Force Reloading Wiki Data...");
+                                            useGameStore.getState().setGameId('wuxia');
+                                        }}
+                                        className="px-3 py-1 bg-red-100 text-red-600 text-xs rounded border border-red-200 hover:bg-red-200"
+                                    >
+                                        Force Reload Data
+                                    </button>
+                                )}
+                            </div>
                         ) : (
                             Object.entries(groupedData).map(([category, items]) => (
                                 <div key={category} className="mb-6">

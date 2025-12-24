@@ -1937,8 +1937,12 @@ export default function VisualNovelUI() {
                             </button>
                             {/* Wiki Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
-                                onClick={(e) => { e.stopPropagation(); setShowWiki(true); }}
+                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg pointer-events-auto"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log("🖱️ Wiki Button Clicked");
+                                    setShowWiki(true);
+                                }}
                                 title="Wiki"
                             >
                                 <div className="font-bold text-sm">W</div>
@@ -1948,7 +1952,7 @@ export default function VisualNovelUI() {
                 </div>
 
                 {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 -> Z-20 (Basic UI) */}
-                <div className="absolute bottom-10 right-8 flex gap-2 z-20 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
+                <div className="absolute bottom-10 right-8 flex gap-2 z-40 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
                     <button
                         className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
@@ -2021,13 +2025,16 @@ export default function VisualNovelUI() {
 
                                             // [LOGGING]
                                             submitGameplayLog({
-                                                session_id: sessionId,
+                                                session_id: sessionId || '00000000-0000-0000-0000-000000000000', // Fallback UUID if empty
                                                 game_mode: useGameStore.getState().activeGameId,
                                                 turn_count: turnCount,
                                                 choice_selected: choice.content,
                                                 player_rank: playerStats.playerRank,
                                                 location: useGameStore.getState().currentLocation,
                                                 timestamp: new Date().toISOString()
+                                            }).then(res => {
+                                                if (!res.success) console.error("📝 [Log Error]", res.error);
+                                                else console.log("📝 [Log Sent]");
                                             });
 
                                             handleSend(choice.content);
