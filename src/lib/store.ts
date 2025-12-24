@@ -155,6 +155,7 @@ export interface PlayerStats {
   relationships: Record<string, number>;
   injuries: string[]; // [New] List of active injuries e.g. ["Right Arm Broken", "Internal bleeding"]
   fatigue: number; // [New] 0-100
+  narrative_perspective?: string; // [New] '1인칭' or '3인칭'
 }
 
 export interface Item {
@@ -185,7 +186,8 @@ const INITIAL_STATS: PlayerStats = {
   },
   relationships: {},
   injuries: [],
-  fatigue: 0
+  fatigue: 0,
+  narrative_perspective: '3인칭' // Default
 };
 
 export const useGameStore = create<GameState>()(
@@ -295,7 +297,7 @@ export const useGameStore = create<GameState>()(
 
       activeCharacters: [],
       setActiveCharacters: (chars) => set({ activeCharacters: chars }),
-      currentLocation: 'home',
+      currentLocation: '폐가', // Default Wuxia Start (Abandoned House)
       setCurrentLocation: (loc) => set({ currentLocation: loc }),
       scenarioSummary: '',
       setScenarioSummary: (summary) => set({ scenarioSummary: summary }),

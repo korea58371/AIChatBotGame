@@ -8,47 +8,47 @@
                 {
                     "name": "정문",
                     "eng_code": "MainGate",
-                    "description": "무림맹의 위엄이 느껴지는 거대한 정문."
+                    "description": "무림맹 위엄, 거대 정문."
                 },
                 {
                     "name": "맹주 집무실 (')",
                     "eng_code": "LeaderOffice",
-                    "description": "맹주가 업무를 보는 집무실. 난초 화분과 서예 작품, 그리고 산더미 같은 서류가 있다."
+                    "description": "업무 공간. 난초, 서예, 서류 산더미."
                 },
                 {
                     "name": "맹주 침소 (')",
                     "eng_code": "LeaderBedroom",
-                    "description": "맹주가 휴식을 취하는 사적인 공간. 검소하지만 기품이 느껴진다."
+                    "description": "휴식 공간. 검소, 기품."
                 },
                 {
                     "name": "대의사당",
                     "eng_code": "CouncilHall",
-                    "description": "각 문파의 장문인들이 모여 회의를 하는 대회의장."
+                    "description": "장문인 회의, 대회의장."
                 },
                 {
                     "name": "귀빈관",
                     "eng_code": "VIPGuestHouse",
-                    "description": "각 파의 장문인이나 황실의 사절이 머무는 최고급 숙소."
+                    "description": "장문인/황실 사절 숙소. 최고급."
                 },
                 {
                     "name": "일반 접객실",
                     "eng_code": "ReceptionRoom",
-                    "description": "일반 무림인들을 맞이하는 응접실."
+                    "description": "무림인 응접실."
                 },
                 {
                     "name": "연무장",
                     "eng_code": "TrainingField",
-                    "description": "무림맹 소속 무사들이 수련하는 넓은 연무장."
+                    "description": "무사 수련, 대형 연무장."
                 },
                 {
                     "name": "지하 감옥",
                     "eng_code": "Dungeon",
-                    "description": "마교도나 죄인을 가두는 지하 감옥."
+                    "description": "마교도/죄인 수감."
                 },
                 {
                     "name": "비밀 회의실",
                     "eng_code": "SecretRoom",
-                    "description": "맹주와 군사만이 출입 가능한 은밀한 회의실."
+                    "description": "맹주/군사 전용."
                 }
             ]
         },
@@ -59,52 +59,52 @@
                 {
                     "name": "산문",
                     "eng_code": "Gate",
-                    "description": "소림사 입구. '소림사(少林寺)' 현판이 걸려 있다."
+                    "description": "소림사 입구. 현판."
                 },
                 {
                     "name": "대웅전",
                     "eng_code": "MainHall",
-                    "description": "불상이 모셔진 웅장한 법당. 향 냄새가 은은하다."
+                    "description": "불상 법당. 향 내음."
                 },
                 {
                     "name": "방장실 (')",
                     "eng_code": "AbbotRoom",
-                    "description": "소림 방장이 머무는 선방. 다탁과 불경만이 놓인 정갈한 공간."
+                    "description": "방장 선방. 다탁, 불경, 정갈."
                 },
                 {
                     "name": "장경각",
                     "eng_code": "Library",
-                    "description": "수많은 불경과 무공 비급이 보관된 도서관."
+                    "description": "불경, 무공 비급 보관소."
                 },
                 {
                     "name": "다실",
                     "eng_code": "TeaRoom",
-                    "description": "손님에게 차를 대접하는 고즈넉한 방."
+                    "description": "접객용 다실. 고즈넉함."
                 },
                 {
                     "name": "승려 숙소",
                     "eng_code": "MonkQuarters",
-                    "description": "일반 승려들이 기거하는 단체 숙소."
+                    "description": "일반 승려 단체 숙소."
                 },
                 {
                     "name": "손님방",
                     "eng_code": "GuestRoom",
-                    "description": "속가 제자나 손님이 머무는 방."
+                    "description": "속가 제자/손님 숙소."
                 },
                 {
                     "name": "탑림",
                     "eng_code": "StupaForest",
-                    "description": "역대 고승들의 사리가 안치된 탑들의 숲."
+                    "description": "역대 고승 사리탑 숲."
                 },
                 {
                     "name": "나한당",
                     "eng_code": "ArhatHall",
-                    "description": "18나한상이 모셔진 무공 수련장."
+                    "description": "18나한상. 무공 수련장."
                 },
                 {
                     "name": "면벽 동굴",
                     "eng_code": "MeditationCave",
-                    "description": "달마대사가 면벽수련을 했다는 전설이 깃든 동굴."
+                    "description": "달마대사 전설. 면벽수련."
                 }
             ]
         },
@@ -115,42 +115,42 @@
                 {
                     "name": "해검지",
                     "eng_code": "SwordUnbucklingSite",
-                    "description": "무당산 입구. 누구나 예의를 갖춰 검을 풀어놓아야 하는 장소."
+                    "description": "무당산 입구. 해검 필수."
                 },
                 {
                     "name": "자소궁",
                     "eng_code": "MainPalace",
-                    "description": "무당파의 본전. 도가적인 기풍이 흐른다."
+                    "description": "본전. 도가 기풍."
                 },
                 {
                     "name": "장문인실 (')",
                     "eng_code": "HeadRoom",
-                    "description": "무당 장문인이 도를 닦으며 업무를 보는 방."
+                    "description": "장문인 집무/수련."
                 },
                 {
                     "name": "진무전",
                     "eng_code": "WarriorHall",
-                    "description": "장로들이 모여 회의를 하거나 제자를 가르치는 곳."
+                    "description": "장로 회의, 제자 교육."
                 },
                 {
                     "name": "금정",
                     "eng_code": "GoldenSummit",
-                    "description": "무당산의 정상. 운해(구름 바다)가 내려다보이는 수련터."
+                    "description": "정상 수련터. 운해 조망."
                 },
                 {
                     "name": "연무장",
                     "eng_code": "TrainingSquare",
-                    "description": "제자들이 태극권을 수련하는 광장."
+                    "description": "태극권 수련 광장."
                 },
                 {
                     "name": "빈객실",
                     "eng_code": "GuestPavilion",
-                    "description": "무당파를 찾은 손님들이 묵는 별채."
+                    "description": "손님용 별채."
                 },
                 {
                     "name": "약방",
                     "eng_code": "MedicineRoom",
-                    "description": "단약을 제조하고 보관하는 방."
+                    "description": "단약 제조/보관."
                 }
             ]
         },
@@ -161,37 +161,37 @@
                 {
                     "name": "화산 입구",
                     "eng_code": "Entrance",
-                    "description": "험준한 화산의 입구. 가파른 계단이 이어진다."
+                    "description": "입구. 가파른 계단."
                 },
                 {
                     "name": "자하각",
                     "eng_code": "MainHall",
-                    "description": "화산파의 본관. 매화 문양이 곳곳에 새겨져 있다."
+                    "description": "본관. 매화 문양."
                 },
                 {
                     "name": "장문인 거처 (')",
                     "eng_code": "HeadQuarters",
-                    "description": "장문인과 그의 가족(화영 등)이 머무는 안채."
+                    "description": "장문인/가족 안채."
                 },
                 {
                     "name": "화영의 방 (-')",
                     "eng_code": "HwaYeongRoom",
-                    "description": "붉은 매화 장식이 있는 화산파 대사저의 방. 정리 정돈이 안 되어 있을 수 있다."
+                    "description": "대사저 방. 붉은 매화 장식, 정돈 안 됨."
                 },
                 {
                     "name": "매화 연무장",
                     "eng_code": "TrainingField",
-                    "description": "매화나무로 둘러싸인 연무장. 봄이면 꽃잎이 휘날린다."
+                    "description": "매화나무 연무장."
                 },
                 {
                     "name": "절벽",
                     "eng_code": "Cliff",
-                    "description": "속세가 까마득하게 내려다보이는 절벽 끝."
+                    "description": "절벽 끝. 속세 조망."
                 },
                 {
                     "name": "손님방",
                     "eng_code": "GuestRoom",
-                    "description": "절벽 끝에 위치해 경치가 좋지만 바람이 많이 부는 손님방."
+                    "description": "절벽 끝 손님방. 경치 좋음, 바람."
                 }
             ]
         },
@@ -202,42 +202,42 @@
                 {
                     "name": "창천각",
                     "eng_code": "MainHall",
-                    "description": "남궁세가의 가주가 머무는 웅장한 건물."
+                    "description": "가주 거처. 웅장함."
                 },
                 {
                     "name": "가주 집무실 (')",
                     "eng_code": "LordOffice",
-                    "description": "남궁천이 업무를 보는 곳. 뇌제라는 별호답게 엄숙한 분위기. 명검들이 진열되어 있다."
+                    "description": "남궁천 집무실. 엄숙, 명검 진열."
                 },
                 {
                     "name": "남궁세아의 방 (-')",
                     "eng_code": "SeAhRoom",
-                    "description": "최고급 가구와 보석함으로 꾸며진 방. 귀족 아가씨의 방답지 않게 검술 서적도 많다."
+                    "description": "고급 가구/보석함. 검술 서적 다수."
                 },
                 {
                     "name": "대연무장",
                     "eng_code": "TrainingField",
-                    "description": "오대세가 중 가장 큰 규모를 자랑하는 연무장."
+                    "description": "최대 규모 연무장."
                 },
                 {
                     "name": "검총",
                     "eng_code": "SwordTomb",
-                    "description": "부러진 검이나 선조들의 검을 모아둔 곳."
+                    "description": "부러진 검/선조 검 안치."
                 },
                 {
                     "name": "정원",
                     "eng_code": "Garden",
-                    "description": "귀족적인 취향으로 잘 가꾸어진 정원."
+                    "description": "귀족적 정원."
                 },
                 {
                     "name": "사랑방",
                     "eng_code": "GuestRoom",
-                    "description": "귀한 손님이 머무는 방. 창호지 문 너머로 정원이 보인다."
+                    "description": "귀빈실. 정원 조망."
                 },
                 {
                     "name": "연회장",
                     "eng_code": "BanquetHall",
-                    "description": "손님을 접대하고 연회를 여는 화려한 홀."
+                    "description": "접대/연회용 화려한 홀."
                 }
             ]
         },
@@ -248,37 +248,37 @@
                 {
                     "name": "지략의 전당",
                     "eng_code": "MainHall",
-                    "description": "가문 회의가 열리는 곳. 중앙에 거대한 지도가 놓여 있다."
+                    "description": "가문 회의실. 거대 지도."
                 },
                 {
                     "name": "가주 집무실 (')",
                     "eng_code": "LordOffice",
-                    "description": "각종 보고서와 지도가 쌓여 있는 집무실."
+                    "description": "보고서/지도 산더미."
                 },
                 {
                     "name": "제갈연주의 방 (-')",
                     "eng_code": "YeonJooRoom",
-                    "description": "사방이 책으로 둘러싸인 방. 침대 위에도 책이 있고, 바닥에도 책이 있다."
+                    "description": "책으로 둘러싸인 방."
                 },
                 {
                     "name": "서재",
                     "eng_code": "Study",
-                    "description": "수만 권의 책이 쌓여 있는 거대한 서재."
+                    "description": "거대 서재 (수만 권)."
                 },
                 {
                     "name": "진법 훈련장",
                     "eng_code": "FormationGround",
-                    "description": "기문둔갑과 진법이 설치된 미로 같은 훈련장."
+                    "description": "기문둔갑/진법 미로."
                 },
                 {
                     "name": "천기대",
                     "eng_code": "Observatory",
-                    "description": "밤하늘의 별을 관측하는 높은 누각."
+                    "description": "별 관측 누각."
                 },
                 {
                     "name": "손님방",
                     "eng_code": "GuestRoom",
-                    "description": "조용하고 학구적인 분위기의 손님방. 붓과 벼루가 준비되어 있다."
+                    "description": "학구적 분위기. 붓/벼루 구비."
                 }
             ]
         },
@@ -289,32 +289,32 @@
                 {
                     "name": "연자오",
                     "eng_code": "Dock",
-                    "description": "호수 위에 지어진 아름다운 수상 가옥."
+                    "description": "호수 위 수상 가옥. 아름다움."
                 },
                 {
                     "name": "가주 집무실 (')",
                     "eng_code": "LordOffice",
-                    "description": "호수가 내려다보이는 우아한 집무실."
+                    "description": "우아한 집무실. 호수 조망."
                 },
                 {
                     "name": "모용예린의 방 (-')",
                     "eng_code": "YeRinRoom",
-                    "description": "각종 연구 자료와 실험 도구들이 널려 있는 방. 안경 닦이가 곳곳에 있다."
+                    "description": "연구 자료/실험 도구 산재. 안경 닦이."
                 },
                 {
                     "name": "환검정",
                     "eng_code": "Pavilion",
-                    "description": "검술을 연마하는 호수 한가운데의 정자."
+                    "description": "호수 정자 (검술 연마)."
                 },
                 {
                     "name": "장서각",
                     "eng_code": "Library",
-                    "description": "각 문파의 무공 비급을 훔쳐 모아둔 비밀 도서관."
+                    "description": "훔친 무공 비급 보관 (비밀)."
                 },
                 {
                     "name": "수상 손님방",
                     "eng_code": "WaterGuestRoom",
-                    "description": "배를 타고 들어가야 하는 별채 손님방. 운치 있다."
+                    "description": "별채 손님방 (배 이동)."
                 }
             ]
         },
@@ -325,37 +325,37 @@
                 {
                     "name": "당가 대문",
                     "eng_code": "MainGate",
-                    "description": "초록색 기와와 뱀 문양이 있는 거대한 대문."
+                    "description": "초록 기와, 뱀 문양 대문."
                 },
                 {
                     "name": "가주 집무실 (')",
                     "eng_code": "LordOffice",
-                    "description": "독왕 당문식의 방. 곳곳에 해독제와 독약병이 진열되어 있다."
+                    "description": "독왕 당문식 방. 해독제/독약 진열."
                 },
                 {
                     "name": "당소율의 방 (-')",
                     "eng_code": "SoYulRoom",
-                    "description": "인형 대신 독충 표본이 장식된 귀라면서도 섬뜩한 방."
+                    "description": "독충 표본 장식. 섬뜩함."
                 },
                 {
                     "name": "만독각",
                     "eng_code": "PoisonHall",
-                    "description": "온갖 독을 연구하고 보관하는 비밀스러운 건물."
+                    "description": "독 연구/보관."
                 },
                 {
                     "name": "약초원",
                     "eng_code": "HerbGarden",
-                    "description": "희귀한 독초와 약초들이 자라는 정원."
+                    "description": "희귀 독초/약초 정원."
                 },
                 {
                     "name": "지하실",
                     "eng_code": "Lab",
-                    "description": "인체 실험이나 독 제조가 이루어지는 어두운 지하실."
+                    "description": "인체 실험/독 제조."
                 },
                 {
                     "name": "손님방",
                     "eng_code": "GuestRoom",
-                    "description": "손님이 머무는 방. 차나 음식을 먹기 전에 은침으로 검사해야 할 것 같은 분위기."
+                    "description": "손님방. 은침 검사 분위기."
                 }
             ]
         },
@@ -366,32 +366,32 @@
                 {
                     "name": "연무장",
                     "eng_code": "TrainingField",
-                    "description": "바닥이 깨지고 벽이 부서진 거친 훈련장."
+                    "description": "거친 훈련장 (파손)."
                 },
                 {
                     "name": "가주 집무실 (')",
                     "eng_code": "LordOffice",
-                    "description": "도왕 팽무도의 방. 책상보다는 술상이 더 크다. 거대한 도가 벽에 걸려 있다."
+                    "description": "도왕 팽무도 방. 술상, 거대 도(刀)."
                 },
                 {
                     "name": "팽소소의 방 (-')",
                     "eng_code": "SoSoRoom",
-                    "description": "소녀 감성으로 꾸미려 노력했으나, 가구들이 팽소소의 힘을 못 이겨 부서져 있는 방."
+                    "description": "소녀 감성 시도 (가구 파손)."
                 },
                 {
                     "name": "대식당",
                     "eng_code": "DiningHall",
-                    "description": "팽가 무인들이 고기와 술을 즐기는 거대한 식당."
+                    "description": "고기/술 즐기는 거대 식당."
                 },
                 {
                     "name": "무기고",
                     "eng_code": "Armory",
-                    "description": "거대한 도(刀)들이 진열된 무기고."
+                    "description": "거대 도 진열."
                 },
                 {
                     "name": "손님방",
                     "eng_code": "GuestRoom",
-                    "description": "침대가 돌처럼 딱딱하고 투박한 손님방."
+                    "description": "투박한 손님방 (돌 침대)."
                 }
             ]
         },
@@ -402,37 +402,37 @@
                 {
                     "name": "천마궁",
                     "eng_code": "MainPalace",
-                    "description": "십만대산 정상에 위치한 거대하고 위압적인 궁전."
+                    "description": "십만대산 정상 궁전. 위압감."
                 },
                 {
                     "name": "교주 집무실 (')",
                     "eng_code": "LeaderChamber",
-                    "description": "천마 천위강의 방. 검붉은 휘장이 드리워진, 숨이 막힐 듯한 압박감이 느껴지는 곳."
+                    "description": "천마 방. 검붉은 휘장, 압박감."
                 },
                 {
                     "name": "천예령의 방 (-')",
                     "eng_code": "YeRyeongRoom",
-                    "description": "검은 비단과 붉은 장미로 장식된 고혹적이고 퇴폐적인 방."
+                    "description": "검은 비단/붉은 장미. 고혹/퇴폐."
                 },
                 {
                     "name": "혈교단",
                     "eng_code": "BloodAltar",
-                    "description": "피의 의식을 치르는 붉은 제단."
+                    "description": "피의 의식 제단."
                 },
                 {
                     "name": "만마전",
                     "eng_code": "AssemblyHall",
-                    "description": "마교의 고위 간부들이 모이는 회의장."
+                    "description": "고위 간부 회의장."
                 },
                 {
                     "name": "투기장",
                     "eng_code": "Arena",
-                    "description": "약육강식의 규칙에 따라 서로 죽이고 죽이는 투기장."
+                    "description": "약육강식 투기장."
                 },
                 {
                     "name": "고급 감옥",
                     "eng_code": "LuxuryPrison",
-                    "description": "중요한 인질(주인공 등)을 가두는, 감옥이라기엔 너무 화려한 방."
+                    "description": "주요 인질 수감 (화려함)."
                 }
             ]
         },
@@ -443,37 +443,37 @@
                 {
                     "name": "빙궁 입구",
                     "eng_code": "Gate",
-                    "description": "거대한 얼음으로 만들어진 성문."
+                    "description": "얼음 성문."
                 },
                 {
                     "name": "수정궁",
                     "eng_code": "MainHall",
-                    "description": "투명한 얼음과 수정으로 장식된 아름다운 알현실."
+                    "description": "얼음 알현실. 투명/수정."
                 },
                 {
                     "name": "궁주 집무실 (')",
                     "eng_code": "LordOffice",
-                    "description": "얼음 의자가 놓인 차가운 집무실. 난로가 없다."
+                    "description": "얼음 의자. 난로 없음."
                 },
                 {
                     "name": "연화린의 방 (-')",
                     "eng_code": "HwaRinRoom",
-                    "description": "모든 가구가 얼음과 수정으로 조각된 방. 침대에는 최고급 백호 가죽이 깔려 있다."
+                    "description": "얼음 가구. 백호 가죽 침대."
                 },
                 {
                     "name": "냉동 감옥",
                     "eng_code": "Prison",
-                    "description": "죄수를 얼려서 가두는 감옥."
+                    "description": "동결 감옥."
                 },
                 {
                     "name": "설원",
                     "eng_code": "SnowField",
-                    "description": "끝없이 펼쳐진 눈 덮인 벌판."
+                    "description": "눈 덮인 벌판."
                 },
                 {
                     "name": "온천",
                     "eng_code": "HotSpring",
-                    "description": "북해의 유일한 안식처인 노천 온천."
+                    "description": "노천 온천 (치유)."
                 }
             ]
         },
@@ -484,27 +484,27 @@
                 {
                     "name": "왕의 천막 (')",
                     "eng_code": "KingTent",
-                    "description": "야수왕 야율바르칸이 머무는 거대한 가죽 천막."
+                    "description": "야수왕 천막 (가죽)."
                 },
                 {
                     "name": "야율의 둥지 (-')",
                     "eng_code": "YaYulDen",
-                    "description": "방이라기보다는 짐승의 둥지에 가까운 야율의 거처. 푹신한 털가죽이 가득하다."
+                    "description": "야율 거처. 짐승 둥지 (털가죽)."
                 },
                 {
                     "name": "야수 사육장",
                     "eng_code": "TamingGround",
-                    "description": "거대한 맹수들이 갇혀 있거나 훈련받는 곳."
+                    "description": "맹수 감금/훈련."
                 },
                 {
                     "name": "부족 제단",
                     "eng_code": "Altar",
-                    "description": "동물 뼈로 장식된 원시적인 제단."
+                    "description": "원시 제단 (뼈 장식)."
                 },
                 {
                     "name": "나무 위 오두막",
                     "eng_code": "TreeHouse",
-                    "description": "손님에게 내어주는 나무 위의 숙소. 사다리를 타고 올라가야 한다."
+                    "description": "손님 숙소 (나무 위)."
                 }
             ]
         },
@@ -515,27 +515,27 @@
                 {
                     "name": "총채주실 (')",
                     "eng_code": "CaptainCabin",
-                    "description": "수로채주가 머무는 선장실. 지도가 펼쳐져 있고 럼주 냄새가 난다."
+                    "description": "선장실. 지도, 럼주 냄새."
                 },
                 {
                     "name": "본채 갑판",
                     "eng_code": "Deck",
-                    "description": "물 위에 떠 있는 거대한 요새의 갑판."
+                    "description": "수상 요새 갑판."
                 },
                 {
                     "name": "연회용 배",
                     "eng_code": "PartyBoat",
-                    "description": "흥청망청 술판이 벌어지는 유람선."
+                    "description": "유람선 (술판)."
                 },
                 {
                     "name": "선실",
                     "eng_code": "Cabin",
-                    "description": "흔들리는 배 안의 좁지만 아늑한 객실."
+                    "description": "손님 객실 (좁음/아늑)."
                 },
                 {
                     "name": "수중 감옥",
                     "eng_code": "Prison",
-                    "description": "물속에 잠겨 있는 철창 감옥."
+                    "description": "수중 철창 감옥."
                 }
             ]
         },
@@ -546,32 +546,32 @@
                 {
                     "name": "태화전",
                     "eng_code": "ThroneHall",
-                    "description": "황제가 신하들을 조회를 하는 금빛 찬란한 정전."
+                    "description": "황제 조회 (금빛 정전)."
                 },
                 {
                     "name": "황제 침소 (')",
                     "eng_code": "EmperorBedroom",
-                    "description": "금줄이 쳐진 황제의 침실. 용 문양의 침상이 있다."
+                    "description": "황제 침실. 금줄, 용 문양 침상."
                 },
                 {
                     "name": "공주 처소",
                     "eng_code": "PrincessRoom",
-                    "description": "주예서가 머무는 방. 온갖 보물과 인형으로 꾸며져 있다."
+                    "description": "주예서 방. 보물/인형 장식."
                 },
                 {
                     "name": "어화원",
                     "eng_code": "Garden",
-                    "description": "황제와 후궁들이 산책하는 아름다운 정원. 인공 호수와 정자가 있다."
+                    "description": "황실 정원. 호수/정자."
                 },
                 {
                     "name": "황실 서고",
                     "eng_code": "ImperialLibrary",
-                    "description": "세상의 모든 지식이 모여 있는 거대한 도서관."
+                    "description": "거대 도서관 (모든 지식)."
                 },
                 {
                     "name": "비밀 통로",
                     "eng_code": "SecretPassage",
-                    "description": "황족만이 아는 궁궐의 비밀 탈출구."
+                    "description": "황족 전용 탈출구."
                 }
             ]
         },
@@ -582,22 +582,22 @@
                 {
                     "name": "상회주실 (')",
                     "eng_code": "OwnerOffice",
-                    "description": "금만수가 돈을 세는 방. 황금으로 만든 장사 도구들이 있다."
+                    "description": "금만수 방. 황금 도구."
                 },
                 {
                     "name": "금채월의 방 (-')",
                     "eng_code": "ChaeWolRoom",
-                    "description": "백화점 명품관을 옮겨놓은 듯한 방. 드레스룸이 방보다 크다."
+                    "description": "명품관 스타일 방. 거대 드레스룸."
                 },
                 {
                     "name": "금고",
                     "eng_code": "Vault",
-                    "description": "엄청난 재화가 쌓여 있는 거대한 금고."
+                    "description": "거대 금고 (재화)."
                 },
                 {
                     "name": "VIP 접객실",
                     "eng_code": "VIPRoom",
-                    "description": "귀한 손님을 모시는 최고급 접대실."
+                    "description": "최고급 접대실."
                 }
             ]
         },
@@ -608,22 +608,22 @@
                 {
                     "name": "의선 거처 (')",
                     "eng_code": "House",
-                    "description": "의선과 한설희가 머무는 소박한 초가집."
+                    "description": "의선/한설희 초가집."
                 },
                 {
                     "name": "진료실",
                     "eng_code": "Clinic",
-                    "description": "환자들을 치료하는 방. 약 냄새가 배어 있다."
+                    "description": "치료실. 약 냄새."
                 },
                 {
                     "name": "손님방/병실",
                     "eng_code": "Sickroom",
-                    "description": "환자가 요양하는 방. 채광이 좋고 공기가 맑다."
+                    "description": "요양실. 채광/공기 좋음."
                 },
                 {
                     "name": "온천",
                     "eng_code": "HealingSpring",
-                    "description": "약초 성분이 녹아 있는 치유의 온천."
+                    "description": "치유 온천 (약초 성분)."
                 }
             ]
         },
@@ -634,22 +634,22 @@
                 {
                     "name": "문주실 (')",
                     "eng_code": "LeaderRoom",
-                    "description": "홍유비의 은밀한 방. 고급 기루의 최상층에 위치한다."
+                    "description": "홍유비 방. 기루 최상층 (은밀)."
                 },
                 {
                     "name": "기루",
                     "eng_code": "Brothel",
-                    "description": "하오문의 위장 사업체이자 본거지."
+                    "description": "위장 사업체/본거지."
                 },
                 {
                     "name": "지하 창고",
                     "eng_code": "Warehouse",
-                    "description": "장물과 정보가 보관된 은밀한 장소."
+                    "description": "장물/정보 보관."
                 },
                 {
                     "name": "비밀 접선지",
                     "eng_code": "MeetingSpot",
-                    "description": "뒷골목의 은밀한 접선 장소."
+                    "description": "뒷골목 접선 장소."
                 }
             ]
         }
@@ -662,22 +662,22 @@
                 {
                     "name": "번화가",
                     "eng_code": "Street",
-                    "description": "상점과 사람들이 붐비는 도시의 거리."
+                    "description": "혼잡한 도시 거리."
                 },
                 {
                     "name": "시장",
                     "eng_code": "Market",
-                    "description": "온갖 물건을 파는 활기찬 시장통."
+                    "description": "활기찬 시장통."
                 },
                 {
                     "name": "성벽",
                     "eng_code": "Wall",
-                    "description": "도시를 둘러싼 높은 성벽."
+                    "description": "높은 성벽."
                 },
                 {
                     "name": "나루터",
                     "eng_code": "Ferry",
-                    "description": "강가에서 배를 타는 곳."
+                    "description": "강가 선착장."
                 }
             ]
         },
@@ -688,37 +688,37 @@
                 {
                     "name": "숲길",
                     "eng_code": "ForestPath",
-                    "description": "나무가 우거진 호젓한 숲길."
+                    "description": "호젓한 숲길."
                 },
                 {
                     "name": "산길",
                     "eng_code": "MountainPath",
-                    "description": "험준한 산을 오르는 좁은 길."
+                    "description": "험준한 산길."
                 },
                 {
                     "name": "대나무 숲",
                     "eng_code": "BambooForest",
-                    "description": "바람에 흔들리는 대나무 숲. (비무 장소로 적합)"
+                    "description": "대나무 숲 (비무 장소)."
                 },
                 {
                     "name": "갈대밭",
                     "eng_code": "ReedField",
-                    "description": "가을 바람이 부는 쓸쓸한 갈대밭."
+                    "description": "쓸쓸한 갈대밭 (가을)."
                 },
                 {
                     "name": "계곡",
                     "eng_code": "Valley",
-                    "description": "맑은 물이 흐르는 깊은 계곡."
+                    "description": "깊은 계곡."
                 },
                 {
                     "name": "동굴",
                     "eng_code": "Cave",
-                    "description": "은거 기인이 살 것 같은 신비로운 동굴."
+                    "description": "신비로운 동굴 (은거 기인)."
                 },
                 {
                     "name": "절벽 위",
                     "eng_code": "CliffTop",
-                    "description": "달을 구경하기 좋은 탁 트인 절벽."
+                    "description": "탁 트인 절벽 (달 구경)."
                 }
             ]
         }
@@ -731,27 +731,27 @@
                 {
                     "name": "객잔 1층",
                     "eng_code": "Hall",
-                    "description": "술과 음식을 먹는 왁자지껄한 홀."
+                    "description": "식사/술자리 (왁자지껄)."
                 },
                 {
                     "name": "객잔 2층",
                     "eng_code": "Room",
-                    "description": "손님이 묵는 달방. (침상과 탁자가 있음)"
+                    "description": "손님 객실."
                 },
                 {
                     "name": "객잔 부엌",
                     "eng_code": "Kitchen",
-                    "description": "요리를 만드는 분주한 부엌."
+                    "description": "분주한 주방."
                 },
                 {
                     "name": "마구간",
                     "eng_code": "Stable",
-                    "description": "말들이 쉬는 곳."
+                    "description": "말 휴식처."
                 },
                 {
                     "name": "특실",
                     "eng_code": "Suite",
-                    "description": "돈 많은 상인이나 고수가 묵는 넓은 방."
+                    "description": "VIP 객실 (상인/고수)."
                 }
             ]
         },
@@ -762,17 +762,17 @@
                 {
                     "name": "기루 연회장",
                     "eng_code": "Hall",
-                    "description": "화려한 조명과 술, 음악이 있는 연회장."
+                    "description": "화려한 연회장 (조명/음악)."
                 },
                 {
                     "name": "기녀의 방",
                     "eng_code": "PrivateRoom",
-                    "description": "고급스러운 가구와 비단으로 장식된 은밀한 방."
+                    "description": "은밀한 방 (고급)."
                 },
                 {
                     "name": "기루 테라스",
                     "eng_code": "Terrace",
-                    "description": "달빛을 보며 술을 마실 수 있는 야외 테라스."
+                    "description": "야외 테라스 (달빛)."
                 }
             ]
         }

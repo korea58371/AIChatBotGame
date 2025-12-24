@@ -168,4 +168,5 @@ export const backgroundMappings: Record<string, string> = {
     '황무지2': 'Wasteland2.jpg',
     '황실_장군부': 'Imperial_GeneralMansion.jpg',
     '흑사파본거지': 'BlackSnakeSect_Base.jpg',
+    'home': 'Abandoned_House.jpg', // Fallback for default state
 };

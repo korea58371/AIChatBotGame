@@ -44,6 +44,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     // Construct Skill List
     const skillList = (stats.skills || []).join(', ') || "없음 (기본 주먹질)";
 
+    // [Dynamic Block 5 construction]
     const directInputConstraints = state.isDirectInput
         ? `
 [유저 직접 입력 시 제약 사항]
@@ -54,65 +55,76 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
 `
         : "";
 
+
+    // [Location Details]
+    const worldData = state.worldData || { locations: {}, items: {} };
+    const locData = worldData.locations?.[state.currentLocation];
+    let locationDesc = "알 수 없는 장소";
+    let locationSecrets = "";
+
+    if (typeof locData === 'string') {
+        locationDesc = locData;
+    } else if (locData) {
+        locationDesc = locData.description || "설명 없음";
+        if (locData.secrets && locData.secrets.length > 0) {
+            locationSecrets = `\n  - **특이사항(비밀)**: ${locData.secrets.join(', ')}`;
+        }
+    }
+
+    // [Narrative Perspective]
+    const perspective = stats.narrative_perspective || '3인칭';
+    const perspectiveRule = perspective.includes('1인칭')
+        ? `
+**[서술 시점: 1인칭 주인공 시점 (First Person)]**
+- **규칙**: 모든 서술은 주인공의 눈('나', '내')을 통해서만 이루어져야 합니다.
+- **금지**: '당신', '김현준' 등 3인칭 지칭 절대 금지.
+- **예시**: 
+  (X) 당신은 검을 들었다. 
+  (O) 나는 검을 들었다. 내 손끝이 떨려왔다.
+`
+        : `
+**[서술 시점: 3인칭 전지적 작가 시점 (Third Person)]**
+- **규칙**: 서술자는 관찰자로서 '주인공 이름'이나 '그'를 사용하여 서술합니다.
+- **금지**: '나'를 주어로 사용 금지 (대사 제외).
+`;
+
     return `
+# [5. CURRENT GAME STATE (INJECTED)]
+*이 정보는 현재 턴의 상황입니다. 최우선으로 반영하여 서술하십시오.*
 
+${perspectiveRule}
 
-${(!state.turnCount || state.turnCount <= 1) ? WUXIA_FIRST_TURN_EXAMPLE : ""}
-
----
+# [ACTIVE CHARACTERS]
+{{CHARACTER_INFO}}
 
 ${directInputConstraints}
 
-### [특수 설정: 빙의자 (Possessor)]
-**정체**: 주인공은 무협 소설 **'천하제일(天下第一)'**을 읽다 잠든 현대인이다.
-**지식**: 주인공은 이 세계가 '소설 속'이라는 것을 알고 있으며, 등장인물들의 **숨겨진 비밀**과 **미래의 사건**을 '설정'이나 '전개'로서 기억하고 있다.
-**행동 지침**:
-1. **[독자의 통찰]**: 플레이어가 캐릭터의 비밀에 관련된 행동이나 대사를 선택하면, AI는 그것을 "소설 내용을 기억해냈다" 혹은 "미래를 알고 행동한다"는 뉘앙스로 서술해야 한다.
-2. **[타인의 반응]**: 주인공이 남들이 모를 비밀을 언급하면, 상대방은 "그걸 어떻게 알았지?!"라며 경계하거나 당황해야 한다. 일반적인 정보로는 취급하지 말 것.
-3. **[서술 관점]**: 서술문은 가끔 현대인의 관점에서 무협 클리셰를 비꼬거나, "소설에서는 이랬는데" 같은 독백을 섞어줄 수 있다.
+**[서술 주의사항: 메타 발언 금지]**
+아래 수치(HP, 내공 등)는 서술을 위한 참고용일 뿐입니다. **절대 수치를 직접 언급하거나 게임 시스템처럼 묘사하지 마십시오.**
+(X) "체력이 50 남아서 힘들다." / (O) "숨이 차오르고 다리가 후들거린다."
+*피로도가 90 이상이면 모든 행동은 실패합니다. 경지 차이가 나면 즉사합니다.*
 
----
-
-### 1. 주인공 현재 상태
-**시간**: ${state.day || 1}일차 [${state.time || 'Morning'}]
-**피로도**: ${stats.fatigue || 0}%
-**소속**: ${faction}
-**경지**: ${playerRank}
-   - **단계**: ${rankData.status}
-   - **능력**: ${rankData.capability}
-**기력(MP)**: ${stats.mp}
-**내공(갑자)**: ${stats.neigong || 0}년 
-**보유 무공**:
-- **무공**: ${skillList}
-- **내공심법**: ${stats.internalArt || '기본 토납법'}
-- **경공**: ${stats.footwork || '기본 보법'}
+- **현재 시간**: ${state.day || 1}일차 ${state.time || '14:00'}
+- **현재 위치**: ${state.currentLocation}
+  - **설명**: ${locationDesc}${locationSecrets}
+- **주인공 상태**: [HP: ${stats.hp || 100}], [피로도: ${stats.fatigue || 0}], [경지: ${playerRank}]
+  - **상세**: ${rankData.status} (능력: ${rankData.capability})
+- **내공**: ${stats.neigong || 0}년
+- **보유 무공**: ${skillList}
 
 **[전투 가이드라인]**:
 주인공은 현재 **'${playerRank}'** 경지이다. 
 - **${rankData.name}**의 한계: ${rankData.capability}
 - 상위 경지와의 싸움은 자살행위이며, 동급이라도 방심하면 즉사한다.
 
----
+# [SCENARIO & EVENTS]
+- **활성 이벤트**: ${state.currentEvent || "없음"}
+- **현재 시나리오**: ${state.scenarioSummary || "이야기가 계속됩니다."}
 
-## [현재 상황]
-${state.worldInfo || "주인공은 강호의 냉혹함을 배우며 성장해 나간다."}
-
-## [현재 시나리오]
-${state.scenarioSummary || "이야기가 시작됩니다."}
-
-## [등장 인물]
-{{CHARACTER_INFO}}
-
-
-
-### [⚡ 중요: 이벤트]
-**아래 내용이 비어있지 않다면, 다른 어떤 맥락보다 최우선으로 이 내용을 실행하라.**
+### [⚡ 중요: 이벤트 - 최우선 실행]
+**위 '활성 이벤트'가 비어있지 않다면, 다른 어떤 맥락보다 최우선으로 해당 내용을 실행하라.**
 지금 이야기의 흐름에 어색하지 않게 이벤트의 지침을 따라야 한다. 자연스럽게 유도해야한다.
-{{EVENT_GUIDE}}
 
-${WUXIA_SYSTEM_GUIDE}
-
----
-이제 위 샘플 스타일을 따라 이야기를 시작하라.
 `;
 };
+

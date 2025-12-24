@@ -194,6 +194,7 @@ export class DataManager {
                         // [데이터 강화] 상세 설정(Lore) 데이터를 캐릭터 상태에 병합
                         // 기본 'characters.json'에는 이름과 기본 정보만 있고, 외모 묘사나 성격, 관계도 등 자세한 정보가 부족할 수 있습니다.
                         // 이를 'loreModule.WuxiaLore.charactersDetail'에서 가져와서 채워 넣습니다.
+
                         if (charactersModule && loreModule?.WuxiaLore?.charactersDetail) {
                             const mainChars = loreModule.WuxiaLore.charactersDetail.characters_main || [];
                             const suppChars = loreModule.WuxiaLore.charactersDetail.characters_supporting || [];
@@ -237,6 +238,48 @@ export class DataManager {
                                 // 캐릭터 모듈을 강화된 리스트로 교체합니다.
                                 charactersModule = enriched;
                             }
+                        }
+
+                        // [데이터 강화] Locations.json을 worldModule.locations로 평탄화 (Flatten)
+                        if (loreModule?.WuxiaLore?.locations) {
+                            const locSource = loreModule.WuxiaLore.locations;
+                            const flatLocations: Record<string, any> = {};
+
+                            // Helper to add location
+                            const addLoc = (key: string, data: any) => {
+                                if (key) flatLocations[key] = data;
+                            };
+
+                            // 1. Faction Locations (e.g., "무림맹 정문")
+                            locSource.faction_locations?.forEach((faction: any) => {
+                                faction.locations?.forEach((loc: any) => {
+                                    // Map by "Faction Name" (e.g., "무림맹 정문") - Preferred
+                                    addLoc(`${faction.faction_name} ${loc.name}`, loc);
+                                    // Map by "Name" (e.g., "정문") - Fallback, might collide
+                                    if (!flatLocations[loc.name]) addLoc(loc.name, loc);
+                                });
+                            });
+
+                            // 2. Regional Locations (e.g., "중원 번화가")
+                            locSource.regional_locations?.forEach((region: any) => {
+                                region.locations?.forEach((loc: any) => {
+                                    addLoc(`${region.region_name} ${loc.name}`, loc);
+                                    if (!flatLocations[loc.name]) addLoc(loc.name, loc);
+                                });
+                            });
+
+                            // 3. Common Locations (e.g., "객잔 1층")
+                            locSource.common_locations?.forEach((type: any) => {
+                                type.locations?.forEach((loc: any) => {
+                                    // Usually just Name is unique enough for common places like "객잔 1층"
+                                    addLoc(loc.name, loc);
+                                    addLoc(`${type.type_name} ${loc.name}`, loc);
+                                });
+                            });
+
+                            // Assign to worldModule
+                            if (!worldModule) worldModule = { locations: {}, items: {} };
+                            worldModule.locations = { ...worldModule.locations, ...flatLocations };
                         }
                     } catch (e) {
                         console.error(`[DataManager] IMPORT ERROR in 'wuxia':`, e);

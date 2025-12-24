@@ -145,7 +145,7 @@ export class LoreConverter {
             const arts: string[] = [];
 
             if (martial.signature_ultimate) {
-                arts.push(`[Ultimate] ${martial.signature_ultimate.name.split('(')[0].trim()}`);
+                arts.push(`[절기] ${martial.signature_ultimate.name.split('(')[0].trim()}`);
             }
 
             // [FIX] Sort keys for deterministic output
