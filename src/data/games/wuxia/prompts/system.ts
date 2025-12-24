@@ -97,6 +97,9 @@ ${perspectiveRule}
 # [ACTIVE CHARACTERS]
 {{CHARACTER_INFO}}
 
+[Available Extra Images]:
+${(state.availableExtraImages || []).map((img: string) => img.replace(/\.(png|jpg|jpeg)$/i, '')).join(', ')}
+
 ${directInputConstraints}
 
 **[서술 주의사항: 메타 발언 금지]**
