@@ -2037,7 +2037,7 @@ export default function VisualNovelUI() {
                 {/* Fallback for stuck state or Start Screen */}
                 {
                     isMounted && !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-auto z-10">
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-auto z-30">
                             {chatHistory.length === 0 ? (
                                 // Creation or Start Screen
                                 (() => {
