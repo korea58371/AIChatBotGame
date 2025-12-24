@@ -1332,6 +1332,37 @@ export default function VisualNovelUI() {
             newStats.luk = (newStats.luk || 10) + (logicResult.statChange.luk || 0);
         }
 
+        // [New] Time Progression Logic
+        if (logicResult.timeConsumed) {
+            const timeMap = ['morning', 'afternoon', 'evening', 'night'];
+            const currentState = useGameStore.getState();
+            // Normalize & Legacy Fallback
+            let currentTime = (currentState.time || 'morning').toLowerCase();
+            const koMap: Record<string, string> = { '아침': 'morning', '점심': 'afternoon', '저녁': 'evening', '밤': 'night' };
+            if (koMap[currentTime]) currentTime = koMap[currentTime];
+
+            let timeIndex = timeMap.indexOf(currentTime);
+            if (timeIndex === -1) timeIndex = 0; // Default
+
+            const consumed = logicResult.timeConsumed; // 1=Small, 2=Medium, 4=Long
+            const totalIndex = timeIndex + consumed;
+
+            const daysPassed = Math.floor(totalIndex / 4);
+            const newTimeIndex = totalIndex % 4;
+
+            if (daysPassed > 0) {
+                const newDay = (currentState.day || 1) + daysPassed;
+                currentState.setDay(newDay);
+                addToast(`${daysPassed}일이 지났습니다. (Day ${newDay})`, 'info');
+            }
+
+            const newTime = timeMap[newTimeIndex];
+            if (newTime !== currentTime) {
+                currentState.setTime(newTime);
+                console.log(`[Time] ${currentTime} -> ${newTime} (+${daysPassed} days)`);
+            }
+        }
+
         // [Fix] Update Fame & Fate (Was missing!)
         if (logicResult.fameChange) {
             newStats.fame = (newStats.fame || 0) + logicResult.fameChange;
