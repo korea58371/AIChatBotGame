@@ -167,7 +167,7 @@ export function parseScript(text: string): ScriptSegment[] {
                     if (line.trim()) {
                         segments.push({
                             type: 'dialogue',
-                            content: line.trim(),
+                            content: line.trim().replace(/^"(.*)"$/, '$1').replace(/^“(.*)”$/, '$1'), // [Fix] Strip quotes
                             character: name,
                             characterImageKey: imageKey, // Pass if parsed
                             expression: expression || '기본'
