@@ -1667,9 +1667,9 @@ export default function VisualNovelUI() {
                 </div>
 
                 {/* UI Layer */}
-                <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 p-3 md:p-6 flex justify-between items-start pointer-events-none">
                     {/* Left: Player Info & Stats */}
-                    <div className="pointer-events-auto flex flex-col gap-2 z-30">
+                    <div className="pointer-events-auto flex flex-col gap-2 z-20">
                         <div className="flex items-center gap-4">
                             {/* Restored Portrait Button */}
                             <div
@@ -1685,12 +1685,13 @@ export default function VisualNovelUI() {
                                     <div className="w-full h-full bg-gray-700 animate-pulse" />
                                 )}
                             </div>
-                            <h1 className="text-3xl font-bold text-white drop-shadow-md tracking-wider">
+
+                            <h1 className="text-xl md:text-3xl font-bold text-white drop-shadow-md tracking-wider">
                                 {isMounted ? playerName : "Loading..."}
                             </h1>
                         </div>
 
-                        <div className="flex flex-col gap-3 mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[300px]">
+                        <div className="flex flex-col gap-3 mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[200px] md:w-[300px]">
                             {/* HP Bar */}
                             <div className="relative w-full h-9 transform -skew-x-6 overflow-hidden rounded-lg border border-red-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.4)]">
                                 <div className="absolute inset-0 bg-red-900/20" />
@@ -1796,7 +1797,7 @@ export default function VisualNovelUI() {
                     </div>
 
                     {/* Right: Resources & Settings */}
-                    <div className="pointer-events-auto flex flex-col items-end gap-3 z-[60]">
+                    <div className="pointer-events-auto flex flex-col items-end gap-3 z-20">
                         {/* Resource Container */}
                         <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 shadow-2xl">
                             {/* Gold */}
@@ -1932,8 +1933,8 @@ export default function VisualNovelUI() {
                     </div>
                 </div>
 
-                {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 */}
-                <div className="absolute bottom-10 right-8 flex gap-2 z-50 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
+                {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 -> Z-20 (Basic UI) */}
+                <div className="absolute bottom-10 right-8 flex gap-2 z-20 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
                     <button
                         className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
@@ -1986,8 +1987,8 @@ export default function VisualNovelUI() {
                 {/* Center: Choices */}
                 {
                     choices.length > 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-auto z-10">
-                            <div className="flex flex-col gap-4 min-w-[450px]">
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-auto z-30 p-4">
+                            <div className="flex flex-col gap-3 md:gap-4 w-full max-w-[90%] md:w-auto md:min-w-[450px]">
                                 {choices.map((choice, idx) => (
                                     <motion.button
                                         key={idx}
@@ -1996,7 +1997,7 @@ export default function VisualNovelUI() {
                                         whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
                                         transition={{ delay: idx * 0.1 }}
                                         disabled={isProcessing}
-                                        className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold py-6 px-8 text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
+                                        className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold py-4 px-5 md:py-6 md:px-8 text-base md:text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                             ${isProcessing ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                                         `}
                                         onClick={(e) => {
@@ -2018,7 +2019,7 @@ export default function VisualNovelUI() {
                                     animate={{ opacity: 1, y: 0, skewX: -12 }}
                                     whileHover={{ scale: 1.05, skewX: -12 }}
                                     transition={{ delay: choices.length * 0.1 }}
-                                    className="w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold py-6 px-8 text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] hover:bg-white/80 hover:border-white transition-all duration-300"
+                                    className="w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold py-4 px-5 md:py-6 md:px-8 text-base md:text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] hover:bg-white/80 hover:border-white transition-all duration-300"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setIsInputOpen(true);
@@ -2508,11 +2509,11 @@ Instructions:
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 className="bg-gray-900 w-full max-w-4xl h-[80vh] rounded-xl flex flex-col border border-yellow-600 shadow-2xl overflow-hidden"
                             >
-                                <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-800">
+                                <div className="p-4 md:p-6 border-b border-gray-700 flex justify-between items-center bg-gray-800">
                                     <h2 className="text-2xl font-bold text-yellow-400">{t.charInfo}</h2>
                                     <button onClick={() => setShowCharacterInfo(false)} className="text-gray-400 hover:text-white text-xl">×</button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="flex-1 overflow-y-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                                     {/* Left Column: Basic Info & Personality */}
                                     <div className="space-y-8">
                                         {/* Base Stats Section */}
