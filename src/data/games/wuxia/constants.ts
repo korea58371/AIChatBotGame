@@ -205,12 +205,6 @@ export const WUXIA_FIRST_TURN_EXAMPLE = `
 
 /* [NEW] Consolidated System Instructions for Wuxia */
 export const WUXIA_SYSTEM_GUIDE = `
-### [⚡ 중요: 절대적 명령 (Event Guide)]
-**아래 내용이 비어있지 않다면, 다른 어떤 맥락보다 최우선으로 이 내용을 실행하라.**
-현재의 흐름이 어색하더라도 이 이벤트의 지시를 강제로 따르라.
-
-{{EVENT_GUIDE}}
-
 - **<선택지N>내용**
   - 마지막에 유저에게 제시할 선택지입니다.
   - **엄격한 규칙**: 괄호 안에 힌트, 스탯, 효과 등을 포함하지 마십시오.
