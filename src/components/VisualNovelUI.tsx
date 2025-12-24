@@ -1571,17 +1571,27 @@ export default function VisualNovelUI() {
         let hasActiveEvent = false;
 
         // 1. Prioritize Server-Side Event (Narrative Logic)
-        if (logicResult.triggerEventId && logicResult.currentEvent) {
-            console.log(`[Validating Logic] Server triggered event: ${logicResult.triggerEventId}`);
+        // 1. Prioritize Server-Side Event (Narrative Logic)
+        if (logicResult.triggerEventId) { // [Fix] Removed check for .currentEvent which is usually null
+            console.log(`[Validating Logic] Server triggered event ID: ${logicResult.triggerEventId}`);
 
-            // Add to triggered list (so it doesn't trigger again if 'once')
-            useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
+            // Lookup the event prompt from the Store
+            const storedEvents = useGameStore.getState().events || [];
+            const matchedEvent = storedEvents.find((e: any) => e.id === logicResult.triggerEventId);
 
-            // Set as current prompt
-            activeEventPrompt = logicResult.currentEvent;
-            hasActiveEvent = true;
+            if (matchedEvent) {
+                // Add to triggered list (so it doesn't trigger again if 'once')
+                useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
 
-            addToast(`Event Triggered: ${logicResult.triggerEventId}`, 'info');
+                // Set as current prompt
+                activeEventPrompt = matchedEvent.prompt;
+                hasActiveEvent = matchedEvent.id; // Store ID as truthy value
+
+                addToast(`Event Triggered: ${matchedEvent.id}`, 'info');
+                console.log(`[Event Found] Prompt Length: ${matchedEvent.prompt.length}`);
+            } else {
+                console.warn(`[Logic Error] Triggered ID '${logicResult.triggerEventId}' not found in Event Registry.`);
+            }
         }
 
         // 2. Client-Side Stat Events (e.g. Low HP, Injuries)
