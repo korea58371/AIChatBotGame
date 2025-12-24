@@ -1669,8 +1669,8 @@ export default function VisualNovelUI() {
                 {/* UI Layer */}
                 <div className="absolute top-0 left-0 right-0 p-3 md:p-6 flex justify-between items-start pointer-events-none">
                     {/* Left: Player Info & Stats */}
-                    <div className="pointer-events-auto flex flex-col gap-2 z-20">
-                        <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-2 pointer-events-none">
+                        <div className="flex items-center gap-4 z-40 relative pointer-events-auto">
                             {/* Restored Portrait Button */}
                             <div
                                 className="w-12 h-12 rounded-full border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.5)]"
@@ -1691,7 +1691,7 @@ export default function VisualNovelUI() {
                             </h1>
                         </div>
 
-                        <div className="flex flex-col gap-3 mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[200px] md:w-[300px]">
+                        <div className="flex flex-col gap-3 mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[200px] md:w-[300px] z-20 relative pointer-events-auto">
                             {/* HP Bar */}
                             <div className="relative w-full h-9 transform -skew-x-6 overflow-hidden rounded-lg border border-red-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.4)]">
                                 <div className="absolute inset-0 bg-red-900/20" />
