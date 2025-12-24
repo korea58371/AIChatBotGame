@@ -1797,7 +1797,7 @@ export default function VisualNovelUI() {
                     </div>
 
                     {/* Right: Resources & Settings */}
-                    <div className="pointer-events-auto flex flex-col items-end gap-3 z-20">
+                    <div className="pointer-events-auto flex flex-col items-end gap-3 z-40">
                         {/* Resource Container */}
                         <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 shadow-2xl">
                             {/* Gold */}
