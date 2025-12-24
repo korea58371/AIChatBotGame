@@ -9,6 +9,9 @@ import { resolveBackground } from '@/lib/background-manager'; // Added import //
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 
+import { submitGameplayLog } from '@/app/actions/log';
+
+
 import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -452,7 +455,18 @@ export default function VisualNovelUI() {
 
 
     // Hydration Fix & Asset Loading
+    const [sessionId, setSessionId] = useState<string>('');
     const [isMounted, setIsMounted] = useState(false);
+
+    // Initialize Session ID
+    useEffect(() => {
+        let sid = sessionStorage.getItem('vn_session_id');
+        if (!sid) {
+            sid = crypto.randomUUID();
+            sessionStorage.setItem('vn_session_id', sid);
+        }
+        setSessionId(sid);
+    }, []);
     useEffect(() => {
         setIsMounted(true);
         // Load Assets
@@ -2004,6 +2018,18 @@ export default function VisualNovelUI() {
                                             if (isProcessing) return;
                                             console.log("Choice clicked:", choice.content);
                                             e.stopPropagation();
+
+                                            // [LOGGING]
+                                            submitGameplayLog({
+                                                session_id: sessionId,
+                                                game_mode: useGameStore.getState().activeGameId,
+                                                turn_count: turnCount,
+                                                choice_selected: choice.content,
+                                                player_rank: playerStats.playerRank,
+                                                location: useGameStore.getState().currentLocation,
+                                                timestamp: new Date().toISOString()
+                                            });
+
                                             handleSend(choice.content);
                                         }}
                                     >
