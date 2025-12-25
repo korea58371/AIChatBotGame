@@ -1809,14 +1809,13 @@ export default function VisualNovelUI() {
                     </AnimatePresence>
                 </div>
 
-                {/* UI Layer */}
-                <div className="absolute top-0 left-0 right-0 p-3 md:p-6 flex justify-between items-start pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 p-[2vw] md:p-6 flex justify-between items-start pointer-events-none">
                     {/* Left: Player Info & Stats */}
-                    <div className="flex flex-col gap-2 pointer-events-none">
-                        <div className="flex items-center gap-4 z-40 relative pointer-events-auto">
+                    <div className="flex flex-col gap-[1vh] pointer-events-none">
+                        <div className="flex items-center gap-[3vw] md:gap-4 z-40 relative pointer-events-auto">
                             {/* Restored Portrait Button */}
                             <div
-                                className="w-12 h-12 rounded-full border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                                className="w-[15vw] h-[15vw] md:w-[4vw] md:h-[4vw] rounded-full border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.5)]"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setShowCharacterInfo(true);
@@ -1829,55 +1828,55 @@ export default function VisualNovelUI() {
                                 )}
                             </div>
 
-                            <h1 className="text-xl md:text-3xl font-bold text-white drop-shadow-md tracking-wider">
+                            <h1 className="text-[4vw] md:text-[1.5vw] font-bold text-white drop-shadow-md tracking-wider">
                                 {isMounted ? playerName : "Loading..."}
                             </h1>
                         </div>
 
-                        <div className="flex flex-col gap-3 mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[200px] md:w-[300px] z-20 relative pointer-events-auto">
+                        <div className="flex flex-col gap-[1vh] md:gap-3 mt-[1vh] md:mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[35vw] md:w-[15vw] z-20 relative pointer-events-auto">
                             {/* HP Bar */}
-                            <div className="relative w-full h-9 transform -skew-x-6 overflow-hidden rounded-lg border border-red-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.4)]">
+                            <div className="relative w-full h-[2.5vh] md:h-[2.5vh] transform -skew-x-6 overflow-hidden rounded-lg border border-red-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.4)]">
                                 <div className="absolute inset-0 bg-red-900/20" />
                                 <div
                                     className="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(220,38,38,0.7)]"
                                     style={{ width: `${(playerStats.hp / playerStats.maxHp) * 100}%` }}
                                 />
-                                <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-6">
-                                    <span className="text-sm font-bold text-red-100 drop-shadow-md">체력 (HP)</span>
-                                    <span className="text-sm font-bold text-white drop-shadow-md">{Math.round((playerStats.hp / playerStats.maxHp) * 100)}%</span>
+                                <div className="absolute inset-0 flex items-center justify-between px-[2vw] md:px-4 transform skew-x-6">
+                                    <span className="text-[2.5vw] md:text-[0.8vw] font-bold text-red-100 drop-shadow-md">체력 (HP)</span>
+                                    <span className="text-[2.5vw] md:text-[0.8vw] font-bold text-white drop-shadow-md">{Math.round((playerStats.hp / playerStats.maxHp) * 100)}%</span>
                                 </div>
                             </div>
 
                             {/* MP Bar */}
-                            <div className="relative w-full h-8 transform -skew-x-6 overflow-hidden rounded-lg border border-blue-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+                            <div className="relative w-full h-[2vh] md:h-[2vh] transform -skew-x-6 overflow-hidden rounded-lg border border-blue-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(37,99,235,0.4)]">
                                 <div className="absolute inset-0 bg-blue-900/20" />
                                 <div
                                     className="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(37,99,235,0.7)]"
                                     style={{ width: `${(playerStats.mp / playerStats.maxMp) * 100}%` }}
                                 />
-                                <div className="absolute inset-0 flex items-center justify-between px-4 transform skew-x-6">
-                                    <span className="text-xs font-bold text-blue-100 drop-shadow-md">정신력 (MP)</span>
-                                    <span className="text-xs font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
+                                <div className="absolute inset-0 flex items-center justify-between px-[2vw] md:px-4 transform skew-x-6">
+                                    <span className="text-[2vw] md:text-[0.7vw] font-bold text-blue-100 drop-shadow-md">정신력 (MP)</span>
+                                    <span className="text-[2vw] md:text-[0.7vw] font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
                                 </div>
                             </div>
 
                             {/* Fatigue Bar (Slimmer) */}
-                            <div className="relative w-full h-4 overflow-hidden rounded-full border border-purple-900/40 bg-black/60 backdrop-blur-sm mt-0.5">
+                            <div className="relative w-full h-[1.2vh] md:h-[1.2vh] overflow-hidden rounded-full border border-purple-900/40 bg-black/60 backdrop-blur-sm mt-[0.5vh]">
                                 <div
                                     className="h-full bg-gradient-to-r from-purple-900 via-purple-700 to-purple-500 transition-all duration-500 ease-out"
                                     style={{ width: `${Math.min(100, (playerStats.fatigue || 0))}%` }}
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-[10px] font-bold text-purple-200/80 drop-shadow-sm tracking-widest">FATIGUE {playerStats.fatigue || 0}%</span>
+                                    <span className="text-[1.8vw] md:text-[0.6vw] font-bold text-purple-200/80 drop-shadow-sm tracking-widest">FATIGUE {playerStats.fatigue || 0}%</span>
                                 </div>
                             </div>
 
                             {/* Status Grid (2x2) */}
-                            <div className="grid grid-cols-2 gap-2 w-full mt-1">
+                            <div className="grid grid-cols-2 gap-[1vw] md:gap-2 w-full mt-[0.5vh]">
                                 {/* Rank */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-yellow-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
-                                    <span className="text-yellow-600/80 text-[10px] font-bold tracking-widest mb-1 uppercase">경지</span>
-                                    <span className="text-yellow-100 font-bold text-sm text-center leading-tight break-keep">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-yellow-700/30 p-[1vw] md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[6vh]">
+                                    <span className="text-yellow-600/80 text-[2.5vw] md:text-[0.6vw] font-bold tracking-widest mb-[0.5vh] uppercase">경지</span>
+                                    <span className="text-yellow-100 font-bold text-[3vw] md:text-[0.8vw] text-center leading-tight break-keep">
                                         {(() => {
                                             const rankKey = playerStats.playerRank || '';
                                             const hierarchy = (martialArtsLevels as any).realm_hierarchy;
@@ -1888,9 +1887,9 @@ export default function VisualNovelUI() {
                                 </div>
 
                                 {/* Neigong */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-blue-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
-                                    <span className="text-blue-500/80 text-[10px] font-bold tracking-widest mb-1 uppercase">내공</span>
-                                    <span className="text-blue-100 font-bold text-sm">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-blue-700/30 p-[1vw] md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[6vh]">
+                                    <span className="text-blue-500/80 text-[2.5vw] md:text-[0.6vw] font-bold tracking-widest mb-[0.5vh] uppercase">내공</span>
+                                    <span className="text-blue-100 font-bold text-[3vw] md:text-[0.8vw]">
                                         {playerStats.neigong < 60
                                             ? `${(playerStats.neigong || 0).toFixed(0)}년`
                                             : `${Math.floor(playerStats.neigong / 60)}갑자`
@@ -1899,17 +1898,17 @@ export default function VisualNovelUI() {
                                 </div>
 
                                 {/* Faction */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-indigo-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
-                                    <span className="text-indigo-500/80 text-[10px] font-bold tracking-widest mb-1 uppercase">소속</span>
-                                    <span className="text-indigo-100 font-bold text-sm text-center">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-indigo-700/30 p-[1vw] md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[6vh]">
+                                    <span className="text-indigo-500/80 text-[2.5vw] md:text-[0.6vw] font-bold tracking-widest mb-[0.5vh] uppercase">소속</span>
+                                    <span className="text-indigo-100 font-bold text-[3vw] md:text-[0.8vw] text-center">
                                         {(playerStats.faction || '방랑객').split(' ')[0]}
                                     </span>
                                 </div>
 
                                 {/* Time (Wuxia Style) */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
-                                    <span className="text-emerald-600/80 text-[10px] font-bold tracking-widest mb-1 uppercase">{day || 1}일차</span>
-                                    <span className="text-emerald-100 font-bold text-xs font-serif flex flex-col items-center">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-[1vw] md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[6vh]">
+                                    <span className="text-emerald-600/80 text-[2.5vw] md:text-[0.6vw] font-bold tracking-widest mb-[0.5vh] uppercase">{day || 1}일차</span>
+                                    <span className="text-emerald-100 font-bold text-[2.5vw] md:text-[0.7vw] font-serif flex flex-col items-center">
                                         {(() => {
                                             const wuxiaTime: Record<string, { name: string, time: string }> = {
                                                 morning: { name: '진시(辰)', time: '07:00 ~ 09:00' },
@@ -1923,13 +1922,13 @@ export default function VisualNovelUI() {
 
                                             // [New] Support Custom Time String (e.g. "14:40 낮")
                                             if (!t) {
-                                                return <span className="text-sm">{time}</span>;
+                                                return <span className="text-[2.5vw] md:text-[0.8vw]">{time}</span>;
                                             }
 
                                             return (
                                                 <>
                                                     <span>{t.name}</span>
-                                                    <span className="text-[10px] text-emerald-400/70 font-sans tracking-tight">({t.time})</span>
+                                                    <span className="text-[2vw] md:text-[0.6vw] text-emerald-400/70 font-sans tracking-tight">({t.time})</span>
                                                 </>
                                             );
                                         })()}
@@ -1940,31 +1939,29 @@ export default function VisualNovelUI() {
                     </div>
 
                     {/* Right: Resources & Settings */}
-                    <div className="pointer-events-auto flex flex-col items-end gap-3 z-40">
+                    <div className="pointer-events-auto flex flex-col items-end gap-[1vh] md:gap-3 z-40">
                         {/* Resource Container */}
-                        <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 shadow-2xl">
+                        <div className="flex items-center gap-[2vw] md:gap-3 bg-black/40 backdrop-blur-md px-[3vw] py-[1vh] md:px-6 md:py-3 rounded-xl border border-white/10 shadow-2xl">
                             {/* Gold */}
-                            <div className="flex items-center gap-2 border-r border-white/10 pr-4">
-                                <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
-                                    <span className="text-md">🟡</span>
+                            <div className="flex items-center gap-[1vw] md:gap-2 border-r border-white/10 pr-[2vw] md:pr-4">
+                                <div className="w-[4vw] h-[4vw] md:w-6 md:h-6 rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                                    <span className="text-[2.5vw] md:text-md">🟡</span>
                                 </div>
-                                <span className="text-yellow-100 font-bold font-mono text-sm">{playerStats.gold.toLocaleString()} G</span>
+                                <span className="text-yellow-100 font-bold font-mono text-[2.5vw] md:text-[0.8vw]">{playerStats.gold.toLocaleString()} G</span>
                             </div>
 
                             {/* Fame */}
-                            <div className="flex items-center gap-2 border-r border-white/10 pr-4">
-                                <span className="text-lg drop-shadow-sm">👑</span>
-                                <span className="text-purple-100 font-bold font-mono text-sm">{playerStats.fame}</span>
+                            <div className="flex items-center gap-[1vw] md:gap-2 border-r border-white/10 pr-[2vw] md:pr-4">
+                                <span className="text-[3vw] md:text-lg drop-shadow-sm">👑</span>
+                                <span className="text-purple-100 font-bold font-mono text-[2.5vw] md:text-[0.8vw]">{playerStats.fame}</span>
                             </div>
 
-
-
                             {/* Cash (Coins) */}
-                            <div className="flex items-center gap-2 pl-2">
-                                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-[10px] text-black font-extrabold shadow-sm ring-1 ring-yellow-300">
+                            <div className="flex items-center gap-[1vw] md:gap-2 pl-[1vw] md:pl-2">
+                                <div className="w-[3.5vw] h-[3.5vw] md:w-5 md:h-5 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-[1.5vw] md:text-[10px] text-black font-extrabold shadow-sm ring-1 ring-yellow-300">
                                     C
                                 </div>
-                                <span className="text-yellow-400 font-bold font-mono text-sm">{userCoins.toLocaleString()}</span>
+                                <span className="text-yellow-400 font-bold font-mono text-[2.5vw] md:text-[0.8vw]">{userCoins.toLocaleString()}</span>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -1976,14 +1973,10 @@ export default function VisualNovelUI() {
                                          * Client should NEVER update coins directly.
                                          */
 
-                                        // 1. Instant Local Auth Check (Using component state)
-                                        // 1. Instant Local Auth Check (Using component state)
                                         const currentUser = session?.user;
 
                                         // [Dev Mode] Allow charging without login for testing
                                         if (!currentUser) {
-                                            // addToast("Login required.", "warning");
-                                            // return;
                                             console.warn("[Dev] Charging coins without active session (Guest Mode)");
                                         }
 
@@ -2004,7 +1997,7 @@ export default function VisualNovelUI() {
                                                 });
                                         }
                                     }}
-                                    className="ml-1 w-5 h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-xs shadow hover:scale-110 transition-transform"
+                                    className="ml-[0.5vw] md:ml-1 w-[3.5vw] h-[3.5vw] md:w-5 md:h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-[2vw] md:text-xs shadow hover:scale-110 transition-transform"
                                 >
                                     +
                                 </button>
@@ -2012,42 +2005,37 @@ export default function VisualNovelUI() {
                         </div>
 
                         {/* Top Right Controls */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-[1vw] md:gap-2">
                             {/* Phone Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setIsPhoneOpen(true); }}
                                 title="Smartphone"
                             >
-                                <div className="text-xl">📱</div>
+                                <div className="text-[4vw] md:text-xl">📱</div>
                             </button>
-                            {/* Debug Button Hidden
+
+                            {/* Inventory Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
-                                onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
-                                title="Debug"
-                            >
-                                <Bolt size={20} />
-                            </button>
-                            */}
-                            <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setShowInventory(true); }}
                                 title="Inventory"
                             >
-                                <Package size={20} />
+                                <Package className="w-[5vw] h-[5vw] md:w-5 md:h-5" />
                             </button>
+
+                            {/* Settings Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); /* Settings logic later */ }}
                                 title="Settings"
                             >
-                                <Settings size={20} />
+                                <Settings className="w-[5vw] h-[5vw] md:w-5 md:h-5" />
                             </button>
 
                             {/* Fullscreen Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (!document.fullscreenElement) {
@@ -2062,11 +2050,12 @@ export default function VisualNovelUI() {
                                 }}
                                 title="Toggle Fullscreen"
                             >
-                                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                                {isFullscreen ? <Minimize className="w-[5vw] h-[5vw] md:w-5 md:h-5" /> : <Maximize className="w-[5vw] h-[5vw] md:w-5 md:h-5" />}
                             </button>
+
                             {/* Wiki Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg pointer-events-auto"
+                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg pointer-events-auto"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     console.log("🖱️ Wiki Button Clicked");
@@ -2074,26 +2063,26 @@ export default function VisualNovelUI() {
                                 }}
                                 title="Wiki"
                             >
-                                <div className="font-bold text-sm">W</div>
+                                <div className="font-bold text-[3vw] md:text-sm">W</div>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 -> Z-20 (Basic UI) */}
-                <div className="absolute bottom-10 right-8 flex gap-2 z-40 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
+                <div className="absolute bottom-[5vh] right-[4vw] md:bottom-10 md:right-8 flex gap-[1vw] md:gap-2 z-40 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
                     <button
-                        className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
+                        className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
                     >
-                        <History size={14} />
+                        <History className="w-[3vw] h-[3vw] md:w-[14px] md:h-[14px]" />
                         {t.chatHistory}
                     </button>
                     <button
-                        className="px-3 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
+                        className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowSaveLoad(true); }}
                     >
-                        <Save size={14} />
+                        <Save className="w-[3vw] h-[3vw] md:w-[14px] md:h-[14px]" />
                         {t.save}
                     </button>
                 </div>
