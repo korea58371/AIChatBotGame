@@ -340,6 +340,7 @@ export default function VisualNovelUI() {
 
     // VN State
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isLogicPending, setIsLogicPending] = useState(false); // [Logic Lock] Track background logic
     const [showHistory, setShowHistory] = useState(false);
     const [showInventory, setShowInventory] = useState(false);
     const [showCharacterInfo, setShowCharacterInfo] = useState(false);
@@ -950,7 +951,8 @@ export default function VisualNovelUI() {
                 currentHistory,
                 text,
                 sanitizedState,
-                language
+                language,
+                isDirectInput // [FIX] Pass Checked Flag
             );
 
             const result: any = await Promise.race([responsePromise, timeoutPromise]);
@@ -1040,6 +1042,7 @@ export default function VisualNovelUI() {
             const segments = parseScript(responseText);
 
             // 2. Generate Logic (Async)
+            setIsLogicPending(true); // [Logic Lock] Lock input
             serverGenerateGameLogic(
                 text,
                 responseText,
@@ -1075,7 +1078,13 @@ export default function VisualNovelUI() {
                 } else {
                     setPendingLogic(logic);
                 }
-            });
+            })
+                .catch(err => {
+                    console.error("Logic Generation Failed:", err);
+                })
+                .finally(() => {
+                    setIsLogicPending(false); // [Logic Lock] Unlock input
+                });
 
             // 3. Update State
             addMessage({ role: 'model', text: responseText });
@@ -2109,12 +2118,12 @@ export default function VisualNovelUI() {
                                         animate={{ opacity: 1, y: 0, skewX: -12 }}
                                         whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
                                         transition={{ delay: idx * 0.1 }}
-                                        disabled={isProcessing}
+                                        disabled={isProcessing || isLogicPending}
                                         className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold py-4 px-5 md:py-6 md:px-8 text-base md:text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
-                                            ${isProcessing ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
+                                            ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                                         `}
                                         onClick={(e) => {
-                                            if (isProcessing) return;
+                                            if (isProcessing || isLogicPending) return;
                                             console.log("Choice clicked:", choice.content);
                                             e.stopPropagation();
 
@@ -2148,9 +2157,12 @@ export default function VisualNovelUI() {
                                     animate={{ opacity: 1, y: 0, skewX: -12 }}
                                     whileHover={{ scale: 1.05, skewX: -12 }}
                                     transition={{ delay: choices.length * 0.1 }}
-                                    className="w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold py-4 px-5 md:py-6 md:px-8 text-base md:text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] hover:bg-white/80 hover:border-white transition-all duration-300"
+                                    className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold py-4 px-5 md:py-6 md:px-8 text-base md:text-xl shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
+                                        ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
+                                    `}
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        if (isProcessing || isLogicPending) return;
                                         setIsInputOpen(true);
                                     }}
                                 >
@@ -2596,18 +2608,38 @@ Instructions:
                                 <textarea
                                     value={userInput}
                                     onChange={(e) => setUserInput(e.target.value)}
-                                    className="w-full h-32 bg-black/50 border border-gray-700 rounded p-4 text-white text-lg mb-4 focus:outline-none focus:border-green-500"
+                                    className="w-full h-32 bg-black/50 border border-gray-700 rounded p-4 text-white text-lg mb-4 focus:outline-none focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder={t.placeholderAction}
+                                    disabled={isProcessing || isLogicPending}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && !e.shiftKey) {
                                             e.preventDefault();
-                                            handleUserSubmit();
+                                            if (!isProcessing && !isLogicPending) handleUserSubmit();
                                         }
                                     }}
                                 />
                                 <div className="flex justify-end gap-2">
-                                    <button onClick={() => setIsInputOpen(false)} className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600">{t.cancel}</button>
-                                    <button onClick={handleUserSubmit} className="px-4 py-2 bg-green-600 rounded hover:bg-green-500 font-bold">{t.action}</button>
+                                    <button
+                                        onClick={() => { if (!isProcessing && !isLogicPending) setIsInputOpen(false); }}
+                                        className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 disabled:opacity-50"
+                                        disabled={isProcessing || isLogicPending}
+                                    >
+                                        {t.cancel}
+                                    </button>
+                                    <button
+                                        onClick={handleUserSubmit}
+                                        className="px-4 py-2 bg-green-600 rounded hover:bg-green-500 font-bold disabled:opacity-50 flex items-center gap-2"
+                                        disabled={isProcessing || isLogicPending}
+                                    >
+                                        {isLogicPending ? (
+                                            <>
+                                                <Loader2 className="animate-spin" size={16} />
+                                                <span>Logic...</span>
+                                            </>
+                                        ) : (
+                                            t.action
+                                        )}
+                                    </button>
                                 </div>
                             </motion.div>
                         </div>

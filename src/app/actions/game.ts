@@ -43,7 +43,8 @@ export async function serverGenerateResponse(
     }
 
     // Pass isDirectInput to gameState for Prompt Logic
-    gameState.isDirectInput = isDirectInput;
+    // [FIX] Priority: Argument > Existing State > Default False
+    gameState.isDirectInput = isDirectInput || gameState.isDirectInput || false;
 
     return generateResponse(API_KEY, history, userMessage, gameState, language);
 }
