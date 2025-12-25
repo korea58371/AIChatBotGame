@@ -3068,7 +3068,7 @@ Instructions:
 
                 {/* Dialogue / Narration Layer */}
                 {currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
-                    <div className="absolute bottom-0 left-0 right-0 p-8 pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[30vh]">
+                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-8 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[25vh] md:h-[30vh]">
                         <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                             {/* Dialogue Control Bar */}
 
@@ -3078,8 +3078,8 @@ Instructions:
                             >
                                 {/* Name Tag */}
                                 {currentSegment.type === 'dialogue' && (
-                                    <div className="absolute -top-12 w-full text-center px-2">
-                                        <span className="text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                    <div className="absolute -top-8 md:-top-12 w-full text-center px-2">
+                                        <span className="text-xl md:text-3xl font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                             {(() => {
                                                 const { characterData, playerName } = useGameStore.getState();
 
@@ -3099,9 +3099,9 @@ Instructions:
                                 )}
 
                                 {/* Text Content */}
-                                <div className="text-[32px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
+                                <div className="text-base md:text-2xl lg:text-3xl leading-relaxed text-gray-100 min-h-[60px] md:min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm px-4 md:px-0">
                                     {currentSegment.type === 'narration' ? (
-                                        <span className="text-gray-300 italic block px-8">
+                                        <span className="text-gray-300 italic block">
                                             {formatText(currentSegment.content)}
                                         </span>
                                     ) : (
