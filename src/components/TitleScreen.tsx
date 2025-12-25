@@ -216,12 +216,12 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                             // e.currentTarget.src = "/assets/god_bless_you/interface/title/Title.png";
                         }}
                         alt="Title"
-                        className={`object-contain ${activeGameId === 'wuxia' ? 'w-[450px] md:w-[730px]' : 'w-[340px] md:w-[560px]'}`}
+                        className={`object-contain ${activeGameId === 'wuxia' ? 'w-[80vw] max-w-[500px] md:w-[730px]' : 'w-[60vw] max-w-[400px] md:w-[560px]'}`}
                     />
                 </div>
 
                 {/* Main Action Buttons - Using Navy Tones */}
-                <div className="absolute right-10 md:right-32 bottom-[280px] z-20 flex flex-col items-end gap-3">
+                <div className="absolute right-10 md:right-32 bottom-[35vh] md:bottom-[280px] z-20 flex flex-col items-end gap-3">
 
                     {isLoading ? (
                         /* Loading State */
@@ -241,9 +241,9 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setShowLogin(true)}
-                            className="px-12 py-6 bg-gradient-to-r from-blue-900/50 to-indigo-900/50 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl flex items-center gap-4 group transition-all duration-300 hover:bg-white/10 hover:border-white/40"
+                            className="w-[70vw] md:w-auto px-12 py-6 bg-gradient-to-r from-blue-900/50 to-indigo-900/50 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl flex items-center justify-center gap-4 group transition-all duration-300 hover:bg-white/10 hover:border-white/40"
                         >
-                            <span className="text-2xl font-bold text-white tracking-widest uppercase drop-shadow-md group-hover:text-blue-200">
+                            <span className="text-[clamp(18px,5vw,24px)] font-bold text-white tracking-widest uppercase drop-shadow-md group-hover:text-blue-200">
                                 Touch to Start
                             </span>
                             <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse shadow-[0_0_10px_#60a5fa]" />
@@ -261,10 +261,10 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                         whileHover={{ scale: 1.05, x: -10, skewX: -12 }}
                                         whileTap={{ scale: 0.95, skewX: -12 }}
                                         onClick={handleContinue}
-                                        className="w-64 md:w-80 px-6 py-4 bg-gradient-to-r from-blue-950/60 to-slate-900/60 backdrop-blur-md rounded-2xl border border-blue-400/30 group shadow-lg hover:bg-blue-900/60 hover:border-blue-400/70 transition-all duration-300"
+                                        className="w-[70vw] md:w-80 px-6 py-[2vh] md:py-4 bg-gradient-to-r from-blue-950/60 to-slate-900/60 backdrop-blur-md rounded-2xl border border-blue-400/30 group shadow-lg hover:bg-blue-900/60 hover:border-blue-400/70 transition-all duration-300"
                                     >
                                         <div className="w-full flex items-center justify-between skew-x-12">
-                                            <span className="text-xl font-bold text-white tracking-widest uppercase group-hover:text-blue-200">
+                                            <span className="text-[clamp(16px,4vw,20px)] font-bold text-white tracking-widest uppercase group-hover:text-blue-200">
                                                 이어하기
                                             </span>
                                             <Play className="w-5 h-5 text-blue-400 group-hover:text-white transition-colors" />
@@ -281,10 +281,10 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                 whileTap={{ scale: 0.95, skewX: -12 }}
                                 transition={{ delay: 0.1 }}
                                 onClick={handleNewGame}
-                                className="w-64 md:w-80 px-6 py-4 bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
+                                className="w-[70vw] md:w-80 px-6 py-[2vh] md:py-4 bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
                             >
                                 <div className="w-full flex items-center justify-between skew-x-12">
-                                    <span className="text-xl font-bold text-white tracking-widest uppercase group-hover:text-gray-200">
+                                    <span className="text-[clamp(16px,4vw,20px)] font-bold text-white tracking-widest uppercase group-hover:text-gray-200">
                                         새로 시작
                                     </span>
                                     <RotateCcw className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
@@ -299,10 +299,10 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                 whileTap={{ scale: 0.95, skewX: -12 }}
                                 transition={{ delay: 0.2 }}
                                 onClick={() => setShowLoadModal(true)}
-                                className="w-64 md:w-80 px-6 py-4 bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
+                                className="w-[70vw] md:w-80 px-6 py-[2vh] md:py-4 bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
                             >
                                 <div className="w-full flex items-center justify-between skew-x-12">
-                                    <span className="text-xl font-bold text-gray-300 tracking-widest uppercase group-hover:text-white">
+                                    <span className="text-[clamp(16px,4vw,20px)] font-bold text-gray-300 tracking-widest uppercase group-hover:text-white">
                                         불러오기
                                     </span>
                                     <Save className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
@@ -313,7 +313,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 </div>
 
                 {/* Game Selector UI */}
-                <div className="absolute bottom-24 w-full flex justify-center gap-6 z-30">
+                <div className="absolute bottom-[16vh] md:bottom-24 w-full flex justify-center gap-6 z-30">
                     <button
                         onClick={() => setGameId('god_bless_you')}
                         className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${activeGameId === 'god_bless_you' ? 'scale-110 opacity-100' : 'scale-100 opacity-50 hover:opacity-80'}`}
@@ -354,7 +354,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 </div>
 
                 {/* Bottom Navigation */}
-                <div className="absolute bottom-10 w-full flex justify-center gap-4 z-20">
+                <div className="absolute bottom-[3vh] md:bottom-10 w-full flex justify-center gap-4 z-20">
                     <div className="text-xs text-gray-500 font-mono tracking-widest">
                         Selected World: {activeGameId} | SYSTEM READY...
                     </div>
