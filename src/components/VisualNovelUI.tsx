@@ -460,13 +460,30 @@ export default function VisualNovelUI() {
     const [isMounted, setIsMounted] = useState(false);
 
     // Initialize Session ID
+    // Initialize Session ID
     useEffect(() => {
-        let sid = sessionStorage.getItem('vn_session_id');
-        if (!sid) {
-            sid = crypto.randomUUID();
-            sessionStorage.setItem('vn_session_id', sid);
+        try {
+            let sid = sessionStorage.getItem('vn_session_id');
+            if (!sid) {
+                // Robust UUID Generation (Mobile/Insecure Context Fallback)
+                if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                    sid = crypto.randomUUID();
+                } else {
+                    // Fallback for older browsers / http context
+                    sid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                        const r = Math.random() * 16 | 0;
+                        const v = c === 'x' ? r : ((r & 0x3) | 0x8);
+                        return v.toString(16);
+                    });
+                }
+                sessionStorage.setItem('vn_session_id', sid);
+            }
+            setSessionId(sid);
+        } catch (e) {
+            console.warn("Session Storage Access/UUID Gen failed:", e);
+            // In-memory fallback if storage fails
+            setSessionId(`guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
         }
-        setSessionId(sid);
     }, []);
     useEffect(() => {
         setIsMounted(true);
@@ -1143,6 +1160,21 @@ export default function VisualNovelUI() {
     };
 
     const handleUserSubmit = () => {
+        // [Logging] Log Direct Input
+        submitGameplayLog({
+            session_id: sessionId || '00000000-0000-0000-0000-000000000000',
+            game_mode: useGameStore.getState().activeGameId,
+            turn_count: turnCount,
+            choice_selected: userInput, // Log user input
+            player_rank: playerStats.playerRank,
+            location: useGameStore.getState().currentLocation,
+            timestamp: new Date().toISOString(),
+            story_output: lastStoryOutput // Include context
+        }).then(res => {
+            if (!res.success) console.error("📝 [Log Error]", res.error);
+            else console.log("📝 [Log Sent - Direct Input]");
+        });
+
         handleSend(userInput, true);
         setUserInput('');
         setIsInputOpen(false);
@@ -1335,8 +1367,17 @@ export default function VisualNovelUI() {
             newStats.luk = (newStats.luk || 10) + (logicResult.statChange.luk || 0);
         }
 
-        // [New] Time Progression Logic
-        if (logicResult.timeConsumed) {
+        // [New] Sleep Logic (Overrides Time Consumed if present)
+        if (logicResult.isSleep) {
+            newStats.fatigue = 0; // Reset Fatigue
+            const currentState = useGameStore.getState();
+            currentState.setDay((currentState.day || 1) + 1); // Advance Day
+            currentState.setTime('Morning'); // Reset Time to Morning
+            addToast("휴식을 취했습니다. (피로도 초기화)", 'success');
+            console.log("[Logic] isSleep: True -> Day Advanced, Fatigue Reset");
+        }
+        // [New] Time Progression Logic (Only if not sleeping)
+        else if (logicResult.timeConsumed) {
             const timeMap = ['morning', 'afternoon', 'evening', 'night'];
             const currentState = useGameStore.getState();
             // Normalize & Legacy Fallback
@@ -1487,6 +1528,16 @@ export default function VisualNovelUI() {
                 setPlayerStats({ ...newStats, playerRank: logicResult.playerRank });
                 addToast(`Rank Up: ${logicResult.playerRank}`, 'success');
                 console.log(`Rank updated from ${currentRank} to ${logicResult.playerRank}`);
+            }
+        }
+
+        // [New] Faction Update
+        if (logicResult.factionChange) {
+            const currentFaction = useGameStore.getState().playerStats.faction;
+            if (currentFaction !== logicResult.factionChange) {
+                newStats.faction = logicResult.factionChange;
+                addToast(`소속 변경: ${logicResult.factionChange}`, 'success');
+                console.log(`Faction updated from ${currentFaction} to ${logicResult.factionChange}`);
             }
         }
 

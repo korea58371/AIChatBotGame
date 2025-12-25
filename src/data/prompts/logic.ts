@@ -92,6 +92,7 @@ ${rankGuide}
         "lust": number
     },
     "relationshipChange": [ { "characterId": string, "change": number } ],
+    "factionChange": string | null, // [신규] 소속/문파 변경 (예: "무림맹", "마교", "무소속")
     "injuriesUpdate": { "add": [string], "remove": [string] }, // [신규] 신체 부상 관리 (예: "오른팔 골절")
     "newSkills": [ string ],
     "characterUpdates": [ 
@@ -181,6 +182,7 @@ ${rankGuide}
         "lust": number
     },
     "relationshipChange": [ { "characterId": string, "change": number } ],
+    "factionChange": string | null, // [신규] 소속 변경
     "newSkills": [ string ],
     "characterUpdates": [ 
         { 
@@ -248,6 +250,7 @@ ${availableEvents.length > 0 ? JSON.stringify(availableEvents.map(e => ({ id: e.
 **당신의 임무 (YOUR TASKS):**
 1. **행동 분석**: 스탯을 기반으로 결과(성공/실패)를 결정하십시오.
 2. **스탯 업데이트**: 체력(HP), 내력(MP), 소지금, 스탯(STR/AGI/INT/VIT), 명성(Fame), 운명(Fate), 성향(Personality)의 변화를 계산하십시오.
+   - **소속 변경**: 플레이어가 문파에 가입하거나 탈퇴하면 \`factionChange\`를 반환하십시오.
    - **[중요] 내공 (Internal Energy Years)**: 플레이어가 운기조식을 하거나 영약을 복용하면 \`neigong\`을 증가시키십시오.
    - **승급 (Rank Up)**: 현재 \`neigong\`(내공)과 \`fame\`(명성)을 **[승급 기준]**과 비교하십시오. 조건이 충족되고 유저가 "깨달음"의 순간을 얻었다면, \`playerRank\`를 업데이트하십시오.
    - **[시간 & 생존]**:
