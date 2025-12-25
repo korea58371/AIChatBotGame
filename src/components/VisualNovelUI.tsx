@@ -1182,22 +1182,33 @@ export default function VisualNovelUI() {
     };
 
     const handleUserSubmit = () => {
-        // [Logging] Log Direct Input
+        const inputToLog = userInput; // Capture immediately
+        if (!inputToLog.trim()) return; // Prevent empty logs
+
+        // [Logging] Debug Toast for Mobile
+        console.log("📝 Sending Direct Input Log:", inputToLog);
+
         submitGameplayLog({
             session_id: sessionId || '00000000-0000-0000-0000-000000000000',
             game_mode: useGameStore.getState().activeGameId,
             turn_count: turnCount,
-            choice_selected: userInput, // Log user input
+            choice_selected: inputToLog,
             player_rank: playerStats.playerRank,
             location: useGameStore.getState().currentLocation,
             timestamp: new Date().toISOString(),
             story_output: lastStoryOutput // Include context
         }).then(res => {
-            if (!res.success) console.error("📝 [Log Error]", res.error);
-            else console.log("📝 [Log Sent - Direct Input]");
+            if (!res.success) {
+                console.error("📝 [Log Error]", res.error);
+                // addToast(`Log Error: ${res.error}`, 'warning'); // Optional: Uncomment if user needs to see
+            } else {
+                console.log("📝 [Log Sent - Direct Input]");
+            }
+        }).catch(err => {
+            console.error("📝 [Log Exception]", err);
         });
 
-        handleSend(userInput, true);
+        handleSend(inputToLog, true);
         setUserInput('');
         setIsInputOpen(false);
     };
@@ -2625,7 +2636,7 @@ Instructions:
                                     placeholder={t.placeholderAction}
                                     disabled={isProcessing || isLogicPending}
                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                        if ((e.key === 'Enter' || e.keyCode === 13) && !e.shiftKey) {
                                             e.preventDefault();
                                             if (!isProcessing && !isLogicPending) handleUserSubmit();
                                         }
