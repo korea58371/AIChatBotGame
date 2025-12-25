@@ -21,7 +21,8 @@
 
 html {
   height: 100%;
-  -webkit-text-size-adjust: 100%; /* Prevent font scaling in landscape/mobile */
+  -webkit-text-size-adjust: 100%;
+  /* Prevent font scaling in landscape/mobile */
   text-size-adjust: 100%;
 }
 
@@ -32,6 +33,6 @@ body {
   height: 100%;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  touch-action: manipulation; /* Disable double-tap zoom */
-}
+  touch-action: manipulation;
+  /* Disable double-tap zoom */
 }
