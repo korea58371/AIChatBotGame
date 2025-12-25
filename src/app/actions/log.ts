@@ -17,6 +17,7 @@ export interface GameplayLog {
     location?: string;       // Current Location
     timestamp: string;       // ISO String
     meta?: any;              // JSON for extra stats (Coin, HP, MP, etc.)
+    story_output?: string;   // [New] Raw Story Model Output
 }
 
 export async function submitGameplayLog(logData: GameplayLog) {
@@ -36,7 +37,10 @@ export async function submitGameplayLog(logData: GameplayLog) {
                     player_rank: logData.player_rank,
                     location: logData.location,
                     timestamp: logData.timestamp || new Date().toISOString(),
-                    meta: logData.meta
+                    meta: {
+                        ...(logData.meta || {}),
+                        story_output: logData.story_output // Inject raw output into meta
+                    }
                 }
             ]);
 

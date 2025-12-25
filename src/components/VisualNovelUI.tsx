@@ -389,6 +389,7 @@ export default function VisualNovelUI() {
     const [debugInput, setDebugInput] = useState('');
     const [lastLogicResult, setLastLogicResult] = useState<any>(null);
     const [pendingLogic, setPendingLogic] = useState<any>(null);
+    const [lastStoryOutput, setLastStoryOutput] = useState<string>(''); // [Logging] Store last story output
 
     // Toast State
     const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'warning' }[]>([]);
@@ -946,6 +947,7 @@ export default function VisualNovelUI() {
             // [DEBUG] Log the full response text to console as requested
             console.log("%c[STORY MODEL OUTPUT]", "color: green; font-weight: bold; font-size: 14px;");
             console.log(responseText);
+            setLastStoryOutput(responseText); // [Logging] Capture for analytics
 
             if (typeof result !== 'string' && (result as any).systemPrompt) {
                 console.log("%c[Story Model Input - System Prompt]", "color: cyan; font-weight: bold;");
@@ -2072,7 +2074,8 @@ export default function VisualNovelUI() {
                                                 choice_selected: choice.content,
                                                 player_rank: playerStats.playerRank,
                                                 location: useGameStore.getState().currentLocation,
-                                                timestamp: new Date().toISOString()
+                                                timestamp: new Date().toISOString(),
+                                                story_output: lastStoryOutput // [Logging] Include story output
                                             }).then(res => {
                                                 if (!res.success) console.error("📝 [Log Error]", res.error);
                                                 else console.log("📝 [Log Sent]");
