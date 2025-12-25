@@ -1899,17 +1899,17 @@ export default function VisualNovelUI() {
                                 </div>
 
                                 {/* Faction */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-indigo-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
-                                    <span className="text-indigo-500/80 text-[10px] font-bold tracking-widest mb-1 uppercase">소속</span>
-                                    <span className="text-indigo-100 font-bold text-sm text-center">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-indigo-700/30 p-1.5 md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[50px] md:min-h-[70px]">
+                                    <span className="text-indigo-500/80 text-[9px] md:text-[10px] font-bold tracking-widest mb-0.5 md:mb-1 uppercase">소속</span>
+                                    <span className="text-indigo-100 font-bold text-xs md:text-sm text-center">
                                         {(playerStats.faction || '방랑객').split(' ')[0]}
                                     </span>
                                 </div>
 
                                 {/* Time (Wuxia Style) */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[70px]">
-                                    <span className="text-emerald-600/80 text-[10px] font-bold tracking-widest mb-1 uppercase">{day || 1}일차</span>
-                                    <span className="text-emerald-100 font-bold text-xs font-serif flex flex-col items-center">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-1.5 md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[50px] md:min-h-[70px]">
+                                    <span className="text-emerald-600/80 text-[9px] md:text-[10px] font-bold tracking-widest mb-0.5 md:mb-1 uppercase">{day || 1}일차</span>
+                                    <span className="text-emerald-100 font-bold text-xs flex flex-col items-center">
                                         {(() => {
                                             const wuxiaTime: Record<string, { name: string, time: string }> = {
                                                 morning: { name: '진시(辰)', time: '07:00 ~ 09:00' },
@@ -1940,9 +1940,9 @@ export default function VisualNovelUI() {
                     </div>
 
                     {/* Right: Resources & Settings */}
-                    <div className="pointer-events-auto flex flex-col items-end gap-3 z-40">
+                    <div className="pointer-events-auto flex flex-col items-end gap-2 md:gap-3 z-40">
                         {/* Resource Container */}
-                        <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-white/10 shadow-2xl">
+                        <div className="flex items-center gap-2 md:gap-3 bg-black/40 backdrop-blur-md px-3 py-1.5 md:px-6 md:py-3 rounded-xl border border-white/10 shadow-2xl scale-90 md:scale-100 origin-right">
                             {/* Gold */}
                             <div className="flex items-center gap-2 border-r border-white/10 pr-4">
                                 <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
@@ -2012,42 +2012,42 @@ export default function VisualNovelUI() {
                         </div>
 
                         {/* Top Right Controls */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5 md:gap-2">
                             {/* Phone Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setIsPhoneOpen(true); }}
                                 title="Smartphone"
                             >
-                                <div className="text-xl">📱</div>
+                                <div className="text-lg md:text-xl">📱</div>
                             </button>
                             {/* Debug Button Hidden
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
                                 title="Debug"
                             >
-                                <Bolt size={20} />
+                                <Bolt size={18} className="md:w-5 md:h-5" />
                             </button>
                             */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setShowInventory(true); }}
                                 title="Inventory"
                             >
-                                <Package size={20} />
+                                <Package size={16} className="md:w-5 md:h-5" />
                             </button>
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); /* Settings logic later */ }}
                                 title="Settings"
                             >
-                                <Settings size={20} />
+                                <Settings size={16} className="md:w-5 md:h-5" />
                             </button>
 
                             {/* Fullscreen Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (!document.fullscreenElement) {
@@ -2062,11 +2062,11 @@ export default function VisualNovelUI() {
                                 }}
                                 title="Toggle Fullscreen"
                             >
-                                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                                {isFullscreen ? <Minimize size={16} className="md:w-5 md:h-5" /> : <Maximize size={16} className="md:w-5 md:h-5" />}
                             </button>
                             {/* Wiki Button */}
                             <button
-                                className="w-10 h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg pointer-events-auto"
+                                className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg pointer-events-auto"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     console.log("🖱️ Wiki Button Clicked");
@@ -2074,7 +2074,7 @@ export default function VisualNovelUI() {
                                 }}
                                 title="Wiki"
                             >
-                                <div className="font-bold text-sm">W</div>
+                                <div className="font-bold text-xs md:text-sm">W</div>
                             </button>
                         </div>
                     </div>
@@ -3079,7 +3079,7 @@ Instructions:
                                 {/* Name Tag */}
                                 {currentSegment.type === 'dialogue' && (
                                     <div className="absolute -top-6 md:-top-12 w-full text-center px-2">
-                                        <span className="text-xl md:text-3xl lg:text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                        <span className="text-lg md:text-3xl lg:text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                             {(() => {
                                                 const { characterData, playerName } = useGameStore.getState();
 
@@ -3099,7 +3099,7 @@ Instructions:
                                 )}
 
                                 {/* Text Content */}
-                                <div className="text-lg md:text-2xl lg:text-[32px] leading-relaxed text-gray-100 min-h-[60px] md:min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
+                                <div className="text-base md:text-2xl lg:text-[32px] leading-relaxed text-gray-100 min-h-[50px] md:min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
                                     {currentSegment.type === 'narration' ? (
                                         <span className="text-gray-300 italic block px-8">
                                             {formatText(currentSegment.content)}
