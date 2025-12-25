@@ -241,9 +241,9 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => setShowLogin(true)}
-                            className="w-[80vw] md:w-[30vw] px-12 py-[2.5vh] md:py-[2.5vh] bg-gradient-to-r from-blue-900/50 to-indigo-900/50 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl flex items-center justify-center gap-4 group transition-all duration-300 hover:bg-white/10 hover:border-white/40"
+                            className="w-[80vw] md:w-[min(30vw,500px)] px-12 py-[2.5vh] md:py-[2.5vh] bg-gradient-to-r from-blue-900/50 to-indigo-900/50 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl flex items-center justify-center gap-4 group transition-all duration-300 hover:bg-white/10 hover:border-white/40"
                         >
-                            <span className="text-[5vw] md:text-[1.5vw] font-bold text-white tracking-widest uppercase drop-shadow-md group-hover:text-blue-200">
+                            <span className="text-[5vw] md:text-[min(1.5vw,36px)] font-bold text-white tracking-widest uppercase drop-shadow-md group-hover:text-blue-200">
                                 Touch to Start
                             </span>
                             <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse shadow-[0_0_10px_#60a5fa]" />
@@ -261,10 +261,10 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                         whileHover={{ scale: 1.05, x: -10, skewX: -12 }}
                                         whileTap={{ scale: 0.95, skewX: -12 }}
                                         onClick={handleContinue}
-                                        className="w-[80vw] md:w-[25vw] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-blue-950/60 to-slate-900/60 backdrop-blur-md rounded-2xl border border-blue-400/30 group shadow-lg hover:bg-blue-900/60 hover:border-blue-400/70 transition-all duration-300"
+                                        className="w-[80vw] md:w-[min(25vw,400px)] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-blue-950/60 to-slate-900/60 backdrop-blur-md rounded-2xl border border-blue-400/30 group shadow-lg hover:bg-blue-900/60 hover:border-blue-400/70 transition-all duration-300"
                                     >
                                         <div className="w-full flex items-center justify-between skew-x-12">
-                                            <span className="text-[4vw] md:text-[1.2vw] font-bold text-white tracking-widest uppercase group-hover:text-blue-200">
+                                            <span className="text-[4vw] md:text-[min(1.2vw,28px)] font-bold text-white tracking-widest uppercase group-hover:text-blue-200">
                                                 이어하기
                                             </span>
                                             <Play className="w-5 h-5 text-blue-400 group-hover:text-white transition-colors" />
@@ -281,10 +281,10 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                 whileTap={{ scale: 0.95, skewX: -12 }}
                                 transition={{ delay: 0.1 }}
                                 onClick={handleNewGame}
-                                className="w-[80vw] md:w-[25vw] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
+                                className="w-[80vw] md:w-[min(25vw,400px)] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
                             >
                                 <div className="w-full flex items-center justify-between skew-x-12">
-                                    <span className="text-[4vw] md:text-[1.2vw] font-bold text-white tracking-widest uppercase group-hover:text-gray-200">
+                                    <span className="text-[4vw] md:text-[min(1.2vw,28px)] font-bold text-white tracking-widest uppercase group-hover:text-gray-200">
                                         새로 시작
                                     </span>
                                     <RotateCcw className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
@@ -299,10 +299,10 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                 whileTap={{ scale: 0.95, skewX: -12 }}
                                 transition={{ delay: 0.2 }}
                                 onClick={() => setShowLoadModal(true)}
-                                className="w-[80vw] md:w-[25vw] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
+                                className="w-[80vw] md:w-[min(25vw,400px)] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
                             >
                                 <div className="w-full flex items-center justify-between skew-x-12">
-                                    <span className="text-[4vw] md:text-[1.2vw] font-bold text-gray-300 tracking-widest uppercase group-hover:text-white">
+                                    <span className="text-[4vw] md:text-[min(1.2vw,28px)] font-bold text-gray-300 tracking-widest uppercase group-hover:text-white">
                                         불러오기
                                     </span>
                                     <Save className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />

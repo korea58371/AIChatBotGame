@@ -1815,7 +1815,7 @@ export default function VisualNovelUI() {
                         <div className="flex items-center gap-[3vw] md:gap-4 z-40 relative pointer-events-auto">
                             {/* Restored Portrait Button */}
                             <div
-                                className="w-[15vw] h-[15vw] md:w-[4vw] md:h-[4vw] rounded-full border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                                className="w-[15vw] h-[15vw] md:w-[min(4vw,96px)] md:h-[min(4vw,96px)] rounded-full border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.5)]"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setShowCharacterInfo(true);
@@ -1828,35 +1828,35 @@ export default function VisualNovelUI() {
                                 )}
                             </div>
 
-                            <h1 className="text-[4vw] md:text-[1.5vw] font-bold text-white drop-shadow-md tracking-wider">
+                            <h1 className="text-[4vw] md:text-[min(1.5vw,36px)] font-bold text-white drop-shadow-md tracking-wider">
                                 {isMounted ? playerName : "Loading..."}
                             </h1>
                         </div>
 
                         <div className="flex flex-col gap-[1vh] md:gap-3 mt-[1vh] md:mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[35vw] md:w-[15vw] z-20 relative pointer-events-auto">
                             {/* HP Bar */}
-                            <div className="relative w-full h-[2.5vh] md:h-[2.5vh] transform -skew-x-6 overflow-hidden rounded-lg border border-red-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.4)]">
+                            <div className="relative w-full h-[2.5vh] md:h-[min(2.5vh,36px)] transform -skew-x-6 overflow-hidden rounded-lg border border-red-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.4)]">
                                 <div className="absolute inset-0 bg-red-900/20" />
                                 <div
                                     className="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(220,38,38,0.7)]"
                                     style={{ width: `${(playerStats.hp / playerStats.maxHp) * 100}%` }}
                                 />
-                                <div className="absolute inset-0 flex items-center justify-between px-[2vw] md:px-4 transform skew-x-6">
-                                    <span className="text-[2.5vw] md:text-[0.8vw] font-bold text-red-100 drop-shadow-md">체력 (HP)</span>
-                                    <span className="text-[2.5vw] md:text-[0.8vw] font-bold text-white drop-shadow-md">{Math.round((playerStats.hp / playerStats.maxHp) * 100)}%</span>
+                                <div className="absolute inset-0 flex items-center justify-between px-[2vw] md:px-6 transform skew-x-6">
+                                    <span className="text-[2.5vw] md:text-[min(0.8vw,21px)] font-bold text-red-100 drop-shadow-md">체력 (HP)</span>
+                                    <span className="text-[2.5vw] md:text-[min(0.8vw,21px)] font-bold text-white drop-shadow-md">{Math.round((playerStats.hp / playerStats.maxHp) * 100)}%</span>
                                 </div>
                             </div>
 
                             {/* MP Bar */}
-                            <div className="relative w-full h-[2vh] md:h-[2vh] transform -skew-x-6 overflow-hidden rounded-lg border border-blue-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+                            <div className="relative w-full h-[2vh] md:h-[min(2vh,30px)] transform -skew-x-6 overflow-hidden rounded-lg border border-blue-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(37,99,235,0.4)]">
                                 <div className="absolute inset-0 bg-blue-900/20" />
                                 <div
                                     className="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(37,99,235,0.7)]"
                                     style={{ width: `${(playerStats.mp / playerStats.maxMp) * 100}%` }}
                                 />
-                                <div className="absolute inset-0 flex items-center justify-between px-[2vw] md:px-4 transform skew-x-6">
-                                    <span className="text-[2vw] md:text-[0.7vw] font-bold text-blue-100 drop-shadow-md">정신력 (MP)</span>
-                                    <span className="text-[2vw] md:text-[0.7vw] font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
+                                <div className="absolute inset-0 flex items-center justify-between px-[2vw] md:px-6 transform skew-x-6">
+                                    <span className="text-[2vw] md:text-[min(0.7vw,19px)] font-bold text-blue-100 drop-shadow-md">정신력 (MP)</span>
+                                    <span className="text-[2vw] md:text-[min(0.7vw,19px)] font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
                                 </div>
                             </div>
 
@@ -1872,11 +1872,11 @@ export default function VisualNovelUI() {
                             </div>
 
                             {/* Status Grid (2x2) */}
-                            <div className="grid grid-cols-2 gap-[1vw] md:gap-2 w-full mt-[0.5vh]">
+                            <div className="grid grid-cols-2 gap-[1vw] md:gap-3 w-full mt-[0.5vh]">
                                 {/* Rank */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-yellow-700/30 p-[1vw] md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[6vh]">
-                                    <span className="text-yellow-600/80 text-[2.5vw] md:text-[0.6vw] font-bold tracking-widest mb-[0.5vh] uppercase">경지</span>
-                                    <span className="text-yellow-100 font-bold text-[3vw] md:text-[0.8vw] text-center leading-tight break-keep">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-yellow-700/30 p-[1vw] md:p-3 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[min(6vh,90px)]">
+                                    <span className="text-yellow-600/80 text-[2.5vw] md:text-[min(0.6vw,18px)] font-bold tracking-widest mb-[0.5vh] uppercase">경지</span>
+                                    <span className="text-yellow-100 font-bold text-[3vw] md:text-[min(0.8vw,24px)] text-center leading-tight break-keep">
                                         {(() => {
                                             const rankKey = playerStats.playerRank || '';
                                             const hierarchy = (martialArtsLevels as any).realm_hierarchy;
@@ -1887,9 +1887,9 @@ export default function VisualNovelUI() {
                                 </div>
 
                                 {/* Neigong */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-blue-700/30 p-[1vw] md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[6vh]">
-                                    <span className="text-blue-500/80 text-[2.5vw] md:text-[0.6vw] font-bold tracking-widest mb-[0.5vh] uppercase">내공</span>
-                                    <span className="text-blue-100 font-bold text-[3vw] md:text-[0.8vw]">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-blue-700/30 p-[1vw] md:p-3 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[min(6vh,90px)]">
+                                    <span className="text-blue-500/80 text-[2.5vw] md:text-[min(0.6vw,18px)] font-bold tracking-widest mb-[0.5vh] uppercase">내공</span>
+                                    <span className="text-blue-100 font-bold text-[3vw] md:text-[min(0.8vw,24px)]">
                                         {playerStats.neigong < 60
                                             ? `${(playerStats.neigong || 0).toFixed(0)}년`
                                             : `${Math.floor(playerStats.neigong / 60)}갑자`
@@ -1898,17 +1898,17 @@ export default function VisualNovelUI() {
                                 </div>
 
                                 {/* Faction */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-indigo-700/30 p-[1vw] md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[6vh]">
-                                    <span className="text-indigo-500/80 text-[2.5vw] md:text-[0.6vw] font-bold tracking-widest mb-[0.5vh] uppercase">소속</span>
-                                    <span className="text-indigo-100 font-bold text-[3vw] md:text-[0.8vw] text-center">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-indigo-700/30 p-[1vw] md:p-3 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[min(6vh,90px)]">
+                                    <span className="text-indigo-500/80 text-[2.5vw] md:text-[min(0.6vw,18px)] font-bold tracking-widest mb-[0.5vh] uppercase">소속</span>
+                                    <span className="text-indigo-100 font-bold text-[3vw] md:text-[min(0.8vw,24px)] text-center">
                                         {(playerStats.faction || '방랑객').split(' ')[0]}
                                     </span>
                                 </div>
 
                                 {/* Time (Wuxia Style) */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-[1vw] md:p-2 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[6vh]">
-                                    <span className="text-emerald-600/80 text-[2.5vw] md:text-[0.6vw] font-bold tracking-widest mb-[0.5vh] uppercase">{day || 1}일차</span>
-                                    <span className="text-emerald-100 font-bold text-[2.5vw] md:text-[0.7vw] font-serif flex flex-col items-center">
+                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-[1vw] md:p-3 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[min(6vh,90px)]">
+                                    <span className="text-emerald-600/80 text-[2.5vw] md:text-[min(0.6vw,18px)] font-bold tracking-widest mb-[0.5vh] uppercase">{day || 1}일차</span>
+                                    <span className="text-emerald-100 font-bold text-[2.5vw] md:text-[min(0.7vw,21px)] font-serif flex flex-col items-center">
                                         {(() => {
                                             const wuxiaTime: Record<string, { name: string, time: string }> = {
                                                 morning: { name: '진시(辰)', time: '07:00 ~ 09:00' },
@@ -1943,25 +1943,25 @@ export default function VisualNovelUI() {
                         {/* Resource Container */}
                         <div className="flex items-center gap-[2vw] md:gap-3 bg-black/40 backdrop-blur-md px-[3vw] py-[1vh] md:px-6 md:py-3 rounded-xl border border-white/10 shadow-2xl">
                             {/* Gold */}
-                            <div className="flex items-center gap-[1vw] md:gap-2 border-r border-white/10 pr-[2vw] md:pr-4">
-                                <div className="w-[4vw] h-[4vw] md:w-6 md:h-6 rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
-                                    <span className="text-[2.5vw] md:text-md">🟡</span>
+                            <div className="flex items-center gap-[1vw] md:gap-3 border-r border-white/10 pr-[2vw] md:pr-6">
+                                <div className="w-[4vw] h-[4vw] md:w-8 md:h-8 rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                                    <span className="text-[2.5vw] md:text-xl">🟡</span>
                                 </div>
-                                <span className="text-yellow-100 font-bold font-mono text-[2.5vw] md:text-[0.8vw]">{playerStats.gold.toLocaleString()} G</span>
+                                <span className="text-yellow-100 font-bold font-mono text-[2.5vw] md:text-[min(0.8vw,24px)]">{playerStats.gold.toLocaleString()} G</span>
                             </div>
 
                             {/* Fame */}
-                            <div className="flex items-center gap-[1vw] md:gap-2 border-r border-white/10 pr-[2vw] md:pr-4">
-                                <span className="text-[3vw] md:text-lg drop-shadow-sm">👑</span>
-                                <span className="text-purple-100 font-bold font-mono text-[2.5vw] md:text-[0.8vw]">{playerStats.fame}</span>
+                            <div className="flex items-center gap-[1vw] md:gap-3 border-r border-white/10 pr-[2vw] md:pr-6">
+                                <span className="text-[3vw] md:text-2xl drop-shadow-sm">👑</span>
+                                <span className="text-purple-100 font-bold font-mono text-[2.5vw] md:text-[min(0.8vw,24px)]">{playerStats.fame}</span>
                             </div>
 
                             {/* Cash (Coins) */}
-                            <div className="flex items-center gap-[1vw] md:gap-2 pl-[1vw] md:pl-2">
-                                <div className="w-[3.5vw] h-[3.5vw] md:w-5 md:h-5 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-[1.5vw] md:text-[10px] text-black font-extrabold shadow-sm ring-1 ring-yellow-300">
+                            <div className="flex items-center gap-[1vw] md:gap-3 pl-[1vw] md:pl-3">
+                                <div className="w-[3.5vw] h-[3.5vw] md:w-8 md:h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-[1.5vw] md:text-[14px] text-black font-extrabold shadow-sm ring-1 ring-yellow-300">
                                     C
                                 </div>
-                                <span className="text-yellow-400 font-bold font-mono text-[2.5vw] md:text-[0.8vw]">{userCoins.toLocaleString()}</span>
+                                <span className="text-yellow-400 font-bold font-mono text-[2.5vw] md:text-[min(0.8vw,24px)]">{userCoins.toLocaleString()}</span>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -2008,34 +2008,34 @@ export default function VisualNovelUI() {
                         <div className="flex gap-[1vw] md:gap-2">
                             {/* Phone Button */}
                             <button
-                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setIsPhoneOpen(true); }}
                                 title="Smartphone"
                             >
-                                <div className="text-[4vw] md:text-xl">📱</div>
+                                <div className="text-[4vw] md:text-3xl">📱</div>
                             </button>
 
                             {/* Inventory Button */}
                             <button
-                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); setShowInventory(true); }}
                                 title="Inventory"
                             >
-                                <Package className="w-[5vw] h-[5vw] md:w-5 md:h-5" />
+                                <Package className="w-[5vw] h-[5vw] md:w-8 md:h-8" />
                             </button>
 
                             {/* Settings Button */}
                             <button
-                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => { e.stopPropagation(); /* Settings logic later */ }}
                                 title="Settings"
                             >
-                                <Settings className="w-[5vw] h-[5vw] md:w-5 md:h-5" />
+                                <Settings className="w-[5vw] h-[5vw] md:w-8 md:h-8" />
                             </button>
 
                             {/* Fullscreen Button */}
                             <button
-                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
+                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (!document.fullscreenElement) {
@@ -2050,12 +2050,12 @@ export default function VisualNovelUI() {
                                 }}
                                 title="Toggle Fullscreen"
                             >
-                                {isFullscreen ? <Minimize className="w-[5vw] h-[5vw] md:w-5 md:h-5" /> : <Maximize className="w-[5vw] h-[5vw] md:w-5 md:h-5" />}
+                                {isFullscreen ? <Minimize className="w-[5vw] h-[5vw] md:w-8 md:h-8" /> : <Maximize className="w-[5vw] h-[5vw] md:w-8 md:h-8" />}
                             </button>
 
                             {/* Wiki Button */}
                             <button
-                                className="w-[10vw] h-[10vw] md:w-[2.5vw] md:h-[2.5vw] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg pointer-events-auto"
+                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg pointer-events-auto"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     console.log("🖱️ Wiki Button Clicked");
@@ -2063,7 +2063,7 @@ export default function VisualNovelUI() {
                                 }}
                                 title="Wiki"
                             >
-                                <div className="font-bold text-[3vw] md:text-sm">W</div>
+                                <div className="font-bold text-[3vw] md:text-xl">W</div>
                             </button>
                         </div>
                     </div>
@@ -2124,7 +2124,7 @@ export default function VisualNovelUI() {
                 {
                     choices.length > 0 && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-auto z-30 p-4">
-                            <div className="flex flex-col gap-3 md:gap-4 w-[85vw] md:w-[50vw] items-center">
+                            <div className="flex flex-col gap-3 md:gap-4 w-[85vw] md:w-[min(50vw,800px)] items-center">
                                 {choices.map((choice, idx) => (
                                     <motion.button
                                         key={idx}
@@ -2140,9 +2140,9 @@ export default function VisualNovelUI() {
                                          * Desktop: Unchanged
                                          */
                                         className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
-                                            w-[85vw] md:w-[50vw] 
-                                            py-[1.2vh] px-[5vw] md:py-[1.5vh] md:px-[2vw] 
-                                            text-[2.5vw] md:text-[0.9vw] leading-tight 
+                                            w-[85vw] md:w-[min(50vw,1200px)] 
+                                            py-[1.2vh] px-[5vw] md:py-[1.5vh] md:px-[min(2vw,48px)] 
+                                            text-[2.5vw] md:text-[min(0.9vw,27px)] leading-tight 
                                             shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                             ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                                         `}
@@ -2182,9 +2182,9 @@ export default function VisualNovelUI() {
                                     whileHover={{ scale: 1.05, skewX: -12 }}
                                     transition={{ delay: choices.length * 0.1 }}
                                     className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold 
-                                        w-[85vw] md:w-[50vw] 
-                                        py-[1.2vh] px-[5vw] md:py-[1.5vh] md:px-[2vw] 
-                                        text-[2.5vw] md:text-[0.9vw] leading-tight 
+                                        w-[85vw] md:w-[min(50vw,1200px)] 
+                                        py-[1.2vh] px-[5vw] md:py-[1.5vh] md:px-[min(2vw,48px)] 
+                                        text-[2.5vw] md:text-[min(0.9vw,27px)] leading-tight 
                                         shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                         ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                                     `}
@@ -3071,7 +3071,7 @@ Instructions:
 
                 {/* Dialogue / Narration Layer */}
                 {currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-8 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[25vh] md:h-[18vh]">
+                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-8 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[25vh] md:h-[min(18vh,375px)]">
                         <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                             {/* Dialogue Control Bar */}
 
@@ -3082,7 +3082,7 @@ Instructions:
                                 {/* Name Tag */}
                                 {currentSegment.type === 'dialogue' && (
                                     <div className="absolute -top-[3vh] md:-top-[6vh] w-full text-center px-2">
-                                        <span className="text-[3.5vw] md:text-[1.1vw] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                        <span className="text-[3.5vw] md:text-[min(1.1vw,36px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                             {(() => {
                                                 const { characterData, playerName } = useGameStore.getState();
 
@@ -3102,7 +3102,7 @@ Instructions:
                                 )}
 
                                 {/* Text Content */}
-                                <div className="text-[2.8vw] md:text-[1.0vw] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
+                                <div className="text-[2.8vw] md:text-[min(1.0vw,30px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
                                     {currentSegment.type === 'narration' ? (
                                         <span className="text-gray-300 italic block">
                                             {formatText(currentSegment.content)}

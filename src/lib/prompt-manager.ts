@@ -134,6 +134,44 @@ ${behaviorRules}
 
 ${outputFormat}
 `;
+        }
+
+        if (state.activeGameId === 'god_bless_you') {
+            const { GBY_IDENTITY, GBY_BEHAVIOR_RULES, GBY_OUTPUT_FORMAT, GBY_SPECIAL_FORMATS } = await import('../data/games/god_bless_you/constants');
+
+            // [BLOCK 1: IDENTITY]
+            const systemIdentity = GBY_IDENTITY;
+
+            // [BLOCK 2: KNOWLEDGE BASE]
+            // 2.1 Famous Characters
+            const famousCharactersDB = state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded.";
+
+            // 2.2 Backgrounds
+            const availableBackgrounds = PromptManager.getAvailableBackgrounds(state);
+
+            // [BLOCK 3: BEHAVIOR GUIDELINES]
+            const behaviorRules = GBY_BEHAVIOR_RULES;
+
+            // [BLOCK 4: STRICT OUTPUT FORMAT]
+            // Merge OUTPUT_FORMAT and SPECIAL_FORMATS
+            const outputFormat = GBY_OUTPUT_FORMAT + "\n" + GBY_SPECIAL_FORMATS;
+
+            return `
+${systemIdentity}
+
+## [NPC Database (Famous Figures)]
+${famousCharactersDB}
+
+## [Character Database (Reference)]
+${PromptManager.getAvailableCharacters(state)}
+
+## [Available Backgrounds]
+${availableBackgrounds}
+
+${behaviorRules}
+
+${outputFormat}
+`;
         } // End Wuxia Block
 
         // [Original Logic for other games - Legacy Fallback]
@@ -430,6 +468,12 @@ ${spawnCandidates || "None"}
         // [FIX] Sort by name to guarantee deterministic order for Caching
         allChars.sort((a: any, b: any) => a.name.localeCompare(b.name));
 
+        const isGBY = state.activeGameId === 'god_bless_you';
+
+        if (isGBY) {
+            return allChars.map(c => PromptManager.formatGBYCharacter(c)).join('\n\n');
+        }
+
         return allChars.map((c: any) => {
             let info = `### ${c.name}`;
             if (c.role) info += ` (${c.role})`;
@@ -453,6 +497,14 @@ ${spawnCandidates || "None"}
             }
             if (c.preferences) info += `\n- Preferences: ${JSON.stringify(c.preferences)}`;
             if (c.job) info += `\n- Job/Abilities: ${JSON.stringify(c.job)}`;
+
+            // [GBY Specific]
+            if (c.skill) info += `\n- Skill: ${c.skill}`;
+            if (c.profile) {
+                // Convert profile object to string summary
+                const profileStr = Object.entries(c.profile).map(([k, v]) => `${k}: ${v}`).join(', ');
+                info += `\n- Profile: ${profileStr}`;
+            }
 
             // Relationship Info (Static Base)
             if (c.relationshipInfo) {
@@ -696,5 +748,81 @@ ${spawnCandidates || "None"}
         }).filter(Boolean).join('\n\n');
 
         return charInfos || "No other characters are currently present.";
+    }
+
+    // [Helper] YAML-style formatter for God Bless You characters
+    private static formatGBYCharacter(c: any): string {
+        const lines: string[] = [`### ${c.name}`];
+
+        // 1. Basic Info
+        if (c.role) lines.push(`- Role: ${c.role}`);
+        if (c.title) lines.push(`- Title: ${c.title}`);
+        if (c.skill) lines.push(`- Skill: ${c.skill}`);
+
+        // 2. Profile (KV List)
+        if (c.profile) {
+            lines.push(`- Profile:`);
+            Object.entries(c.profile).forEach(([k, v]) => {
+                lines.push(`  - ${k}: ${v}`);
+            });
+        }
+
+        // 3. Appearance (KV List)
+        if (c.appearance) {
+            lines.push(`- Appearance:`);
+            Object.entries(c.appearance).forEach(([k, v]) => {
+                lines.push(`  - ${k}: ${v}`);
+            });
+        } else if (c.description) {
+            lines.push(`- Appearance: ${c.description}`);
+        }
+
+        // 4. Job (KV List)
+        if (c.job) {
+            lines.push(`- Job:`);
+            Object.entries(c.job).forEach(([k, v]) => {
+                lines.push(`  - ${k}: ${v}`);
+            });
+        }
+
+        // 5. Personality (KV List)
+        if (c.personality) {
+            if (typeof c.personality === 'string') {
+                lines.push(`- Personality: ${c.personality}`);
+            } else {
+                lines.push(`- Personality:`);
+                Object.entries(c.personality).forEach(([k, v]) => {
+                    lines.push(`  - ${k}: ${v}`);
+                });
+            }
+        }
+
+        // 6. Preferences (KV List)
+        if (c.preferences) {
+            lines.push(`- Preferences:`);
+            Object.entries(c.preferences).forEach(([k, v]) => {
+                lines.push(`  - ${k}: ${v}`);
+            });
+        }
+
+        // 7. Secret (KV List - Hidden)
+        if (c.secret) {
+            lines.push(`- [HIDDEN TRUTH (GM ONLY)]:`);
+            if (typeof c.secret === 'string') {
+                lines.push(`  ${c.secret}`);
+            } else {
+                Object.entries(c.secret).forEach(([k, v]) => {
+                    lines.push(`  - ${k}: ${v}`);
+                });
+            }
+            lines.push(`  - **CRITICAL**: Do NOT reveal hidden truths.`);
+        }
+
+        // 8. Relations
+        if (c.relationship) {
+            lines.push(`- Relationships: ${c.relationship}`);
+        }
+
+        return lines.join('\n');
     }
 }

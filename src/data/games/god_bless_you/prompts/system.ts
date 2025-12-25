@@ -1,3 +1,5 @@
+import { GBY_SPECIAL_FORMATS } from '../constants';
+
 // Helper to get Rank Info (Exported for Static Context)
 export const getRankInfo = (fame: number) => {
     let playerRank = '일반인';
@@ -63,7 +65,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     const fame = stats.fame ?? 0;
 
     // Use Helper
-    const { playerRank } = getRankInfo(fame);
+    const { playerRank, rankGiftDesc, rankConflict } = getRankInfo(fame);
 
     const statusDescription = state.statusDescription || "건강함 (정보 없음)";
     const personalityDescription = state.personalityDescription || "평범함 (정보 없음)";
@@ -72,119 +74,102 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     if (language === 'en') currencySymbol = '$';
     else if (language === 'ja') currencySymbol = '엔';
 
-    // [New] Active Event Injection
-    const activeEventPrompt = state.activeEvent ? `
-    ## [🔥 IMPORTANT: EVENT TRIGGERED]
-    **SYSTEM OVERRIDE**: A scripted event has been triggered.
-    **INSTRUCTION**: ${state.activeEvent.prompt}
-    **PRIORITY**: This event takes precedence over normal status descriptions. Focus on depicting this scene/sensation.
-    ` : '';
+    // Construct Skill List
+    const skillList = (stats.skills || []).join(', ') || "없음 (일반인)";
 
-    const inventoryDesc = inventory.length > 0
-        ? inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ')
-        : "없음";
-    const abilityDesc = (stats.skills && stats.skills.length > 0)
-        ? stats.skills.join(', ')
-        : "없음";
-
-    // Death Check Logic
-    let deathInstruction = "";
-    if (stats.hp <= 0 || stats.mp <= 0) {
-        deathInstruction = `
-<시스템팝업> [CRITICAL: DEATH EVENT - IMMEDIATE ACTION REQUIRED]
-현재 주인공의 체력 또는 정신력이 떨어져 사망했습니다. (체력: ${stats.hp}, 정신력: ${stats.mp})
-이는 번복할 수 없는 게임의 결과입니다.
-어떠한 기적이나 외부의 도움, 회복 이벤트도 절대 발생해서는 안 됩니다.
-지금 즉시 주인공이 어떻게 비참하게(혹은 장렬하게) 죽음을 맞이하는지 묘사하고, 이야기를 'BAD ENDING'으로 끝내십시오.
-더 이상의 스토리 전개나 선택지를 제공하지 마십시오.
-`;
-    }
-
-    // Constraint for Direct Input
+    // [Constraint for Direct Input]
     const directInputConstraints = state.isDirectInput
         ? `
 [유저 직접 입력 시 제약 사항]
 1. 유저는 신적인 개입을 할 수 없으며, 오직 주인공의 능력 한계 선에서 행동만 제어할 수 있다.
-2. 타인의 감정이나 행동을 제어하거나 유도할 수 없다.
-3. 자신의 능력이나 별도의 추가 설정을 부여할 수 없다.
+2. 타인의 감정이나 행동을 제어하거나 유도할 수 없다. (예: "그녀가 나에게 반했다" -> 금지)
+3. 자신의 능력이나 별도의 추가 설정을 부여할 수 없다. (예: "갑자기 각성했다" -> 금지)
 4. 유저는 직접 입력으로 위 1~3번 제한 사항을 지키되, 주인공 캐릭터에 한해서 캐릭터가 하지 않을 만한 행동을 억지로 실행시킬 수 있다.
 `
         : "";
 
-    // [DYNAMIC PROMPT ONLY]
-    // Static sections (Role, World, Output Rules) are now in Shared Static Context.
+    // [Location Details]
+    const worldData = state.worldData || { locations: {}, items: {} };
+    const locData = worldData.locations?.[state.currentLocation];
+    let locationDesc = "알 수 없는 장소";
+    let locationSecrets = "";
+
+    if (typeof locData === 'string') {
+        locationDesc = locData;
+    } else if (locData) {
+        locationDesc = locData.description || "설명 없음";
+        if (locData.secrets && locData.secrets.length > 0) {
+            locationSecrets = `\n  - **특이사항(비밀)**: ${locData.secrets.join(', ')}`;
+        }
+    }
+
+    // [Narrative Perspective]
+    const perspective = stats.narrative_perspective || '3인칭';
+    const perspectiveRule = perspective.includes('1인칭')
+        ? `
+**[서술 시점: 1인칭 주인공 시점 (First Person)]**
+- **규칙**: 모든 서술은 주인공의 눈('나', '내')을 통해서만 이루어져야 합니다.
+- **금지**: '당신', '김현준' 등 3인칭 지칭 절대 금지.
+- **예시**: 
+  (X) 당신은 숨을 골랐다. 
+  (O) 나는 거친 숨을 몰아쉬었다. 심장이 터질 것 같았다.
+`
+        : `
+**[서술 시점: 3인칭 전지적 작가 시점 (Third Person)]**
+- **규칙**: 서술자는 관찰자로서 '주인공 이름'이나 '그'를 사용하여 서술합니다.
+- **금지**: '나'를 주어로 사용 금지 (대사 제외).
+`;
+
+    // Inventory Text
+    const inventoryDesc = inventory.length > 0
+        ? inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ')
+        : "없음";
+
     return `
-### 1. 주인공 현재 상태
-${activeEventPrompt}
-${statusDescription}
+# [5. CURRENT GAME STATE (INJECTED)]
+*이 정보는 현재 턴의 상황입니다. 최우선으로 반영하여 서술하십시오.*
 
-[소지품 및 자산]
-* **자산**: ${stats.gold}${currencySymbol} (※ 돈이 부족하면 구매 행위 절대 불가.)
-* **소지품**: ${inventoryDesc} (※ 오직 보유한 소지품만 활용 가능.)
-* **능력**: ${abilityDesc} (※ 오직 보유한 능력만 활용 가능.)
-* **현재 등급**: ${playerRank}
+${perspectiveRule}
 
-### 2. 성향, 감정, 행동 상태
-${personalityDescription}
-
-
-${deathInstruction}
-${directInputConstraints}
-
----
-
-## [Current Context]
-${state.worldInfo || "현재 특별한 정보 없음"}
-
-## [Current Scenario]
-${state.scenarioSummary || "이야기가 시작됩니다."}
-
-## [Active Characters]
+# [ACTIVE CHARACTERS]
 {{CHARACTER_INFO}}
 
----
-${playerRank !== '일반인' ? `
-   - **<시스템팝업>Content**
-     - System notifications (Quest, Item, Stats). Keep it concise.
-     - **MUST** be followed by a newline and <나레이션> or <대사>.
-` : ``}
-   - **<문자>Sender_Header: Content**
-     - Sender: Name (e.g., 이아라). Header: Time/Status (e.g., 지금).
-     - Example: \`<문자>이아라_지금: 오빠 어디야? 😠 빨리 와!\`
+[Available Extra Images]:
+${(state.extraMap ? Object.keys(state.extraMap) : (state.availableExtraImages || [])).map((img: string) => img.replace(/\.(png|jpg|jpeg)$/i, '')).join(', ')}
 
-   - **<답장>Receiver_Header: Content**
-     - Receiver: The character receiving the text. Sender is explicitly YOU (Player).
-     - Example: \`<답장>이아라_지금: 알겠어, 금방 갈게.\` (Player replies to Yi-Ara)
+${directInputConstraints}
 
-   - **<전화>Caller_Status: Content**
-     - Caller: Name. Status: State (e.g., 통화중 00:23).
-     - Example: \`<전화>김민지_통화중 00:15: 여보세요? 선배? 잘 들려요?\`
+**[서술 주의사항: 메타 발언 금지]**
+아래 수치(HP, MP 등)는 서술을 위한 참고용일 뿐입니다. **절대 수치를 직접 언급하거나 게임 시스템처럼 묘사하지 마십시오.**
+(X) "HP가 10 남아서 위험하다." / (O) "시야가 흐려지고 다리에 힘이 풀린다."
+*HP나 MP가 0이 되면 모든 행동은 실패하고 'BAD ENDING'으로 직결됩니다.*
 
-   - **<TV뉴스>Character_Background: Content**
-     - Character: Anchor/Reporter. Background: Image ID.
-     - Example: \`<TV뉴스>뉴스앵커_여_NewsStudio: [속보] 서울 상공에 미확인 비행물체 출현...\`
+- **현재 시간**: ${state.day || 1}일차 ${state.time || '14:00'}
+- **현재 위치**: ${state.currentLocation}
+  - **설명**: ${locationDesc}${locationSecrets}
+- **주인공 상태**: [HP: ${stats.hp || 100}], [MP(정신력): ${stats.mp || 100}], [등급: ${playerRank}]
+  - **소지금**: ${stats.gold}${currencySymbol}
+  - **상세**: ${statusDescription}
+  - **마음가짐**: ${personalityDescription}
+- **보유 능력(스킬)**: ${skillList}
+- **소지품**: ${inventoryDesc}
 
-   - **<기사>Title_Source: Content**
-     - Title: Headline. Source: Publisher.
-     - Example: \`<기사>[단독] 천서윤의 비밀_디스패치: 충격적인 사실이 공개되었습니다.\`
+**[행동/전투 가이드라인]**:
+주인공은 현재 **'${playerRank}'** 등급이다.
+- **능력의 한계**: ${rankGiftDesc}
+- **갈등 요소**: ${rankConflict}
+- 상위 등급의 블레서나 몬스터와의 싸움은 매우 위험하며, 현실적인 결과(부상, 사망)를 따른다.
 
-   - **<선택지N>Content**
-     - Choices for the user at the end.
-     - **STRICT RULE**: Do NOT include hints, stats, or effects in parentheses (e.g., "(Relationship + 1)" or "(Requires STR)").
-     - Just describe the action simply. Example: \`<선택지1>그녀에게 말을 건다.\` (O) / \`<선택지1>그녀에게 말을 건다(호감도 상승)\` (X)
+# [SCENARIO & EVENTS]
+- **활성 이벤트**: ${state.currentEvent ? state.currentEvent.name : "없음"}
+${state.currentEvent ? `  - **이벤트 지침**: ${state.currentEvent.prompt}` : ""}
+- **현재 시나리오**: ${state.scenarioSummary || "이야기가 계속됩니다."}
 
-### 3. **Response Format (Strict Order)**
-   1. **<배경>...**: Only if location changes.
-   2. **<문자>/<전화>/<TV뉴스>/<기사>**: Special events (Optional).
-   3. **<나레이션> / <대사>**: The main story flow.
-   ${playerRank !== '일반인' ? `4. **<시스템팝업>**: If needed.` : ``}
-   ${playerRank !== '일반인' ? `5` : `4`}. **<선택지N>**: Ending choices.
 
-### 3. **Validation Checklist**
-   - Did I assume knowledge of a HIDDEN SECRET? -> FAIL. Retry.
-   - Did I use a Korean background name? -> FAIL. Use English.
-   - Did I write less than 10 turns? -> FAIL. Write more.
 
-Now, start the story.
+### [⚡ 중요: 이벤트 - 최우선 실행]
+**위 '활성 이벤트'가 비어있지 않다면, 다른 어떤 맥락보다 최우선으로 해당 내용을 실행하라.**
+지금 이야기의 흐름에 어색하지 않게 이벤트의 지침을 따라야 한다. 자연스럽게 유도해야한다.
+
 `;
 };

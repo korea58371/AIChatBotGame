@@ -1,86 +1,48 @@
 import { useGameStore } from './store';
 
-// 2. 감정 매핑 (하드코딩 - Shared across games for now, or move to data?)
-// For now, keep it shared.
-const emotionMap: Record<string, string> = {
-    "자신감": "Confident",
-    "의기양양": "Smug",
-    "진지함": "Serious",
-    "짜증": "Annoyed",
+// [Unified Emotion Map]
+// Shared across 'wuxia' and 'god_bless_you' after standardization (Dec 2025).
+// Final Standard Version - Contains only the canonical keys expected from the AI.
+const unifiedEmotionMap: Record<string, string> = {
+    // 1. Level-based Emotions (Intensity 1-3)
+    "기쁨1": "Joy_Lv1", "기쁨2": "Joy_Lv2", "기쁨3": "Joy_Lv3",
+    "화남1": "Anger_Lv1", "화남2": "Anger_Lv2", "화남3": "Anger_Lv3",
+    "슬픔1": "Sadness_Lv1", "슬픔2": "Sadness_Lv2", "슬픔3": "Sadness_Lv3",
+    "부끄1": "Shy_Lv1", "부끄2": "Shy_Lv2", "부끄3": "Shy_Lv3",
+    "앙탈1": "CuteAngry_Lv1", "앙탈2": "CuteAngry_Lv2", "앙탈3": "CuteAngry_Lv3", // Cute/Affectionate Anger
+
+    // 2. Independent Emotions (Special States)
+    "안도": "Relieved", "안심": "Relieved",
     "삐짐": "Pouting",
-    "혐오": "Disgust",
-    "고민": "Thinking",
-    "박장대소": "BigLaugh",
-    "안도": "Relieved",
-    "놀람": "Surprised",
-    "부끄러움": "Blushing",
-    "결의": "Determined",
-    "거친호흡": "Panting",
-    "글썽거림": "TearingUp",
-    "고통": "Pain",
-    "공포": "Fear",
-    "오열": "Crying",
-    "수줍음": "Shy",
-    "지침": "Exhausted",
-    "폭발직전": "IntenseBlushing",
-    // Fallback Mappings for common hallucinations
-    "명랑": "BigLaugh",
-    "당황": "Surprised",
-    "기쁨": "BigLaugh",
-    "행복": "BigLaugh",
-    "슬픔": "Crying",
-    "분노": "Annoyed",
-    "사랑": "Blushing",
-    "기본": "Default" // Explicit default mapping
-};
 
-const wuxiaEmotionMap: Record<string, string> = {
-    // Level-based Emotions
-    "기쁨1": "Joy_Lv1", "기쁨2": "Joy_Lv2", "기쁨3": "Joy_Lv3", // Joy
-    "화남1": "Anger_Lv1", "화남2": "Anger_Lv2", "화남3": "Anger_Lv3", // Anger
-    "슬픔1": "Sadness_Lv1", "슬픔2": "Sadness_Lv2", "슬픔3": "Sadness_Lv3", // Sadness
-    "부끄1": "Shy_Lv1", "부끄2": "Shy_Lv2", "부끄3": "Shy_Lv3", // Shy
+    // 3. Comic Variants (Manhwa Style)
+    "고양이": "CatFace",            // Cat-face Joy
+    "음침": "DarkShadow",           // Gloomy/Depressed with vertical lines
+    "어지러움": "Dizzy",            // Swirly eyes
+    "멍함": "Dumbfounded",          // Blank stare / Dot eyes
+    "당황": "Panic",                // Sweating/Panicking
+    "충격": "Shock",                // Shocked blue face
+    "반짝": "Sparkle",              // Sparkly eyes
 
-    // Comic Variants
-    "고양이": "CatFace_Comic",
-    "음침": "DarkShadow_Comic",
-    "경멸": "Disdain_Comic",
-    "어지러움": "Dizzy_Comic",
-    "멍함": "Dumbfounded_Comic",
-    "당황": "Panic_Comic",
-    "충격": "Shock_Comic",
-    "반짝": "Sparkle_Comic",
-
-    // Standard Emotions
+    // 4. Standard Emotions (Attitude & Narrative States)
     "기본": "Default",
     "결의": "Determined",
+    "경멸": "Disdain",
     "혐오": "Disgust",
+    "냉담": "Cold",
     "취함": "Drunk",
     "기대": "Expectant",
     "여유": "Smug",
+    "우쭐": "Smug",
+    "지침": "Exhausted",
+    "장난": "Prank", "메롱": "Prank", // Prank/Teasing
     "하트": "HeartEyes",
     "고통": "Pain",
     "유혹": "Seductive",
     "졸림": "Sleepy",
     "놀람": "Surprise",
     "고민": "Thinking",
-    "광기": "Yandere",
-
-    // Fallbacks / Aliases
-    "행복": "Joy_Lv2",
-    "분노": "Anger_Lv2",
-    "우울": "Sadness_Lv2",
-    "수줍음": "Shy_Lv1",
-    "진지함": "Determined", // Map to Determined? Or Default.
-    "사랑": "HeartEyes",
-
-    // [New] AI Hallucination Fixes
-    "흥미": "Expectant",
-    "웃음": "Joy_Lv2",
-    "미소": "Joy_Lv1",
-    "비웃음": "Disgust",
-    "냉소": "Disgust",
-    "짜증": "Anger_Lv1"
+    "광기": "Yandere"
 };
 
 /**
@@ -104,59 +66,39 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
         return ''; // 빈 문자열 반환 (시스템이 처리하도록)
     }
 
-    // [New] Check Overrides (Dynamic Mapping from <대사>)
+    // [Overrides] Dynamic Mapping from <대사> input
     if (state.extraOverrides && state.extraOverrides[koreanName]) {
         const overrideKey = state.extraOverrides[koreanName];
+
         // 1. Check Extra Map for the override key
         if (extraMap[overrideKey]) {
             return `${extraBasePath}/${extraMap[overrideKey]}`;
         }
-        // 2. Check Available Extra Images (Filename match)
-        // Note: availableExtraImages usually stores keys (Name_Emotion) without extension? 
-        // VisualNovelUI code suggests it stores "Name_Emotion".
-        // We need to match overrideKey + Emotion.
+
+        // 2. Check Available Extra Images (Filename match with Emotion)
         const combinedKey = `${overrideKey}_${koreanEmotion}`;
         if (availableExtraImages.includes(combinedKey)) {
             return `${extraBasePath}/${combinedKey}.png`;
         }
-        // 2. Check Main Character Map? (Optional, if we want to map Extra -> Main)
-        // Let it fall through to main logic by swapping koreanName?
-        // Or just recurse? Recursing is safer but infinite loop risk?
-        // Let's just swap the lookup target for the main Logic logic below.
-        // But existing code structure is linear.
-        // Let's just return if found in Extra, otherwise assume key MIGHT be a direct filename or main char key?
     }
 
     // 1. 메인 캐릭터 매핑 확인
     const charId = charMap[koreanName];
 
-    // 2. 감정 매핑 확인 (없으면 Default)
-    // Game-specific Mapping
-    let emotionKeyword = 'Default';
-    let targetFilename = '';
-    let defaultFilename = '';
+    // 2. 감정 매핑 확인 (Unified Map)
+    const emotionKeyword = unifiedEmotionMap[koreanEmotion] || 'Default';
 
-    if (activeGameId === 'wuxia') {
-        emotionKeyword = wuxiaEmotionMap[koreanEmotion] || 'Default';
-        // Wuxia Format: CharName_Emotion (No extension for check)
-        targetFilename = `${charId}_${emotionKeyword}`;
-        defaultFilename = `${charId}_Default`;
-    } else {
-        // Legacy (God Bless You) Format: CharName_Default_Emotion
-        emotionKeyword = emotionMap[koreanEmotion] || 'Default';
-        targetFilename = `${charId}_Default_${emotionKeyword}`;
-        defaultFilename = `${charId}_Default_Default`;
-    }
+    // Unified File Path Logic (No more _Default_ infix)
+    const targetFilename = `${charId}_${emotionKeyword}`;
+    const defaultFilename = `${charId}_Default`;
 
-    // A. Direct File Match (Priority for Wuxia Static Extras)
-    // If the input name (Key) matches a file exactly, use it.
-    // This handles cases where Wuxia extras are static images without emotion suffixes
-    // e.g. "마을의원_늙은" -> "마을의원_늙은.png"
+    // A. Direct File Match (Priority for Static Extras in Wuxia)
+    // If input name is "마을의원_늙은" and it exists as a file, use it.
     if (availableExtraImages.includes(koreanName)) {
         return `${extraBasePath}/${koreanName}.png`;
     }
 
-    // A. 메인 캐릭터인 경우
+    // B. 메인 캐릭터인 경우
     if (charId) {
         // 1) 정확한 이미지가 있는가?
         if (availableImages.includes(targetFilename)) {
@@ -168,9 +110,7 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
             return `${charBasePath}/${charId}/${defaultFilename}.png`;
         }
 
-        // 3) List check fallback (Legacy logic, maybe unsafe for wuxia)
-        // If we really can't find it, returning empty string is safer than a bad path.
-        // But the original code returned targetFilename blind if list empty.
+        // 3) Fallback: Return target path blindly if list is empty (Legacy behavior precaution)
         if (availableImages.length === 0) {
             return `${charBasePath}/${charId}/${targetFilename}.png`;
         }
@@ -178,19 +118,17 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
         return '';
     }
 
-    // B. 엑스트라 캐릭터 확인
+    // C. 엑스트라 캐릭터 확인
     if (extraMap[koreanName]) {
         return `${extraBasePath}/${extraMap[koreanName]}`;
     }
 
-    // [Fix] Fallback search for Extra Characters (e.g. AI says "낭인무사" but key is "낭인무사남")
-    // Find first key that starts with "Name"
+    // [Fallback] Partial Match for Extra Characters (e.g., "낭인무사" -> "낭인무사남")
     const partialMatch = Object.keys(extraMap).find(key => key.startsWith(koreanName));
     if (partialMatch) {
         return `${extraBasePath}/${extraMap[partialMatch]}`;
     }
 
-
-    // C. 매핑 실패 (Fallback)
+    // D. 매핑 실패
     return '';
 }
