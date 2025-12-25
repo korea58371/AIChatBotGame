@@ -2147,12 +2147,12 @@ export default function VisualNovelUI() {
                                         /* 
                                          * [Responsive Logic]
                                          * Mobile: width 95vw (Full width), text 4vw (Large readable), padding 2vh (Easy touch)
-                                         * Desktop: width 50vw (Centered), text 1.3vw (Elegant), padding 1.5vh (Compact)
+                                         * Desktop: width 50vw (Centered), text 0.9vw (Refined & small), padding 1.5vh (Compact)
                                          */
                                         className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
                                             w-[95vw] md:w-[50vw] 
                                             py-[2vh] px-[5vw] md:py-[1.5vh] md:px-[2vw] 
-                                            text-[4vw] md:text-[1.3vw] leading-tight 
+                                            text-[4vw] md:text-[0.9vw] leading-tight 
                                             shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                             ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                                         `}
@@ -2194,7 +2194,7 @@ export default function VisualNovelUI() {
                                     className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold 
                                         w-[95vw] md:w-[50vw] 
                                         py-[2vh] px-[5vw] md:py-[1.5vh] md:px-[2vw] 
-                                        text-[4vw] md:text-[1.3vw] leading-tight 
+                                        text-[4vw] md:text-[0.9vw] leading-tight 
                                         shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                         ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                                     `}
@@ -3081,7 +3081,7 @@ Instructions:
 
                 {/* Dialogue / Narration Layer */}
                 {currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-8 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[25vh] md:h-[30vh]">
+                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-8 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[25vh] md:h-[22vh]">
                         <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                             {/* Dialogue Control Bar */}
 
@@ -3091,8 +3091,8 @@ Instructions:
                             >
                                 {/* Name Tag */}
                                 {currentSegment.type === 'dialogue' && (
-                                    <div className="absolute -top-[5vh] md:-top-16 w-full text-center px-2">
-                                        <span className="text-[5.5vw] md:text-[2vw] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                    <div className="absolute -top-[5vh] md:-top-[8vh] w-full text-center px-2">
+                                        <span className="text-[5.5vw] md:text-[1.4vw] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                             {(() => {
                                                 const { characterData, playerName } = useGameStore.getState();
 
@@ -3112,7 +3112,7 @@ Instructions:
                                 )}
 
                                 {/* Text Content */}
-                                <div className="text-[4.2vw] md:text-[1.8vw] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
+                                <div className="text-[4.2vw] md:text-[1.2vw] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
                                     {currentSegment.type === 'narration' ? (
                                         <span className="text-gray-300 italic block">
                                             {formatText(currentSegment.content)}
@@ -3122,7 +3122,6 @@ Instructions:
                                             {formatText(currentSegment.content)}
                                         </span>
                                     )}
-
                                 </div>
                             </div>
                         </div>
