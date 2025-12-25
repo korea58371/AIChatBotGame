@@ -2144,7 +2144,7 @@ export default function VisualNovelUI() {
                                         whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
                                         transition={{ delay: idx * 0.1 }}
                                         disabled={isProcessing || isLogicPending}
-                                        className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold py-[1.5vh] px-[4vw] md:py-6 md:px-8 text-[clamp(14px,3.5vw,22px)] shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
+                                        className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold py-[1.5vh] px-[4vw] md:py-6 md:px-8 text-[4vw] md:text-xl leading-snug shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                             ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                                         `}
                                         onClick={(e) => {
@@ -2182,7 +2182,7 @@ export default function VisualNovelUI() {
                                     animate={{ opacity: 1, y: 0, skewX: -12 }}
                                     whileHover={{ scale: 1.05, skewX: -12 }}
                                     transition={{ delay: choices.length * 0.1 }}
-                                    className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold py-[1.5vh] px-[4vw] md:py-6 md:px-8 text-[clamp(14px,3.5vw,22px)] shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
+                                    className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold py-[1.5vh] px-[4vw] md:py-6 md:px-8 text-[4vw] md:text-xl leading-snug shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                         ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                                     `}
                                     onClick={(e) => {
