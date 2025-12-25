@@ -2135,7 +2135,7 @@ export default function VisualNovelUI() {
                 {
                     choices.length > 0 && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-auto z-30 p-4">
-                            <div className="flex flex-col gap-3 md:gap-4 w-[90vw] md:w-auto md:min-w-[450px] max-w-[800px]">
+                            <div className="flex flex-col gap-3 md:gap-4 w-[95vw] md:w-[50vw] items-center">
                                 {choices.map((choice, idx) => (
                                     <motion.button
                                         key={idx}
@@ -2144,7 +2144,16 @@ export default function VisualNovelUI() {
                                         whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
                                         transition={{ delay: idx * 0.1 }}
                                         disabled={isProcessing || isLogicPending}
-                                        className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold py-[1.5vh] px-[4vw] md:py-6 md:px-8 text-[4vw] md:text-xl leading-snug shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
+                                        /* 
+                                         * [Responsive Logic]
+                                         * Mobile: width 95vw (Full width), text 4vw (Large readable), padding 2vh (Easy touch)
+                                         * Desktop: width 50vw (Centered), text 1.3vw (Elegant), padding 1.5vh (Compact)
+                                         */
+                                        className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
+                                            w-[95vw] md:w-[50vw] 
+                                            py-[2vh] px-[5vw] md:py-[1.5vh] md:px-[2vw] 
+                                            text-[4vw] md:text-[1.3vw] leading-tight 
+                                            shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                             ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                                         `}
                                         onClick={(e) => {
@@ -2182,7 +2191,11 @@ export default function VisualNovelUI() {
                                     animate={{ opacity: 1, y: 0, skewX: -12 }}
                                     whileHover={{ scale: 1.05, skewX: -12 }}
                                     transition={{ delay: choices.length * 0.1 }}
-                                    className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold py-[1.5vh] px-[4vw] md:py-6 md:px-8 text-[4vw] md:text-xl leading-snug shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
+                                    className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold 
+                                        w-[95vw] md:w-[50vw] 
+                                        py-[2vh] px-[5vw] md:py-[1.5vh] md:px-[2vw] 
+                                        text-[4vw] md:text-[1.3vw] leading-tight 
+                                        shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                         ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                                     `}
                                     onClick={(e) => {
@@ -3078,8 +3091,8 @@ Instructions:
                             >
                                 {/* Name Tag */}
                                 {currentSegment.type === 'dialogue' && (
-                                    <div className="absolute -top-8 md:-top-12 w-full text-center px-2">
-                                        <span className="text-xl md:text-3xl font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                    <div className="absolute -top-[5vh] md:-top-16 w-full text-center px-2">
+                                        <span className="text-[5.5vw] md:text-[2vw] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                             {(() => {
                                                 const { characterData, playerName } = useGameStore.getState();
 
@@ -3099,7 +3112,7 @@ Instructions:
                                 )}
 
                                 {/* Text Content */}
-                                <div className="text-base md:text-2xl lg:text-3xl leading-relaxed text-gray-100 min-h-[60px] md:min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm px-4 md:px-0">
+                                <div className="text-[4.2vw] md:text-[1.8vw] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
                                     {currentSegment.type === 'narration' ? (
                                         <span className="text-gray-300 italic block">
                                             {formatText(currentSegment.content)}
@@ -3109,6 +3122,7 @@ Instructions:
                                             {formatText(currentSegment.content)}
                                         </span>
                                     )}
+
                                 </div>
                             </div>
                         </div>
