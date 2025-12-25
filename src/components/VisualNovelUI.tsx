@@ -1053,6 +1053,7 @@ export default function VisualNovelUI() {
                 addToast(`Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
             }
             const segments = parseScript(responseText);
+            setLastStoryOutput(responseText); // [Logging] Capture response for next turn logic
 
             // 2. Generate Logic (Async)
             setIsLogicPending(true); // [Logic Lock] Lock input
