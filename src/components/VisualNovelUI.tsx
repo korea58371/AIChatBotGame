@@ -1212,6 +1212,7 @@ export default function VisualNovelUI() {
         // Replace Placeholder with Real Name
         const effectiveName = playerName || '성현우';
         const processedScenario = (initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
+        setLastStoryOutput(processedScenario); // [Logging] Capture initial scenario
 
         // Parse the raw text scenario
         const segments = parseScript(processedScenario);
