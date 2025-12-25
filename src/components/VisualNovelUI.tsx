@@ -12,7 +12,7 @@ import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json
 import { submitGameplayLog } from '@/app/actions/log';
 
 
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { EventManager } from '@/lib/event-manager';
@@ -461,6 +461,19 @@ export default function VisualNovelUI() {
     const [isMounted, setIsMounted] = useState(false);
 
     // Initialize Session ID
+    // [Logging] Hydrate lastStoryOutput from history on mount (in case of refresh)
+    useEffect(() => {
+        if (chatHistory && chatHistory.length > 0) {
+            // Find last model message
+            for (let i = chatHistory.length - 1; i >= 0; i--) {
+                if (chatHistory[i].role === 'model') {
+                    setLastStoryOutput(chatHistory[i].text);
+                    break;
+                }
+            }
+        }
+    }, []); // Run once on mount (after hydration)
+
     // Initialize Session ID
     useEffect(() => {
         try {
