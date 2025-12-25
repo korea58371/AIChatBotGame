@@ -1798,7 +1798,7 @@ export default function VisualNovelUI() {
                                 <img
                                     src={getCharUrl(characterExpression)}
                                     alt="Character"
-                                    className="h-full w-auto max-w-none object-contain drop-shadow-2xl"
+                                    className="h-full w-auto max-w-[85vw] md:max-w-none object-contain object-bottom drop-shadow-2xl"
                                     onError={(e) => {
                                         e.currentTarget.style.display = 'none';
                                         console.warn(`Failed to load character image: ${getCharUrl(characterExpression)}`);
@@ -3078,8 +3078,8 @@ Instructions:
                             >
                                 {/* Name Tag */}
                                 {currentSegment.type === 'dialogue' && (
-                                    <div className="absolute -top-12 w-full text-center px-2">
-                                        <span className="text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                    <div className="absolute -top-6 md:-top-12 w-full text-center px-2">
+                                        <span className="text-xl md:text-3xl lg:text-[36px] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                             {(() => {
                                                 const { characterData, playerName } = useGameStore.getState();
 
@@ -3099,7 +3099,7 @@ Instructions:
                                 )}
 
                                 {/* Text Content */}
-                                <div className="text-[32px] leading-relaxed text-gray-100 min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
+                                <div className="text-lg md:text-2xl lg:text-[32px] leading-relaxed text-gray-100 min-h-[60px] md:min-h-[80px] whitespace-pre-wrap text-center w-full drop-shadow-sm">
                                     {currentSegment.type === 'narration' ? (
                                         <span className="text-gray-300 italic block px-8">
                                             {formatText(currentSegment.content)}
