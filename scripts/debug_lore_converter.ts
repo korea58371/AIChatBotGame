@@ -1,5 +1,5 @@
 
-import { LoreConverter } from '../src/lib/lore-converter.ts';
+import { LoreConverter } from '../src/lib/lore-converter';
 
 const mockLore = {
     "charactersDetail": {
