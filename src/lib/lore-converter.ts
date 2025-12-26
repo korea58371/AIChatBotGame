@@ -1,280 +1,376 @@
 export class LoreConverter {
-    static convertSystems(honorifics: any, measurements: any, skills: any): string {
-        let output = "## [World Rules & Systems]\n\n";
+    static convertTerminology(terminology: any): string {
+        if (!terminology) return "";
+        let output = "## [Wuxia Language & Terminology Guidelines]\n\n";
 
-        // 1. Time & Measurements
-        if (measurements) {
+        // 1. Guidelines & Rules (가이드라인_및_규칙)
+        const guide = terminology.가이드라인_및_규칙 || terminology.guidelines;
+        if (guide) {
+            output += "### Guidelines\n";
+            if (guide.핵심_원칙 || guide.core_principle) {
+                output += `> ${guide.핵심_원칙 || guide.core_principle}\n\n`;
+            }
+            const prohibited = guide.금지_용어 || guide.prohibited_terms;
+            if (prohibited) {
+                output += "**Language Corrections (Strictly enforced)**:\n";
+                const objects = prohibited.현대_사물 || prohibited.modern_objects;
+                const concepts = prohibited.현대_개념 || prohibited.modern_concepts;
+
+                const processTerm = (item: string) => {
+                    if (item.includes('->')) {
+                        const [bad, good] = item.split('->').map(s => s.trim());
+                        return `❌ ${bad} → ⭕ ${good}`;
+                    }
+                    return item;
+                };
+
+                if (objects) output += `- **Objects**: ${objects.map(processTerm).join(' / ')}\n`;
+                if (concepts) output += `- **Concepts**: ${concepts.map(processTerm).join(' / ')}\n`;
+                output += "\n";
+            }
+        }
+
+        // 2. Titles & Honorifics (호칭_및_경어)
+        const titles = terminology.호칭_및_경어;
+        if (titles) {
+            output += "### Titles & Honorifics\n";
+            if (titles.일반_호칭) {
+                if (titles.일반_호칭.여성) output += `- **Female**: ${titles.일반_호칭.여성.join(', ')}\n`;
+                if (titles.일반_호칭.남성) output += `- **Male**: ${titles.일반_호칭.남성.join(', ')}\n`;
+            }
+            output += "\n";
+        }
+
+        // 3. Measurement System (측량_및_단위)
+        const meas = terminology.측량_및_단위 || terminology.measurement_system;
+        if (meas) {
             output += "### Measurement System\n";
-            if (measurements.time_system && measurements.time_system.basic_concept) {
-                const t = measurements.time_system;
-                output += `- **Time**: ${t.basic_concept.unit} = ${t.basic_concept.value_metric}. `;
-                if (t.sub_units) {
-                    const subs = Object.entries(t.sub_units).map(([k, v]: any) => `${k} (${v.value_metric})`).join(', ');
-                    output += `Sub-units: ${subs}.\n`;
-                }
-            }
-            if (measurements.physical_measurements) {
-                const m = measurements.physical_measurements;
-                if (m.length) output += `- **Length**: ${m.length.map((u: any) => `${u.unit} (${u.value_metric})`).join(', ')}\n`;
-                if (m.weight) output += `- **Weight**: ${m.weight.map((u: any) => `${u.unit} (${u.value_metric})`).join(', ')}\n`;
-            }
+            if (meas.시간_단위) output += `- **Time**: ${meas.시간_단위.join(', ')}\n`;
+            if (meas.길이_거리) output += `- **Distance**: ${meas.길이_거리.join(', ')}\n`;
+            if (meas.무게) output += `- **Weight**: ${meas.무게.join(', ')}\n`;
             output += "\n";
         }
-
-        // 2. Honorifics
-        if (honorifics) {
-            output += "### Honorifics & Address\n";
-            const sections: string[] = [];
-
-            // Social
-            if (honorifics.social_titles) {
-                const social = [
-                    ...honorifics.social_titles.male || [],
-                    ...honorifics.social_titles.female || []
-                ].map((h: any) => h.term.split('(')[0].trim());
-                if (social.length) sections.push(`Social: ${social.join(', ')}`);
-            }
-            // Sect
-            if (honorifics.sect_system) {
-                const sect = [
-                    ...honorifics.sect_system.hierarchy_positions || [],
-                    ...honorifics.sect_system.peer_relations?.terms || [],
-                    ...honorifics.sect_system.master_lineage?.terms || []
-                ].map((h: any) => h.term.split('(')[0].trim());
-                if (sect.length) sections.push(`Sect: ${sect.join(', ')}`);
-            }
-            output += `- **Terms**: ${sections.join(' / ')}\n\n`;
-        }
-
-        // 3. Special Martial Skills
-        if (skills && skills.skills_database) {
-            output += "### Special Martial Arts Skills\n";
-            Object.values(skills.skills_database).forEach((cat: any) => {
-                cat.forEach((skill: any) => {
-                    output += `- **${skill.name.split('(')[0].trim()}**: ${skill.mechanic} [Type: ${skill.type}]\n`;
-                });
-            });
-            output += "\n";
-        }
-
         return output;
     }
 
-    static convertFactions(factionsDetail: any): string {
-        if (!factionsDetail || typeof factionsDetail !== 'object') return "";
+    static convertSkills(skills: any): string {
+        if (!skills || !skills.범주) return "";
+        if (!skills || !skills.범주) return "";
+        let output = "### Special Martial Arts Skills\n";
+        // [Robustness] Ensure '범주' is an object
+        if (typeof skills.범주 !== 'object') return output;
+
+        Object.entries(skills.범주).sort((a: any, b: any) => a[0].localeCompare(b[0])).forEach(([catName, list]: any) => {
+            output += `#### ${catName.replace(/_/g, ' ')}\n`;
+            if (Array.isArray(list)) {
+                list.forEach((skill: any) => {
+                    const name = skill.split(':')[0].trim();
+                    const desc = skill.split(':')[1]?.trim() || "";
+                    output += `- **${name}**: ${desc}\n`;
+                });
+            }
+            output += "\n";
+        });
+        output += "\n";
+        return output;
+    }
+
+    // Deprecated alias for backward compatibility (if needed) but updated to only use skills logic if called roughly
+    static convertSystems(terminology: any, skills: any): string {
+        return this.convertSkills(skills);
+    }
+
+    static convertFactions(factionsData: any): string {
+        // factionsData is expected to be { "문파": [ ... ] } or just the array
+        let list: any[] = [];
+        if (factionsData && Array.isArray(factionsData.문파)) {
+            list = factionsData.문파;
+        } else if (Array.isArray(factionsData)) {
+            list = factionsData;
+        } else {
+            return "";
+        }
 
         let output = "## [Great Factions of Wulin]\n\n";
 
+        // Group by '구분' (Classification)
         const groups: { [key: string]: any[] } = {
-            "🏳️ 정파 (Orthodox Sects)": [],
-            "🏴 사파 (Unorthodox Sects)": [],
-            "⚖️ 정사지간 (Neutral/Mixed)": [],
-            "🏔️ 세외무림 (Outer Realms)": [],
-            "👿 마교/혈교 (Demonic Cults)": [],
-            "❓ 기타 (Others)": []
+            "🏳️ 정파 (Orthodox)": [],
+            "🏴 사파 (Unorthodox)": [],
+            "👿 마교 (Demonic)": [],
+            "🏔️ 새외/기타 (Outer/Others)": []
         };
 
-        // [FIX] Sort Factions by Name for Deterministic Order (Cache Stability)
-        const sortedFactions = Object.values(factionsDetail).sort((a: any, b: any) => {
-            const nameA = a.faction_profile?.name || "";
-            const nameB = b.faction_profile?.name || "";
-            return nameA.localeCompare(nameB);
-        });
+        list.forEach((f: any) => {
+            const type = f.구분 || "";
+            const name = f.이름 || "";
 
-        sortedFactions.forEach((faction: any) => {
-            if (!faction || typeof faction !== 'object' || !faction.faction_profile) return;
-
-            const sub = (faction.sub_domain || "").replace(/\s+/g, '');
-            const align = (faction.faction_profile.status?.alignment || faction.faction_profile.heritage?.alignment || "").replace(/\s+/g, '');
-            const name = faction.faction_profile.name || "";
-
-            // Classification Logic
-            if (sub.includes("정파") || sub.includes("구파일방") || sub.includes("일방") || align.includes("정파")) {
-                groups["🏳️ 정파 (Orthodox Sects)"].push(faction);
-            } else if (sub.includes("마교") || sub.includes("혈교") || sub.includes("신교") || name.includes("마교") || name.includes("혈교")) {
-                groups["👿 마교/혈교 (Demonic Cults)"].push(faction);
-            } else if (sub.includes("세외") || sub.includes("새외") || sub.includes("북해") || sub.includes("남만")) {
-                groups["🏔️ 세외무림 (Outer Realms)"].push(faction);
-            } else if (sub.includes("사파") || sub.includes("녹림") || sub.includes("하오문") || align.includes("사파")) {
-                groups["🏴 사파 (Unorthodox Sects)"].push(faction);
-            } else if (sub.includes("중립") || align.includes("중립")) {
-                groups["⚖️ 정사지간 (Neutral/Mixed)"].push(faction);
+            if (type.includes("정파") || type.includes("구파일방") || type.includes("오대세가") || type.includes("명문")) {
+                groups["🏳️ 정파 (Orthodox)"].push(f);
+            } else if (type.includes("사파") || type.includes("녹림") || type.includes("하오문") || name.includes("사파")) {
+                groups["🏴 사파 (Unorthodox)"].push(f);
+            } else if (type.includes("마교") || name.includes("마교") || name.includes("혈교")) {
+                groups["👿 마교 (Demonic)"].push(f);
             } else {
-                groups["❓ 기타 (Others)"].push(faction);
+                groups["🏔️ 새외/기타 (Outer/Others)"].push(f);
             }
         });
 
-        // Render groups
-        const renderGroup = (title: string, list: any[]) => {
-            if (list.length === 0) return "";
-            let groupStr = `### [${title}]\n`;
-            // List is already sorted because we iterated sortedFactions
-            list.forEach(faction => {
-                groupStr += this.formatFactionDetail(faction);
+        const renderGroup = (title: string, factionList: any[]) => {
+            if (factionList.length === 0) return "";
+            // Sort by name
+            factionList.sort((a, b) => (a.이름 || "").localeCompare(b.이름 || ""));
+
+            let str = `### [${title}]\n`;
+            factionList.forEach(f => {
+                str += `#### ${f.이름}\n`;
+                if (f.설명) str += `- **Desc**: ${f.설명}\n`;
+                if (f.위치) str += `- **Loc**: ${f.위치}\n`; // Added Location
+                if (f.성향) str += `- **Align**: ${f.성향}\n`;
+                if (f.전투스타일) str += `- **Style**: ${f.전투스타일}\n`;
+
+                // Key Figures
+                if (f.주요인물) {
+                    const figures = Object.entries(f.주요인물).map(([k, v]) => `${k}(${v})`).join(', ');
+                    str += `- **Key Figures**: ${figures}\n`;
+                }
+
+                if (f.주요무공) str += `- **Arts**: ${f.주요무공}\n`;
+                str += "\n";
             });
-            return groupStr + "\n";
+            return str;
         };
 
-        output += renderGroup("🏳️ 정파 (Orthodox Sects)", groups["🏳️ 정파 (Orthodox Sects)"]);
-        output += renderGroup("🏴 사파 (Unorthodox Sects)", groups["🏴 사파 (Unorthodox Sects)"]);
-        output += renderGroup("⚖️ 정사지간 (Neutral/Mixed)", groups["⚖️ 정사지간 (Neutral/Mixed)"]);
-        output += renderGroup("🏔️ 세외무림 (Outer Realms)", groups["🏔️ 세외무림 (Outer Realms)"]);
-        output += renderGroup("👿 마교/혈교 (Demonic Cults)", groups["👿 마교/혈교 (Demonic Cults)"]);
-        output += renderGroup("❓ 기타 (Others)", groups["❓ 기타 (Others)"]);
+        output += renderGroup("🏳️ 정파 (Orthodox)", groups["🏳️ 정파 (Orthodox)"]);
+        output += renderGroup("🏴 사파 (Unorthodox)", groups["🏴 사파 (Unorthodox)"]);
+        output += renderGroup("👿 마교 (Demonic)", groups["👿 마교 (Demonic)"]);
+        output += renderGroup("🏔️ 새외/기타 (Outer/Others)", groups["🏔️ 새외/기타 (Outer/Others)"]);
 
-        return output;
-    }
-
-    static formatFactionDetail(faction: any): string {
-        let output = "";
-        const profile = faction.faction_profile;
-        const chars = faction.characteristics;
-        const martial = faction.martial_arts_library;
-        const rules = faction.rules_and_protocols;
-
-        output += `#### ${profile.name || 'Unknown Faction'}\n`;
-
-        if (profile.type) output += `- **Type**: ${profile.type}\n`;
-        if (profile.political_stance) output += `- **Stance**: ${profile.political_stance}\n`;
-        if (profile.ideology) output += `- **Ideology**: ${profile.ideology.core || ''} (${profile.ideology.goal || ''})\n`;
-        if (chars && chars.combat_style) output += `- **Combat**: ${chars.combat_style.summary || ''}\n`;
-
-        // Martial Arts Summary
-        if (martial) {
-            output += `- **Martial Arts**: `;
-            const arts: string[] = [];
-
-            if (martial.signature_ultimate) {
-                arts.push(`[절기] ${martial.signature_ultimate.name.split('(')[0].trim()}`);
-            }
-
-            // [FIX] Sort keys for deterministic output
-            Object.keys(martial).sort().forEach(key => {
-                if (key === 'signature_ultimate') return;
-                try {
-                    const section = martial[key];
-                    if (section && Array.isArray(section.list) && section.list.length > 0) {
-                        section.list.forEach((art: string) => {
-                            if (typeof art === 'string') arts.push(art.split('(')[0].trim());
-                        });
-                    }
-                } catch (e) { }
-            });
-            output += arts.join(', ') + "\n";
-        }
-
-        if (rules && rules.core_tenets) {
-            output += `- **Rules**: ${rules.core_tenets.map((r: string) => r).slice(0, 3).join(' / ')}\n`;
-        }
-
-        if (faction.narrative_role) {
-            if (Array.isArray(faction.narrative_role.role)) {
-                output += `- **Role**: ${faction.narrative_role.role.join(' ')}\n`;
-            } else if (Array.isArray(faction.narrative_role)) {
-                output += `- **Role**: ${faction.narrative_role[0]}\n`;
-            }
-        }
-        output += "\n";
         return output;
     }
 
     static convertMartialArtsLevels(levels: any): string {
-        if (!levels || !levels.realm_hierarchy) return "";
+        if (!levels) return "";
 
         let output = "### Power System & Realms\n";
-        // [FIX] Sort Realms by Power Level (or Name if level missing) to ensure order
-        const realms = Object.values(levels.realm_hierarchy).sort((a: any, b: any) => {
-            const lvA = a.power_level || 0;
-            const lvB = b.power_level || 0;
-            return lvA - lvB;
-        });
+
+        // [FIX] Levels are now at root. Filter out metadata like '요약표'.
+        // [Robustness] Ensure value is an object and has '명칭'
+        const realms = Object.values(levels)
+            .filter((v: any) => v && typeof v === 'object' && v.명칭 && v.위상) // Only process objects that look like realms
+            .sort((a: any, b: any) => {
+                const lvA = a.power_level || 0;
+                const lvB = b.power_level || 0;
+                return lvA - lvB;
+            });
 
         // Compact list
         realms.forEach((r: any) => {
-            output += `- **${r.name}**: ${r.capability} (${r.status})\n`;
+            output += `- **${r.명칭}**: ${r.능력} (${r.위상})\n`;
         });
         output += "\n";
         return output;
     }
 
-    static convertCharacters(charactersDetail: any): string {
+    // Helper for recursive formatting (Ported from preview script)
+    private static formatValue(value: any, depth: number = 0): string {
+        const indent = "  ".repeat(depth);
+        if (typeof value === 'string') return `${value}`;
+        if (Array.isArray(value)) {
+            return value.map(item => `\n${indent}- ${LoreConverter.formatValue(item, depth + 1)}`).join('');
+        }
+        if (typeof value === 'object' && value !== null) {
+            return Object.entries(value).sort((a, b) => a[0].localeCompare(b[0])).map(([k, v]) =>
+                `\n${indent}- **${k.replace(/_/g, ' ')}**: ${LoreConverter.formatValue(v, depth + 1)}`
+            ).join('');
+        }
+        return `${value}`;
+    }
+
+    // Helper to extract characters from Array or Dictionary
+    private static extractChars(source: any): any[] {
+        if (!source) return [];
+        if (Array.isArray(source)) return source;
+        return Object.entries(source).map(([name, data]) => ({ name, ...(data as any) }));
+    }
+
+    static convertCharacters(charactersDetail: any, mood: string = 'general'): string {
         if (!charactersDetail || typeof charactersDetail !== 'object') return "";
 
         let output = "## [Major Characters (Wu-Long-Yuk-Bong)]\n\n";
 
         // Aggregate all character lists
         let allChars: any[] = [];
-        // [FIX] Use correct property names from characters/index.ts exports
-        if (charactersDetail.characters_main) allChars = [...allChars, ...charactersDetail.characters_main];
-        if (charactersDetail.characters_supporting) allChars = [...allChars, ...charactersDetail.characters_supporting];
-        if (charactersDetail.characters_extra) allChars = [...allChars, ...charactersDetail.characters_extra];
+        // Support both direct arrays and Dictionary structures
+        if (charactersDetail.characters_main) allChars = allChars.concat(this.extractChars(charactersDetail.characters_main));
 
-        // Fallback if they are not categorized or array is passed directly
+        // [MOOD FILTER] In 'erotic' or 'romance' mood, strictly valid only for Main Characters (Wu-Long-Yuk-Bong)
+        if (mood !== 'erotic' && mood !== 'romance') {
+            if (charactersDetail.characters_supporting) allChars = allChars.concat(this.extractChars(charactersDetail.characters_supporting));
+            if (charactersDetail.characters_extra) allChars = allChars.concat(this.extractChars(charactersDetail.characters_extra));
+        }
+
+        // Fallback
         if (allChars.length === 0 && Array.isArray(charactersDetail)) {
             allChars = charactersDetail;
         }
 
-        // [FIX] Sort Characters by Name ensures deterministic string regardless of load order
-        allChars.sort((a: any, b: any) => {
-            const nameA = a.basic_profile?.이름 || "";
-            const nameB = b.basic_profile?.이름 || "";
+        // Sort by Name
+        allChars.sort((a, b) => {
+            const nameA = a.name || a.basic_profile?.이름 || "";
+            const nameB = b.name || b.basic_profile?.이름 || "";
             return nameA.localeCompare(nameB);
         });
 
         allChars.forEach((char: any) => {
-            if (!char || !char.basic_profile) return;
-            const p = char.basic_profile;
-            const app = char.appearance;
-            const pers = char.personality;
-            const realm = p.martial_arts_realm;
-            const social = char.social;
+            const name = char.name || char.basic_profile?.이름 || "Unknown";
 
-            output += `### ${p.이름 || 'Unknown'}\n`;
+            // Schema Compatibility: Handle both English and Korean keys
+            // Preview Script Logic: char.profile (Eng) vs char.basic_profile (Legacy)
+            const p = char.profile || char.basic_profile || {};
+            const app = char.외형 || char.appearance || {};
+            const pers = char.personality || {};
+            const power = char.강함 || char.basic_profile?.martial_arts_realm || {}; // Hoisted or nested
+            const pref = char.preferences || {};
+            const social = char.social || {};
+            // [Robustness] Handle potential nulls
+            const secret = char.secret || char.secret_data || {};
 
-            // [Stats] Added Power Level/Realm which is critical for Wuxia
-            let info = `- **Info**: ${p.나이 || '?'}, ${p.소속 || '?'}, ${p.신분 || '?'}`;
-            if (realm) {
-                info += ` / **Rank**: ${realm.name} (Lv.${realm.power_level})`;
+            // [FIX] Combined Relationship Keys (Eng + Kr)
+            const relationships = char.relationships || char.인간관계 || null;
+
+            output += `### ${name} (${char.title || p.신분 || 'Unknown'})\n`;
+
+            // Info & Rank
+            let infoParts = [];
+            if (p.나이) infoParts.push(p.나이);
+            if (p.소속) infoParts.push(p.소속);
+
+            // Rank Parsing
+            let rankInfo = '?';
+            if (power.등급) rankInfo = power.등급;
+            else if (power.name) rankInfo = `${power.name} (Lv.${power.power_level})`;
+            else if (typeof power === 'string') rankInfo = power;
+
+            if (power.description) rankInfo += ` (${power.description})`;
+
+            output += `- **정보**: ${infoParts.join(', ')} / **경지**: ${rankInfo}\n`;
+
+            // Body
+            if (p.BWH) output += `- **Body**: ${p.신체 || '', p.BWH}\n`;
+
+            // Appearance
+            let appStr = "";
+            if (app.머리색 || app.hair_color) appStr += `${app.머리색 || app.hair_color}, `;
+            if (app.눈색 || app.eye_color) appStr += `${app.눈색 || app.eye_color}`;
+            if (appStr) output += `- **외형**: ${appStr}\n`;
+
+            // Personality
+            const surface = pers['표면적 성격'] || pers.surface || pers['표면적 성격 (대외용)'] || '';
+            const inner = pers['내면/애정 성격'] || pers.inner || '';
+
+            // Mood-based Personality Display
+            if (mood === 'romance') {
+                // In romance, emphasize Inner personality
+                if (surface) output += `- **Personality**: [Surface] ${surface}\n`;
+                if (inner) output += `- **Personality (Inner)**: ${inner}\n`;
+            } else {
+                // Standard display
+                if (surface) output += `- **Personality**: [Surface] ${surface} ${inner ? `/ [Inner] ${inner}` : ''}\n`;
             }
-            output += `${info}\n`;
 
-            if (p.BWH) output += `- **Body**: ${p.신체 || ''}, ${p.BWH}\n`;
-
-            // Social Roles
-            if (social) {
-                const roles = Object.entries(social)
-                    .sort((a, b) => a[0].localeCompare(b[0])) // Sort keys
-                    .map(([k, v]) => `${k}: ${v}`).join(' / ');
-                output += `- **Social Role**: ${roles}\n`;
+            // Social
+            if (social && Object.keys(social).length > 0) {
+                const socialRoles = Object.entries(social).sort((a, b) => a[0].localeCompare(b[0])).map(([k, v]) => `${k}(${v})`).join(' / ');
+                output += `- **Social**: ${socialRoles}\n`;
             }
 
-            if (app) {
-                output += `- **Appearance**: ${app.머리색?.split('.')[0] || ''}, ${app.눈색?.split('.')[0] || ''}, ${app.체형?.split('.')[0] || ''}\n`;
+            // Relations (Mood: Daily or Romance)
+            // [FIX] Use the resolved 'relationships' variable which covers both keys
+            if ((mood === 'daily' || mood === 'romance') && relationships) {
+                // [Robustness] Ensure it's an object
+                if (typeof relationships === 'object') {
+                    const rels = Object.entries(relationships)
+                        .sort((a, b) => a[0].localeCompare(b[0]))
+                        .map(([k, v]) => `${k}: ${v}`).join(' / ');
+                    output += `- **Relations**: ${rels.slice(0, 150)}${rels.length > 150 ? '...' : ''}\n`;
+                }
             }
 
-            if (pers && pers.traits) {
-                // Squeeze traits into one line
-                const traits = pers.traits.map((t: string) => t.replace(/\*\*/g, '')).slice(0, 4).join(' / ');
-                output += `- **Personality**: ${pers['표면적 성격 (대외용)'] || ''} - ${traits}\n`;
+            // Skills (Summary or Detailed based on mood)
+            if (power.skills) {
+                if ((mood === 'combat' || mood === 'tension') && typeof power.skills === 'object' && !Array.isArray(power.skills)) {
+                    output += `- **무공 (상세)**:\n`;
+                    Object.entries(power.skills).sort((a: any, b: any) => a[0].localeCompare(b[0])).forEach(([sName, sDesc]) => {
+                        output += `  - **${sName}**: ${sDesc}\n`;
+                    });
+                } else {
+                    let skillList = "";
+                    if (Array.isArray(power.skills)) {
+                        skillList = power.skills.sort().join(', ');
+                    } else if (typeof power.skills === 'object') {
+                        skillList = Object.keys(power.skills).sort().join(', ');
+                    }
+                    if (skillList) output += `- **무공**: ${skillList}\n`;
+                }
             }
 
-            // Important Preferences
-            if (char.preferences) {
-                output += `- **Likes**: ${char.preferences['좋아하는 것']}\n`;
+            // Secret (Erotic mood = Full details, Others = Warning only)
+            if (mood === 'erotic') {
+                if (secret && Object.keys(secret).length > 0) {
+                    output += `- **Secret (Erotic)**:\n`;
+                    output += LoreConverter.formatValue(secret, 1) + "\n";
+                }
+            } else {
+                if (secret && (secret.내용 || secret.content)) {
+                    output += `- **Secret**: <${secret.주의 || 'Warning'}> ${secret.내용 || secret.content}\n`;
+                }
             }
 
-            // Relationships
-            if (char.relationships) {
-                const rels = Object.entries(char.relationships)
-                    .sort((a, b) => a[0].localeCompare(b[0])) // Sort keys
-                    .map(([name, desc]) => `${name}: ${desc}`)
-                    .join(' / ');
-                output += `- **Relationships**: ${rels}\n`;
-            }
+            // Likes
+            if (pref.like || pref['좋아하는 것']) output += `- **취향**: ${pref.like || pref['좋아하는 것']}\n`;
 
             output += "\n";
         });
 
+        return output;
+    }
+
+    static convertRomance(romance: any): string {
+        if (!romance) return "";
+        let output = "## [Romance & Interaction Guidelines]\n";
+
+        // Use recursive formatter for deep objects appropriately
+        if (romance.핵심_스타일) {
+            output += `\n### Core Style\n${this.formatValue(romance.핵심_스타일)}`;
+        }
+        if (romance.대화_핑퐁_가이드) {
+            output += `\n### Dialogue Flow\n${this.formatValue(romance.대화_핑퐁_가이드)}`;
+        }
+        if (romance.호감도별_반응) {
+            output += `\n### Affection Levels\n${this.formatValue(romance.호감도별_반응)}`;
+        }
+        if (romance.스킨십_가이드) {
+            output += `\n### Skinship\n${this.formatValue(romance.스킨십_가이드)}`;
+        }
+        output += "\n";
+        return output;
+    }
+
+    static convertCombat(combat: any): string {
+        if (!combat) return "";
+        let output = "## [Combat & Tension Rules]\n";
+
+        if (combat.전투_서술_원칙) {
+            output += `\n### Combat Principles\n${this.formatValue(combat.전투_서술_원칙)}`;
+        }
+        if (combat.부상_및_사망) {
+            output += `\n### Injury & Death\n${this.formatValue(combat.부상_및_사망)}`;
+        }
+        if (combat.경지_격차_연출) {
+            output += `\n### Power Gap Display\n${this.formatValue(combat.경지_격차_연출)}`;
+        }
+        output += "\n";
         return output;
     }
 
@@ -282,27 +378,30 @@ export class LoreConverter {
         if (!geo) return "";
         let output = "## [World Geography & Regions]\n\n";
 
-        if (geo.regions) {
+        if (geo.중원_지역) {
             // [FIX] Sort Regions
-            const sortedRegions = Object.values(geo.regions).sort((a: any, b: any) => {
-                return (a.name || "").localeCompare(b.name || "");
+            const sortedRegions = Object.values(geo.중원_지역).sort((a: any, b: any) => {
+                return (a.명칭 || "").localeCompare(b.명칭 || "");
             });
 
             sortedRegions.forEach((region: any) => {
-                const provinces = region.provinces
-                    .sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")) // Sort Provinces
+                if (!region.성_목록) return;
+                const provinces = region.성_목록
+                    .sort((a: any, b: any) => (a.명칭 || "").localeCompare(b.명칭 || "")) // Sort Provinces
                     .map((p: any) => {
-                        const factions = p.factions ? ` (${p.factions.sort().map((f: string) => f.split('(')[0].trim()).join(', ')})` : '';
-                        return `${p.name.split('(')[0].trim()}${factions}`;
+                        const factions = (p.주요_세력 && Array.isArray(p.주요_세력)) ? ` (${p.주요_세력.sort().map((f: any) => typeof f === 'string' ? f.split('(')[0].trim() : String(f)).join(', ')})` : '';
+                        const pName = typeof p.명칭 === 'string' ? p.명칭.split('(')[0].trim() : String(p.명칭 || "Unknown");
+                        return `${pName}${factions}`;
                     }).join(' / ');
-                output += `- **${region.name.split('(')[0].trim()}**: ${provinces}\n`;
+                const rName = typeof region.명칭 === 'string' ? region.명칭.split('(')[0].trim() : String(region.명칭 || "Unknown");
+                output += `- **${rName}**: ${provinces}\n`;
             });
         }
 
-        if (geo.outer_realms && geo.outer_realms.factions) {
+        if (geo.관외_지역 && geo.관외_지역.세력_목록) {
             // Sort outer factions
-            const sortedOuter = [...geo.outer_realms.factions].sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
-            output += `- **Outer Realms**: ${sortedOuter.map((f: any) => f.name.split('(')[0].trim()).join(', ')}\n`;
+            const sortedOuter = [...geo.관외_지역.세력_목록].sort((a: any, b: any) => (a.명칭 || "").localeCompare(b.명칭 || ""));
+            output += `- **Outer Realms**: ${sortedOuter.map((f: any) => typeof f.명칭 === 'string' ? f.명칭.split('(')[0].trim() : String(f.명칭 || "")).join(', ')}\n`;
         }
         output += "\n";
         return output;
@@ -311,20 +410,21 @@ export class LoreConverter {
     static convertItems(weapons: any, elixirs: any): string {
         let output = "## [Legendary Items & Systems]\n\n";
 
-        if (weapons && weapons.weapon_categories) {
+        if (weapons && weapons.범주) {
             output += "### Notable Weapons\n";
-            // [FIX] Sort Categories
-            const sortedCats = Object.values(weapons.weapon_categories).sort((a: any, b: any) => {
-                const s = a.summary || "";
-                return s.localeCompare(b.summary || "");
-            });
-
-            sortedCats.forEach((cat: any) => {
-                if (cat.list) {
-                    const names = cat.list.map((w: any) => (typeof w === 'string' ? w : w.name).split('(')[0].trim());
-                    output += `- **${cat.summary ? cat.summary.split('.')[0] : 'Category'}**: ${names.sort().slice(0, 5).join(', ')}\n`; // Sort items
-                }
-            });
+            // [Robustness] Ensure '범주' is an object
+            if (typeof weapons.범주 === 'object') {
+                Object.entries(weapons.범주).sort((a: any, b: any) => a[0].localeCompare(b[0])).forEach(([catName, list]: any) => {
+                    const categoryName = typeof catName === 'string' ? catName.replace(/_/g, ' ') : 'Category';
+                    if (Array.isArray(list)) {
+                        const names = list.map((w: any) => {
+                            const str = typeof w === 'string' ? w : w.name;
+                            return str.split(':')[0].trim();
+                        });
+                        output += `- **${categoryName}**: ${names.join(', ')}\n`;
+                    }
+                });
+            }
         }
 
         if (elixirs) {
@@ -340,37 +440,78 @@ export class LoreConverter {
         return output;
     }
 
-    static convertToMarkdown(lore: any): string {
+    static convertToMarkdown(lore: any, possessorText: string = "", mood: string = "general"): string {
         if (!lore) return "";
 
-        let md = "# [WORLD KNOWLEDGE BASE (Optimized)]\n";
+        // [MAIN CONVERTER]
+        let output = "## [2. KNOWLEDGE BASE (LORE)]\n\n";
 
-        // 1. World Rules & Systems (Top Priority context)
-        md += this.convertSystems(lore.honorifics_system, lore.measurement_system, lore.martial_arts_skills);
-
-        // 2. Geography
-        if (lore.world_geography) {
-            md += this.convertWorldGeography(lore.world_geography);
-        }
-
-        // 3. Power Levels (Merged system section or separate)
+        // 1. [Power System & Realms] (Physics) - HIGH PRIORITY
         if (lore.martial_arts_levels) {
-            md += this.convertMartialArtsLevels(lore.martial_arts_levels);
+            output += LoreConverter.convertMartialArtsLevels(lore.martial_arts_levels) + "\n\n";
         }
 
-        // 4. Factions
+        // 2. [Special Martial Arts & Terminology] (Dictionary)
+        if (lore.martial_arts_skills) {
+            output += LoreConverter.convertSkills(lore.martial_arts_skills) + "\n\n";
+        }
+        if (lore.wuxia_terminology) {
+            output += LoreConverter.convertTerminology(lore.wuxia_terminology) + "\n\n";
+        }
+        if (lore.weapons) {
+            output += LoreConverter.convertWeapons(lore.weapons) + "\n\n";
+        }
+
+        // 3. [Great Factions & Geography] (Environment)
         if (lore.factionsDetail) {
-            md += this.convertFactions(lore.factionsDetail);
+            output += LoreConverter.convertFactions(lore.factionsDetail) + "\n\n";
+        }
+        if (lore.geography_guide) {
+            output += LoreConverter.convertWorldGeography(lore.geography_guide) + "\n\n";
+        } else if (lore.world_geography) {
+            output += LoreConverter.convertWorldGeography(lore.world_geography) + "\n\n";
         }
 
-        // 5. Characters
+        // 4. [Characters & Scenario] (Result)
+        if (possessorText) {
+            output += possessorText + "\n\n";
+        }
         if (lore.charactersDetail) {
-            md += this.convertCharacters(lore.charactersDetail);
+            output += LoreConverter.convertCharacters(lore.charactersDetail, mood) + "\n\n";
         }
 
-        // 6. Items
-        md += this.convertItems(lore.weapons, lore.elixirs);
+        if (lore.romance_guide) {
+            output += LoreConverter.convertRomance(lore.romance_guide) + "\n\n";
+        }
 
-        return md;
+        if (lore.combat_guide) {
+            output += LoreConverter.convertCombat(lore.combat_guide) + "\n\n";
+        }
+
+        if (lore.elixirs) {
+            output += LoreConverter.convertElixirs(lore.elixirs) + "\n\n";
+        }
+
+        return output;
+    }
+
+    // New Helper for Weapons
+    static convertWeapons(weapons: any): string {
+        return LoreConverter.convertItems(weapons, null);
+    }
+
+    // Helper for convertToMarkdown to handle elixirs (new, extracted from convertItems)
+    static convertElixirs(elixirs: any): string {
+        let output = "";
+        if (elixirs) {
+            output += "### Elixirs\n";
+            if (elixirs.legendary_natural_treasures) {
+                const balanced = elixirs.legendary_natural_treasures.balanced_holy_items?.list || [];
+                const extreme = elixirs.legendary_natural_treasures.extreme_element_items?.list || [];
+                const all = [...balanced, ...extreme].map((e: any) => e.name.split('(')[0].trim());
+                output += `- **Legendary**: ${all.sort().join(', ')}\n`;
+            }
+        }
+        return output;
     }
 }

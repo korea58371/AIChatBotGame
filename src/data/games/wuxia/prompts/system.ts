@@ -1,7 +1,7 @@
 import { WUXIA_FIRST_TURN_EXAMPLE, WUXIA_SYSTEM_GUIDE } from '../constants';
 import martialArtsLevels from '../jsons/martial_arts_levels.json';
 
-const realmHierarchy = martialArtsLevels.realm_hierarchy as Record<string, any>;
+const realmHierarchy = martialArtsLevels as Record<string, any>;
 
 export const getRankInfo = (rankKey: string = '삼류') => {
     // 1. Determine Rank Key (Default: '이류' - Rule #1)
@@ -97,8 +97,7 @@ ${perspectiveRule}
 # [ACTIVE CHARACTERS]
 {{CHARACTER_INFO}}
 
-[Available Extra Images]:
-${(state.extraMap ? Object.keys(state.extraMap) : (state.availableExtraImages || [])).map((img: string) => img.replace(/\.(png|jpg|jpeg)$/i, '')).join(', ')}
+
 
 ${directInputConstraints}
 

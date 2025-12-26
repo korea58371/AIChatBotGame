@@ -44,6 +44,8 @@ interface GameState {
 
   playerName: string;
   setPlayerName: (name: string) => void;
+  isGodMode?: boolean; // God Mode Debug Flag
+  setGodMode: (active: boolean) => void;
 
   // Lore & Prompt State
   activeCharacters: string[];
@@ -294,6 +296,8 @@ export const useGameStore = create<GameState>()(
 
       playerName: '주인공',
       setPlayerName: (name) => set({ playerName: name }),
+      isGodMode: false,
+      setGodMode: (active) => set({ isGodMode: active }),
 
       activeCharacters: [],
       setActiveCharacters: (chars) => set({ activeCharacters: chars }),

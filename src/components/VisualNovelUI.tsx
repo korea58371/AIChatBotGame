@@ -955,7 +955,8 @@ export default function VisualNovelUI() {
                 activeGameId: currentState.activeGameId, // [FIX] Pass GameID for Server Re-hydration
                 constants: currentState.constants, // [CRITICAL] Helper constants (Rules/Famous Chars)
                 lore: currentState.lore, // [CRITICAL] Full Lore Data
-                isDirectInput: isDirectInput // Inject Flag
+                isDirectInput: isDirectInput, // Inject Flag
+                isGodMode: currentState.isGodMode // Pass God Mode Flag to Server
             }));
 
             // Race Condition for Timeout
@@ -1275,8 +1276,15 @@ export default function VisualNovelUI() {
     };
 
     const handleStartGame = () => {
+        // [GOD MODE CHECK]
+        if (playerName === '김현준갓모드') {
+            useGameStore.getState().setPlayerName('김현준');
+            useGameStore.getState().setGodMode(true);
+            addToast("😇 God Mode Activated", "success");
+        }
+
         // Replace Placeholder with Real Name
-        const effectiveName = playerName || '성현우';
+        const effectiveName = (playerName === '김현준갓모드' ? '김현준' : playerName) || '성현우';
         const processedScenario = (initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
         setLastStoryOutput(processedScenario); // [Logging] Capture initial scenario
 
@@ -1879,7 +1887,7 @@ export default function VisualNovelUI() {
                                     <span className="text-yellow-100 font-bold text-[3vw] md:text-[min(0.8vw,24px)] text-center leading-tight break-keep">
                                         {(() => {
                                             const rankKey = playerStats.playerRank || '';
-                                            const hierarchy = (martialArtsLevels as any).realm_hierarchy;
+                                            const hierarchy = martialArtsLevels as any;
                                             const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
                                             return (rankData?.name || rankKey || '미정').split('(')[0].trim();
                                         })()}
@@ -2246,6 +2254,14 @@ export default function VisualNovelUI() {
                                                         finalName = '무명';
                                                         useGameStore.getState().setPlayerName(finalName);
                                                     }
+                                                }
+
+                                                // [GOD MODE CHECK]
+                                                if (finalName === '김현준갓모드') {
+                                                    finalName = '김현준';
+                                                    useGameStore.getState().setPlayerName(finalName);
+                                                    useGameStore.getState().setGodMode(true);
+                                                    addToast("😇 God Mode Activated", "success");
                                                 }
 
                                                 profileText += `이름: ${finalName || playerName || '성현우'}\n`;

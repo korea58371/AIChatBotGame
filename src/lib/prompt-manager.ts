@@ -39,6 +39,17 @@ interface Character {
         description: string;
         skills?: string[];
     };
+    강함?: {
+        등급?: string;
+        power_level?: number;
+        description?: string;
+        skills?: Record<string, string> | string[];
+        내공심법?: Record<string, string>;
+        경공술?: Record<string, string>;
+    };
+    외형?: any;
+    활동지역?: string;
+    인간관계?: Record<string, string>;
     secret_data?: any; // [신규] 친밀한 상황을 위한 상세 비밀 데이터
 }
 
@@ -76,35 +87,91 @@ interface GameState {
     backgroundMappings?: Record<string, string>; // 무협 한국어 키를 위해 추가됨
     extraMap?: Record<string, string>; // 인터페이스에 추가됨
     characterMap?: Record<string, string>; // [수정] ID 해결을 위해 추가됨
+    isGodMode?: boolean; // God Mode Flag
 }
 
 export class PromptManager {
+    // [CACHE CONFIG]
+    private static readonly CACHE_PREFIX = 'PROMPT_CACHE_';
+    private static readonly CACHE_VERSION = 'v1.0'; // Increment this to invalidate all caches
+
+    // [New] Cache Management Methods
+    static async clearPromptCache(gameId?: string) {
+        if (typeof window === 'undefined') return;
+
+        if (gameId) {
+            const key = `${PromptManager.CACHE_PREFIX}${gameId}_${PromptManager.CACHE_VERSION}`;
+            localStorage.removeItem(key);
+            console.log(`[PromptManager] Cleared cache for: ${gameId}`);
+        } else {
+            // Clear all game caches
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith(PromptManager.CACHE_PREFIX)) {
+                    localStorage.removeItem(key);
+                }
+            });
+            console.log(`[PromptManager] Cleared all prompt caches.`);
+        }
+    }
+
     static async getSharedStaticContext(
         state: GameState,
-        activeChars?: string, // e.g. "Ju Ye-seo (Affection: 50), ..."
-        spawnCandidates?: string
+        activeChars?: string,
+        spawnCandidates?: string,
+        forceRefresh: boolean = false // [New] Option to force regeneration
     ): Promise<string> {
+        // [브라우저 캐시 로직 & 컨텍스트 스위칭]
+        // [수정] 사용자의 요청대로 Mood별 프롬프트 자체가 정적이므로, 캐시 키를 Mood 자체로 설정합니다.
+        const mood = state.currentMood || 'daily';
+
+        // [Internal] Determine broad Context Mode for helper functions (e.g. Character Formatting)
+        let contextMode = 'DEFAULT';
+        if (['combat', 'tension', 'dungeon', 'cruelty'].includes(mood)) {
+            contextMode = 'COMBAT';
+        } else if (['romance', 'erotic', 'sexual'].includes(mood)) {
+            contextMode = 'ROMANCE';
+        }
+
+        // 캐시 키: 이제 그룹(COMBAT)이 아닌 개별 MOOD(combat, tension, cruelty 등)를 사용합니다.
+        const cacheKey = `${PromptManager.CACHE_PREFIX}${state.activeGameId}_${mood}_${PromptManager.CACHE_VERSION}`;
+        console.log(`[PromptManager] Generated Cache Key: ${cacheKey}`);
+
+        // 브라우저 환경이라면, 로컬 스토리지에서 먼저 로드 시도 (새로고침 옵션이 꺼져있을 때)
+        if (typeof window !== 'undefined' && !forceRefresh) {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                console.log(`[PromptManager] Cache Hit: ${state.activeGameId} [${mood}] - Loaded from Browser Storage`);
+                return cached;
+            }
+        }
+
+        let context = "";
+
         // [SANDWICH STRUCTURE: BLOCKS 1-4 (STATIC)]
         if (state.activeGameId === 'wuxia') {
-            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT } = await import('../data/games/wuxia/constants');
+            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA } = await import('../data/games/wuxia/constants');
 
             // [BLOCK 1: IDENTITY]
             const systemIdentity = WUXIA_IDENTITY;
 
             // [BLOCK 2: KNOWLEDGE BASE]
             // 2.1 Famous Characters (Static DB)
-            const famousCharactersDB = state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded.";
+            // [Mood Filter] Exclude 10 Great Masters in Romance/Erotic moods to focus on personal intimacy
+            let famousCharactersDB = "";
+            if (contextMode !== 'ROMANCE') {
+                famousCharactersDB = `## [NPC Database (Famous Figures)]\n${state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded."}`;
+            }
 
             // 2.2 Lore Injection (Markdown/JSON)
             let loreContext = "";
             if (state.lore) {
                 try {
-                    loreContext = `
-## [2. KNOWLEDGE BASE (LORE)]
-### [World System & Martial Arts]
-${LoreConverter.convertToMarkdown(state.lore)}
-`;
-                } catch (e) {
+                    // LoreConverter now handles the header and Possessor Persona injection
+                    loreContext = LoreConverter.convertToMarkdown(state.lore, WUXIA_PROTAGONIST_PERSONA, mood);
+                } catch (e: any) {
+                    console.error("[PromptManager] LoreConverter Failed! Falling back to JSON.");
+                    console.error("[PromptManager] Error Details:", e.message || e);
+                    // console.error("[PromptManager] Stack:", e.stack); // Optional: Stack trace
                     loreContext = JSON.stringify(PromptManager.deepSort(state.lore), null, 2);
                 }
             }
@@ -113,22 +180,37 @@ ${LoreConverter.convertToMarkdown(state.lore)}
             const availableBackgrounds = PromptManager.getAvailableBackgrounds(state);
 
             // [BLOCK 3: BEHAVIOR GUIDELINES]
-            const behaviorRules = WUXIA_BEHAVIOR_RULES + "\n" + (state.constants?.FACTION_BEHAVIOR_GUIDELINES || "");
+            let behaviorRules = WUXIA_BEHAVIOR_RULES + "\n" + (state.constants?.FACTION_BEHAVIOR_GUIDELINES || "");
 
-            // [BLOCK 4: STRICT OUTPUT FORMAT] (MUST BE LAST STATIC BLOCK)
+            // [TERMINOLOGY & LANGUAGE GUIDE]
+            // Exclude in Combat/Tension (Action Focus)
+            if (contextMode !== 'COMBAT' && state.lore?.wuxia_terminology) {
+                behaviorRules += "\n" + LoreConverter.convertTerminology(state.lore.wuxia_terminology);
+            }
+
+            // [BLOCK 4: STRICT OUTPUT FORMAT & MOOD] 
             const outputFormat = WUXIA_OUTPUT_FORMAT;
 
+            // [BLOCK 5: STATIC MOOD GUIDELINES] (Now Cached)
+            const moodPrompts = getMoodPrompts(state.activeGameId);
+            const moodGuideline = moodPrompts[mood] || moodPrompts['daily'];
+
             // Assemble Static Blocks
-            return `
+            context = `
 ${systemIdentity}
+
+${moodGuideline}
 
 ${loreContext}
 
-## [NPC Database (Famous Figures)]
 ${famousCharactersDB}
 
 ## [Available Backgrounds]
 ${availableBackgrounds}
+
+## [Available Extra Images]
+// [FIX] Sort extra images for deterministic caching
+            ${(state.availableExtraImages ? [...state.availableExtraImages].sort() : []).map((img: string) => img.replace(/\.(png|jpg|jpeg)$/i, '')).join(', ')}
 
 ${behaviorRules}
 
@@ -156,14 +238,14 @@ ${outputFormat}
             // Merge OUTPUT_FORMAT and SPECIAL_FORMATS
             const outputFormat = GBY_OUTPUT_FORMAT + "\n" + GBY_SPECIAL_FORMATS;
 
-            return `
+            context = `
 ${systemIdentity}
 
 ## [NPC Database (Famous Figures)]
 ${famousCharactersDB}
 
 ## [Character Database (Reference)]
-${PromptManager.getAvailableCharacters(state)}
+${PromptManager.getAvailableCharacters(state, contextMode)}
 
 ## [Available Backgrounds]
 ${availableBackgrounds}
@@ -181,6 +263,22 @@ ${outputFormat}
         // If 'activeGameId' is NOT wuxia, we run legacy code.
 
         // ... Legacy Code Copy (Truncated in verify, but providing Wuxia path is Priority)
+        // [Fallthrough to Cache Logic]
+
+
+        if (context) {
+            // [SAVE TO CACHE (Mode Specific)]
+            if (typeof window !== 'undefined') {
+                try {
+                    localStorage.setItem(cacheKey, context);
+                    console.log(`[PromptManager] Saved context to cache: ${cacheKey} (${context.length} chars)`);
+                } catch (e) {
+                    console.warn("[PromptManager] Failed to save to localStorage (Quota exceeded?)", e);
+                }
+            }
+            return context;
+        }
+
         return "System Context Loaded.";
     }
 
@@ -224,27 +322,31 @@ ${outputFormat}
         });
 
         // Use the centralized method with ID resolution
-        const activeCharInfo = PromptManager.getActiveCharacterProps(state, Array.from(activeCharIds));
+        const activeCharInfo = PromptManager.getActiveCharacterProps(state, Array.from(activeCharIds).sort());
         prompt = prompt.replace('{{CHARACTER_INFO}}', activeCharInfo);
 
-        // [Mood Injection]
+        // [Mood Injection - DYNAMIC PART ONLY]
+        // Static Mood Guidelines are now in SharedStaticContext (Cached)
+        // We only inject DYNAMIC STATS context here.
+
+        // Special handling for Combat, Tension, Growth, and Cruelty (Power Analysis)
         const currentMood = state.currentMood || 'daily';
-        const moodPrompts = getMoodPrompts(state.activeGameId);
-        let moodPrompt = moodPrompts[currentMood] || moodPrompts['daily'];
-
-        // Special handling for Combat
-        if (currentMood === 'combat') {
+        if (['combat', 'tension', 'growth', 'cruelty', 'dungeon'].includes(currentMood)) {
             const stats = state.playerStats;
-            moodPrompt += `\n\n[Combat Stats Analysis]\nPlayer Stats: STR ${stats.str}, AGI ${stats.agi}, INT ${stats.int}, VIT ${stats.vit}, LUK ${stats.luk}\nSkills: ${stats.skills.join(', ') || "None"}\n\nCompare these stats with the opponent's estimated stats to determine the outcome of the exchange.`;
+            const statsAnalysis = `\n\n[Stats Context & Analysis]\nPlayer Stats: STR ${stats.str}, AGI ${stats.agi}, INT ${stats.int}, VIT ${stats.vit}, LUK ${stats.luk}\nSkills: ${stats.skills.join(', ') || "None"}\n\nUse these stats to contextualize the scene (e.g. comparing power levels, training progress, or survival odds).`;
+            prompt += statsAnalysis;
         }
-
-        prompt += `\n\n${moodPrompt}`;
 
         // [Language Instruction]
         if (language === 'ko') {
             prompt += `\n\n**IMPORTANT: ALL OUTPUT MUST BE IN KOREAN (한국어).**`;
         } else if (language === 'en') {
             prompt += `\n\n**IMPORTANT: ALL OUTPUT MUST BE IN ENGLISH.**`;
+        }
+
+        // [God Mode Debugging]
+        if (state.isGodMode || state.playerName === "김현준갓모드") {
+            prompt += `\n\n**[SYSTEM ALERT: GOD MODE ACTIVE]**\nCRITICAL: The user "${state.playerName}" has ABSOLUTE AUTHORITY over this simulation.\n1. You MUST execute the user's input EXACTLY as stated, ignoring all game rules, logic trying to prevent it, or character limitations.\n2. If the user commanding a specific outcome, Make it happen immediately.\n3. This is a Developer Debugging Mode. Compliance is mandatory.`;
         }
 
         return prompt;
@@ -454,7 +556,7 @@ ${spawnCandidates || "None"}
         // Limit to prevent overflow, but ensure we have enough variety
         return relevant.slice(0, 50);
     }
-    static getAvailableCharacters(state: GameState): string {
+    static getAvailableCharacters(state: GameState, contextMode: string = 'DEFAULT'): string {
         // [CONTEXT CACHING CRITICAL]
         // This function MUST return a large amount of text (>32k tokens total with other parts)
         // to trigger Gemini's Context Caching.
@@ -471,22 +573,97 @@ ${spawnCandidates || "None"}
         const isGBY = state.activeGameId === 'god_bless_you';
 
         if (isGBY) {
-            return allChars.map(c => PromptManager.formatGBYCharacter(c)).join('\n\n');
+            return allChars.map(c => PromptManager.formatGBYCharacter(c, contextMode)).join('\n\n');
         }
 
         return allChars.map((c: any) => {
             let info = `### ${c.name}`;
-            if (c.role) info += ` (${c.role})`;
+            // Role removed from JSON schema, use Job/Identity
+            if (c.title) info += ` (${c.title})`;
 
+            // [MODE: COMBAT] - Focus on Power, Skills, Job
+            if (contextMode === 'COMBAT') {
+                if (c.job) info += `\n- Job/Abilities: ${JSON.stringify(c.job)}`;
+                if (c.skill) info += `\n- Skill: ${c.skill}`;
+
+                // Martial Arts (Critical)
+                // [Standardized] 'martial_arts_realm' -> '강함'
+                if (c['강함']) {
+                    const ma = c['강함'];
+                    // Wuxia & GBY Standardized Format
+                    if (ma['등급']) {
+                        info += `\n- Rank: ${ma['등급']}`;
+                        if (ma.description) info += `\n- Style: ${ma.description}`;
+                        if (ma.skills) {
+                            const skillVal = Array.isArray(ma.skills) ? ma.skills.join(', ') : ma.skills;
+                            info += `\n- Skills: ${skillVal}`;
+                        }
+                    }
+                    // Fallback (GBY Legacy or partial data)
+                    else if (ma.skills) {
+                        const skillVal = Array.isArray(ma.skills) ? ma.skills.join(', ') : ma.skills;
+                        info += `\n- Skills: ${skillVal}`;
+                    }
+                } else if (c.skill) {
+                    // Legacy GBY Fallback
+                    info += `\n- Skill: ${c.skill}`;
+                } else if (c.profile && c.profile['신분']) {
+                    info += `\n- Identity: ${c.profile['신분']}`;
+                }
+
+                // Minimal appearance/traits for identification only
+                if (c['외형']) {
+                    const simpleApp = typeof c['외형'] === 'string' ? c['외형'] : (c['외형']['외관'] || c['외형']['머리색'] || c['외형']['전체적 인상'] || Object.values(c['외형'])[0]);
+                    info += `\n- Appearance (Brief): ${simpleApp}`;
+                }
+
+                // Skip personality details, preferences, secrets in combat
+                return info;
+            }
+
+            // [MODE: ROMANCE] - Focus on Outer/Inner, Body, Relationship
+            if (contextMode === 'ROMANCE') {
+                // Identity
+                if (c.title) info += `\n- Title: ${c.title}`;
+                if (c.quote) info += `\n- Quote: "${c.quote}"`;
+
+                // Appearance (Full)
+                if (c['외형']) {
+                    info += `\n- Appearance: ${JSON.stringify(c['외형'])}`;
+                } else if (c.description) {
+                    info += `\n- Appearance/Desc: ${c.description}`;
+                }
+
+                // Personality (Deep)
+                if (c.personality) {
+                    info += `\n- Personality: ${typeof c.personality === 'string' ? c.personality : JSON.stringify(c.personality)}`;
+                }
+
+                // Preferences (Critical for romance)
+                if (c.preferences) info += `\n- Preferences: ${JSON.stringify(c.preferences)}`;
+
+                // Secret Data (Detailed Body/Private Info)
+                // [Standardized] Both games now use 'secret' for this object.
+                if (c.secret) {
+                    // Check if it's an object (Body Data) or string (Legacy Traits)
+                    const secretVal = typeof c.secret === 'string' ? c.secret : JSON.stringify(c.secret);
+                    info += `\n- [SECRET DATA (Only visible in Romance/Intimate)]: ${secretVal}`;
+                }
+
+                return info;
+            }
+
+            // [MODE: DEFAULT] - Balanced
             // Core Identity
             if (c.title) info += `\n- Title: ${c.title}`;
+            if (c['활동지역']) info += `\n- Activity Region: ${c['활동지역']}`;
             if (c.quote) info += `\n- Quote: "${c.quote}"`;
 
             // Appearance (Detailed for Visuals)
-            if (c.appearance) {
+            if (c['외형']) {
                 // Ensure deterministic JSON key order is hard, but usually appearance keys are stable enough if source is stable.
                 // For safety, we trust the source object is not mutated randomly.
-                info += `\n- Appearance: ${JSON.stringify(c.appearance)}`;
+                info += `\n- Appearance: ${JSON.stringify(c['외형'])}`;
             } else if (c.description) {
                 info += `\n- Appearance/Desc: ${c.description}`;
             }
@@ -512,8 +689,8 @@ ${spawnCandidates || "None"}
             }
 
             // [New] Static Relationships
-            if (c.relationships) {
-                info += `\n- Relationships: ${JSON.stringify(c.relationships)}`;
+            if (c['인간관계']) {
+                info += `\n- Relationships: ${JSON.stringify(c['인간관계'])}`;
             }
 
             // Secrets (Marked as Hidden)
@@ -567,8 +744,8 @@ ${spawnCandidates || "None"}
     }
 
     static getAvailableBackgrounds(state: GameState): string {
-        // [New] Support for Korean Keys (Wuxia)
-        if (state.activeGameId === 'wuxia' && state.backgroundMappings) {
+        // [Universal] Support for Key-based Mappings (Wuxia & GBY)
+        if (state.backgroundMappings && Object.keys(state.backgroundMappings).length > 0) {
             const keys = Object.keys(state.backgroundMappings).sort();
 
             // Group by Prefix (e.g. "객잔_")
@@ -715,13 +892,24 @@ ${spawnCandidates || "None"}
             // Inject heavy data only when relevant to save tokens and focus attention.
 
             // [COMBAT MOOD] -> Inject Martial Arts Details
-            if (currentMood === 'combat' && char.martial_arts_realm) {
-                const ma = char.martial_arts_realm;
-                charInfo += `\n\n[MARTIAL ARTS INFO]`;
-                charInfo += `\n- Rank: ${ma.name} (Lv ${ma.power_level})`;
-                charInfo += `\n- Style: ${ma.description}`;
-                if (ma.skills && ma.skills.length > 0) {
-                    charInfo += `\n- Skills: ${ma.skills.join(', ')}`;
+            if (currentMood === 'combat' && char['강함']) {
+                const ma = char['강함'];
+                charInfo += `\n\n[COMBAT/STRENGTH INFO]`;
+                if (ma['등급']) {
+                    charInfo += `\n- Rank: ${ma['등급']}`;
+                }
+                if (ma.description) charInfo += `\n- Style: ${ma.description}`;
+                if (ma.skills) {
+                    charInfo += `\n- Skills:`;
+                    if (typeof ma.skills === 'object' && !Array.isArray(ma.skills)) {
+                        Object.entries(ma.skills).forEach(([key, val]) => {
+                            charInfo += `\n  - ${key}: ${val}`;
+                        });
+                    } else if (Array.isArray(ma.skills)) {
+                        charInfo += ` ${ma.skills.join(', ')}`;
+                    } else {
+                        charInfo += ` ${ma.skills}`;
+                    }
                 }
             }
 
@@ -730,14 +918,16 @@ ${spawnCandidates || "None"}
             // Assuming 'erotic' or high-stakes romance.
             const isIntimate = ['erotic', 'sexual', 'romance'].includes(currentMood);
             if (isIntimate) {
-                if (char.secret_data) {
-                    // Inject specific parts of secret data to avoid overwhelming
-                    // Or inject the whole object if it fits. 
-                    // Given the user request, we inject it for "reference".
-                    // However, we should be careful with huge JSONs.
-                    // Let's format it.
-                    const secretStr = JSON.stringify(char.secret_data, null, 2);
-                    charInfo += `\n\n[SECRET DATA (Private)]:\n${secretStr}`;
+                // Secret Data (Detailed)
+                // [Standardized] Both games now use 'secret' for this object.
+                if (char.secret) {
+                    // Can be object or string (Legacy). Prefer object format.
+                    const sData = typeof char.secret === 'string' ? char.secret : JSON.stringify(char.secret, null, 2);
+                    charInfo += `\n\n[SECRET DATA (Private)]:\n${sData}`;
+                } else if (char.secret_data) {
+                    // Fallback for not-yet-migrated data
+                    const sData = JSON.stringify(char.secret_data, null, 2);
+                    charInfo += `\n\n[SECRET DATA (Private)]:\n${sData}`;
                 }
                 if (char.preferences) {
                     charInfo += `\n- Preferences: ${JSON.stringify(char.preferences)}`;
@@ -751,13 +941,87 @@ ${spawnCandidates || "None"}
     }
 
     // [Helper] YAML-style formatter for God Bless You characters
-    private static formatGBYCharacter(c: any): string {
+    private static formatGBYCharacter(c: any, contextMode: string): string {
         const lines: string[] = [`### ${c.name}`];
 
         // 1. Basic Info
-        if (c.role) lines.push(`- Role: ${c.role}`);
         if (c.title) lines.push(`- Title: ${c.title}`);
-        if (c.skill) lines.push(`- Skill: ${c.skill}`);
+        if (c['활동지역']) lines.push(`- Activity Region: ${c['활동지역']}`);
+
+        // [MODE: COMBAT]
+        if (contextMode === 'COMBAT') {
+            if (c['강함'] && c['강함'].skills) {
+                lines.push(`- Skill: ${c['강함'].skills}`);
+            } else if (c.skill) {
+                lines.push(`- Skill: ${c.skill}`);
+            }
+
+            // Combat Stats from Ranks
+            // If c.rank exists or similar
+            if (c.profile && c.profile['등급']) lines.push(`- Rank: ${c.profile['등급']}`);
+
+            // Job/Class
+            // Social / Job Info
+            const socialData = c.social || c.job;
+            if (socialData) {
+                if (typeof socialData === 'string') lines.push(`- Job/Social: ${socialData}`);
+                else {
+                    Object.entries(socialData).forEach(([k, v]) => {
+                        // Filter out huge objects if any, mostly flat strings expected.
+                        if (typeof v === 'string') lines.push(`- ${k}: ${v}`);
+                    });
+                }
+            }
+            return lines.join('\n');
+        }
+
+        // [MODE: ROMANCE]
+        if (contextMode === 'ROMANCE') {
+            // Appearance (Full)
+            if (c['외형']) {
+                lines.push(`- Appearance:`);
+                Object.entries(c['외형']).forEach(([k, v]) => {
+                    lines.push(`  - ${k}: ${v}`);
+                });
+            } else if (c.description) {
+                lines.push(`- Appearance: ${c.description}`);
+            }
+
+            // Secret Data (Detailed)
+            // [Standardized] Both games now use 'secret' for this object.
+            if (c.secret) {
+                const sData = typeof c.secret === 'string' ? c.secret : JSON.stringify(c.secret, null, 2);
+                lines.push(`- [SECRET DATA]:\n${sData}`);
+            } else if (c.secret_data) {
+                lines.push(`- [SECRET DATA]:`);
+                Object.entries(c.secret_data).forEach(([k, v]) => {
+                    lines.push(`  - ${k}: ${JSON.stringify(v)}`);
+                });
+            }
+
+            // Personality (Full + Inner)
+            if (c.personality) {
+                if (typeof c.personality === 'string') {
+                    lines.push(`- Personality: ${c.personality}`);
+                } else {
+                    lines.push(`- Personality:`);
+                    Object.entries(c.personality).forEach(([k, v]) => {
+                        lines.push(`  - ${k}: ${v}`);
+                    });
+                }
+            }
+
+            if (c.preferences) lines.push(`- Preferences: ${JSON.stringify(c.preferences)}`);
+
+            return lines.join('\n');
+        }
+
+        // [MODE: DEFAULT]
+        if (c['강함'] && c['강함'].skills) {
+            lines.push(`- Skill: ${c['강함'].skills}`);
+        } else if (c.skill) {
+            lines.push(`- Skill: ${c.skill}`);
+        }
 
         // 2. Profile (KV List)
         if (c.profile) {

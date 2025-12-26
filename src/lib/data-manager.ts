@@ -196,16 +196,18 @@ export class DataManager {
                         // 이를 'loreModule.WuxiaLore.charactersDetail'에서 가져와서 채워 넣습니다.
 
                         if (charactersModule && loreModule?.WuxiaLore?.charactersDetail) {
-                            const mainChars = loreModule.WuxiaLore.charactersDetail.characters_main || [];
-                            const suppChars = loreModule.WuxiaLore.charactersDetail.characters_supporting || [];
+                            const mainChars = Object.values(loreModule.WuxiaLore.charactersDetail.characters_main || {});
+                            const suppChars = Object.values(loreModule.WuxiaLore.charactersDetail.characters_supporting || {});
                             const detailedList = [...mainChars, ...suppChars];
 
                             const detailedMap = new Map();
                             detailedList.forEach((d: any) => {
-                                const rawName = d.basic_profile?.이름 || "";
+                                const rawName = d.profile?.이름 || d.basic_profile?.이름 || "";
                                 // Extract "연화린" from "연화린 (延花凛)"
                                 const cleanName = rawName.split('(')[0].trim();
-                                if (cleanName) detailedMap.set(cleanName, d);
+                                if (cleanName) {
+                                    detailedMap.set(cleanName, d);
+                                }
                             });
 
                             // Helper to access default export if it exists
@@ -218,19 +220,22 @@ export class DataManager {
                                         return {
                                             ...simple,
                                             // Merge Key Fields for PromptManager
-                                            description: detail.basic_profile.martial_arts_realm.description,
+                                            // Merge Key Fields for PromptManager
+                                            description: detail.profile?.['강함']?.description,
                                             // [상세 데이터 병합] 아래 필드들은 기본 데이터에 없던 상세 정보입니다.
-                                            appearance: detail.appearance,
+                                            외형: detail['외형'],
                                             personality: detail.personality,
-                                            relationships: detail.relationships, // [중요] 관계도 데이터 병합
-                                            profile: detail.basic_profile,
+                                            인간관계: detail['인간관계'], // [중요] 관계도 데이터 병합
+                                            profile: detail.profile,
                                             social: detail.social,
                                             preferences: detail.preferences,
                                             secret: detail.secret,
                                             // [NEW] Inject detailed Secret Data and MA Realm for PromptManager
-                                            secret_data: detail.secret_data || detail.secret,
-                                            martial_arts_realm: detail.basic_profile?.martial_arts_realm,
+                                            secret_data: detail.secret_data || detail.secret, // Legacy Support
+                                            // Hoist '강함' (Strength/Combat) to root
+                                            강함: detail.profile?.['강함'],
                                             job: detail.job
+                                            // I will delete the 'social' line I added here.
                                         };
                                     }
                                     return simple;
@@ -292,9 +297,23 @@ export class DataManager {
 
             console.log('[DataManager] All imports successful.');
 
+            // [Shared Hydration] Ensure all characters have a valid 'name' property
+            let finalCharacters = (charactersModule as any).default || charactersModule;
+            if (Array.isArray(finalCharacters)) {
+                finalCharacters = finalCharacters.map((c: any) => {
+                    // Hydrate Name from Profile if missing
+                    if (!c.name && c.profile && c.profile['이름']) {
+                        // e.g. "천서윤 (千瑞yoon)" -> "천서윤"
+                        c.name = c.profile['이름'].split('(')[0].trim();
+                    }
+                    return c;
+                });
+            }
+
             return {
                 world: worldModule.default || worldModule,
-                characters: (charactersModule as any).default || charactersModule,
+                characters: finalCharacters,
+
                 backgroundList: (bgListModule as any).default || bgListModule,
                 characterImageList: characterImageList,
                 extraCharacterList: extraCharacterList,
