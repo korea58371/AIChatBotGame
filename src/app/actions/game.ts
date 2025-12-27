@@ -120,7 +120,7 @@ export async function getBackgroundList(gameId: string) {
 export async function serverPreloadCache(gameState: any) {
     if (!API_KEY) return;
     try {
-        await preloadCache(API_KEY, gameState);
+        return await preloadCache(API_KEY, gameState);
     } catch (e) {
         console.error("Server Preload Error:", e);
     }

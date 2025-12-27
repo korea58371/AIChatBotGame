@@ -122,32 +122,23 @@ export class PromptManager {
     ): Promise<string> {
         // [브라우저 캐시 로직 & 컨텍스트 스위칭]
         // [수정] 사용자의 요청대로 Mood별 프롬프트 자체가 정적이므로, 캐시 키를 Mood 자체로 설정합니다.
-        const mood = state.currentMood || 'daily';
-
-        // [Internal] Determine broad Context Mode for helper functions (e.g. Character Formatting)
-        let contextMode = 'DEFAULT';
-        if (['combat', 'tension', 'dungeon', 'cruelty'].includes(mood)) {
-            contextMode = 'COMBAT';
-        } else if (['romance', 'erotic', 'sexual'].includes(mood)) {
-            contextMode = 'ROMANCE';
-        }
-
-        // 캐시 키: 이제 그룹(COMBAT)이 아닌 개별 MOOD(combat, tension, cruelty 등)를 사용합니다.
-        const cacheKey = `${PromptManager.CACHE_PREFIX}${state.activeGameId}_${mood}_${PromptManager.CACHE_VERSION}`;
-        console.log(`[PromptManager] Generated Cache Key: ${cacheKey}`);
+        // [SHARED CACHE KEY]
+        // Remove 'mood' dependency. This key is now unified for the game.
+        const cacheKey = `${PromptManager.CACHE_PREFIX}${state.activeGameId}_SHARED_V1`;
+        console.log(`[PromptManager] Generated Shared Cache Key: ${cacheKey}`);
 
         // 브라우저 환경이라면, 로컬 스토리지에서 먼저 로드 시도 (새로고침 옵션이 꺼져있을 때)
         if (typeof window !== 'undefined' && !forceRefresh) {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
-                console.log(`[PromptManager] Cache Hit: ${state.activeGameId} [${mood}] - Loaded from Browser Storage`);
+                console.log(`[PromptManager] Shared Cache Hit: ${state.activeGameId} - Loaded from Browser Storage`);
                 return cached;
             }
         }
 
         let context = "";
 
-        // [SANDWICH STRUCTURE: BLOCKS 1-4 (STATIC)]
+        // [SANDWICH STRUCTURE: BLOCKS 1-4 (SHARED STATIC)]
         if (state.activeGameId === 'wuxia') {
             const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA } = await import('../data/games/wuxia/constants');
 
@@ -156,22 +147,18 @@ export class PromptManager {
 
             // [BLOCK 2: KNOWLEDGE BASE]
             // 2.1 Famous Characters (Static DB)
-            // [Mood Filter] Exclude 10 Great Masters in Romance/Erotic moods to focus on personal intimacy
-            let famousCharactersDB = "";
-            if (contextMode !== 'ROMANCE') {
-                famousCharactersDB = `## [NPC Database (Famous Figures)]\n${state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded."}`;
-            }
+            // Note: We include full DB in shared cache. Mood filtering is removed from static context.
+            const famousCharactersDB = `## [NPC Database (Famous Figures)]\n${state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded."}`;
 
             // 2.2 Lore Injection (Markdown/JSON)
             let loreContext = "";
             if (state.lore) {
                 try {
                     // LoreConverter now handles the header and Possessor Persona injection
-                    loreContext = LoreConverter.convertToMarkdown(state.lore, WUXIA_PROTAGONIST_PERSONA, mood);
+                    // Use 'daily' as default context for shared lore, or pass empty to be neutral
+                    loreContext = LoreConverter.convertToMarkdown(state.lore, WUXIA_PROTAGONIST_PERSONA, 'daily');
                 } catch (e: any) {
                     console.error("[PromptManager] LoreConverter Failed! Falling back to JSON.");
-                    console.error("[PromptManager] Error Details:", e.message || e);
-                    // console.error("[PromptManager] Stack:", e.stack); // Optional: Stack trace
                     loreContext = JSON.stringify(PromptManager.deepSort(state.lore), null, 2);
                 }
             }
@@ -183,23 +170,16 @@ export class PromptManager {
             let behaviorRules = WUXIA_BEHAVIOR_RULES + "\n" + (state.constants?.FACTION_BEHAVIOR_GUIDELINES || "");
 
             // [TERMINOLOGY & LANGUAGE GUIDE]
-            // Exclude in Combat/Tension (Action Focus)
-            if (contextMode !== 'COMBAT' && state.lore?.wuxia_terminology) {
+            if (state.lore?.wuxia_terminology) {
                 behaviorRules += "\n" + LoreConverter.convertTerminology(state.lore.wuxia_terminology);
             }
 
-            // [BLOCK 4: STRICT OUTPUT FORMAT & MOOD] 
+            // [BLOCK 4: STRICT OUTPUT FORMAT]
             const outputFormat = WUXIA_OUTPUT_FORMAT;
 
-            // [BLOCK 5: STATIC MOOD GUIDELINES] (Now Cached)
-            const moodPrompts = getMoodPrompts(state.activeGameId);
-            const moodGuideline = moodPrompts[mood] || moodPrompts['daily'];
-
-            // Assemble Static Blocks
+            // Assemble Static Blocks (NO MOOD)
             context = `
 ${systemIdentity}
-
-${moodGuideline}
 
 ${loreContext}
 
@@ -233,10 +213,9 @@ ${outputFormat}
             if (state.lore) {
                 try {
                     // Reuse LoreConverter for GBY (It supports modern_* keys)
-                    loreContext = LoreConverter.convertToMarkdown(state.lore, "", mood);
+                    loreContext = LoreConverter.convertToMarkdown(state.lore, "", 'daily');
                 } catch (e: any) {
                     console.error("[PromptManager] GBY LoreConverter Failed!", e);
-                    // Fallback not strictly necessary if empty, but good for debug
                     loreContext = "<!-- Lore Injection Failed -->";
                 }
             }
@@ -251,10 +230,9 @@ ${outputFormat}
             // Merge OUTPUT_FORMAT and SPECIAL_FORMATS
             const outputFormat = GBY_OUTPUT_FORMAT + "\n" + GBY_SPECIAL_FORMATS;
 
+            // Assemble Static Blocks (NO MOOD)
             context = `
 ${systemIdentity}
-
-${mood === 'erotic' ? "## [Mood Guideline]\n" + (getMoodPrompts('god_bless_you')[mood] || "") : ""}
 
 ## [NPC Database (Famous Figures)]
 ${famousCharactersDB}
@@ -262,7 +240,7 @@ ${famousCharactersDB}
 ${loreContext}
 
 ## [Character Database (Reference)]
-${PromptManager.getAvailableCharacters(state, contextMode)}
+${PromptManager.getAvailableCharacters(state, 'DEFAULT')}
 
 ## [Available Backgrounds]
 ${availableBackgrounds}
@@ -271,7 +249,7 @@ ${behaviorRules}
 
 ${outputFormat}
 `;
-        } // End Wuxia Block
+        } // End GBY Block
 
         // [Original Logic for other games - Legacy Fallback]
         // ... (Keep existing logic if needed, or simplfy. For now, we assume Wuxia is main)
@@ -312,7 +290,7 @@ ${outputFormat}
 
         // [Character Info Injection]
         const charsData = state.characterData || {};
-        const activeCharIds = new Set(state.activeCharacters.map(id => id.toLowerCase()));
+        const activeCharIds = new Set((state.activeCharacters || []).filter((id: any) => typeof id === 'string').map((id: string) => id.toLowerCase()));
 
         // Check user input AND location context for mentions of other characters
         const locData = state.worldData?.locations?.[state.currentLocation];
@@ -321,7 +299,7 @@ ${outputFormat}
         const userContext = (userMessage || "").toLowerCase();
 
         Object.entries(charsData).forEach(([charId, char]: [string, any]) => {
-            const charName = char.name.toLowerCase();
+            const charName = (char?.name || "").toLowerCase();
             const charEnglishName = (char.englishName || "").toLowerCase();
 
             // Check key (ID)
@@ -343,11 +321,26 @@ ${outputFormat}
         prompt = prompt.replace('{{CHARACTER_INFO}}', activeCharInfo);
 
         // [Mood Injection - DYNAMIC PART ONLY]
-        // Static Mood Guidelines are now in SharedStaticContext (Cached)
-        // We only inject DYNAMIC STATS context here.
+        // Static Mood Guidelines are now in SharedStaticContext (Cached) - MOVED TO HERE
+        // We inject the Mood Guideline DYNAMICALLY here to allow cheap switching.
+        const currentMood = state.currentMood || 'daily';
+
+        // [BLOCK 5: DYNAMIC MOOD GUIDELINES]
+        const moodPrompts = getMoodPrompts(state.activeGameId);
+        const moodGuideline = moodPrompts[currentMood] || moodPrompts['daily'];
+
+        // Insert Mood Guideline into the prompt (Replacing placeholder or appending)
+        // Since we removed it from static context, we prepend it to the dynamic part or specific section.
+        // Strategy: We'll prepend it to the [Dynamic Context] section for high visibility.
+
+        prompt = `
+${moodGuideline}
+
+${prompt}
+`;
 
         // Special handling for Combat, Tension, Growth, and Cruelty (Power Analysis)
-        const currentMood = state.currentMood || 'daily';
+
         if (['combat', 'tension', 'growth', 'cruelty', 'dungeon'].includes(currentMood)) {
             const stats = state.playerStats;
             const statsAnalysis = `\n\n[Stats Context & Analysis]\nPlayer Stats: STR ${stats.str}, AGI ${stats.agi}, INT ${stats.int}, VIT ${stats.vit}, LUK ${stats.luk}\nSkills: ${stats.skills.join(', ') || "None"}\n\nUse these stats to contextualize the scene (e.g. comparing power levels, training progress, or survival odds).`;
@@ -585,7 +578,7 @@ ${spawnCandidates || "None"}
         if (allChars.length === 0) return "No character data available.";
 
         // [FIX] Sort by name to guarantee deterministic order for Caching
-        allChars.sort((a: any, b: any) => a.name.localeCompare(b.name));
+        allChars.sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
 
         const isGBY = state.activeGameId === 'god_bless_you';
 
@@ -959,7 +952,7 @@ ${spawnCandidates || "None"}
 
     // [Helper] YAML-style formatter for God Bless You characters
     private static formatGBYCharacter(c: any, contextMode: string): string {
-        const lines: string[] = [`### ${c.name}`];
+        const lines: string[] = [`### ${c.name || c.이름 || 'Unknown'}`];
 
         // 1. Basic Info
         if (c.title) lines.push(`- Title: ${c.title}`);

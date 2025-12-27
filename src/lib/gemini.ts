@@ -429,11 +429,13 @@ export async function preloadCache(apiKey: string, initialState: any) {
         });
 
         // 3. Send a dummy prompt
-        await model.generateContent("System Initialization (Warmup)");
+        const result = await model.generateContent("System Initialization (Warmup)");
 
         console.log("[Gemini] Cache Warmup Request Sent!");
+        return result.response.usageMetadata;
     } catch (e) {
         console.error("[Gemini] Cache Warmup Failed:", e);
+        return null;
     }
 }
 

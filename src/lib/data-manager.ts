@@ -301,7 +301,22 @@ export class DataManager {
 
             // [Shared Hydration] Ensure all characters have a valid 'name' property
             let finalCharacters = (charactersModule as any).default || charactersModule;
-            if (Array.isArray(finalCharacters)) {
+
+            // [Fix] Handle Dictionary-based Character Data (GBY)
+            // If it's a plain object (Dictionary), we must inject the Key as 'name' 
+            // because Object.values() in PromptManager strips the keys.
+            if (!Array.isArray(finalCharacters) && typeof finalCharacters === 'object') {
+                const hydratedDict: Record<string, any> = {};
+                Object.entries(finalCharacters).forEach(([key, val]: [string, any]) => {
+                    hydratedDict[key] = {
+                        name: key, // Inject Key as Name
+                        ...val
+                    };
+                });
+                finalCharacters = hydratedDict;
+            }
+            // [Existing] Handle Array-based Character Data (Wuxia)
+            else if (Array.isArray(finalCharacters)) {
                 finalCharacters = finalCharacters.map((c: any) => {
                     // Hydrate Name from Profile if missing
                     if (!c.name && c.profile && c.profile['이름']) {

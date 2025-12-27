@@ -504,6 +504,9 @@ export default function VisualNovelUI() {
             setSessionId(`guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
         }
     }, []);
+    // Prevent double-firing in Strict Mode
+    const isWarmupTriggered = useRef(false);
+
     useEffect(() => {
         setIsMounted(true);
         // Load Assets
@@ -520,10 +523,39 @@ export default function VisualNovelUI() {
             }
 
             // [Startup Warmup] Preload Cache in Background
+            if (isWarmupTriggered.current) return;
+            isWarmupTriggered.current = true;
+
             try {
                 console.log("[System] Triggering Cache Warmup...");
                 // Pass current state (Initial)
-                serverPreloadCache(useGameStore.getState());
+                serverPreloadCache(useGameStore.getState()).then((usageMetadata) => {
+                    if (usageMetadata) {
+                        const cachedTokens = (usageMetadata as any).cachedContentTokenCount || 0;
+                        const inputTokens = usageMetadata.promptTokenCount - cachedTokens;
+                        const outputTokens = usageMetadata.candidatesTokenCount;
+
+                        // Gemini 3 Pro Pricing
+                        const costPer1M_Input = 2.00;
+                        const costPer1M_Output = 12.00;
+                        const costPer1M_Cached = 0.20;
+
+                        const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
+                        const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
+                        const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
+                        const totalCost = costInput + costCached + costOutput;
+                        const totalCostKRW = totalCost * 1480;
+
+                        console.log(`Token Usage (Cache Warmup - Gemini 3 Pro):`);
+                        console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
+                        console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)})`);
+                        console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
+                        console.log(`- Total:     $${totalCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`);
+
+                        const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
+                        addToast(`Warmup Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
+                    }
+                });
             } catch (e) {
                 console.error("Warmup Failed:", e);
             }

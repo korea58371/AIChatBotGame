@@ -1,6 +1,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { PromptManager } from '../src/lib/prompt-manager';
 import { LoreConverter } from '../src/lib/lore-converter';
 
 // --- Configuration ---
@@ -15,98 +16,101 @@ if (!fs.existsSync(PREVIEW_DIR)) {
 
 // --- Main Execution ---
 async function main() {
-    console.log("🔵 Starting God Bless You Prompt Preview Generation...");
+    console.log("🔵 Starting God Bless You Prompt Preview Generation (Shared Cache Mode)...");
 
     try {
-        // 1. Load Character Data
-        const charactersPath = path.join(GBY_ROOT, 'jsons/characters.json');
-        const charactersData = JSON.parse(fs.readFileSync(charactersPath, 'utf-8'));
-
-        // 1b. Load Wiki Data (for Factions/Geography) - Fallback or Reference
-        const wikiPath = path.join(GBY_ROOT, 'wiki_data.json');
-
-        // 1c. Load New JSON Files
+        // 1. Load Data (Simplified for Preview)
         const jsonDir = path.join(GBY_ROOT, 'jsons');
-        const modernFactions = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_factions.json'), 'utf-8'));
-        const modernGeography = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_world_geography.json'), 'utf-8'));
-        const modernElixirs = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_elixirs.json'), 'utf-8'));
-        const modernCombat = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_combat.json'), 'utf-8'));
-        const modernLevels = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_levels.json'), 'utf-8'));
-        const modernSkills = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_skills.json'), 'utf-8'));
-        const modernWeapons = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_weapons.json'), 'utf-8'));
-        const modernRomance = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_romance_guide.json'), 'utf-8'));
-        const modernTerminology = JSON.parse(fs.readFileSync(path.join(jsonDir, 'modern_terminology.json'), 'utf-8'));
 
-        console.log(`✅ Loaded Modern JSONs.`);
+        const loadJson = (name: string) => JSON.parse(fs.readFileSync(path.join(jsonDir, name), 'utf-8'));
 
-        // 2. Categorize Characters (Main=S, Supp=A/B, Extra=Others)
-        const charMain: any = {};
-        const charSupp: any = {};
-        const charExtra: any = {};
+        let charactersData = loadJson('characters.json');
 
-        Object.entries(charactersData).forEach(([key, char]: [string, any]) => {
-            const rank = char?.강함?.등급 || "D급";
-            if (rank.includes('S급')) {
-                charMain[key] = char;
-            } else if (rank.includes('A급') || rank.includes('B급')) {
-                charSupp[key] = char;
-            } else {
-                charExtra[key] = char;
-            }
-        });
-
-        console.log(`✅ Categorized: Main(${Object.keys(charMain).length}), Supp(${Object.keys(charSupp).length}), Extra(${Object.keys(charExtra).length})`);
+        // [Fix] Replicate DataManager hydration: Inject Name from Keys
+        if (!Array.isArray(charactersData) && typeof charactersData === 'object') {
+            const hydratedDict: any = {};
+            Object.entries(charactersData).forEach(([key, val]: [string, any]) => {
+                hydratedDict[key] = { name: key, ...val };
+            });
+            charactersData = hydratedDict;
+        }
 
         const mockLoreData = {
             charactersDetail: {
-                characters_main: charMain,
-                characters_supporting: charSupp,
-                characters_extra: charExtra
+                characters_main: {}, // Simplified
+                characters_supporting: {},
+                characters_extra: {}
             },
-            // Inject Loaded Modern Data
-            // Map to LoreConverter keys
-            martial_arts_levels: modernLevels,
-            martial_arts_skills: modernSkills,
-            weapons: modernWeapons,
-            romance_guide: modernRomance,
-            wuxia_terminology: modernTerminology,
-
-            // Explicit Modern Keys for Factions/Geography
-            modern_factions: modernFactions,
-            modern_geography: modernGeography,
-
-            // Additional data
-            elixirs: modernElixirs,
-            combat_guide: modernCombat
+            martial_arts_levels: loadJson('modern_levels.json'),
+            martial_arts_skills: loadJson('modern_skills.json'),
+            weapons: loadJson('modern_weapons.json'),
+            romance_guide: loadJson('modern_romance_guide.json'),
+            wuxia_terminology: loadJson('modern_terminology.json'),
+            modern_factions: loadJson('modern_factions.json'),
+            modern_geography: loadJson('modern_world_geography.json'),
+            elixirs: loadJson('modern_elixirs.json'),
+            combat_guide: loadJson('modern_combat.json')
         };
 
-        // 3. Generate Previews for Each Mood
+        // 2. Generate SHARED STATIC CONTEXT (Run Once)
+        console.log("⏳ Generating SHARED STATIC CONTEXT...");
+
+        const mockStateBase: any = {
+            activeGameId: 'god_bless_you',
+            characterData: charactersData,
+            worldData: { locations: { 'home': { description: 'A cozy home' } } },
+            currentLocation: 'home',
+            lore: mockLoreData,
+            availableExtraImages: [],
+            constants: { FAMOUS_CHARACTERS: "Famous NPC List Placeholder" },
+            activeCharacters: [],
+            // Mock function for dynamic prompt (simplified)
+            getSystemPromptTemplate: () => "Dynamic Scenario Description...",
+            playerStats: { str: 10, agi: 10, int: 10, vit: 10, luk: 10, skills: [] }
+        };
+
+        // We use 'daily' as a dummy mood for static generation, though it shouldn't matter anymore
+        mockStateBase.currentMood = 'daily';
+
+        const sharedStaticContext = await PromptManager.getSharedStaticContext(mockStateBase, undefined, undefined, true); // Force refresh
+
+        fs.writeFileSync(path.join(PREVIEW_DIR, 'preview_gby_SHARED_STATIC.md'), sharedStaticContext, 'utf-8');
+        console.log("   -> Saved: preview_gby_SHARED_STATIC.md");
+
+        // 3. Generate DYNAMIC MOOD PREVIEWS
         for (const mood of MOODS) {
-            console.log(`⏳ Generating preview for mood: [${mood}]...`);
+            console.log(`⏳ Generating dynamic preview for mood: [${mood}]...`);
 
-            // Pass empty string for 'possessorText' (2nd arg) to ensure 'mood' (3rd arg) is received correctly
-            const output = LoreConverter.convertToMarkdown(mockLoreData, "", mood);
+            // Update State
+            const mockState = { ...mockStateBase, currentMood: mood };
 
-            // Add Header
-            const finalOutput = `# God Bless You Prompt Preview
+            // Generate System Prompt (Dynamic Part)
+            // This now includes the MOOD GUIDELINE injection
+            const dynamicPrompt = PromptManager.generateSystemPrompt(mockState, 'ko', "User Action Here");
+
+            const finalOutput = `# God Bless You Dynamic Prompt Preview
 - **Mood**: ${mood}
-- **Context Mode**: ${['combat', 'tension'].includes(mood) ? 'COMBAT' : ['romance', 'sexual'].includes(mood) ? 'ROMANCE' : 'DEFAULT'}
 - **Generated At**: ${new Date().toISOString()}
 
 ---
 
-${output}`;
+## [INJECTED MOOD GUIDELINE & DYNAMIC CONTENT]
+(This part is sent FRESH every turn)
 
-            // Save
-            const outputPath = path.join(PREVIEW_DIR, `preview_gby_${mood}.md`);
-            fs.writeFileSync(outputPath, finalOutput, 'utf-8');
-            console.log(`   -> Saved: ${outputPath}`);
+${dynamicPrompt}
+`;
+
+            fs.writeFileSync(path.join(PREVIEW_DIR, `preview_gby_${mood}.md`), finalOutput, 'utf-8');
+            console.log(`   -> Saved: preview_gby_${mood}.md`);
         }
 
         console.log("✅ All previews generated successfully!");
 
-    } catch (error) {
-        console.error("❌ Error generating previews:", error);
+    } catch (e: any) {
+        console.error("❌ Error generating previews:", e);
+        if (e.code === 'MODULE_NOT_FOUND') {
+            console.error("   (Hint: Ensure paths to JSONs and libs are correct relative to scripts/)");
+        }
     }
 }
 
