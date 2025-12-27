@@ -85,7 +85,7 @@ export class DataManager {
                         }
 
                         console.log('- Importing characters.json...');
-                        charactersModule = await import('@/data/games/god_bless_you/characters.json');
+                        charactersModule = await import('@/data/games/god_bless_you/jsons/characters.json');
 
                         // bgListModule loaded above via action
 
