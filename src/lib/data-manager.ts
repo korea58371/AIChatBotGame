@@ -121,15 +121,17 @@ export class DataManager {
                             // [Fix] Don't mutate import result. Store in local variable.
                             // @ts-ignore
                             const wikiDataLoaded = wiki.default || wiki;
-                            // Attach to worldModule temporarily or just return it? 
-                            // Better to just return it in the return statement.
-                            // We need to pass it out of the switch.
-                            // Let's attach it to 'systemPromptModule' or just use a scope variable?
-                            // We defined 'let ...' at the top. Let's add 'wikiDataModule' there.
                             wikiDataModule = wikiDataLoaded;
                         } catch (e) {
                             console.warn('Wiki data not found for god_bless_you');
                             wikiDataModule = {};
+                        }
+
+                        // Lore (God Bless You)
+                        try {
+                            loreModule = await import('@/data/games/god_bless_you/jsons/index');
+                        } catch (e) {
+                            console.error("[DataManager] Failed GBY lore", e);
                         }
 
                     } catch (e) {
@@ -332,10 +334,12 @@ export class DataManager {
                 // [중요] 상세 설정(Lore) 데이터 구조 분해
                 // WuxiaLore 내부에는 factionsDetail, charactersDetail과 같은 중첩된 객체들이 있습니다.
                 // 이를 클라이언트에서 바로 사용할 수 있도록 펼쳐서(spread) 전달합니다.
-                lore: loreModule?.WuxiaLore ? {
-                    ...loreModule.WuxiaLore,
-                    factionsDetail: { ...loreModule.WuxiaLore.factionsDetail },
-                    charactersDetail: { ...loreModule.WuxiaLore.charactersDetail }
+                lore: (loreModule as any)?.WuxiaLore ? {
+                    ...(loreModule as any).WuxiaLore,
+                    factionsDetail: { ...(loreModule as any).WuxiaLore.factionsDetail },
+                    charactersDetail: { ...(loreModule as any).WuxiaLore.charactersDetail }
+                } : (loreModule as any)?.GodBlessYouLore ? {
+                    ...(loreModule as any).GodBlessYouLore
                 } : {}
             };
 

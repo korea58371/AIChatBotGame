@@ -228,7 +228,20 @@ ${outputFormat}
             // 2.1 Famous Characters
             const famousCharactersDB = state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded.";
 
-            // 2.2 Backgrounds
+            // 2.2 Lore Injection (Markdown)
+            let loreContext = "";
+            if (state.lore) {
+                try {
+                    // Reuse LoreConverter for GBY (It supports modern_* keys)
+                    loreContext = LoreConverter.convertToMarkdown(state.lore, "", mood);
+                } catch (e: any) {
+                    console.error("[PromptManager] GBY LoreConverter Failed!", e);
+                    // Fallback not strictly necessary if empty, but good for debug
+                    loreContext = "<!-- Lore Injection Failed -->";
+                }
+            }
+
+            // 2.3 Backgrounds
             const availableBackgrounds = PromptManager.getAvailableBackgrounds(state);
 
             // [BLOCK 3: BEHAVIOR GUIDELINES]
@@ -241,8 +254,12 @@ ${outputFormat}
             context = `
 ${systemIdentity}
 
+${mood === 'erotic' ? "## [Mood Guideline]\n" + (getMoodPrompts('god_bless_you')[mood] || "") : ""}
+
 ## [NPC Database (Famous Figures)]
 ${famousCharactersDB}
+
+${loreContext}
 
 ## [Character Database (Reference)]
 ${PromptManager.getAvailableCharacters(state, contextMode)}
