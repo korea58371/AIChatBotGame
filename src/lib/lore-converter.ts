@@ -154,22 +154,90 @@ export class LoreConverter {
 
         let output = "### Power System & Realms\n";
 
-        // [FIX] Levels are now at root. Filter out metadata like '요약표'.
-        // [Robustness] Ensure value is an object and has '명칭'
+        // [Robustness] Filter valid objects
         const realms = Object.values(levels)
-            .filter((v: any) => v && typeof v === 'object' && v.명칭 && v.위상) // Only process objects that look like realms
+            .filter((v: any) => v && typeof v === 'object' && v.명칭 && v.위상)
             .sort((a: any, b: any) => {
                 const lvA = a.power_level || 0;
                 const lvB = b.power_level || 0;
                 return lvA - lvB;
             });
 
-        // Compact list
         realms.forEach((r: any) => {
             output += `- **${r.명칭}**: ${r.능력} (${r.위상})\n`;
         });
         output += "\n";
         return output;
+    }
+
+    static convertModernFactions(factionsData: any): string {
+        if (!factionsData) return "";
+        let output = "## [Key Organizations & Groups]\n\n";
+
+        let factionList: any[] = [];
+        if (Array.isArray(factionsData)) {
+            factionList = factionsData;
+        } else if (typeof factionsData === 'object') {
+            Object.entries(factionsData).forEach(([key, value]: [string, any]) => {
+                if (value.주요_인물 || value.설명 || value.content) {
+                    factionList.push({ name: key, ...value });
+                } else {
+                    Object.entries(value).forEach(([fName, fData]: [string, any]) => {
+                        factionList.push({ name: fName, ...fData });
+                    });
+                }
+            });
+        }
+
+        if (factionList.length === 0) return "";
+
+        factionList.sort((a, b) => (a.name || a.이름 || "").localeCompare(b.name || b.이름 || ""));
+
+        factionList.forEach((f: any) => {
+            const name = f.name || f.이름 || "Unknown Organization";
+            const desc = f.content || f.설명 || "";
+            output += `- **${name}**: ${desc}\n`;
+
+            if (f.주요_인물) {
+                const members = Array.isArray(f.주요_인물) ? f.주요_인물.join(', ') : f.주요_인물;
+                output += `  - **Key Figures**: ${members}\n`;
+            }
+        });
+
+        return output + "\n";
+    }
+
+    static convertModernGeography(geoData: any): string {
+        if (!geoData) return "";
+        let output = "## [Key Background Locations]\n\n";
+
+        let locationList: any[] = [];
+        if (Array.isArray(geoData)) {
+            locationList = geoData;
+        } else if (typeof geoData === 'object') {
+            Object.entries(geoData).forEach(([key, value]: [string, any]) => {
+                if (typeof value === 'string') return;
+                if (value.명칭 || value.특징 || value.content) {
+                    locationList.push({ name: key, ...value });
+                } else {
+                    Object.entries(value).forEach(([lName, lData]: [string, any]) => {
+                        locationList.push({ name: lName, ...lData });
+                    });
+                }
+            });
+        }
+
+        if (locationList.length === 0) return "";
+
+        locationList.sort((a, b) => (a.name || a.명칭 || "").localeCompare(b.name || b.명칭 || ""));
+
+        locationList.forEach((l: any) => {
+            const name = l.name || l.명칭 || "Unknown Location";
+            const desc = l.content || l.특징 || "";
+            output += `- **${name}**: ${desc}\n`;
+        });
+
+        return output + "\n";
     }
 
     // Helper for recursive formatting (Ported from preview script)
@@ -257,13 +325,18 @@ export class LoreConverter {
             output += `- **정보**: ${infoParts.join(', ')} / **경지**: ${rankInfo}\n`;
 
             // Body
-            if (p.BWH) output += `- **Body**: ${p.신체 || '', p.BWH}\n`;
+            if (p.BWH || p.BHW) output += `- **Body**: ${p.BWH || p.BHW}\n`;
 
             // Appearance
             let appStr = "";
-            if (app.머리색 || app.hair_color) appStr += `${app.머리색 || app.hair_color}, `;
-            if (app.눈색 || app.eye_color) appStr += `${app.눈색 || app.eye_color}`;
-            if (appStr) output += `- **외형**: ${appStr}\n`;
+            const hair = app.머리색 || app.hair_color || app.머리카락;
+            const eyes = app.눈색 || app.eye_color || app.눈;
+
+            if (hair) appStr += `${hair}, `;
+            if (eyes) appStr += `${eyes}`;
+            if (app.전체적_인상) appStr += `, (${app.전체적_인상})`;
+
+            if (appStr) output += `- **외형**: ${appStr.replace(/, $/, '')}\n`;
 
             // Personality
             const surface = pers['표면적 성격'] || pers.surface || pers['표면적 성격 (대외용)'] || '';
@@ -374,6 +447,8 @@ export class LoreConverter {
         return output;
     }
 
+
+
     static convertWorldGeography(geo: any): string {
         if (!geo) return "";
         let output = "## [World Geography & Regions]\n\n";
@@ -410,10 +485,10 @@ export class LoreConverter {
     static convertItems(weapons: any, elixirs: any): string {
         let output = "## [Legendary Items & Systems]\n\n";
 
-        if (weapons && weapons.범주) {
+        if (weapons) {
             output += "### Notable Weapons\n";
             // [Robustness] Ensure '범주' is an object
-            if (typeof weapons.범주 === 'object') {
+            if (weapons.범주 && typeof weapons.범주 === 'object') {
                 Object.entries(weapons.범주).sort((a: any, b: any) => a[0].localeCompare(b[0])).forEach(([catName, list]: any) => {
                     const categoryName = typeof catName === 'string' ? catName.replace(/_/g, ' ') : 'Category';
                     if (Array.isArray(list)) {
@@ -422,6 +497,20 @@ export class LoreConverter {
                             return str.split(':')[0].trim();
                         });
                         output += `- **${categoryName}**: ${names.join(', ')}\n`;
+                    }
+                });
+            } else if (typeof weapons === 'object') {
+                // [GBY/Generic] Flatten object structure
+                Object.entries(weapons).forEach(([key, value]: [string, any]) => {
+                    // Check if it's a category
+                    if (typeof value === 'object' && value !== null) {
+                        const items = Object.entries(value).map(([k, v]: any) => {
+                            const desc = typeof v === 'object' ? (v.설명 || v.desc || JSON.stringify(v)) : v;
+                            return `${k}(${desc})`;
+                        }).join(', ');
+                        output += `- **${key}**: ${items}\n`;
+                    } else {
+                        output += `- **${key}**: ${value}\n`;
                     }
                 });
             }
@@ -434,6 +523,16 @@ export class LoreConverter {
                 const extreme = elixirs.legendary_natural_treasures.extreme_element_items?.list || [];
                 const all = [...balanced, ...extreme].map((e: any) => e.name.split('(')[0].trim());
                 output += `- **Legendary**: ${all.sort().join(', ')}\n`; // Sort Elixirs
+            } else if (typeof elixirs === 'object') {
+                // [GBY/Generic]
+                Object.entries(elixirs).forEach(([key, value]: [string, any]) => {
+                    if (typeof value === 'object' && value !== null) {
+                        const subItems = Object.entries(value).map(([k, v]: any) => `${k}`).join(', ');
+                        output += `- **${key}**: ${subItems}\n`;
+                    } else {
+                        output += `- **${key}**: ${value}\n`;
+                    }
+                });
             }
         }
         output += "\n";
@@ -465,11 +564,16 @@ export class LoreConverter {
         // 3. [Great Factions & Geography] (Environment)
         if (lore.factionsDetail) {
             output += LoreConverter.convertFactions(lore.factionsDetail) + "\n\n";
+        } else if (lore.modern_factions) {
+            output += LoreConverter.convertModernFactions(lore.modern_factions) + "\n\n";
         }
+
         if (lore.geography_guide) {
             output += LoreConverter.convertWorldGeography(lore.geography_guide) + "\n\n";
         } else if (lore.world_geography) {
             output += LoreConverter.convertWorldGeography(lore.world_geography) + "\n\n";
+        } else if (lore.modern_geography) {
+            output += LoreConverter.convertModernGeography(lore.modern_geography) + "\n\n";
         }
 
         // 4. [Characters & Scenario] (Result)
@@ -510,6 +614,16 @@ export class LoreConverter {
                 const extreme = elixirs.legendary_natural_treasures.extreme_element_items?.list || [];
                 const all = [...balanced, ...extreme].map((e: any) => e.name.split('(')[0].trim());
                 output += `- **Legendary**: ${all.sort().join(', ')}\n`;
+            } else if (typeof elixirs === 'object') {
+                // [GBY/Generic]
+                Object.entries(elixirs).forEach(([key, value]: [string, any]) => {
+                    if (typeof value === 'object' && value !== null) {
+                        const subItems = Object.entries(value).map(([k, v]: any) => `${k}`).join(', ');
+                        output += `- **${key}**: ${subItems}\n`;
+                    } else {
+                        output += `- **${key}**: ${value}\n`;
+                    }
+                });
             }
         }
         return output;

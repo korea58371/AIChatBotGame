@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
@@ -291,8 +293,10 @@ const formatText = (text: string) => {
 
 export default function VisualNovelUI() {
     const [isFullscreen, setIsFullscreen] = useState(false);
-    // ... (start of component)
+    const router = useRouter();
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+    // Core Game Store
     useEffect(() => {
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
@@ -301,6 +305,7 @@ export default function VisualNovelUI() {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
+    // Core Game Store
     const {
         chatHistory,
         addMessage,
@@ -308,7 +313,7 @@ export default function VisualNovelUI() {
         setBackground,
         characterExpression,
         setCharacterExpression,
-        addTextMessage, // Added destructuring
+        addTextMessage,
         playerStats,
         setPlayerStats,
         inventory,
@@ -2035,7 +2040,10 @@ export default function VisualNovelUI() {
                             {/* Settings Button */}
                             <button
                                 className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
-                                onClick={(e) => { e.stopPropagation(); /* Settings logic later */ }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowResetConfirm(true);
+                                }}
                                 title="Settings"
                             >
                                 <Settings className="w-[5vw] h-[5vw] md:w-8 md:h-8" />
@@ -2107,6 +2115,43 @@ export default function VisualNovelUI() {
                     isOpen={isPhoneOpen}
                     onClose={() => setIsPhoneOpen(false)}
                 />
+
+                {/* Reset Confirmation Modal */}
+                <AnimatePresence>
+                    {showResetConfirm && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                            onClick={(e) => e.stopPropagation()} // Prevent click-through
+                        >
+                            <div className="bg-slate-900 border border-slate-600 w-full max-w-md p-6 rounded-xl shadow-2xl flex flex-col gap-4">
+                                <h3 className="text-xl font-bold text-white text-center">게임 초기화</h3>
+                                <p className="text-gray-300 text-center text-sm md:text-base whitespace-pre-line">
+                                    현재 진행 상황을 초기화하고{'\n'}메인 화면으로 돌아가시겠습니까?
+                                </p>
+                                <div className="flex gap-3 justify-center mt-2">
+                                    <button
+                                        onClick={() => setShowResetConfirm(false)}
+                                        className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold transition-colors"
+                                    >
+                                        아니오 (취소)
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            useGameStore.getState().resetGame();
+                                            router.push('/');
+                                        }}
+                                        className="px-6 py-2 rounded-lg bg-red-800 hover:bg-red-700 text-red-100 font-bold transition-colors border border-red-600"
+                                    >
+                                        예 (초기화)
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Toast Notifications */}
                 <div className="fixed top-24 right-4 z-50 flex flex-col gap-2 pointer-events-none">
