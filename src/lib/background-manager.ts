@@ -121,6 +121,33 @@ export function resolveBackground(tag: string): string {
     }
 
     // ---------------------------------------------------------
+    // 전략 3.5: [NEW] 부분 문자열 포함 매치 (사용자 요청: 던전_하수구_미로 -> 하수구)
+    // ---------------------------------------------------------
+    // AI가 없는 키를 조합해서 만들 때 (예: "던전_하수구_미로") 기존 키("하수구_입구")를 찾도록 함
+
+    // 1. 매핑 키 중에서 검색어의 일부를 포함하는 키를 찾음
+    const substringMatchKey = mappingKeys.find(key => query.includes(key) || key.includes(query));
+    if (substringMatchKey) {
+        console.warn(`[BackgroundManager] 부분 문자열 매치 보정: "${query}" -> "${substringMatchKey}" -> "${backgroundMappings[substringMatchKey]}"`);
+        return `${basePath}/${backgroundMappings[substringMatchKey]}`;
+    }
+
+    // 2. 검색어를 분해하여 매핑 키와 대조 (예: "던전_하수구_미로" -> "하수구" 키 찾기)
+    const queryParts = query.split('_');
+    if (queryParts.length > 1) {
+        for (const part of queryParts) {
+            // 너무 짧은 단어는 제외 (오매칭 방지)
+            if (part.length < 2) continue;
+
+            const partMatchKey = mappingKeys.find(key => key.includes(part));
+            if (partMatchKey) {
+                console.warn(`[BackgroundManager] 키워드 분해 매치 보정: "${query}" -> ("${part}" 매치) -> "${partMatchKey}" -> "${backgroundMappings[partMatchKey]}"`);
+                return `${basePath}/${backgroundMappings[partMatchKey]}`;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
     // 전략 4: 엄격한 폴백 (몰입감 보존)
     // ---------------------------------------------------------
     // 유저 선호: "틀린 배경보다는 차라리 배경이 없는 것이 낫다."

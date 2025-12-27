@@ -493,7 +493,8 @@ ${prompt}
             if (!c) return null;
 
             // [LOGIC_FIX] Explicitly provide ID for Logic Model
-            const idStr = (c as any).id || c.englishName || "UnknownID";
+            // Use Name as fallback ID if englishName/id are missing (Crucial for GBY)
+            const idStr = (c as any).id || c.englishName || c.name || "UnknownID";
             let info = `- ${c.name} (ID: ${idStr} | ${c.role}): Active in scene.`;
 
             // Pass existing Memories for consolidation

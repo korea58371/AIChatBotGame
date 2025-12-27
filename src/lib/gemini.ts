@@ -76,8 +76,11 @@ export async function generateResponse(
     console.log(dynamicPrompt);
     console.log("---------------------------------------------");
 
-    // [CONTEXT CACHING] Concatenate Static + Dynamic
-    const systemPrompt = staticPrompt + dynamicPrompt;
+    // [CONTEXT CACHING KEY FIX] 
+    // Do NOT concatenate Static + Dynamic. 
+    // Static = systemInstruction (Cached)
+    // Dynamic = Part of User Message (Uncached/Cheaper)
+    const systemInstruction = staticPrompt;
 
     // Main Story Model: Gemini 3 Pro (Prioritize quality)
     const modelsToTry = [
@@ -104,7 +107,9 @@ export async function generateResponse(
                     thinkingLevel: "high"
                 };
             }
-            modelConfig.systemInstruction = systemPrompt;
+
+            // [FIX] Only pass the Static Context as System Instruction to maintain Cache Hits
+            modelConfig.systemInstruction = systemInstruction;
 
             const model = genAI.getGenerativeModel(modelConfig);
 
@@ -137,12 +142,16 @@ export async function generateResponse(
                 history: processedHistory,
             });
 
-            const result = await chatSession.sendMessage(userMessage);
+            // [FIX] Inject Dynamic Prompt (Mood, Stats, etc.) into the User Message
+            // This ensures it's read fresh every turn without breaking the Static Cache
+            const finalUserMessage = `${dynamicPrompt}\n\n${userMessage}`;
+
+            const result = await chatSession.sendMessage(finalUserMessage);
             const response = result.response;
             return {
                 text: response.text(),
                 usageMetadata: response.usageMetadata,
-                systemPrompt: systemPrompt,
+                systemPrompt: systemInstruction, // Log the static part as the "System Prompt"
                 usedModel: modelName
             };
 

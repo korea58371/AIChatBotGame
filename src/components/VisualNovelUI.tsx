@@ -1090,6 +1090,12 @@ export default function VisualNovelUI() {
                 const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
                 addToast(`Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
             }
+
+            // [UX Improvement] Clear Character Image at start of new turn
+            // This prevents the previous turn's character from lingering during narration.
+            // It will reappear when <대사> tag is processed.
+            setCharacterExpression('');
+
             const segments = parseScript(responseText);
             setLastStoryOutput(responseText); // [Logging] Capture response for next turn logic
 
