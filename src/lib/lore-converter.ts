@@ -256,7 +256,12 @@ export class LoreConverter {
                 });
 
             realms.forEach((r: any) => {
-                output += `- **${r.명칭}**: ${r.능력} (${r.위상})\n`;
+                output += `- **${r.명칭} (${r.위상})**:\n`;
+                output += `  - **능력**: ${r.능력}\n`;
+                if (r.내공_수준) output += `  - **내공**: ${r.내공_수준}\n`;
+                if (r.깨달음) output += `  - **깨달음**: ${r.깨달음}\n`;
+                if (r.신체_변화) output += `  - **신체**: ${r.신체_변화}\n`;
+                if (r.조건 && r.조건.최소_내공 !== undefined) output += `  - **조건**: 최소 내공 ${r.조건.최소_내공}년\n`;
             });
         }
         output += "\n";
@@ -546,6 +551,51 @@ export class LoreConverter {
             return output;
         }
 
+        // [Wuxia] Detailed Combat Guide
+        if (combat.핵심_개념) {
+            output += `### Core Concepts (핵심 개념)\n`;
+            if (combat.핵심_개념.설명) output += `> ${combat.핵심_개념.설명}\n\n`;
+            if (combat.핵심_개념.요소 && Array.isArray(combat.핵심_개념.요소)) {
+                combat.핵심_개념.요소.forEach((item: any) => {
+                    output += `- **${item.명칭}**: ${item.역할}\n`;
+                });
+            }
+            output += "\n";
+        }
+
+        if (combat.전투_흐름) {
+            output += `### Battle Flow (전투 흐름)\n`;
+            if (combat.전투_흐름.단계 && Array.isArray(combat.전투_흐름.단계)) {
+                combat.전투_흐름.단계.forEach((step: any) => {
+                    output += `- **${step.단계}**: ${step.초점}\n`;
+                });
+            }
+            output += "\n";
+        }
+
+        if (combat.피해_묘사) {
+            output += `### Damage Descriptions (피해 묘사)\n`;
+            if (combat.피해_묘사.단계_별_묘사 && Array.isArray(combat.피해_묘사.단계_별_묘사)) {
+                combat.피해_묘사.단계_별_묘사.forEach((desc: string) => output += `- ${desc}\n`);
+            }
+            output += "\n";
+        }
+
+        if (combat.금지_표현) {
+            output += `### Prohibited Terms (금지 표현)\n`;
+            if (combat.금지_표현.목록 && Array.isArray(combat.금지_표현.목록)) {
+                combat.금지_표현.목록.forEach((term: string) => output += `- ${term}\n`);
+            }
+            output += "\n";
+        }
+
+        if (combat.활용_팁 && Array.isArray(combat.활용_팁)) {
+            output += `### Tips\n`;
+            combat.활용_팁.forEach((tip: string) => output += `- ${tip}\n`);
+            output += "\n";
+        }
+
+        // [Legacy/GBY] Existing Checks
         if (combat.전투_서술_원칙) {
             output += `\n### Combat Principles\n${this.formatValue(combat.전투_서술_원칙)}`;
         }

@@ -1,31 +1,11 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { Message } from './store';
 import { PromptManager } from './prompt-manager';
+import { LoreConverter } from './lore-converter';
 import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from '@/data/prompts/logic';
+import { MODEL_CONFIG, calculateCost } from './model-config';
 
 // Removed static SYSTEM_PROMPT in favor of dynamic generation
-
-export const MODEL_CONFIG = {
-    STORY: 'gemini-3-pro-preview', // Main Story (Synced with Cache)
-    LOGIC: 'gemini-2.5-flash',       // Game Logic (Fast, JSON)
-    SUMMARY: 'gemini-2.5-flash'      // Summarization (Cheap)
-};
-
-// Pricing Rates (Per 1M Tokens)
-// Flash: Input $0.075, Output $0.30
-// Pro: Input $1.25, Output $5.00
-const PRICING_RATES = {
-    'gemini-3-flash-preview': { input: 0.075, output: 0.30 },
-    'gemini-2.5-flash': { input: 0.075, output: 0.30 },
-    'gemini-3-pro-preview': { input: 1.25, output: 5.00 }
-};
-
-function calculateCost(modelName: string, inputTokens: number, outputTokens: number): number {
-    const rate = (PRICING_RATES as any)[modelName] || PRICING_RATES['gemini-2.5-flash']; // Default to Flash pricing if unknown
-    const inputCost = (inputTokens / 1_000_000) * rate.input;
-    const outputCost = (outputTokens / 1_000_000) * rate.output;
-    return inputCost + outputCost;
-}
 
 const safetySettings = [
     {
@@ -112,7 +92,7 @@ export async function generateResponse(
 
             // [Gemini 3 최적화] Native Thinking 활성화
             // gemini-3-pro-preview, gemini-3-flash-preview 등 'gemini-3'가 포함된 모델에 적용
-            if (modelName.includes('gemini-3')) {
+            if (modelName.includes('gemini-3') || modelName.includes('thinking')) {
                 modelConfig.thinkingConfig = {
                     includeThoughts: true, // [User Request] 생각 과정 로그 확인을 위해 True 설정
                     thinkingLevel: "high"
@@ -271,8 +251,13 @@ export async function generateGameLogic(
             console.log(`Trying logic model: ${modelName}`);
 
             // [NEW] Static Prompt for Context Caching
-            const rankCriteria = gameState.lore?.martial_arts_levels || null;
-            const staticLogicPrompt = getStaticLogicPrompt(gameState.activeGameId, rankCriteria);
+            // [NEW] Static Prompt for Context Caching
+            // [OPTIMIZATION] Convert JSON to YAML-like text using LoreConverter to save tokens & match Story Model format
+            const rankCriteria = gameState.lore?.martial_arts_levels ? LoreConverter.convertMartialArtsLevels(gameState.lore.martial_arts_levels) : null;
+            const romanceGuide = gameState.lore?.romance_guide ? LoreConverter.convertRomance(gameState.lore.romance_guide) : null;
+            const combatGuide = gameState.lore?.combat_guide ? LoreConverter.convertCombat(gameState.lore.combat_guide) : null;
+
+            const staticLogicPrompt = getStaticLogicPrompt(gameState.activeGameId, rankCriteria, romanceGuide, combatGuide);
 
             const model = genAI.getGenerativeModel({
                 model: modelName,
@@ -344,6 +329,7 @@ export async function generateGameLogic(
 
                 // Attach debug info
                 json._debug_prompt = prompt;
+                json._debug_static_prompt = staticLogicPrompt;
                 json._debug_raw_response = text;
 
                 // Post-Process: Event Trigger

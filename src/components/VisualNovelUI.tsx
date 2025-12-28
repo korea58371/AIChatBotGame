@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase';
 import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache } from '@/app/actions/game';
 import { getCharacterImage } from '@/lib/image-mapper';
 import { resolveBackground } from '@/lib/background-manager'; // Added import // Added import
+import { MODEL_CONFIG, PRICING_RATES } from '@/lib/model-config';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 
@@ -535,10 +536,18 @@ export default function VisualNovelUI() {
                         const inputTokens = usageMetadata.promptTokenCount - cachedTokens;
                         const outputTokens = usageMetadata.candidatesTokenCount;
 
-                        // Gemini 3 Flash Pricing
-                        const costPer1M_Input = 0.50;
-                        const costPer1M_Output = 3.00;
-                        const costPer1M_Cached = 0.05;
+                        // [DYNAMIC PRICING] Use Shared Config
+                        const modelName = MODEL_CONFIG.STORY;
+                        const rate = PRICING_RATES[modelName] || PRICING_RATES['gemini-2.5-flash'];
+
+                        const costPer1M_Input = rate.input;
+                        const costPer1M_Output = rate.output;
+                        // Cache hit pricing is typically cheaper or same inputs. 
+                        // For Pro it is $0.3125 (Input is $1.25). 
+                        // For Flash it is $0.01875 (Input is $0.075).
+                        // Since we don't have this in PRICING_RATES fully, we can approximate or add it there.
+                        // Assuming 25% of input cost for cached input (Standard Google Ratio).
+                        const costPer1M_Cached = rate.input * 0.25;
 
                         const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
                         const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
@@ -546,7 +555,7 @@ export default function VisualNovelUI() {
                         const totalCost = costInput + costCached + costOutput;
                         const totalCostKRW = totalCost * 1480;
 
-                        console.log(`Token Usage (Cache Warmup - Gemini 3 Flash):`);
+                        console.log(`Token Usage (Cache Warmup - ${modelName}):`);
                         console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
                         console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)})`);
                         console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
@@ -1118,8 +1127,12 @@ export default function VisualNovelUI() {
             ).then(logic => {
                 // Log Logic Model Debug Info
                 if (logic) {
+                    if (logic._debug_static_prompt) {
+                        console.log("%c[Logic Model Input - System Prompt (Static/Cached)]", "color: violet; font-weight: bold;");
+                        console.log(logic._debug_static_prompt);
+                    }
                     if (logic._debug_prompt) {
-                        console.log("%c[Logic Model Input - Prompt]", "color: violet; font-weight: bold;");
+                        console.log("%c[Logic Model Input - Dynamic Prompt]", "color: violet; font-weight: bold;");
                         console.log(logic._debug_prompt);
                     }
                     if (logic._debug_raw_response) {
@@ -1132,15 +1145,39 @@ export default function VisualNovelUI() {
                 let totalLogicCost = 0;
                 if (logic && logic._usageMetadata) {
                     const usageMetadata = logic._usageMetadata;
-                    const inputCost = (usageMetadata.promptTokenCount / 1000000) * 0.30;
-                    const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * 2.50;
-                    totalLogicCost = inputCost + outputCost;
-                    const totalCostKRW = totalLogicCost * 1400;
+                    const modelName = MODEL_CONFIG.LOGIC;
+                    const rate = PRICING_RATES[modelName] || PRICING_RATES['gemini-2.5-flash'];
 
-                    console.log("Token Usage (Logic):");
-                    console.log(`- Input: ${usageMetadata.promptTokenCount} tokens ($${inputCost.toFixed(6)})`);
-                    console.log(`- Output: ${usageMetadata.candidatesTokenCount} tokens ($${outputCost.toFixed(6)})`);
-                    console.log(`- Total Est. Cost: $${totalLogicCost.toFixed(6)} (approx. ${totalCostKRW.toFixed(2)} KRW)`);
+                    const cachedTokens = (usageMetadata as any).cachedContentTokenCount || 0;
+                    const inputTokens = usageMetadata.promptTokenCount - cachedTokens;
+                    const outputTokens = usageMetadata.candidatesTokenCount;
+
+                    // Assuming same ratio 25% for cache for now or 0.01875 if explicit
+                    // Flash: Input 0.075, Cached ~0.01875
+                    const costPer1M_Input = rate.input;
+                    const costPer1M_Output = rate.output;
+                    const costPer1M_Cached = rate.input * 0.25;
+
+                    const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
+                    const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
+                    const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
+
+                    totalLogicCost = costInput + costCached + costOutput;
+                    const totalCostKRW = totalLogicCost * 1480;
+
+                    console.log(`Token Usage (Logic - ${modelName}):`);
+                    if (cachedTokens > 0) {
+                        console.log(`%c[🔥 CACHE HIT] Saved ${cachedTokens} tokens!`, 'color: #00ff00; font-weight: bold; font-size: 14px;');
+                    } else {
+                        console.log(`%c[⚠️ MISS] Full prompt generated (${usageMetadata.promptTokenCount} tokens). Cache may be created now.`, 'color: orange;');
+                    }
+                    console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
+                    console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)})`);
+                    console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
+                    console.log(`- Total:     $${totalLogicCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`);
+
+                    const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
+                    addToast(`Logic Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
                 }
 
                 // [Logging] Submit Final Log with Grand Total Cost (Always run)
