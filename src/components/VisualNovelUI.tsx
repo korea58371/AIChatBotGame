@@ -11,6 +11,8 @@ import { resolveBackground } from '@/lib/background-manager'; // Added import //
 import { MODEL_CONFIG, PRICING_RATES } from '@/lib/model-config';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
+import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping'; // [New] BGM Mapping
+
 
 import { submitGameplayLog } from '@/app/actions/log';
 
@@ -353,6 +355,21 @@ export default function VisualNovelUI() {
     const [showWiki, setShowWiki] = useState(false);
     const [isPhoneOpen, setIsPhoneOpen] = useState(false); // [New] Phone App State
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+    // [New] BGM State
+    const [currentBgm, setCurrentBgm] = useState<string | null>(null);
+    const bgmRef = useRef<HTMLAudioElement | null>(null);
+
+    // [New] Cleanup BGM on unmount
+    useEffect(() => {
+        return () => {
+            if (bgmRef.current) {
+                bgmRef.current.pause();
+                bgmRef.current.src = "";
+                bgmRef.current = null;
+            }
+        };
+    }, []);
 
     // [Transition Logic] Track previous character name to determine animation type
     // If name matches last ref => dissolve only (expression change).
@@ -697,6 +714,70 @@ export default function VisualNovelUI() {
         return charExpression;
     };
 
+    // [New] BGM Playback Helper
+    const playBgm = (moodKey: string) => {
+        if (!moodKey) return;
+        let validKey = moodKey.trim();
+        // Check Alias (if partial key used)
+        if (WUXIA_BGM_ALIASES[validKey]) validKey = WUXIA_BGM_ALIASES[validKey];
+
+        const candidates = WUXIA_BGM_MAP[validKey];
+        if (!candidates || candidates.length === 0) {
+            console.warn(`[BGM] No BGM found for key: ${moodKey}`);
+            return;
+        }
+
+        const filename = candidates[Math.floor(Math.random() * candidates.length)];
+        const bgmPath = `/assets/wuxia/BGM/${filename}.mp3`;
+
+        console.log(`[BGM] Switching to: ${bgmPath} (Mood: ${moodKey})`);
+
+        // If same file is playing, do nothing (prevent restart)
+        if (bgmRef.current && bgmRef.current.src.includes(encodeURIComponent(filename))) {
+            return;
+        }
+
+        // Crossfade Logic
+        const newAudio = new Audio(bgmPath);
+        newAudio.loop = true;
+        newAudio.volume = 0;
+
+        const playPromise = newAudio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(e => console.error("[BGM] Audio Play Failed (Simulated in specific env?):", e));
+        }
+
+        const fadeDuration = 2000; // 2s Fade
+        const interval = 50;
+        const volumeStep = interval / fadeDuration;
+
+        // Fade In
+        let vol = 0;
+        const fadeIn = setInterval(() => {
+            vol = Math.min(1, vol + volumeStep);
+            newAudio.volume = vol;
+            if (vol >= 1) clearInterval(fadeIn);
+        }, interval);
+
+        // Fade Out Old
+        if (bgmRef.current) {
+            const oldAudio = bgmRef.current;
+            let oldVol = oldAudio.volume || 1;
+            const fadeOut = setInterval(() => {
+                oldVol = Math.max(0, oldVol - volumeStep);
+                oldAudio.volume = oldVol;
+                if (oldVol <= 0) {
+                    clearInterval(fadeOut);
+                    oldAudio.pause();
+                    oldAudio.src = "";
+                }
+            }, interval);
+        }
+
+        bgmRef.current = newAudio;
+        setCurrentBgm(moodKey);
+    };
+
     const advanceScript = () => {
         // Handle Character Exit (Exit Tag Logic)
         if (currentSegment?.characterLeave) {
@@ -719,8 +800,10 @@ export default function VisualNovelUI() {
 
         let nextSegment = currentQueue[0];
 
-        // Process background and command segments iteratively to avoid recursion
-        while (nextSegment && (nextSegment.type === 'background' || nextSegment.type === 'command')) {
+        // Process background, command, and BGM segments iteratively to avoid recursion
+        while (nextSegment && (nextSegment.type === 'background' || nextSegment.type === 'command' || nextSegment.type === 'bgm')) {
+            console.log(`[ScriptLoop] Processing Segment: Type=${nextSegment.type}, Content=${nextSegment.content}`);
+
             if (nextSegment.type === 'background') {
                 // Resolve fuzzy tag to actual file path
                 console.log(`[Background Debug] AI Tag: "${nextSegment.content}"`);
@@ -734,6 +817,9 @@ export default function VisualNovelUI() {
                     console.log(`[Command] Updating Time: ${nextSegment.content}`);
                     useGameStore.getState().setTime(nextSegment.content);
                 }
+            } else if (nextSegment.type === 'bgm') {
+                // [New] Handle BGM
+                playBgm(nextSegment.content);
             }
 
             currentQueue.shift(); // Remove processed segment
@@ -1225,9 +1311,9 @@ export default function VisualNovelUI() {
 
             // Start playing
             if (segments.length > 0) {
-                // Skip initial background and command segments
+                // Skip initial background, command, AND BGM segments
                 let startIndex = 0;
-                while (startIndex < segments.length && (segments[startIndex].type === 'background' || segments[startIndex].type === 'command')) {
+                while (startIndex < segments.length && (segments[startIndex].type === 'background' || segments[startIndex].type === 'command' || segments[startIndex].type === 'bgm')) {
                     const seg = segments[startIndex];
                     if (seg.type === 'background') {
                         // [Fix] Resolve background properly before setting
@@ -1237,6 +1323,9 @@ export default function VisualNovelUI() {
                         if (seg.commandType === 'set_time') {
                             useGameStore.getState().setTime(seg.content);
                         }
+                    } else if (seg.type === 'bgm') {
+                        // [Fix] Play BGM immediately if it's at the start
+                        playBgm(seg.content);
                     }
 
                     startIndex++;
@@ -2673,81 +2762,91 @@ Instructions:
                                                         <div className="p-4 text-blue-100 text-lg">{msg.text}</div>
                                                     ) : (
                                                         <div className="flex flex-col divide-y divide-gray-700/50">
-                                                            {segments.map((seg, sIdx) => (
-                                                                <div key={sIdx} className="p-4 relative group">
-                                                                    {canRewind && (
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                if (confirm("이 시점으로 되돌아가시겠습니까?")) {
-                                                                                    // 1. Re-parse full text
-                                                                                    const allSegments = parseScript(msg.text);
+                                                            {segments.map((seg, sIdx) => {
+                                                                if (['background', 'bgm', 'command', 'system_popup', 'choice'].includes(seg.type) && seg.type !== 'system_popup' && seg.type !== 'choice') return null;
+                                                                // Allow system_popup? Existing code handles it.
+                                                                // Allow choice? Maybe not in history text flow.
 
-                                                                                    // 2. Restore State Snapshot (Best Effort)
-                                                                                    // Find last background/char up to this point
-                                                                                    let bestBg = currentBackground;
-                                                                                    let bestChar = characterExpression;
+                                                                // Refined Logic:
+                                                                if (seg.type === 'background' || seg.type === 'bgm' || seg.type === 'command') return null;
 
-                                                                                    // Scan from 0 to sIdx to find visual state
-                                                                                    for (let i = 0; i <= sIdx; i++) {
-                                                                                        if (allSegments[i].type === 'background') bestBg = resolveBackground(allSegments[i].content);
-                                                                                        // For char, it's harder as we need to map name_expr -> path
-                                                                                        // but we can try basic check if segment has char info
-                                                                                        if (allSegments[i].type === 'dialogue' && allSegments[i].character && allSegments[i].expression) {
-                                                                                            // Approx: usage of general logic or just clear it?
-                                                                                            // Let's rely on the script playing to set it, 
-                                                                                            // BUT if we jump to middle, we might miss the 'set'
-                                                                                            // Actually, if we jump to sIdx, the NEXT update happens when we play sIdx.
-                                                                                            // So we just need to set the state PREVIOUS to sIdx?
-                                                                                            // No, we are STARTING at sIdx.
-                                                                                            // The VisualNovelUI renders based on `currentSegment`.
-                                                                                            // So effectively, we just setQueue and let it play.
-                                                                                            // Ideally we set BG if a specific BG tag was skipped?
-                                                                                            // Let's just set Queue and Current.
+                                                                return (
+                                                                    <div key={sIdx} className="p-4 relative group">
+                                                                        {canRewind && (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (confirm("이 시점으로 되돌아가시겠습니까?")) {
+                                                                                        // 1. Re-parse full text
+                                                                                        const allSegments = parseScript(msg.text);
+
+                                                                                        // 2. Restore State Snapshot (Best Effort)
+                                                                                        // Find last background/char up to this point
+                                                                                        let bestBg = currentBackground;
+                                                                                        let bestChar = characterExpression;
+
+                                                                                        // Scan from 0 to sIdx to find visual state
+                                                                                        for (let i = 0; i <= sIdx; i++) {
+                                                                                            if (allSegments[i].type === 'background') bestBg = resolveBackground(allSegments[i].content);
+                                                                                            // For char, it's harder as we need to map name_expr -> path
+                                                                                            // but we can try basic check if segment has char info
+                                                                                            if (allSegments[i].type === 'dialogue' && allSegments[i].character && allSegments[i].expression) {
+                                                                                                // Approx: usage of general logic or just clear it?
+                                                                                                // Let's rely on the script playing to set it, 
+                                                                                                // BUT if we jump to middle, we might miss the 'set'
+                                                                                                // Actually, if we jump to sIdx, the NEXT update happens when we play sIdx.
+                                                                                                // So we just need to set the state PREVIOUS to sIdx?
+                                                                                                // No, we are STARTING at sIdx.
+                                                                                                // The VisualNovelUI renders based on `currentSegment`.
+                                                                                                // So effectively, we just setQueue and let it play.
+                                                                                                // Ideally we set BG if a specific BG tag was skipped?
+                                                                                                // Let's just set Queue and Current.
+                                                                                            }
                                                                                         }
-                                                                                    }
 
-                                                                                    // 3. Reset Queue
-                                                                                    setCurrentSegment(allSegments[sIdx]);
-                                                                                    setScriptQueue(allSegments.slice(sIdx + 1));
-                                                                                    useGameStore.getState().setChoices([]); // Clear any active choices
+                                                                                        // 3. Reset Queue
+                                                                                        setCurrentSegment(allSegments[sIdx]);
+                                                                                        setScriptQueue(allSegments.slice(sIdx + 1));
+                                                                                        useGameStore.getState().setChoices([]); // Clear any active choices
 
-                                                                                    // 4. Restore Background if found in previous segments of THIS turn
-                                                                                    // (If we crossed a BG tag in this turn, we should ensure it's applied)
-                                                                                    // Iterate 0 to sIdx and apply last found BG
-                                                                                    for (let i = 0; i <= sIdx; i++) {
-                                                                                        if (allSegments[i].type === 'background') {
-                                                                                            setBackground(resolveBackground(allSegments[i].content));
+                                                                                        // 4. Restore Background if found in previous segments of THIS turn
+                                                                                        // (If we crossed a BG tag in this turn, we should ensure it's applied)
+                                                                                        // Iterate 0 to sIdx and apply last found BG
+                                                                                        for (let i = 0; i <= sIdx; i++) {
+                                                                                            if (allSegments[i].type === 'background') {
+                                                                                                setBackground(resolveBackground(allSegments[i].content));
+                                                                                            }
                                                                                         }
+
+                                                                                        setShowHistory(false);
+                                                                                        addToast("이전 시점으로 되돌아갔습니다.", "success");
                                                                                     }
+                                                                                }}
+                                                                                className="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-yellow-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all shadow-lg z-10"
+                                                                                title="이 대사부터 다시 보기 (Rewind)"
+                                                                            >
+                                                                                <RotateCcw size={14} />
+                                                                            </button>
+                                                                        )}
 
-                                                                                    setShowHistory(false);
-                                                                                    addToast("이전 시점으로 되돌아갔습니다.", "success");
-                                                                                }
-                                                                            }}
-                                                                            className="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-yellow-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all shadow-lg z-10"
-                                                                            title="이 대사부터 다시 보기 (Rewind)"
-                                                                        >
-                                                                            <RotateCcw size={14} />
-                                                                        </button>
-                                                                    )}
-
-                                                                    {seg.type === 'dialogue' && (
-                                                                        <div className="mb-1">
-                                                                            <span className="text-yellow-500 font-bold text-lg">
-                                                                                {(seg.character || 'Unknown').split('(')[0].trim()}
-                                                                            </span>
+                                                                        {seg.type === 'dialogue' && (
+                                                                            <div className="mb-1">
+                                                                                <span className="text-yellow-500 font-bold text-lg">
+                                                                                    {(seg.character || 'Unknown').split('(')[0].trim()}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                        {seg.type === 'system_popup' && (
+                                                                            <div className="text-purple-400 font-bold text-center border border-purple-500/30 bg-purple-900/20 p-2 rounded">
+                                                                                [SYSTEM] {seg.content}
+                                                                            </div>
+                                                                        )}
+                                                                        <div className={`text-lg leading-relaxed ${seg.type === 'narration' ? 'text-gray-400 italic' : 'text-gray-200'}`}>
+                                                                            {seg.content}
                                                                         </div>
-                                                                    )}
-                                                                    {seg.type === 'system_popup' && (
-                                                                        <div className="text-purple-400 font-bold text-center border border-purple-500/30 bg-purple-900/20 p-2 rounded">
-                                                                            [SYSTEM] {seg.content}
-                                                                        </div>
-                                                                    )}
-                                                                    <div className={`text-lg leading-relaxed ${seg.type === 'narration' ? 'text-gray-400 italic' : 'text-gray-200'}`}>
-                                                                        {seg.content}
                                                                     </div>
-                                                                </div>
-                                                            ))}
+
+                                                                );
+                                                            })}
                                                             {segments.length === 0 && (
                                                                 <div className="p-4 text-gray-400 italic">
                                                                     {msg.text}
@@ -3242,53 +3341,54 @@ Instructions:
                 </AnimatePresence>
 
                 {/* Dialogue / Narration Layer */}
-                {currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-8 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[25vh] md:h-[min(18vh,375px)]">
-                        <div className="w-full max-w-screen-2xl pointer-events-auto relative">
-                            {/* Dialogue Control Bar */}
+                {
+                    currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
+                        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-8 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[25vh] md:h-[min(18vh,375px)]">
+                            <div className="w-full max-w-screen-2xl pointer-events-auto relative">
+                                {/* Dialogue Control Bar */}
 
-                            <div
-                                className="w-full relative flex flex-col items-center cursor-pointer"
-                                onClick={handleScreenClick}
-                            >
-                                {/* Name Tag */}
-                                {currentSegment.type === 'dialogue' && (
-                                    <div className="absolute -top-[3vh] md:-top-[6vh] w-full text-center px-2">
-                                        <span className="text-[4.5vw] md:text-[min(1.4vw,47px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
-                                            {(() => {
-                                                const { characterData, playerName } = useGameStore.getState();
+                                <div
+                                    className="w-full relative flex flex-col items-center cursor-pointer"
+                                    onClick={handleScreenClick}
+                                >
+                                    {/* Name Tag */}
+                                    {currentSegment.type === 'dialogue' && (
+                                        <div className="absolute -top-[3vh] md:-top-[6vh] w-full text-center px-2">
+                                            <span className="text-[4.5vw] md:text-[min(1.4vw,47px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                                {(() => {
+                                                    const { characterData, playerName } = useGameStore.getState();
 
-                                                // Handle Protagonist Name
-                                                if (currentSegment.character === '주인공') {
-                                                    return playerName;
-                                                }
+                                                    // Handle Protagonist Name
+                                                    if (currentSegment.character === '주인공') {
+                                                        return playerName;
+                                                    }
 
-                                                const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
-                                                const charName = currentSegment.character || '';
-                                                const found = charList.find((c: any) => c.englishName === charName || c.name === charName);
-                                                if (found) return found.name;
-                                                return charName.split('_')[0];
-                                            })()}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* Text Content */}
-                                <div className="text-[3.7vw] md:text-[min(1.3vw,39px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
-                                    {currentSegment.type === 'narration' ? (
-                                        <span className="text-gray-300 italic block">
-                                            {formatText(currentSegment.content)}
-                                        </span>
-                                    ) : (
-                                        <span>
-                                            {formatText(currentSegment.content)}
-                                        </span>
+                                                    const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
+                                                    const charName = currentSegment.character || '';
+                                                    const found = charList.find((c: any) => c.englishName === charName || c.name === charName);
+                                                    if (found) return found.name;
+                                                    return charName.split('_')[0];
+                                                })()}
+                                            </span>
+                                        </div>
                                     )}
+
+                                    {/* Text Content */}
+                                    <div className="text-[3.7vw] md:text-[min(1.3vw,39px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
+                                        {currentSegment.type === 'narration' ? (
+                                            <span className="text-gray-300 italic block">
+                                                {formatText(currentSegment.content)}
+                                            </span>
+                                        ) : (
+                                            <span>
+                                                {formatText(currentSegment.content)}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )
+                    )
                 }
             </div >
         </div >

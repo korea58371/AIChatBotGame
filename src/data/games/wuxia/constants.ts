@@ -1,3 +1,5 @@
+import { WUXIA_BGM_MAP } from './bgm_mapping';
+
 export const FAMOUS_CHARACTERS = `
 무림 10대 고수 (강함 순서)
 1. 천위강 (천마신교주): [천마] - **[현경(전설)]**. 무림 공적 1호이자 절대적인 마교의 지배자.
@@ -287,6 +289,16 @@ export const WUXIA_OUTPUT_FORMAT = `
      (O) <배경>마을_대장간 (정확함)
      (O) <배경>강호_숲길
    - **주의**: 위 [Available Backgrounds] 목록에 없는 키를 지어내지 마십시오.
+
+8. **[BGM (배경음악)]**: 
+   - 현재 분위기에 가장 잘 어울리는 BGM을 선택하여 아래 태그를 출력하십시오.
+   - **형식**: \`<BGM> [Mood Key]\`
+   - **사용 가능 Mood Key (한글)**:
+     ${Object.keys(WUXIA_BGM_MAP).join(", ")}
+   - **예시**:
+     (O) <BGM> 뼈를 깎는 수련
+     (O) <BGM> 격정
+     (X) <BGM> HardTraining (영어 파일명 사용 금지)
 `;
 
 /* Legacy Support / Partial Use */

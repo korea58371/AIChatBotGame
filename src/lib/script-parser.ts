@@ -1,5 +1,5 @@
 import { useGameStore } from './store';
-export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'command' | 'unknown';
+export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'bgm' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'command' | 'unknown';
 
 export interface ScriptSegment {
     type: ScriptType;
@@ -61,6 +61,9 @@ export function parseScript(text: string): ScriptSegment[] {
                 console.warn("[ScriptParser] Failed to access store for fuzzy matching", e);
             }
             segments.push({ type: 'background', content: bgKey });
+        } else if (tagName.toUpperCase() === 'BGM') {
+            // [New] BGM Tag
+            segments.push({ type: 'bgm', content: content });
         } else if (tagName === '시간') {
             // [New] Time Update Command
             // format: <시간> 14:40 낮
