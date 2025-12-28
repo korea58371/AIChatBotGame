@@ -535,10 +535,10 @@ export default function VisualNovelUI() {
                         const inputTokens = usageMetadata.promptTokenCount - cachedTokens;
                         const outputTokens = usageMetadata.candidatesTokenCount;
 
-                        // Gemini 3 Pro Pricing
-                        const costPer1M_Input = 2.00;
-                        const costPer1M_Output = 12.00;
-                        const costPer1M_Cached = 0.20;
+                        // Gemini 3 Flash Pricing
+                        const costPer1M_Input = 0.50;
+                        const costPer1M_Output = 3.00;
+                        const costPer1M_Cached = 0.05;
 
                         const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
                         const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
@@ -546,7 +546,7 @@ export default function VisualNovelUI() {
                         const totalCost = costInput + costCached + costOutput;
                         const totalCostKRW = totalCost * 1480;
 
-                        console.log(`Token Usage (Cache Warmup - Gemini 3 Pro):`);
+                        console.log(`Token Usage (Cache Warmup - Gemini 3 Flash):`);
                         console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
                         console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)})`);
                         console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);

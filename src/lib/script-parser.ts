@@ -326,6 +326,10 @@ export function parseScript(text: string): ScriptSegment[] {
                 });
             } else {
                 // Unknown tag, treat as narration
+                // [Fix] Ignore closing tags (starting with /) to prevent "INVALID TAG" display
+                if (tagName.startsWith('/')) {
+                    continue;
+                }
                 segments.push({ type: 'narration', content: `[${tagName}] ${content}` });
             }
         }
