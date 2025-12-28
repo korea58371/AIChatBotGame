@@ -1128,43 +1128,43 @@ export default function VisualNovelUI() {
                     }
                 }
 
-
-
+                // [Logging] Calculate Logic Cost independently
+                let totalLogicCost = 0;
                 if (logic && logic._usageMetadata) {
                     const usageMetadata = logic._usageMetadata;
                     const inputCost = (usageMetadata.promptTokenCount / 1000000) * 0.30;
                     const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * 2.50;
-                    const totalLogicCost = inputCost + outputCost; // Renamed to avoid collision if any
+                    totalLogicCost = inputCost + outputCost;
                     const totalCostKRW = totalLogicCost * 1400;
 
                     console.log("Token Usage (Logic):");
                     console.log(`- Input: ${usageMetadata.promptTokenCount} tokens ($${inputCost.toFixed(6)})`);
                     console.log(`- Output: ${usageMetadata.candidatesTokenCount} tokens ($${outputCost.toFixed(6)})`);
                     console.log(`- Total Est. Cost: $${totalLogicCost.toFixed(6)} (approx. ${totalCostKRW.toFixed(2)} KRW)`);
-
-                    // [Logging] Submit Final Log with Grand Total Cost
-                    const grandTotalCost = storyCost + totalLogicCost;
-
-                    submitGameplayLog({
-                        session_id: sessionId || '00000000-0000-0000-0000-000000000000',
-                        game_mode: useGameStore.getState().activeGameId,
-                        turn_count: turnCount,
-                        choice_selected: text,
-                        player_rank: useGameStore.getState().playerStats.playerRank,
-                        location: useGameStore.getState().currentLocation,
-                        timestamp: new Date().toISOString(),
-                        // New Fields
-                        player_name: useGameStore.getState().playerName,
-                        cost: grandTotalCost,
-                        input_type: isDirectInput ? 'direct' : 'choice',
-                        meta: {
-                            hp: useGameStore.getState().playerStats.hp,
-                            mp: useGameStore.getState().playerStats.mp,
-                            neigong: useGameStore.getState().playerStats.neigong,
-                        },
-                        story_output: responseText
-                    }).then(() => console.log(`📝 [Log Sent] Total Cost: $${grandTotalCost.toFixed(6)}`));
                 }
+
+                // [Logging] Submit Final Log with Grand Total Cost (Always run)
+                const grandTotalCost = storyCost + totalLogicCost;
+
+                submitGameplayLog({
+                    session_id: sessionId || '00000000-0000-0000-0000-000000000000',
+                    game_mode: useGameStore.getState().activeGameId,
+                    turn_count: turnCount,
+                    choice_selected: text,
+                    player_rank: useGameStore.getState().playerStats.playerRank,
+                    location: useGameStore.getState().currentLocation,
+                    timestamp: new Date().toISOString(),
+                    // New Fields
+                    player_name: useGameStore.getState().playerName,
+                    cost: grandTotalCost,
+                    input_type: isDirectInput ? 'direct' : 'choice',
+                    meta: {
+                        hp: useGameStore.getState().playerStats.hp,
+                        mp: useGameStore.getState().playerStats.mp,
+                        neigong: useGameStore.getState().playerStats.neigong,
+                    },
+                    story_output: responseText
+                }).then(() => console.log(`📝 [Log Sent] Total Cost: $${grandTotalCost.toFixed(6)}`));
 
                 if (segments.length === 0) {
                     applyGameLogic(logic);
