@@ -2770,7 +2770,7 @@ Instructions:
                                 <h2 className="text-xl font-bold text-green-400 mb-4">{t.yourAction}</h2>
                                 <textarea
                                     value={userInput}
-                                    onChange={(e) => setUserInput(e.target.value)}
+                                    onChange={(e) => setUserInput(e.target.value.slice(0, 32))}
                                     className="w-full h-32 bg-black/50 border border-gray-700 rounded p-4 text-white text-lg mb-4 focus:outline-none focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder={t.placeholderAction}
                                     disabled={isProcessing || isLogicPending}
