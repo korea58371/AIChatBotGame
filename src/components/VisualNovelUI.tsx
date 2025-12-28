@@ -998,6 +998,9 @@ export default function VisualNovelUI() {
 
             // Race Condition for Timeout
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 300000));
+            // [Logging] Track costs across steps
+            let storyCost = 0;
+
             const responsePromise = serverGenerateResponse(
                 currentHistory,
                 text,
@@ -1079,6 +1082,7 @@ export default function VisualNovelUI() {
                 const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
                 const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
                 const totalCost = costInput + costCached + costOutput;
+                storyCost = totalCost; // [Logging] Capture for total
                 const totalCostKRW = totalCost * 1480; // Exchange rate
 
                 // [Verification Log]
@@ -1124,17 +1128,42 @@ export default function VisualNovelUI() {
                     }
                 }
 
+
+
                 if (logic && logic._usageMetadata) {
                     const usageMetadata = logic._usageMetadata;
                     const inputCost = (usageMetadata.promptTokenCount / 1000000) * 0.30;
                     const outputCost = (usageMetadata.candidatesTokenCount / 1000000) * 2.50;
-                    const totalCost = inputCost + outputCost;
-                    const totalCostKRW = totalCost * 1400;
+                    const totalLogicCost = inputCost + outputCost; // Renamed to avoid collision if any
+                    const totalCostKRW = totalLogicCost * 1400;
 
                     console.log("Token Usage (Logic):");
                     console.log(`- Input: ${usageMetadata.promptTokenCount} tokens ($${inputCost.toFixed(6)})`);
                     console.log(`- Output: ${usageMetadata.candidatesTokenCount} tokens ($${outputCost.toFixed(6)})`);
-                    console.log(`- Total Est. Cost: $${totalCost.toFixed(6)} (approx. ${totalCostKRW.toFixed(2)} KRW)`);
+                    console.log(`- Total Est. Cost: $${totalLogicCost.toFixed(6)} (approx. ${totalCostKRW.toFixed(2)} KRW)`);
+
+                    // [Logging] Submit Final Log with Grand Total Cost
+                    const grandTotalCost = storyCost + totalLogicCost;
+
+                    submitGameplayLog({
+                        session_id: sessionId || '00000000-0000-0000-0000-000000000000',
+                        game_mode: useGameStore.getState().activeGameId,
+                        turn_count: turnCount,
+                        choice_selected: text,
+                        player_rank: useGameStore.getState().playerStats.playerRank,
+                        location: useGameStore.getState().currentLocation,
+                        timestamp: new Date().toISOString(),
+                        // New Fields
+                        player_name: useGameStore.getState().playerName,
+                        cost: grandTotalCost,
+                        input_type: isDirectInput ? 'direct' : 'choice',
+                        meta: {
+                            hp: useGameStore.getState().playerStats.hp,
+                            mp: useGameStore.getState().playerStats.mp,
+                            neigong: useGameStore.getState().playerStats.neigong,
+                        },
+                        story_output: responseText
+                    }).then(() => console.log(`📝 [Log Sent] Total Cost: $${grandTotalCost.toFixed(6)}`));
                 }
 
                 if (segments.length === 0) {
@@ -1239,25 +1268,8 @@ export default function VisualNovelUI() {
         // [Logging] Debug Toast for Mobile
         console.log("📝 Sending Direct Input Log:", inputToLog);
 
-        submitGameplayLog({
-            session_id: sessionId || '00000000-0000-0000-0000-000000000000',
-            game_mode: useGameStore.getState().activeGameId,
-            turn_count: turnCount,
-            choice_selected: inputToLog,
-            player_rank: playerStats.playerRank,
-            location: useGameStore.getState().currentLocation,
-            timestamp: new Date().toISOString(),
-            story_output: lastStoryOutput // Include context
-        }).then(res => {
-            if (!res.success) {
-                console.error("📝 [Log Error]", res.error);
-                // addToast(`Log Error: ${res.error}`, 'warning'); // Optional: Uncomment if user needs to see
-            } else {
-                console.log("📝 [Log Sent - Direct Input]");
-            }
-        }).catch(err => {
-            console.error("📝 [Log Exception]", err);
-        });
+        // [Logging] Handled in handleSend to capture costs and results
+        console.log("📝 Sending Direct Input:", inputToLog);
 
         handleSend(inputToLog, true);
         setUserInput('');

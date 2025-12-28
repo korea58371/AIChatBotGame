@@ -11,6 +11,22 @@ export const MODEL_CONFIG = {
     SUMMARY: 'gemini-2.5-flash'      // Summarization (Cheap)
 };
 
+// Pricing Rates (Per 1M Tokens)
+// Flash: Input $0.075, Output $0.30
+// Pro: Input $1.25, Output $5.00
+const PRICING_RATES = {
+    'gemini-3-flash-preview': { input: 0.075, output: 0.30 },
+    'gemini-2.5-flash': { input: 0.075, output: 0.30 },
+    'gemini-3-pro-preview': { input: 1.25, output: 5.00 }
+};
+
+function calculateCost(modelName: string, inputTokens: number, outputTokens: number): number {
+    const rate = (PRICING_RATES as any)[modelName] || PRICING_RATES['gemini-2.5-flash']; // Default to Flash pricing if unknown
+    const inputCost = (inputTokens / 1_000_000) * rate.input;
+    const outputCost = (outputTokens / 1_000_000) * rate.output;
+    return inputCost + outputCost;
+}
+
 const safetySettings = [
     {
         category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -165,7 +181,8 @@ export async function generateResponse(
                 usageMetadata: response.usageMetadata,
                 systemPrompt: systemInstruction, // "시스템 프롬프트"로 정적 부분 로그
                 finalUserMessage: finalUserMessage, // [DEBUG] Return Actual Dynamic Input
-                usedModel: modelName
+                usedModel: modelName,
+                totalTokenCount: (response.usageMetadata?.promptTokenCount || 0) + (response.usageMetadata?.candidatesTokenCount || 0)
             };
 
         } catch (error: any) {
@@ -587,11 +604,39 @@ export async function handleGameTurn(
         console.log("[handleGameTurn] New Summary Generated.");
     }
 
+    // Calculate Total Cost
+    let totalCost = 0;
+
+    // 1. Story Cost
+    if (storyResult.usageMetadata) {
+        totalCost += calculateCost(
+            storyResult.usedModel || MODEL_CONFIG.STORY,
+            storyResult.usageMetadata.promptTokenCount || 0,
+            storyResult.usageMetadata.candidatesTokenCount || 0
+        );
+    }
+
+    // 2. Logic Cost (Assuming LOGIC model)
+    if (logicResult._usageMetadata) {
+        totalCost += calculateCost(
+            MODEL_CONFIG.LOGIC,
+            logicResult._usageMetadata.promptTokenCount || 0,
+            logicResult._usageMetadata.candidatesTokenCount || 0
+        );
+    }
+
+    // 3. Summary Cost (Assuming SUMMARY model, if generated)
+    // Note: Summary generation doesn't currently return metadata easily, 
+    // but it's small. We can ignore or approximate if needed.
+    // For perfection, we'd need generateSummary to return metadata.
+    // Let's assume 0 for optional summary for now or update generateSummary later.
+
     return {
         reply: storyResult.text,
         logic: logicResult,
         summary: newSummary,
         turnCount: currentTurnCount,
-        storyResult: storyResult
+        storyResult: storyResult,
+        cost: totalCost // [New]
     };
 }

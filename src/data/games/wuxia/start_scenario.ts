@@ -56,8 +56,8 @@ export const CHARACTER_CREATION_QUESTIONS = [
         id: 'narrative_perspective',
         question: "6문) [시점] 당신의 이야기가 어떻게 서술되길 원하십니까?",
         options: [
-            { value: 'first_person', label: "1. [1인칭] \"나는 검을 뽑았다.\" (주인공의 내면 심리와 시야 중심)" },
-            { value: 'third_person', label: "2. [3인칭] \"주인공은 검을 뽑았다.\" (객관적인 상황 묘사와 전체적인 흐름 중심)" }
+            { value: '1인칭', label: "1. [1인칭] \"나는 검을 뽑았다.\" (주인공의 내면 심리와 시야 중심)" },
+            { value: '3인칭', label: "2. [3인칭] \"주인공은 검을 뽑았다.\" (객관적인 상황 묘사와 전체적인 흐름 중심)" }
         ]
     }
 ];

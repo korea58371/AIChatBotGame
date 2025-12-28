@@ -18,6 +18,9 @@ export interface GameplayLog {
     timestamp: string;       // ISO String
     meta?: any;              // JSON for extra stats (Coin, HP, MP, etc.)
     story_output?: string;   // [New] Raw Story Model Output
+    player_name?: string;    // [New] Player Name
+    cost?: number;           // [New] API Cost ($)
+    input_type?: string;     // [New] 'choice' | 'direct'
 }
 
 export async function submitGameplayLog(logData: GameplayLog) {
@@ -37,6 +40,9 @@ export async function submitGameplayLog(logData: GameplayLog) {
                     player_rank: logData.player_rank,
                     location: logData.location,
                     timestamp: logData.timestamp || new Date().toISOString(),
+                    player_name: logData.player_name, // [New]
+                    cost: logData.cost,               // [New]
+                    input_type: logData.input_type,   // [New]
                     meta: {
                         ...(logData.meta || {}),
                         story_output: logData.story_output // Inject raw output into meta
