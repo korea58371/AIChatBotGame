@@ -72,7 +72,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     }
 
     // [Narrative Perspective]
-    const perspective = stats.narrative_perspective || '3인칭';
+    const perspective = stats.narrative_perspective || '1인칭';
     const perspectiveRule = perspective.includes('1인칭')
         ? `
 **[서술 시점: 1인칭 주인공 시점 (First Person)]**

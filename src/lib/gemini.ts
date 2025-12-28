@@ -59,34 +59,23 @@ export async function generateResponse(
     const dynamicPrompt = PromptManager.generateSystemPrompt(gameState, language, userMessage);
 
     // [DEBUG] Check Lore Injection
-    console.log("--- [Main Model Static Input (Lore & Context)] ---");
-    console.log(staticPrompt.substring(0, 3000) + "\n... (Truncated for readability) ...");
-    console.log("----------------------------------------------");
-
-    // [DEBUG] Check Lore Injection
     if (gameState.lore) {
-        console.log(`[Gemini] Lore Data Present. Keys: ${Object.keys(gameState.lore).join(', ')}`);
-        console.log(`[Gemini] Lore Data approx length: ${JSON.stringify(gameState.lore).length} chars`);
+        // console.log(`[Gemini] Lore Data Present. Keys: ${Object.keys(gameState.lore).join(', ')}`);
     } else {
         console.warn("[Gemini] ⚠️ Lore Data is MISSING in gameState!");
     }
 
-    // [DEBUG LOG] Requested by user to see "New Input"
-    console.log("--- [Main Model New Input (Dynamic Prompt)] ---");
-    console.log(dynamicPrompt);
-    console.log("---------------------------------------------");
-
-    // [CONTEXT CACHING KEY FIX] 
-    // Do NOT concatenate Static + Dynamic. 
-    // Static = systemInstruction (Cached)
-    // Dynamic = Part of User Message (Uncached/Cheaper)
+    // [컨텍스트 캐싱 키 수정]
+    // 정적(Static) 프롬프트와 동적(Dynamic) 프롬프트를 합치지 마세요.
+    // Static = systemInstruction (캐시됨, 비용 절감)
+    // Dynamic = 유저 메시지의 일부 (캐시 안됨, 매번 변경)
     const systemInstruction = staticPrompt;
 
-    // Main Story Model: Gemini 3 Pro (Prioritize quality)
+    // 메인 스토리 모델: Gemini 3 Pro (품질 우선)
     const modelsToTry = [
-        'gemini-3-pro-preview', // Correct ID from documentation, gemini-3-pro-preview, gemini-3-flash-preview
-        'gemini-2.5-flash', // Stable fallback
-        'gemini-2.5-flash', // Fast fallback
+        'gemini-3-flash-preview', // 문서에 명시된 올바른 ID (gemini-3-pro-preview, gemini-3-flash-preview)
+        'gemini-2.5-flash', // 안정적인 대체 모델
+        'gemini-2.5-flash', // 빠른 대체 모델
     ];
 
     let lastError;
@@ -100,40 +89,41 @@ export async function generateResponse(
                 safetySettings
             };
 
-            // [Gemini 3 Optimization] Enable Native Thinking
-            if (modelName === 'gemini-3-pro-preview') {
+            // [Gemini 3 최적화] Native Thinking 활성화
+            // gemini-3-pro-preview, gemini-3-flash-preview 등 'gemini-3'가 포함된 모델에 적용
+            if (modelName.includes('gemini-3')) {
                 modelConfig.thinkingConfig = {
-                    includeThoughts: false, // Thoughts are hidden by default
+                    includeThoughts: true, // [User Request] 생각 과정 로그 확인을 위해 True 설정
                     thinkingLevel: "high"
                 };
             }
 
-            // [FIX] Only pass the Static Context as System Instruction to maintain Cache Hits
+            // [수정] 캐시 적중(Cache Hit)을 유지하기 위해 '정적 컨텍스트'만 시스템 지침으로 전달합니다.
             modelConfig.systemInstruction = systemInstruction;
 
             const model = genAI.getGenerativeModel(modelConfig);
 
-            // [OPTIMIZATION]
-            // If we have a summary, we don't need the full history.
-            // Truncate to recent dialogue (e.g., last 10 messages = 5 turns).
-            // This prevents "Double Counting" (Summary + Full History) and saves massive tokens.
+            // [최적화]
+            // 요약본이 존재한다면 전체 히스토리가 필요 없습니다.
+            // 최근 대화(예: 마지막 10개 메시지 = 5턴)만 남겨 토큰을 절약하고
+            // 요약본과 전체 히스토리가 중복되어 정보가 왜곡되는 것을 방지합니다.
             let effectiveHistory = history;
             if (gameState.scenarioSummary && gameState.scenarioSummary.length > 50) {
-                // Keep last 10 messages
+                // 마지막 10개 메시지만 유지
                 effectiveHistory = history.slice(-10);
             }
 
-            // Sanitize history for Gemini API (Must start with 'user')
+            // Gemini API를 위해 히스토리 포맷팅 (반드시 'user'로 시작해야 함)
             let processedHistory = effectiveHistory.map(msg => ({
                 role: msg.role,
                 parts: [{ text: msg.text }],
             }));
 
-            // Fix 1: Protocol requires strictly alternating roles starting with 'user'.
-            // If the history starts with 'model', prepend a dummy 'user' message.
+            // 수정 1: 프로토콜은 'user'와 'model'이 반드시 번갈아 나와야 하며,작은 'user'로 시작해야 합니다.
+            // 만약 히스토리가 'model'로 시작한다면, 더미 'user' 메시지를 앞에 추가합니다.
             if (processedHistory.length > 0 && processedHistory[0].role === 'model') {
                 processedHistory = [
-                    { role: 'user', parts: [{ text: "..." }] }, // Dummy context starter
+                    { role: 'user', parts: [{ text: "..." }] }, // 더미 컨텍스트 시작
                     ...processedHistory
                 ];
             }
@@ -142,16 +132,34 @@ export async function generateResponse(
                 history: processedHistory,
             });
 
-            // [FIX] Inject Dynamic Prompt (Mood, Stats, etc.) into the User Message
-            // This ensures it's read fresh every turn without breaking the Static Cache
+            // [수정] 동적 프롬프트(기분, 상태창 등)를 유저 메시지 내부에 주입합니다.
+            // 이렇게 하면 정적 캐시(Static Cache)를 깨지 않으면서도 매 턴 새로운 상태를 반영할 수 있습니다.
             const finalUserMessage = `${dynamicPrompt}\n\n${userMessage}`;
 
             const result = await chatSession.sendMessage(finalUserMessage);
             const response = result.response;
+
+            // [DEBUG] Log Thinking Process
+            // Gemini 3.0 Thinking Model returns thoughts in candidate parts
+            const parts = response.candidates?.[0]?.content?.parts || [];
+            // Note: The structure might vary, but usually thoughts are tagged or separate.
+            // We just log all parts that are NOT the final text if possible, or log everything for inspection.
+            // Standard 'text()' method filters out thoughts usually? Let's verify by logging.
+            console.log("--- [Gemini Thinking Process] ---");
+            parts.forEach((p: any, idx: number) => {
+                // Check for thought property (might be specific to SDK version) or just log content
+                // If p.thought is true, or check text content
+                if (p.thought || (idx === 0 && parts.length > 1)) {
+                    console.log(`Thought Part ${idx}:`, p.text || p);
+                }
+            });
+            console.log("---------------------------------");
+
             return {
                 text: response.text(),
                 usageMetadata: response.usageMetadata,
-                systemPrompt: systemInstruction, // Log the static part as the "System Prompt"
+                systemPrompt: systemInstruction, // "시스템 프롬프트"로 정적 부분 로그
+                finalUserMessage: finalUserMessage, // [DEBUG] Return Actual Dynamic Input
                 usedModel: modelName
             };
 

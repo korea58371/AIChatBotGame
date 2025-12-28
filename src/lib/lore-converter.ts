@@ -3,70 +3,137 @@ export class LoreConverter {
         if (!terminology) return "";
         let output = "## [Wuxia Language & Terminology Guidelines]\n\n";
 
-        // 1. Guidelines & Rules (가이드라인_및_규칙)
-        const guide = terminology.가이드라인_및_규칙 || terminology.guidelines;
-        if (guide) {
-            output += "### Guidelines\n";
-            if (guide.핵심_원칙 || guide.core_principle) {
-                output += `> ${guide.핵심_원칙 || guide.core_principle}\n\n`;
+        // [Wuxia] Specific Sections
+        const hasWuxiaKeys = terminology.가이드라인_및_규칙 || terminology.호칭_및_경어 || terminology.측량_및_단위 || terminology.guidelines;
+
+        if (hasWuxiaKeys) {
+            // 1. Guidelines
+            const guide = terminology.가이드라인_및_규칙 || terminology.guidelines;
+            if (guide) {
+                output += "### Guidelines\n";
+                if (guide.핵심_원칙 || guide.core_principle) {
+                    output += `> ${guide.핵심_원칙 || guide.core_principle}\n\n`;
+                }
+                const prohibited = guide.금지_용어 || guide.prohibited_terms;
+                if (prohibited) {
+                    output += "**Language Corrections**:\n";
+                    const objects = prohibited.현대_사물 || prohibited.modern_objects;
+                    const concepts = prohibited.현대_개념 || prohibited.modern_concepts;
+
+                    const processTerm = (item: string) => {
+                        if (item.includes('->')) {
+                            const [bad, good] = item.split('->').map(s => s.trim());
+                            return `❌ ${bad} → ⭕ ${good}`;
+                        }
+                        return item;
+                    };
+
+                    if (objects) output += `- **Objects**: ${objects.map(processTerm).join(' / ')}\n`;
+                    if (concepts) output += `- **Concepts**: ${concepts.map(processTerm).join(' / ')}\n`;
+                    output += "\n";
+                }
             }
-            const prohibited = guide.금지_용어 || guide.prohibited_terms;
-            if (prohibited) {
-                output += "**Language Corrections (Strictly enforced)**:\n";
-                const objects = prohibited.현대_사물 || prohibited.modern_objects;
-                const concepts = prohibited.현대_개념 || prohibited.modern_concepts;
 
-                const processTerm = (item: string) => {
-                    if (item.includes('->')) {
-                        const [bad, good] = item.split('->').map(s => s.trim());
-                        return `❌ ${bad} → ⭕ ${good}`;
-                    }
-                    return item;
-                };
-
-                if (objects) output += `- **Objects**: ${objects.map(processTerm).join(' / ')}\n`;
-                if (concepts) output += `- **Concepts**: ${concepts.map(processTerm).join(' / ')}\n`;
+            // 2. Titles & Honorifics
+            const titles = terminology.호칭_및_경어;
+            if (titles) {
+                output += "### Titles & Honorifics\n";
+                if (titles.일반_호칭) {
+                    if (titles.일반_호칭.여성) output += `- **Female**: ${titles.일반_호칭.여성.join(', ')}\n`;
+                    if (titles.일반_호칭.남성) output += `- **Male**: ${titles.일반_호칭.남성.join(', ')}\n`;
+                }
                 output += "\n";
             }
-        }
 
-        // 2. Titles & Honorifics (호칭_및_경어)
-        const titles = terminology.호칭_및_경어;
-        if (titles) {
-            output += "### Titles & Honorifics\n";
-            if (titles.일반_호칭) {
-                if (titles.일반_호칭.여성) output += `- **Female**: ${titles.일반_호칭.여성.join(', ')}\n`;
-                if (titles.일반_호칭.남성) output += `- **Male**: ${titles.일반_호칭.남성.join(', ')}\n`;
+            // 3. Measurement System
+            const meas = terminology.측량_및_단위 || terminology.measurement_system;
+            if (meas) {
+                output += "### Measurement System\n";
+                if (meas.시간_단위) output += `- **Time**: ${meas.시간_단위.join(', ')}\n`;
+                if (meas.길이_거리) output += `- **Distance**: ${meas.길이_거리.join(', ')}\n`;
+                if (meas.무게) output += `- **Weight**: ${meas.무게.join(', ')}\n`;
+                output += "\n";
             }
-            output += "\n";
+        } else {
+            // [GBY/Generic] Iterate all categories
+            Object.entries(terminology).forEach(([category, items]: [string, any]) => {
+                if (typeof items === 'object' && items !== null) {
+                    output += `### ${category.replace(/_/g, ' ')}\n`;
+                    Object.entries(items).forEach(([term, desc]) => {
+                        output += `- **${term}**: ${desc}\n`;
+                    });
+                    output += "\n";
+                }
+            });
         }
 
-        // 3. Measurement System (측량_및_단위)
-        const meas = terminology.측량_및_단위 || terminology.measurement_system;
-        if (meas) {
-            output += "### Measurement System\n";
-            if (meas.시간_단위) output += `- **Time**: ${meas.시간_단위.join(', ')}\n`;
-            if (meas.길이_거리) output += `- **Distance**: ${meas.길이_거리.join(', ')}\n`;
-            if (meas.무게) output += `- **Weight**: ${meas.무게.join(', ')}\n`;
-            output += "\n";
+        return output;
+    }
+
+    // [NEW] Added to support convertToMarkdown calls
+    static convertWeapons(weapons: any): string {
+        if (!weapons) return "";
+        let output = "### Notable Weapons & Equipment\n";
+
+        if (weapons.범주 && typeof weapons.범주 === 'object') {
+            // [Wuxia]
+            Object.entries(weapons.범주).sort((a: any, b: any) => a[0].localeCompare(b[0])).forEach(([catName, list]: any) => {
+                const categoryName = typeof catName === 'string' ? catName.replace(/_/g, ' ') : 'Category';
+                output += `#### ${categoryName}\n`;
+                if (Array.isArray(list)) {
+                    list.forEach((w: any) => {
+                        const str = typeof w === 'string' ? w : w.name;
+                        output += `- ${str}\n`;
+                    });
+                }
+            });
+        } else if (weapons.장비_등급 && typeof weapons.장비_등급 === 'object') {
+            // [GBY] Modern Weapons Grade
+            output += "#### Equipment Grades\n";
+            Object.entries(weapons.장비_등급).forEach(([rank, data]: [string, any]) => {
+                const desc = data.설명 || data.content || JSON.stringify(data);
+                const value = data.가치 ? ` (Value: ${data.가치})` : "";
+                output += `- **${rank}**: ${desc}${value}\n`;
+            });
+        } else {
+            // Fallback
+            Object.entries(weapons).forEach(([key, value]) => {
+                output += `- **${key}**: ${JSON.stringify(value)}\n`;
+            });
         }
+        output += "\n";
         return output;
     }
 
     static convertSkills(skills: any): string {
-        if (!skills || !skills.범주) return "";
-        if (!skills || !skills.범주) return "";
-        let output = "### Special Martial Arts Skills\n";
-        // [Robustness] Ensure '범주' is an object
-        if (typeof skills.범주 !== 'object') return output;
+        if (!skills) return "";
 
-        Object.entries(skills.범주).sort((a: any, b: any) => a[0].localeCompare(b[0])).forEach(([catName, list]: any) => {
+        // Support both Wuxia '범주' and GBY '스킬_체계'
+        const categoryRoot = skills.범주 || skills.스킬_체계;
+        if (!categoryRoot || typeof categoryRoot !== 'object') return "";
+
+        let output = "### Special Martial Arts Skills\n";
+
+        Object.entries(categoryRoot).sort((a: any, b: any) => a[0].localeCompare(b[0])).forEach(([catName, list]: any) => {
             output += `#### ${catName.replace(/_/g, ' ')}\n`;
+
             if (Array.isArray(list)) {
+                // [Wuxia] Array of "Name: Desc" strings
                 list.forEach((skill: any) => {
                     const name = skill.split(':')[0].trim();
                     const desc = skill.split(':')[1]?.trim() || "";
                     output += `- **${name}**: ${desc}\n`;
+                });
+            } else if (typeof list === 'object' && list !== null) {
+                // [GBY] Object of "Name": "Desc"
+                Object.entries(list).forEach(([sName, sDesc]: [string, any]) => {
+                    if (sName === '설명' || sName === 'desc') {
+                        output += `> ${sDesc}\n`;
+                    } else if ((sName === '예시' || sName === 'examples') && Array.isArray(sDesc)) {
+                        sDesc.forEach((ex: string) => output += `- ${ex}\n`);
+                    } else {
+                        output += `- **${sName}**: ${sDesc}\n`;
+                    }
                 });
             }
             output += "\n";
@@ -154,18 +221,44 @@ export class LoreConverter {
 
         let output = "### Power System & Realms\n";
 
-        // [Robustness] Filter valid objects
-        const realms = Object.values(levels)
-            .filter((v: any) => v && typeof v === 'object' && v.명칭 && v.위상)
-            .sort((a: any, b: any) => {
-                const lvA = a.power_level || 0;
-                const lvB = b.power_level || 0;
-                return lvA - lvB;
+        // [GBY] Modern Levels (Nested Category -> Rank)
+        if (levels.블레서_등급 || levels.이계종_등급) {
+            Object.entries(levels).forEach(([category, ranks]: [string, any]) => {
+                output += `#### ${category.replace(/_/g, ' ')}\n`;
+                if (typeof ranks === 'object') {
+                    Object.entries(ranks).forEach(([rankName, data]: [string, any]) => {
+                        const name = data.명칭 || rankName;
+                        const status = data.위상 || "";
+                        const power = data.전투력 || data.description || "";
+                        output += `- **${rankName} (${name})**: ${status}. ${power}\n`;
+                    });
+                }
+                output += "\n";
             });
+            return output;
+        }
 
-        realms.forEach((r: any) => {
-            output += `- **${r.명칭}**: ${r.능력} (${r.위상})\n`;
-        });
+        // [GBY] Handle Simple Key-Value Pair (e.g. Modern Levels - Simple)
+        const isSimpleKV = Object.values(levels).some(v => typeof v === 'string');
+
+        if (isSimpleKV) {
+            Object.entries(levels).forEach(([name, desc]) => {
+                output += `- **${name.replace(/_/g, ' ')}**: ${desc}\n`;
+            });
+        } else {
+            // [Wuxia] Detailed Object Structure
+            const realms = Object.values(levels)
+                .filter((v: any) => v && typeof v === 'object' && v.명칭 && v.위상)
+                .sort((a: any, b: any) => {
+                    const lvA = a.power_level || 0;
+                    const lvB = b.power_level || 0;
+                    return lvA - lvB;
+                });
+
+            realms.forEach((r: any) => {
+                output += `- **${r.명칭}**: ${r.능력} (${r.위상})\n`;
+            });
+        }
         output += "\n";
         return output;
     }
@@ -179,11 +272,20 @@ export class LoreConverter {
             factionList = factionsData;
         } else if (typeof factionsData === 'object') {
             Object.entries(factionsData).forEach(([key, value]: [string, any]) => {
-                if (value.주요_인물 || value.설명 || value.content) {
+                // [GBY] Handle Simple String Description
+                if (typeof value === 'string') {
+                    factionList.push({ name: key, 설명: value });
+                }
+                else if (value.주요_인물 || value.설명 || value.content) {
                     factionList.push({ name: key, ...value });
                 } else {
                     Object.entries(value).forEach(([fName, fData]: [string, any]) => {
-                        factionList.push({ name: fName, ...fData });
+                        // [GBY] Nested Simple String
+                        if (typeof fData === 'string') {
+                            factionList.push({ name: fName, 설명: fData });
+                        } else {
+                            factionList.push({ name: fName, ...fData });
+                        }
                     });
                 }
             });
@@ -196,7 +298,7 @@ export class LoreConverter {
         factionList.forEach((f: any) => {
             const name = f.name || f.이름 || "Unknown Organization";
             const desc = f.content || f.설명 || "";
-            output += `- **${name}**: ${desc}\n`;
+            output += `- **${name.replace(/_/g, ' ')}**: ${desc}\n`;
 
             if (f.주요_인물) {
                 const members = Array.isArray(f.주요_인물) ? f.주요_인물.join(', ') : f.주요_인물;
@@ -434,6 +536,16 @@ export class LoreConverter {
         if (!combat) return "";
         let output = "## [Combat & Tension Rules]\n";
 
+        // [GBY] Simple KV Support
+        const isSimple = Object.values(combat).every(v => typeof v === 'string');
+        if (isSimple) {
+            Object.entries(combat).forEach(([k, v]) => {
+                output += `### ${k.replace(/_/g, ' ')}\n${v}\n`;
+            });
+            output += "\n";
+            return output;
+        }
+
         if (combat.전투_서술_원칙) {
             output += `\n### Combat Principles\n${this.formatValue(combat.전투_서술_원칙)}`;
         }
@@ -615,10 +727,7 @@ export class LoreConverter {
         return output;
     }
 
-    // New Helper for Weapons
-    static convertWeapons(weapons: any): string {
-        return LoreConverter.convertItems(weapons, null);
-    }
+
 
     // Helper for convertToMarkdown to handle elixirs (new, extracted from convertItems)
     static convertElixirs(elixirs: any): string {

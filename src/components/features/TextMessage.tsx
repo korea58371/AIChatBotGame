@@ -54,7 +54,7 @@ export default function TextMessage({ sender, header, content, onClose }: TextMe
                     {/* Received Message */}
                     <div className="flex items-end gap-4">
                         <div className="w-14 h-14 rounded-full bg-gray-200 overflow-hidden shrink-0 border border-white shadow-sm">
-                            {avatarUrl.includes("Unknown") ? (
+                            {!avatarUrl || avatarUrl.includes("Unknown") ? (
                                 <span className="w-full h-full flex items-center justify-center text-3xl">👤</span>
                             ) : (
                                 <img src={avatarUrl} alt={sender} className="w-full h-full object-cover" />

@@ -1020,10 +1020,16 @@ export default function VisualNovelUI() {
             setLastStoryOutput(responseText); // [Logging] Capture for analytics
 
             if (typeof result !== 'string' && (result as any).systemPrompt) {
-                console.log("%c[Story Model Input - System Prompt]", "color: cyan; font-weight: bold;");
+                console.log("%c[Story Model Input - System Prompt (Static)]", "color: cyan; font-weight: bold;");
                 console.log((result as any).systemPrompt);
-                console.log("%c[Story Model Input - User Message]", "color: cyan; font-weight: bold;");
-                console.log(text);
+
+                if ((result as any).finalUserMessage) {
+                    console.log("%c[Story Model Input - FINAL USER MESSAGE (Includes Dynamic Prompt)]", "color: magenta; font-weight: bold;");
+                    console.log((result as any).finalUserMessage);
+                } else {
+                    console.log("%c[Story Model Input - User Message (Raw)]", "color: cyan; font-weight: bold;");
+                    console.log(text);
+                }
             }
 
             if (usageMetadata) {
@@ -2370,10 +2376,40 @@ Instructions:
                                                 // We will add a "System" message to history manually first? 
                                                 // Actually, let's just use handleSend but maybe show a different toast.
 
+                                                // [Fix] Update Player Stats with Start Choices (Optimistic)
+                                                // [CRITICAL] RESET ALL PERSISTENT DATA FOR NEW GAME
+                                                // We explicitly overwrite skills, inventory, and relations to ensure no "ghost data" remains.
+                                                const newStats = {
+                                                    ...useGameStore.getState().playerStats,
+                                                    skills: [],        // Clear Skills
+                                                    inventory: [],     // Clear Inventory
+                                                    relationships: {}, // Clear Relationships
+                                                    fame: 0,           // Reset Fame
+                                                    fate: 0,           // Reset Fate
+                                                    level: 1,          // Reset Level
+                                                    exp: 0,            // Reset EXP
+                                                    hp: useGameStore.getState().playerStats.maxHp, // Full HP
+                                                    mp: useGameStore.getState().playerStats.maxMp, // Full MP
+                                                };
+
+                                                // Map creation keys to stats if needed
+                                                // creationData keys: 'identity', 'goal', 'specialty', 'personality', 'story_perspective'
+                                                if (updatedData['narrative_perspective']) {
+                                                    newStats.narrative_perspective = updatedData['narrative_perspective'];
+                                                }
+                                                // Update Name (Handled via useGameStore.getState().setPlayerName below)
+                                                // newStats.name is invalid as per lint. playerName is separate state.
+
+                                                // Commit to Store
+                                                useGameStore.getState().setPlayerStats(newStats);
+                                                console.log("[Start] Applied Initial Stats:", newStats);
+
                                                 // Update Player Name if valid
                                                 // (Already updated in store via input below)
 
-                                                handleSend(prompt, true, true);
+                                                // [Fix] Pass isDirectInput=false so we don't trigger "You cannot control..." constraints
+                                                // isHidden=true keeps it out of the visible chat bubble history (but logic sees it)
+                                                handleSend(prompt, false, true);
                                             }
                                         };
 

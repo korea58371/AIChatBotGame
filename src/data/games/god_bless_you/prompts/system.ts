@@ -1,35 +1,53 @@
 import { GBY_SPECIAL_FORMATS } from '../constants';
+import { getDynamicSkillPrompt } from '../skills';
 
+// Helper to get Rank Info (Exported for Static Context)
 // Helper to get Rank Info (Exported for Static Context)
 export const getRankInfo = (fame: number) => {
     let playerRank = '일반인';
-    if (fame >= 500) playerRank = '인류의 희망';
-    else if (fame >= 100) playerRank = '무한한 잠재력을 가진 루키';
-    else if (fame >= 10) playerRank = 'F급 블레서';
+    let phase = 'Phase 0: 미각성';
+
+    // Phase Logic
+    if (fame >= 10000) {
+        playerRank = 'S급 블레서 (국가권력급)';
+        phase = 'Phase 3: 폭풍의 눈';
+    } else if (fame >= 1000) {
+        playerRank = 'D~B급 블레서 (루키)';
+        phase = 'Phase 2: 도약과 자격';
+    } else if (fame >= 10) {
+        playerRank = 'F급 블레서';
+        phase = 'Phase 1: 시궁창의 생존자';
+    } else {
+        playerRank = '일반인 (미각성)';
+        phase = 'Phase 0: 미각성';
+    }
 
     let rankLogline = "";
     let rankKeywords = "";
     let rankGiftDesc = "";
     let rankConflict = "";
 
-    switch (playerRank) {
-        case '일반인':
-            rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하며 살아가는 이야기.";
-            rankKeywords = "#일상물";
-            rankGiftDesc = "일반인입니다. 특별한 능력이 없습니다.";
-            rankConflict = ``;
+    switch (phase.split(':')[0]) {
+        case 'Phase 0':
+            rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하거나 두려워하며 살아가는 일상. 곧 다가올 각성(Awakening)의 순간을 기다리고 있다.";
+            rankKeywords = "#일상물 #각성전 #두려움";
+            rankGiftDesc = "기프트 없음 (일반인).";
+            rankConflict = `
+    - 생활고 (알바, 월세).
+    - 헌터들에 대한 막연한 동경과 공포.
+    - 무력함.`;
             break;
-        case 'F급 블레서':
+        case 'Phase 1':
             rankLogline = "아무런 능력도 없이 평범한 일반인이 었던 주인공이 F급 쓰레기 기프트 '처세술'을 각성하게되면서 절망적인 세상 속에서 소중한 인연을 만들고, 동료들과의 유대를 통해 무한히 성장하며 지구를 위협하는 거대한 재앙에 맞서 싸우는 이야기. 어디에도 처세술이라는 기프트에 대해 알려진 정보가 없다.";
-            rankKeywords = "#F급의반란 #시리어스 #사이다";
+            rankKeywords = "#F급의반란 #시리어스 #생존물";
             rankGiftDesc = `- **기프트**: **처세술 (F급)**
     - **설명**: F급이고, 아무 쓸모도 없어보이는, 남에게 아부하는데 특화된 느낌.`;
             rankConflict = `
-    - 주인공의 F급 능력에 대한 주변의 무시와 편견.
-    - 점점 강해지는 이계종의 위협과 부족한 블레서 인력.
-    - 미등록 블레서 및 적대 세력과의 암투.`;
+    - 페이즈 1 제약: 강남 진입 불가, 상위 랭커 만남 불가.
+    - 경제적 빈곤 (월세 독촉, 끼니 걱정).
+    - F급에 대한 사회적 멸시와 생존 위협.`;
             break;
-        case '무한한 잠재력을 가진 루키':
+        case 'Phase 2':
             rankLogline = "무한한 잠재력을 개화하기 시작한 루키. 업계의 주목을 받으며 급성장하는 주인공이 더 큰 무대를 향해 도약하는 이야기.";
             rankKeywords = "#루키 #급성장 #주목받는신예 #라이벌";
             rankGiftDesc = `- **기프트**: **처세술 (진화 중)**
@@ -39,7 +57,7 @@ export const getRankInfo = (fame: number) => {
                 - 감당하기 힘든 기대와 책임감.
                 - 더 강력해진 적들과의 조우.`;
             break;
-        case '인류의 희망':
+        case 'Phase 3':
             rankLogline = "절망에 빠진 인류를 구원할 유일한 희망. 전설이 된 주인공이 모든 블레서들을 이끌고 최후의 재앙에 맞서는 영웅 서사시.";
             rankKeywords = "#영웅 #구원자 #전설 #최후의결전";
             rankGiftDesc = `- **기프트**: **왕의 권능 (EX급)**
@@ -56,7 +74,7 @@ export const getRankInfo = (fame: number) => {
             break;
     }
 
-    return { playerRank, rankLogline, rankKeywords, rankGiftDesc, rankConflict };
+    return { playerRank, rankLogline, rankKeywords, rankGiftDesc, rankConflict, phase };
 };
 
 export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja' | null = 'ko') => {
@@ -65,7 +83,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     const fame = stats.fame ?? 0;
 
     // Use Helper
-    const { playerRank, rankGiftDesc, rankConflict } = getRankInfo(fame);
+    const { playerRank, rankGiftDesc, rankConflict, phase } = getRankInfo(fame);
 
     const statusDescription = state.statusDescription || "건강함 (정보 없음)";
     const personalityDescription = state.personalityDescription || "평범함 (정보 없음)";
@@ -74,8 +92,8 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     if (language === 'en') currencySymbol = '$';
     else if (language === 'ja') currencySymbol = '엔';
 
-    // Construct Skill List
-    const skillList = (stats.skills || []).join(', ') || "없음 (일반인)";
+    // [Dynamic Skill Injection] - Controls spoilers based on Phase
+    const skillList = getDynamicSkillPrompt(phase, stats.skills || []);
 
     // [Constraint for Direct Input]
     const directInputConstraints = state.isDirectInput
@@ -104,7 +122,8 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     }
 
     // [Narrative Perspective]
-    const perspective = stats.narrative_perspective || '3인칭';
+    const perspective = stats.narrative_perspective || '1인칭';
+
     const perspectiveRule = perspective.includes('1인칭')
         ? `
 **[서술 시점: 1인칭 주인공 시점 (First Person)]**
@@ -144,18 +163,30 @@ ${directInputConstraints}
 (X) "HP가 10 남아서 위험하다." / (O) "시야가 흐려지고 다리에 힘이 풀린다."
 *HP나 MP가 0이 되면 모든 행동은 실패하고 'BAD ENDING'으로 직결됩니다.*
 
+**[LORE PRIORITY GUIDELINES (Context-Aware)]**
+상황에 따라 로어북의 다음 항목들을 최우선으로 참고하여 서술의 디테일을 살리십시오:
+1. **[전투/액션 (Combat)]**: '### Power System & Realms' & '### Special Martial Arts Skills'
+   - **마나 성질(기체/액체/고체)**과 **물리적 위업**을 반드시 묘사하십시오. (S급의 결정화된 마나 vs F급의 희미한 안개)
+   - 파티 플레이와 서포터의 역할을 강조하십시오.
+2. **[교류/대화 (Social)]**: '## [Key Organizations & Groups]' & '## [Wuxia Language & Terminology Guidelines]'
+   - **존칭(아가씨/누님)**과 **사회적 신분 차이**를 대화에 녹여내십시오. (일반인의 동경 vs 엘리트의 여유)
+   - 세금(특별 방위세)이나 경제적 불평등을 자연스럽게 언급하십시오.
+3. **[로맨스/내면 (Intimacy)]**: '## [Romance & Interaction Guidelines]' & 캐릭터의 'Secret' 항목
+   - **[Secret]** 항목(내밀한 취향)과 **[내면 성격]**을 반영하십시오.
+- **현재 진행 단계(Story Phase)**: **[${phase}]**
+  > **경고**: [STORY PROGRESSION PHASES] 규칙에 따라 현재 페이즈의 제약(잠금된 지역/캐릭터 등)을 엄수하십시오.
 - **현재 시간**: ${state.day || 1}일차 ${state.time || '14:00'}
 - **현재 위치**: ${state.currentLocation}
   - **설명**: ${locationDesc}${locationSecrets}
 - **주인공 상태**: [HP: ${stats.hp || 100}], [MP(정신력): ${stats.mp || 100}], [등급: ${playerRank}]
-  - **소지금**: ${stats.gold}${currencySymbol}
+  - **소지금**: ${stats.gold}${currencySymbol} (부족함)
   - **상세**: ${statusDescription}
   - **마음가짐**: ${personalityDescription}
 - **보유 능력(스킬)**: ${skillList}
 - **소지품**: ${inventoryDesc}
 
 **[행동/전투 가이드라인]**:
-주인공은 현재 **'${playerRank}'** 등급이다.
+주인공은 현재 **'${phase}'** 단계에 있습니다.
 - **능력의 한계**: ${rankGiftDesc}
 - **갈등 요소**: ${rankConflict}
 - 상위 등급의 블레서나 몬스터와의 싸움은 매우 위험하며, 현실적인 결과(부상, 사망)를 따른다.

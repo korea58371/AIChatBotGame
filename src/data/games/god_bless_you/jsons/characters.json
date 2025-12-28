@@ -21,7 +21,7 @@
         },
         "강함": {
             "등급": "S급",
-            "skills": "발키리의 심판 (Valkyrie's Judgment): 하늘에서 거대한 빛의 창을 소환. [S급 위력] 도시 구획 초토화급 전략 병기."
+            "skills": "절대 영도 (Absolute Zero): S급 '결정화' 마나로 분자 운동을 강제 정지. 물리적 타격은 물론, 마법, 독, 심지어 '공간'까지 얼려 깨트리는 개념 간섭(Authority)."
         },
         "외형": {
             "전체적 인상": "완벽한 황금 비율, 성스러운 아우라",
@@ -57,8 +57,9 @@
                 "한수진"
             ],
             "minFame": 100,
-            "condition": "Event_Chapter1_Clear"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "유화영": {
         "title": "퇴폐미 넘치는 관리국 팀장",
@@ -120,8 +121,10 @@
                 "한수진",
                 "강지수"
             ],
-            "minFame": 150
-        }
+            "minFame": 150,
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "이아라": {
         "title": "국민 여동생의 이중생활",
@@ -147,7 +150,7 @@
         },
         "강함": {
             "등급": "B급",
-            "skills": "참 (Charm): 매료/호감도 조작. [B급 위력] (랭크 대비 파급력 S급). 광역 어그로/팬덤 형성."
+            "skills": "광란의 연회 (Frenzy): B급 '수은' 마나 파동을 방출. 반경 1km 내 이계종의 뇌파를 해킹하여 피아식별을 마비시키고 서로 살육하게 만듦. (정신계 광역기)"
         },
         "외형": {
             "전체적 인상": "귀여운 요정 외모, 베이글녀(반전 몸매)",
@@ -187,7 +190,8 @@
             ],
             "minFame": 300,
             "condition": null
-        }
+        },
+        "appearancePhase": 2
     },
     "은하율": {
         "title": "은빛 날개의 천사",
@@ -252,7 +256,8 @@
             ],
             "minFame": 0,
             "condition": "Friend_Since_Childhood"
-        }
+        },
+        "appearancePhase": 2
     },
     "한수진": {
         "title": "오림푸스의 그림자",
@@ -314,8 +319,9 @@
                 "유화영"
             ],
             "minFame": 50,
-            "condition": null
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "데스피나": {
         "title": "이면세계의 주인",
@@ -378,8 +384,9 @@
                 "백마리"
             ],
             "minFame": 500,
-            "condition": "Dungeon_Clear_RedCastle"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "백련화": {
         "title": "호랑이 교관",
@@ -441,8 +448,9 @@
                 "리메이링"
             ],
             "minFame": 200,
-            "condition": null
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "키리": {
         "title": "쌍검의 춤",
@@ -503,7 +511,8 @@
             ],
             "minFame": 50,
             "condition": "Event_Encounter_Assassin"
-        }
+        },
+        "appearancePhase": 2
     },
     "신세아": {
         "title": "금수저 아가씨",
@@ -565,8 +574,9 @@
                 "장미래"
             ],
             "minFame": 400,
-            "condition": null
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "성시아": {
         "title": "타락한 성녀",
@@ -630,8 +640,9 @@
                 "백마리"
             ],
             "minFame": 300,
-            "condition": null
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "도예린": {
         "title": "꼬맹이 장인",
@@ -671,7 +682,8 @@
             "성감대": "손가락(섬세함), 목덜미"
         },
         "인간관계": {
-            "은하율의 장비를 전담 수리해주는 비즈니스 파트너이자 친구. 클레어와는 기술적 교류를 하는 라이벌 관계.": "관계 없음"
+            "은하율": "장비 전담 수리 / 친구",
+            "클레어": "라이벌 (기술 교류)"
         },
         "preferences": {
             "Like": "희귀 광물, 시원한 맥주, 완벽하게 수리된 장비, 고철 수집",
@@ -693,7 +705,8 @@
             ],
             "minFame": 150,
             "condition": "Item_Rare_Ore"
-        }
+        },
+        "appearancePhase": 2
     },
     "비올라": {
         "title": "독을 품은 꽃",
@@ -756,7 +769,8 @@
             ],
             "minFame": 100,
             "condition": "Spy_Event_Trigger"
-        }
+        },
+        "appearancePhase": 2
     },
     "한가을": {
         "title": "단풍의 검사",
@@ -800,7 +814,7 @@
             "오빠": "주인공"
         },
         "preferences": {
-            "Like": "책, 단풍, 커피, 조용한 곳",
+            "Like": "책, 단풍, 커피, 조용한 곳, 주인공",
             "Dislike": "소음, 무식한 사람, 벌레"
         },
         "활동지역": "Korea",
@@ -819,7 +833,8 @@
             ],
             "minFame": 0,
             "condition": "Family"
-        }
+        },
+        "appearancePhase": 0
     },
     "엘레나 로즈바이스": {
         "title": "강철의 여기사",
@@ -881,8 +896,9 @@
                 "유화영"
             ],
             "minFame": 200,
-            "condition": "Foreign_Student_Exchange"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "서유나": {
         "title": "선율에 갇힌 천재",
@@ -944,8 +960,9 @@
                 "한가을"
             ],
             "minFame": 100,
-            "condition": null
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "주아인": {
         "title": "바람을 가르는 시위",
@@ -1005,8 +1022,9 @@
                 "은하율"
             ],
             "minFame": 100,
-            "condition": "Event_Olympic"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "윤슬비": {
         "title": "비를 부르는 소녀",
@@ -1069,7 +1087,8 @@
             ],
             "minFame": 50,
             "condition": "Library_Membership"
-        }
+        },
+        "appearancePhase": 2
     },
     "민소희": {
         "title": "위험한 안식처",
@@ -1133,7 +1152,8 @@
             ],
             "minFame": 0,
             "condition": "Tenant_Contract"
-        }
+        },
+        "appearancePhase": 2
     },
     "아나스타샤 이바노바": {
         "title": "북해의 얼음 마녀",
@@ -1197,8 +1217,9 @@
                 "마세영"
             ],
             "minFame": 300,
-            "condition": "Vodka_Gift"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "아미라 알 라시드": {
         "title": "사막의 황금 독수리",
@@ -1261,8 +1282,9 @@
                 "한여름"
             ],
             "minFame": 250,
-            "condition": "Foreign_Dignitary_Quest"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "키사라기 사쿠라코": {
         "title": "어둠 속의 벚꽃",
@@ -1325,8 +1347,9 @@
                 "도예린"
             ],
             "minFame": 150,
-            "condition": "Exorcism_Request"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "강지수": {
         "title": "수갑을 찬 정의",
@@ -1388,8 +1411,9 @@
                 "오지민"
             ],
             "minFame": 100,
-            "condition": "Crime_Investigation"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "김민지": {
         "title": "방구석의 지배자",
@@ -1452,8 +1476,9 @@
                 "고하늘"
             ],
             "minFame": 50,
-            "condition": "Online_Stream_Donation"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "설아": {
         "title": "야생의 포식자",
@@ -1515,32 +1540,33 @@
                 "백소미"
             ],
             "minFame": 100,
-            "condition": "Taming_Event"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "마세영": {
-        "title": "빚더미에 앉은 고기방패",
+        "title": "억척스러운 고기방패",
         "profile": {
-            "소속": "알 수 없음",
-            "신분": "포지션: 고기방패(Meat Shield)",
+            "소속": "하이에나 길드 (D급)",
+            "신분": "메인 탱커 (계약직)",
             "나이": "23세",
             "신체": "170cm / 58kg",
             "BHW": "88(C) - 64 - 96",
-            "별명": "좀비, 샌드백, 50만원(일당)",
+            "별명": "좀비, 샌드백, 마 누님(주인공 한정)",
             "성별": "여성"
         },
         "personality": {
-            "표면적 성격": "[비굴함], 굽신거림, 낮은 자존감, [M성향(강제)]",
-            "내면/애정 성격": "[소시민], [맹목적], 호의에 약함, 평범한 행복 동경"
+            "표면적 성격": "[강약약강], 상위 랭커 앞에서는 [비굴] / 일반인 앞에서는 [허세]",
+            "내면/애정 성격": "낮은 자존감, [M성향](직업병), 칭찬에 약함, 여린 마음"
         },
         "social": {
-            "인간 방패": "돈을 벌기 위해 몸을 던지는 생계형 탱커",
-            "50만원": "목숨값이 헐값으로 매겨지는 블레서 최하층의 비애",
-            "소시민": "평범한 행복과 빚 청산을 꿈꾸는 소박한 욕망"
+            "엘리트 고기방패": "일반인은 꿈도 못 꿀 D급 블레서지만, 상위 랭커들에겐 그저 소모품 취급.",
+            "강약약강": "천서윤 같은 괴물 앞에선 눈도 못 마주치지만, 주인공(일반인) 앞에선 어깨 펴고 다니는 소시민적 엘리트.",
+            "가장의 무게": "식물인간 동생의 병원비 때문에 궂은일(몸빵)을 도맡아 함."
         },
         "강함": {
             "등급": "C급",
-            "skills": "고통 전가 (Pain Share): 피해 반사. [C급 능력] 맞을수록 강해지나 한계 명확."
+            "skills": "키네틱 리플렉션 (Kinetic Reflection): C급 '점성' 마나로 피부를 코팅하여 물리 충격을 흡수/축적. 전차 포격도 튕겨내며, 축적된 에너지를 한 번에 방출하여 적을 분쇄."
         },
         "외형": {
             "전체적 인상": "건강한 뼈대, 흉터/멍 가득, 핼쑥함",
@@ -1579,31 +1605,32 @@
             ],
             "minFame": 0,
             "condition": "Debt_Repayment_Quest"
-        }
+        },
+        "appearancePhase": 2
     },
     "고하늘": {
-        "title": "던전의 바퀴벌레",
+        "title": "국가공인 포터",
         "profile": {
-            "소속": "프리랜서",
-            "신분": "포지션: 포터(짐꾼)",
+            "소속": "프리랜서 (관리국 면허 보유)",
+            "신분": "전문 포터 (D급)",
             "나이": "20세",
             "신체": "150cm / 41kg",
             "BHW": "70(A) - 52 - 78",
-            "별명": "땃쥐, 줍줍이, 보부상",
+            "별명": "보부상, 만능 주머니, 땃쥐",
             "성별": "여성"
         },
         "personality": {
-            "표면적 성격": "[명랑/쾌활], [속물], 돈 밝힘, 눈치 빠름",
-            "내면/애정 성격": "[애정결핍], 불안감, [응석받이], 주인공=물주님"
+            "표면적 성격": "[철저함], [계산적], 돈 밝힘, 프로 의식",
+            "내면/애정 성격": "[소녀가장], 빚 걱정, [의존적], 주인공=믿을만한 오빠"
         },
         "social": {
-            "던전의 바퀴벌레": "어떤 위험 속에서도 살아남아 아이템을 챙기는 생존력",
-            "보부상": "아공간 능력을 활용한 전문 짐꾼(포터)이자 장사꾼",
-            "수전노": "돈 한 푼에 목숨 거는 억척스러운 생활력"
+            "엘리트 짐꾼": "블레서 관리국이 인증한 '특수 화물 취급 면허' 보유자. 일반인 연봉의 10배를 범.",
+            "세금의 노예": "아버지의 특별 방위세 체납액을 갚느라 실수령액은 편의점 알바 수준.",
+            "던전의 보부상": "아공간 스킬로 최대 500kg 운송 가능. 공략대의 필수 인력."
         },
         "강함": {
             "등급": "D급",
-            "skills": "아공간 주머니 (Subspace Pocket): 50kg 제한 아공간. [D급 능력] 운송/은닉 특화."
+            "skills": "전술적 아공간 (Tactical Pocket): D급 '압축' 마나로 500kg 화물을 질량 0으로 보관. 탄창/포션/장비를 뇌파 컨트롤로 0.1초 만에 아군 손에 전송(Teleport)하는 병참 스킬."
         },
         "외형": {
             "전체적 인상": "중학생 같은 왜소한 체구, 큰 배낭",
@@ -1642,7 +1669,8 @@
             ],
             "minFame": 0,
             "condition": "Looting_Contract"
-        }
+        },
+        "appearancePhase": 2
     },
     "오지민": {
         "title": "관리국의 검은 태양",
@@ -1705,7 +1733,8 @@
             ],
             "minFame": 50,
             "condition": "Association_Registration"
-        }
+        },
+        "appearancePhase": 2
     },
     "홍유리": {
         "title": "붉은 장미의 가시",
@@ -1768,8 +1797,9 @@
                 "비올라"
             ],
             "minFame": 300,
-            "condition": "Casino_Entry_Ticket"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "클레어": {
         "title": "성기사 단장",
@@ -1832,8 +1862,9 @@
                 "민소희"
             ],
             "minFame": 500,
-            "condition": "Mansion_Ownership"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "백소미": {
         "title": "괴식의 미식가",
@@ -1896,7 +1927,8 @@
             ],
             "minFame": 50,
             "condition": "Gourmet_Hunter"
-        }
+        },
+        "appearancePhase": 2
     },
     "송민주": {
         "title": "뒷골목의 큰손",
@@ -1958,10 +1990,11 @@
                 "오지민"
             ],
             "minFame": 300,
-            "condition": "Private_Jet_Unlock"
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
         },
         "quote": "손님, 벨트 매세요. 난기류가 올 겁니다. ...제 서비스가 너무 격렬해서 어지러우신가요?",
-        "constellation": ""
+        "constellation": "",
+        "appearancePhase": 3
     },
     "차도희": {
         "title": "얼음 여왕 변호사",
@@ -2023,8 +2056,9 @@
                 "강지수"
             ],
             "minFame": 300,
-            "condition": "Critical_Injury_Event"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "한여름": {
         "title": "태양의 마녀",
@@ -2086,8 +2120,9 @@
                 "송민주"
             ],
             "minFame": 200,
-            "condition": "Weather_Crisis"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "권세나": {
         "title": "아스팔트 위의 폭군",
@@ -2150,8 +2185,9 @@
                 "강지수"
             ],
             "minFame": 50,
-            "condition": "Delivery_Quest"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "송채윤": {
         "title": "전장의 아이돌",
@@ -2213,8 +2249,9 @@
                 "차도희"
             ],
             "minFame": 50,
-            "condition": "Potion_Crafting"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "장미래": {
         "title": "미래를 보는 눈",
@@ -2277,7 +2314,8 @@
             ],
             "minFame": 200,
             "condition": "Legal_Dispute"
-        }
+        },
+        "appearancePhase": 2
     },
     "류소연": {
         "title": "완벽한 보좌관",
@@ -2339,8 +2377,9 @@
                 "클레어"
             ],
             "minFame": 300,
-            "condition": "Guild_Establishment"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "한봄": {
         "title": "벚꽃 치유사",
@@ -2403,7 +2442,8 @@
             ],
             "minFame": 50,
             "condition": "Taming_License"
-        }
+        },
+        "appearancePhase": 2
     },
     "이화연": {
         "title": "불꽃의 무희",
@@ -2467,7 +2507,8 @@
             ],
             "minFame": 100,
             "condition": "Rare_Herb_Request"
-        }
+        },
+        "appearancePhase": 2
     },
     "사이온지 미유키": {
         "title": "만개하는 벚꽃의 검희",
@@ -2530,8 +2571,9 @@
                 "리메이링"
             ],
             "minFame": 400,
-            "condition": "International_Exchange"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "타나카 아이": {
         "title": "국민 여동생 (일본)",
@@ -2595,8 +2637,9 @@
                 "오지민"
             ],
             "minFame": 300,
-            "condition": "Private_Jet_Unlock"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "사토 아야": {
         "title": "흑염룡의 주인(?)",
@@ -2662,7 +2705,8 @@
             "condition": "Part_Time_Job_Encounter"
         },
         "quote": "크큭... 내 오른팔의 흑룡이 날뛰는군. 진정해라, '다크니스'... 어? 아, 저기, 물약 값 좀 깎아주시면 안 될까요?",
-        "constellation": ""
+        "constellation": "",
+        "appearancePhase": 2
     },
     "야마다 하나코": {
         "title": "평범함을 연기하는 살인귀",
@@ -2726,7 +2770,8 @@
             ],
             "minFame": 50,
             "condition": "Overtime_Work"
-        }
+        },
+        "appearancePhase": 2
     },
     "백마리": {
         "title": "지하 감옥의 여왕",
@@ -2750,7 +2795,7 @@
         },
         "강함": {
             "등급": "S급",
-            "skills": "여왕의 지배: 특수 채찍/수갑 제압. [S급 능력] 정신계 기프트(강제 복종)."
+            "skills": "절대 복종 (Absolute Domination): S급 '지배' 마나. 그녀의 목소리에 담긴 '왕의 명령(Order)'은 생물학적 저항을 원천 차단. S급 죄수들도 '앉아' 한 마디에 무릎 꿇게 만드는 정신 장악."
         },
         "외형": {
             "전체적 인상": "차가운 카리스마, 압도적, 얼음장 표정",
@@ -2788,8 +2833,9 @@
                 "강지수"
             ],
             "minFame": 300,
-            "condition": "Prison_Visit_Permit"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "서이수": {
         "title": "살에 새기는 주술",
@@ -2854,7 +2900,8 @@
             "condition": "Hidden_Shop_Unlock"
         },
         "quote": "움직이지 마. ...후후, 농담이야. 여기엔 '정력 강화' 문신을 새겨줄게.",
-        "constellation": ""
+        "constellation": "",
+        "appearancePhase": 2
     },
     "신유라": {
         "title": "피 묻은 메스",
@@ -2917,10 +2964,11 @@
                 "성시아"
             ],
             "minFame": 100,
-            "condition": "School_Nurse_Visit"
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
         },
         "quote": "어라, 얼굴이 빨갛네? ...선생님이 '특별한 주사' 놔줄까?",
-        "constellation": ""
+        "constellation": "",
+        "appearancePhase": 3
     },
     "리메이링": {
         "title": "천하제일 검후",
@@ -2984,8 +3032,9 @@
                 "왕웨이"
             ],
             "minFame": 450,
-            "condition": "Martial_Arts_Tournament"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "링링": {
         "title": "부적 붙인 강시 소녀",
@@ -3047,8 +3096,9 @@
                 "왕웨이"
             ],
             "minFame": 300,
-            "condition": "Coffin_Discovery"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     },
     "왕웨이": {
         "title": "대륙의 기상",
@@ -3111,7 +3161,8 @@
                 "서이수"
             ],
             "minFame": 250,
-            "condition": "Underworld_Deal"
-        }
+            "condition": "Phase 3 해금 필요 (뉴스/이벤트로만 등장)"
+        },
+        "appearancePhase": 3
     }
 }

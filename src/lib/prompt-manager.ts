@@ -93,7 +93,7 @@ interface GameState {
 export class PromptManager {
     // [CACHE CONFIG]
     private static readonly CACHE_PREFIX = 'PROMPT_CACHE_';
-    private static readonly CACHE_VERSION = 'v1.0'; // Increment this to invalidate all caches
+    private static readonly CACHE_VERSION = 'v1.1'; // Increment this to invalidate all caches
 
     // [New] Cache Management Methods
     static async clearPromptCache(gameId?: string) {
@@ -124,7 +124,7 @@ export class PromptManager {
         // [수정] 사용자의 요청대로 Mood별 프롬프트 자체가 정적이므로, 캐시 키를 Mood 자체로 설정합니다.
         // [SHARED CACHE KEY]
         // Remove 'mood' dependency. This key is now unified for the game.
-        const cacheKey = `${PromptManager.CACHE_PREFIX}${state.activeGameId}_SHARED_V1`;
+        const cacheKey = `${PromptManager.CACHE_PREFIX}${state.activeGameId}_SHARED_${PromptManager.CACHE_VERSION}`;
         console.log(`[PromptManager] Generated Shared Cache Key: ${cacheKey}`);
 
         // 브라우저 환경이라면, 로컬 스토리지에서 먼저 로드 시도 (새로고침 옵션이 꺼져있을 때)
@@ -578,8 +578,14 @@ ${spawnCandidates || "None"}
 
         if (allChars.length === 0) return "No character data available.";
 
-        // [FIX] Sort by name to guarantee deterministic order for Caching
-        allChars.sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+        // [FIX] Sort by Phase first to enable contextual hierarchy (Phase 0 -> 1 -> 2 -> 3)
+        // If Phase is missing, default to 1 (Low Rank)
+        allChars.sort((a: any, b: any) => {
+            const pA = a.appearancePhase ?? 1;
+            const pB = b.appearancePhase ?? 1;
+            if (pA !== pB) return pA - pB;
+            return (a.name || "").localeCompare(b.name || "");
+        });
 
         const isGBY = state.activeGameId === 'god_bless_you';
 
@@ -882,12 +888,21 @@ ${spawnCandidates || "None"}
 
             // 1. Current Context / Status
             if (char.default_expression) charInfo += `\n- Status: ${char.default_expression}`;
+            if (char.description) charInfo += `\n- Current State: ${char.description}`;
 
             // 2. Relationship Pacing (Dynamic)
             const relScore = state.playerStats.relationships?.[charId] || 0;
             // Note: RelationshipManager might expect Name or ID. It usually handles Name.
             const relationshipInstructions = RelationshipManager.getCharacterInstructions(char.name, relScore);
             charInfo += `\n- Relation: ${relationshipInstructions.replace(/\n/g, ' ')}`;
+
+            // [Logic Model Injection] Tone & Speech Style
+            if (char.relationshipInfo) {
+                const { callSign, speechStyle, endingStyle } = char.relationshipInfo;
+                if (callSign) charInfo += `\n- Call Sign: "${callSign}"`;
+                if (speechStyle) charInfo += `\n- Speech Style: ${speechStyle}`;
+                if (endingStyle) charInfo += `\n- Ending Style: ${endingStyle}`;
+            }
 
             // 3. Memories (Dynamic)
             if (char.memories && char.memories.length > 0) {
@@ -954,6 +969,14 @@ ${spawnCandidates || "None"}
     // [Helper] YAML-style formatter for God Bless You characters
     private static formatGBYCharacter(c: any, contextMode: string): string {
         const lines: string[] = [`### ${c.name || c.이름 || 'Unknown'}`];
+
+        // 0. Phase & Condition (Critical for Narrative Pacing)
+        if (c.appearancePhase !== undefined) lines.push(`- Phase: ${c.appearancePhase}`);
+        if (c.spawnRules?.condition) lines.push(`- Condition: ${c.spawnRules.condition}`);
+
+        // 0.1 Explicit Rank Display
+        const charRank = c['강함']?.['등급'] || c.profile?.['등급'];
+        if (charRank) lines.push(`- Rank: ${charRank}`);
 
         // 1. Basic Info
         if (c.title) lines.push(`- Title: ${c.title}`);
@@ -1043,19 +1066,22 @@ ${spawnCandidates || "None"}
         }
 
         // 3. Appearance (KV List)
-        if (c.appearance) {
+        // 3. Appearance (KV List)
+        const app = c.appearance || c['외형'];
+        if (app) {
             lines.push(`- Appearance:`);
-            Object.entries(c.appearance).forEach(([k, v]) => {
+            Object.entries(app).forEach(([k, v]) => {
                 lines.push(`  - ${k}: ${v}`);
             });
         } else if (c.description) {
             lines.push(`- Appearance: ${c.description}`);
         }
 
-        // 4. Job (KV List)
-        if (c.job) {
-            lines.push(`- Job:`);
-            Object.entries(c.job).forEach(([k, v]) => {
+        // 4. Job/Social (KV List)
+        const jobData = c.job || c.social;
+        if (jobData) {
+            lines.push(`- Job/Social:`);
+            Object.entries(jobData).forEach(([k, v]) => {
                 lines.push(`  - ${k}: ${v}`);
             });
         }
