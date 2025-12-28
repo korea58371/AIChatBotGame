@@ -2260,20 +2260,8 @@ export default function VisualNovelUI() {
                                             console.log("Choice clicked:", choice.content);
                                             e.stopPropagation();
 
-                                            // [LOGGING]
-                                            submitGameplayLog({
-                                                session_id: sessionId || '00000000-0000-0000-0000-000000000000', // Fallback UUID if empty
-                                                game_mode: useGameStore.getState().activeGameId,
-                                                turn_count: turnCount,
-                                                choice_selected: choice.content,
-                                                player_rank: playerStats.playerRank,
-                                                location: useGameStore.getState().currentLocation,
-                                                timestamp: new Date().toISOString(),
-                                                story_output: lastStoryOutput // [Logging] Include story output
-                                            }).then(res => {
-                                                if (!res.success) console.error("📝 [Log Error]", res.error);
-                                                else console.log("📝 [Log Sent]");
-                                            });
+                                            // [LOGGING] Handled in handleSend
+
 
                                             handleSend(choice.content);
                                         }}
