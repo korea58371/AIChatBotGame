@@ -247,7 +247,7 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
                                         <h2 className="text-2xl font-bold mb-2">문서를 찾을 수 없습니다.</h2>
                                         <p>검색어: {currentDoc}</p>
                                         <button
-                                            onClick={() => setCurrentDoc("고하늘")}
+                                            onClick={() => setCurrentDoc(initialCharacter)}
                                             className="mt-4 px-4 py-2 bg-[#00A495] text-white rounded hover:bg-[#008f82]"
                                         >
                                             메인으로 돌아가기

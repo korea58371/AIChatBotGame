@@ -2163,7 +2163,7 @@ export default function VisualNovelUI() {
                 <WikiSystem
                     isOpen={showWiki}
                     onClose={() => setShowWiki(false)}
-                    initialCharacter="고하늘"
+                    initialCharacter={useGameStore.getState().activeGameId === 'wuxia' ? "연화린" : "고하늘"}
                 />
 
                 {/* Smartphone App */}
