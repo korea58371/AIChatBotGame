@@ -3237,7 +3237,7 @@ Instructions:
                                 )}
 
                                 {/* Text Content */}
-                                <div className="text-[2.8vw] md:text-[min(1.0vw,30px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
+                                <div className="text-[3.7vw] md:text-[min(1.3vw,39px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
                                     {currentSegment.type === 'narration' ? (
                                         <span className="text-gray-300 italic block">
                                             {formatText(currentSegment.content)}
