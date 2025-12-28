@@ -3217,7 +3217,7 @@ Instructions:
                                 {/* Name Tag */}
                                 {currentSegment.type === 'dialogue' && (
                                     <div className="absolute -top-[3vh] md:-top-[6vh] w-full text-center px-2">
-                                        <span className="text-[3.5vw] md:text-[min(1.1vw,36px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                        <span className="text-[4.5vw] md:text-[min(1.4vw,47px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                             {(() => {
                                                 const { characterData, playerName } = useGameStore.getState();
 

@@ -6,7 +6,7 @@ import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from '@/d
 // Removed static SYSTEM_PROMPT in favor of dynamic generation
 
 export const MODEL_CONFIG = {
-    STORY: 'gemini-3-flash-preview', // Main Story (Synced with Cache)
+    STORY: 'gemini-3-pro-preview', // Main Story (Synced with Cache)
     LOGIC: 'gemini-2.5-flash',       // Game Logic (Fast, JSON)
     SUMMARY: 'gemini-2.5-flash'      // Summarization (Cheap)
 };
