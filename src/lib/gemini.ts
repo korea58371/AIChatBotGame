@@ -5,6 +5,12 @@ import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from '@/d
 
 // Removed static SYSTEM_PROMPT in favor of dynamic generation
 
+export const MODEL_CONFIG = {
+    STORY: 'gemini-3-flash-preview', // Main Story (Synced with Cache)
+    LOGIC: 'gemini-2.5-flash',       // Game Logic (Fast, JSON)
+    SUMMARY: 'gemini-2.5-flash'      // Summarization (Cheap)
+};
+
 const safetySettings = [
     {
         category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -71,11 +77,10 @@ export async function generateResponse(
     // Dynamic = 유저 메시지의 일부 (캐시 안됨, 매번 변경)
     const systemInstruction = staticPrompt;
 
-    // 메인 스토리 모델: Gemini 3 Pro (품질 우선)
+    // 메인 스토리 모델: MODEL_CONFIG.STORY 사용
     const modelsToTry = [
-        'gemini-3-flash-preview', // 문서에 명시된 올바른 ID (gemini-3-pro-preview, gemini-3-flash-preview)
+        MODEL_CONFIG.STORY,
         'gemini-2.5-flash', // 안정적인 대체 모델
-        'gemini-2.5-flash', // 빠른 대체 모델
     ];
 
     let lastError;
@@ -241,7 +246,8 @@ export async function generateGameLogic(
     // [CONTEXT CACHING] Reuse the SAME static prefix
     const staticPrompt = await PromptManager.getSharedStaticContext(gameState);
 
-    const modelsToTry = ['gemini-3-pro-preview', 'gemini-3-pro-preview']; // Logic uses 2.5 Flash
+    // Logic uses MODEL_CONFIG.LOGIC (Optimized for speed)
+    const modelsToTry = [MODEL_CONFIG.LOGIC, 'gemini-2.5-flash'];
 
     for (const modelName of modelsToTry) {
         try {
@@ -386,7 +392,7 @@ export async function generateSummary(
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: MODEL_CONFIG.SUMMARY,
         safetySettings
     });
 
@@ -436,10 +442,10 @@ export async function preloadCache(apiKey: string, initialState: any) {
 
 
         // 2. Configure Model
-        // MATCH THE MAIN MODEL: gemini-3-pro-preview
+        // MATCH THE MAIN MODEL: MODEL_CONFIG.STORY
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-            model: 'gemini-3-pro-preview',
+            model: MODEL_CONFIG.STORY,
             systemInstruction: staticPrompt,
         }, {
             apiVersion: 'v1beta',
