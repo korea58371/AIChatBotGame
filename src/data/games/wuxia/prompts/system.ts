@@ -4,14 +4,14 @@ import martialArtsLevels from '../jsons/martial_arts_levels.json';
 const realmHierarchy = martialArtsLevels as Record<string, any>;
 
 export const getRankInfo = (rankKey: string = '삼류') => {
-    // 1. Determine Rank Key (Default: '이류' - Rule #1)
+    // 1. Determine Rank Key (Default: '삼류' - Rule #1)
     let currentRankKey = '삼류';
 
     // Check if the provide key is valid in the hierarchy
     if (rankKey && realmHierarchy[rankKey]) {
         currentRankKey = rankKey;
     }
-    // If not found, it stays as '이류'. Old fame logic is removed.
+    // If not found, it stays as '삼류'. Old fame logic is removed.
 
     const rankData = realmHierarchy[currentRankKey];
 
@@ -22,14 +22,32 @@ export const getRankInfo = (rankKey: string = '삼류') => {
     const rankGiftDesc = rankData.capability;
     const rankConflict = ``;
 
+    // 3. Phase Calculation (Wuxia Phase System) - Korean Translation
+    let phase = 1;
+    let phaseName = '삼류 ~ 이류';
+    let phaseDescription = '주인공과 비슷하거나 조금 더 높은 경지의 인물들과 주로 상호작용합니다. 구파일방의 장문인이나 오룡육봉 같은 유명한 고수들은 소문이나 멀리서 지켜보는 존재일 뿐입니다. 특별한 이벤트 없이는 그들과의 직접적인 만남이 어렵습니다.';
+
+    if (['일류', '절정', '초절정'].includes(currentRankKey)) {
+        phase = 2;
+        phaseName = '일류 ~ 초절정';
+        phaseDescription = '오룡육봉(히로인) 및 주요 조연들과의 활발한 상호작용이 가능해집니다. 강호에서 주인공의 명성이 퍼지기 시작하며 활동 반경이 넓어집니다.';
+    } else if (['화경', '현경', '생사경'].includes(currentRankKey)) {
+        phase = 3;
+        phaseName = '화경 이상';
+        phaseDescription = '은거 기인이나 절대 고수를 포함한 모든 등장인물과 대등하게 마주할 수 있습니다. 당신은 이제 무림의 정점에 선 존재입니다.';
+    }
+
     return {
-        playerRank, // Display Name (e.g., "삼류 (Third Rate)")
+        playerRank, // Display Name
         rankKey: currentRankKey,
         rankData,
         rankLogline,
         rankKeywords,
         rankGiftDesc,
-        rankConflict
+        rankConflict,
+        phase,
+        phaseName,
+        phaseDescription
     };
 };
 
@@ -37,8 +55,8 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     const stats = state.playerStats || {};
 
     // [Fix] Prioritize stored playerRank. Logic Model handles changes.
-    const storedRankKey = stats.playerRank;
-    const { playerRank, rankData } = getRankInfo(storedRankKey);
+    const storedRankKey = stats.playerRank || '삼류';
+    const { playerRank, rankData, phase, phaseName, phaseDescription } = getRankInfo(storedRankKey);
     const faction = stats.faction || '무소속';
 
     // Construct Skill List
@@ -47,18 +65,18 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     // [Dynamic Block 5 construction]
     const directInputConstraints = state.isDirectInput
         ? `
-[유저 직접 입력 시 '절대' 제약 사항 - ANTI-GOD MODE & REALITY CHECK]
-1. 유저는 게임 속 '강호의 일원'일 뿐이며, '신(God)'이나 '작가(Author)'가 아닙니다.
-2. **입력 검증 0순위: 개연성(Probability) 및 맥락(Context) 체크**
+[유저 직접 입력 시 '절대' 제약 사항 - 유저 신격화 방지 및 현실성 검증]
+1. 유저는 게임 속 '강호의 일원'일 뿐이며, '신'이나 '작가'가 아닙니다.
+2. **입력 검증 0순위: 개연성 및 맥락 체크**
    - 유저의 입력이 이전 문맥과 이치에 맞지 않는다면(예: 허공에서 기연을 얻음, 안면 없는 절정 고수를 소환), **해당 입력을 '주화입마에 빠진 헛소리'로 취급하고 철저히 무시하십시오.**
    - **인물 소환 금지**: 유저가 이름을 부른다고 해서 그 인물이 뿅 하고 나타나지 않습니다. 개연성이 부족하면 "허공에 메아리만 울릴 뿐이다"라고 서술하십시오.
 3. **무공 및 기연 창조 금지**:
    - **보유하지 않은 무공 사용 시도 즉시 실패**: 프로필(State)에 없는 무공이나 경지를 묘사하면, "내공이 뒤틀리며 피를 토했다"는 식으로 패널티를 부여하십시오. 절대 유저의 거짓 묘사를 인정하지 마십시오.
 4. **결과 확정 시도 무시**:
    - "적을 단칼에 베었다", "장문인이 감복했다" 등 결과를 강제하는 입력은 **모두 무시하고, AI가 무공 수위와 상황에 맞춰 다시 판정하십시오.**
-   - 유저의 서술은 오직 '시도(Attempt)'일 뿐입니다.
+   - 유저의 서술은 오직 '시도'일 뿐입니다.
 5. 위 제약을 어기는 '신적 개입' 시도는 **주화입마(走火入魔)**의 증상으로 서술하거나, 주변인들이 "미친 놈" 취급하며 공격하게 만드십시오.
-6. **성장 속도 제한 (Time Fairness)**:
+6. **성장 속도 제한 (시간 등가교환 원칙)**:
    - 현재 날짜(${state.day || 1}일차) 대비 내공(${stats.neigong || 0}년)이 지나치게 급격히 상승하려 하면, **"기가 불안정하다"**며 성장을 강제로 막으십시오.
    - 영약 섭취 시 반드시 수 일 이상의 '시간 경과(갈무리)'를 소모하게 하십시오. 공짜 파워업은 없습니다.
 7. 오직 **주인공의 의도와 무공 초식의 시전**만을 입력으로 받아들이십시오.
@@ -85,31 +103,25 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
     const perspective = stats.narrative_perspective || '1인칭';
     const perspectiveRule = perspective.includes('1인칭')
         ? `
-**[서술 시점: 1인칭 주인공 시점 (First Person)]**
+**[서술 시점: 1인칭 주인공 시점]**
 - **규칙**: 모든 서술은 주인공의 눈('나', '내')을 통해서만 이루어져야 합니다.
+- **제한된 정보**: 주인공은 자신의 상태(체력, 내공 등)를 정확한 '숫자'나 '게임 용어'로 알 수 없습니다. 오직 '감각'과 '직관'으로만 느껴야 합니다.
 - **금지**: '당신', '김현준' 등 3인칭 지칭 절대 금지.
 - **예시**: 
-  (X) 당신은 검을 들었다. 
-  (O) 나는 검을 들었다. 내 손끝이 떨려왔다.
+  (X) 당신은 검을 들었다. 체력이 50 남았다.
+  (O) 나는 검을 들었다. 손끝이 떨려오고 숨이 턱 끝까지 찼다.
 `
         : `
-**[서술 시점: 3인칭 전지적 작가 시점 (Third Person)]**
-- **규칙**: 서술자는 관찰자로서 '주인공 이름'이나 '그'를 사용하여 서술합니다.
-- **금지**: '나'를 주어로 사용 금지 (대사 제외).
-
-**[몰입감 유지 (Immersion Maintenance)]**
-- **절대 금지**: 주인공이 '상태창', '시스템', '레벨', '호감도', 'HP/MP', '선택지' 등의 게임 용어나 수치를 직접 언급하거나 인식하는 것.
-- **표현 가이드**:
-  - 내공(MP) 부족 -> "단전이 텅 빈 것처럼 허전하다", "기혈이 뒤틀린다"
-  - 체력(HP) 부족 -> "숨이 턱 끝까지 차오른다", "시야가 붉게 물든다"
-  - 호감도/관계 -> "분위기가 무거웠다", "그녀가 나를 보는 눈빛에 신뢰가 담겼다"
-  - 무공 성취 -> "깨달음을 얻었다", "몸놀림이 예전과 다르다"
-- **주인공은 이 세계를 '게임'이 아닌 '철저한 현실(무림)'로 인식해야 합니다.**
-
-**[설정 준수 (Lore Compliance)]**
-- **절대 금지**: 위 [CURRENT GAME STATE]나 [LORE DATA]에 명시되지 않은 설정, 무공, 스킬, 아이템, 정보를 임의로 창조하거나 사용하는 것.
-- **원칙**: 모든 정보는 제공된 로어북(Lore Data)에 기반해야 하며, 없는 내용은 '알 수 없음'으로 처리하거나 묘사를 회피하십시오.
-- **예외**: 일상적인 사물이나 일반적인 배경 묘사는 허용되나, **고유 명사가 붙은 설정(무공명, 문파명, 인물명)**은 반드시 로어북을 따르십시오.
+**[서술 시점: 제한적 3인칭 관찰자 시점]**
+- **규칙**: 서술자는 **'주인공의 시선'**을 쫓는 카메라처럼 행동해야 합니다. 주인공(` + (state.playerName || "주인공") + `)이 보고, 듣고, 느낄 수 있는 것만 서술하십시오.
+- **전지적 시점 금지**:
+  - 서술자는 **신**이 아닙니다. 주인공의 마음은 알 수 있지만, 타인의 속마음이나, 벽 너머의 상황, 미래의 일, 주인공이 모르는 배경 지식은 절대 서술할 수 없습니다.
+  - 예시 (X): "저 도적은 사실 집에 두고 온 자식을 생각하며 망설였다." (주인공이 알 수 없는 타인의 내면)
+  - 예시 (O): "도적의 칼끝이 미세하게 떨렸다. 눈가에는 알 수 없는 그늘이 스쳐 지나갔다." (주인공의 관찰)
+- **수치 은폐 (게임 수치 비공개)**:
+  - 독자나 주인공에게 **[HP: 100], [경지: 일류], [내공: 30년]** 같은 게임 수치를 절대 노출하지 마십시오.
+  - 이 값들은 오직 AI인 당신이 판정을 내리기 위한 **비공개 정보**입니다.
+  - 수치는 **'묘사'**로 치환되어야 합니다. (HP 10% -> "피투성이가 되어 서 있기도 힘들다")
 `;
 
     return `
@@ -117,6 +129,11 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
 *이 정보는 현재 턴의 상황입니다. 최우선으로 반영하여 서술하십시오.*
 
 ${perspectiveRule}
+
+**[진행 단계: 등장인물 출현 규칙]**
+- **현재 단계**: ${phase}단계 (${phaseName})
+- **제약 사항**: ${phaseDescription}
+- **규칙**: 현재 주인공의 단계에 맞지 않는 상위 경지의 인물들은 주로 소문이나 전설, 또는 먼발치에서 관찰하는 형태로만 등장해야 합니다. 타당한 명분(예: 스크립트 된 이벤트) 없이는 그들과 직접적인 상호작용을 하지 마십시오.
 
 # [ACTIVE CHARACTERS]
 {{CHARACTER_INFO}}
@@ -131,7 +148,7 @@ ${directInputConstraints}
 - **현재 시간**: ${state.day || 1}일차 ${state.time || '14:00'}
 - **현재 위치**: ${state.currentLocation}
   - **설명**: ${locationDesc}${locationSecrets}
-- **주인공 상태**: [HP: ${stats.hp || 100}], [피로도: ${stats.fatigue || 0}], [경지: ${playerRank}]
+- **주인공 상태 (유저에게 비공개)**: [HP: ${stats.hp || 100}], [피로도: ${stats.fatigue || 0}], [경지: ${playerRank}]
   - **상세**: ${rankData.status} (능력: ${rankData.capability})
 - **내공**: ${stats.neigong || 0}년
   - **보유 무공**: ${skillList}
@@ -151,4 +168,3 @@ ${directInputConstraints}
 
 `;
 };
-

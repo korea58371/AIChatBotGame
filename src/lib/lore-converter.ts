@@ -409,7 +409,7 @@ export class LoreConverter {
             const pref = char.preferences || {};
             const social = char.social || {};
             // [Robustness] Handle potential nulls
-            const secret = char.secret || char.secret_data || {};
+
 
             // [FIX] Combined Relationship Keys (Eng + Kr)
             const relationships = char.relationships || char.인간관계 || null;
@@ -495,17 +495,7 @@ export class LoreConverter {
                 }
             }
 
-            // Secret (Erotic mood = Full details, Others = Warning only)
-            if (mood === 'erotic') {
-                if (secret && Object.keys(secret).length > 0) {
-                    output += `- **Secret (Erotic)**:\n`;
-                    output += LoreConverter.formatValue(secret, 1) + "\n";
-                }
-            } else {
-                if (secret && (secret.내용 || secret.content)) {
-                    output += `- **Secret**: <${secret.주의 || 'Warning'}> ${secret.내용 || secret.content}\n`;
-                }
-            }
+
 
             // Likes
             if (pref.like || pref['좋아하는 것']) output += `- **취향**: ${pref.like || pref['좋아하는 것']}\n`;

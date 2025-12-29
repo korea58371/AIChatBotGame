@@ -26,6 +26,33 @@ const safetySettings = [
     },
 ];
 
+// Helper: Retry with Exponential Backoff
+async function retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    retries: number = 3,
+    delay: number = 1000,
+    operationName: string = 'Gemini API'
+): Promise<T> {
+    try {
+        return await fn();
+    } catch (error: any) {
+        if (retries === 0 || !shouldRetry(error)) throw error;
+
+        console.warn(`[Gemini] ${operationName} failed. Retrying... (${retries} attempts left). Error: ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return retryWithBackoff(fn, retries - 1, delay * 2, operationName);
+    }
+}
+
+function shouldRetry(error: any): boolean {
+    const msg = (error.message || '').toLowerCase();
+    // 500: Internal Server Error
+    // 503: Service Unavailable
+    // 429: Too Many Requests (Rate Limit) -> Wait longer? Default backoff helps.
+    // fetch failed: Network issues
+    return msg.includes('500') || msg.includes('503') || msg.includes('429') || msg.includes('internal error') || msg.includes('fetch failed') || msg.includes('overloaded');
+}
+
 export async function generateResponse(
     apiKey: string,
     history: Message[],
@@ -137,7 +164,13 @@ export async function generateResponse(
             // 이렇게 하면 정적 캐시(Static Cache)를 깨지 않으면서도 매 턴 새로운 상태를 반영할 수 있습니다.
             const finalUserMessage = `${dynamicPrompt}\n\n${userMessage}`;
 
-            const result = await chatSession.sendMessage(finalUserMessage);
+            // [Retry Wrapper]
+            const result = await retryWithBackoff(
+                () => chatSession.sendMessage(finalUserMessage),
+                3,
+                1500,
+                `Story Generation (${modelName})`
+            );
             const response = result.response;
 
             // [DEBUG] Log Thinking Process
@@ -312,7 +345,13 @@ export async function generateGameLogic(
             console.log(prompt);
             console.log("----------------------------------");
 
-            const result = await model.generateContent(prompt);
+            // [Retry Wrapper] logic generation
+            const result = await retryWithBackoff(
+                () => model.generateContent(prompt),
+                3,
+                1500,
+                `Logic Generation (${modelName})`
+            );
             const response = result.response;
             const text = response.text();
 
