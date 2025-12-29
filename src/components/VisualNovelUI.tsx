@@ -27,6 +27,7 @@ import PhoneCall from './features/PhoneCall';
 import TVNews from './features/TVNews';
 import SmartphoneApp from './features/SmartphoneApp';
 import Article from './features/Article';
+import DebugPopup from './features/DebugPopup';
 
 const translations = {
     en: {
@@ -212,6 +213,7 @@ function ResponseTimer({ avgTime }: { avgTime: number }) {
                     transition={{ type: "tween", ease: "linear", duration: 0.1 }}
                 />
             </div>
+
         </div>
     );
 }
@@ -410,10 +412,21 @@ export default function VisualNovelUI() {
 
     // Debug State
     const [isDebugOpen, setIsDebugOpen] = useState(false);
+    const [isLocalhost, setIsLocalhost] = useState(false);
     const [debugInput, setDebugInput] = useState('');
     const [lastLogicResult, setLastLogicResult] = useState<any>(null);
     const [pendingLogic, setPendingLogic] = useState<any>(null);
     const [lastStoryOutput, setLastStoryOutput] = useState<string>(''); // [Logging] Store last story output
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const hostname = window.location.hostname;
+            console.log("Debug: Hostname detected:", hostname);
+            // Relaxed check: allow 127.0.0.1, localhost, OR if user adds ?debug=true
+            const isDebugParam = new URLSearchParams(window.location.search).get('debug') === 'true';
+            setIsLocalhost(hostname === 'localhost' || hostname === '127.0.0.1' || isDebugParam);
+        }
+    }, []);
 
     // Toast State
     const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'warning' }[]>([]);
@@ -2523,6 +2536,28 @@ export default function VisualNovelUI() {
                     )}
                 </AnimatePresence>
 
+                {/* Top Right Menu */}
+                <div className="absolute top-[2vh] md:top-4 right-[2vw] md:right-8 flex gap-2 z-50 pointer-events-auto">
+                    {/* Debug Button (Localhost Only) */}
+                    {isLocalhost && (
+                        <button
+                            onClick={() => setIsDebugOpen(true)}
+                            className="p-3 bg-red-900/80 backdrop-blur border border-red-500/30 rounded-full text-red-500 hover:bg-red-500/20 hover:scale-110 transition-all shadow-lg pointer-events-auto"
+                            title="Debug Console"
+                        >
+                            <Bolt size={20} />
+                        </button>
+                    )}
+
+                    <button
+                        onClick={() => setShowCharacterInfo(true)}
+                        className="p-3 bg-gray-800/80 backdrop-blur border border-yellow-500/30 rounded-full text-yellow-500 hover:bg-yellow-500/20 hover:scale-110 transition-all shadow-lg pointer-events-auto"
+                        title={t.charInfo}
+                    >
+                        <Settings size={20} />
+                    </button>
+                </div>
+
                 {/* Toast Notifications */}
                 <div className="fixed top-24 right-4 z-50 flex flex-col gap-2 pointer-events-none">
                     <AnimatePresence>
@@ -3578,6 +3613,13 @@ Instructions:
                     )
                 }
             </div >
+            {/* Debug Popup */}
+            {isLocalhost && (
+                <DebugPopup
+                    isOpen={isDebugOpen}
+                    onClose={() => setIsDebugOpen(false)}
+                />
+            )}
         </div >
     );
 }
