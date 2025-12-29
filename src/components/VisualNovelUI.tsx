@@ -1288,6 +1288,12 @@ export default function VisualNovelUI() {
                         hp: useGameStore.getState().playerStats.hp,
                         mp: useGameStore.getState().playerStats.mp,
                         neigong: useGameStore.getState().playerStats.neigong,
+                        scenario_summary: useGameStore.getState().scenarioSummary, // [Log] Dump Summary
+                        memories: useGameStore.getState().activeCharacters.reduce((acc: any, charName: string) => {
+                            const cData = useGameStore.getState().characterData[charName];
+                            if (cData && cData.memories) acc[charName] = cData.memories;
+                            return acc;
+                        }, {}) // [Log] Dump Memories of Active Characters
                     },
                     story_output: responseText
                 }).then(() => console.log(`📝 [Log Sent] Total Cost: $${grandTotalCost.toFixed(6)}`));
@@ -1318,7 +1324,13 @@ export default function VisualNovelUI() {
                             hp: useGameStore.getState().playerStats.hp,
                             mp: useGameStore.getState().playerStats.mp,
                             neigong: useGameStore.getState().playerStats.neigong,
-                            error: `LogicFailed: ${err.message}` // Record error
+                            error: `LogicFailed: ${err.message}`, // Record error
+                            scenario_summary: useGameStore.getState().scenarioSummary, // [Log] Dump Summary (Fallback)
+                            memories: useGameStore.getState().activeCharacters.reduce((acc: any, charName: string) => {
+                                const cData = useGameStore.getState().characterData[charName];
+                                if (cData && cData.memories) acc[charName] = cData.memories;
+                                return acc;
+                            }, {}) // [Log] Dump Memories (Fallback)
                         },
                         story_output: responseText
                     }).then(() => console.log(`📝 [Log Sent - Fallback] Cost: $${fallbackTotalCost.toFixed(6)}`));
