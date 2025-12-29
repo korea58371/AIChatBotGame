@@ -1099,10 +1099,19 @@ export default function VisualNovelUI() {
             // [Logging] Track costs across steps
             let storyCost = 0;
 
+            // [OPTIMIZATION] Prune state for Story Model too (just in case)
+            const rawStateForStory = useGameStore.getState();
+            const {
+                lore, events, wikiData, backgroundMappings,
+                scriptQueue, displayHistory, chatHistory,
+                characterCreationQuestions, constants,
+                ...prunedStateForStory
+            } = rawStateForStory;
+
             const responsePromise = serverGenerateResponse(
                 currentHistory,
                 text,
-                sanitizedState,
+                prunedStateForStory, // Send pruned state
                 language,
                 isDirectInput // [FIX] Pass Checked Flag
             );
@@ -1209,10 +1218,22 @@ export default function VisualNovelUI() {
 
             // 2. Generate Logic (Async)
             setIsLogicPending(true); // [Logic Lock] Lock input
+            // [OPTIMIZATION] Prune state to reduce payload size (Server re-hydrates lore/events)
+            // Sending 300KB+ JSON causes "Server Components render" error or timeouts
+            const rawState = useGameStore.getState();
+            const {
+                lore: _l, events: _e, wikiData: _w, backgroundMappings: _b,
+                scriptQueue: _sq, displayHistory: _dh, chatHistory: _ch,
+                characterCreationQuestions: _ccq, constants: _c,
+                ...prunedState
+            } = rawState;
+
+            console.log("[Client] Sending Pruned State to Logic Model...");
+
             serverGenerateGameLogic(
                 text,
                 responseText,
-                useGameStore.getState() // Pass full state for context-aware spawning
+                prunedState // Pass pruned state for context-aware spawning
             ).then(logic => {
                 // Log Logic Model Debug Info
                 if (logic) {
@@ -2542,7 +2563,6 @@ Instructions:
 
                                                 // [Fix] Update Player Stats with Start Choices (Optimistic)
                                                 // [CRITICAL] RESET ALL PERSISTENT DATA FOR NEW GAME
-                                                // We explicitly overwrite skills, inventory, and relations to ensure no "ghost data" remains.
                                                 const newStats = {
                                                     ...useGameStore.getState().playerStats,
                                                     skills: [],        // Clear Skills
