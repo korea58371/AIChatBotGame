@@ -499,27 +499,30 @@ export default function VisualNovelUI() {
 
     // Initialize Session ID
     useEffect(() => {
+        const generateUUID = () => {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            } else {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : ((r & 0x3) | 0x8);
+                    return v.toString(16);
+                });
+            }
+        };
+
         try {
             let sid = sessionStorage.getItem('vn_session_id');
             if (!sid) {
-                // Robust UUID Generation (Mobile/Insecure Context Fallback)
-                if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-                    sid = crypto.randomUUID();
-                } else {
-                    // Fallback for older browsers / http context
-                    sid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                        const r = Math.random() * 16 | 0;
-                        const v = c === 'x' ? r : ((r & 0x3) | 0x8);
-                        return v.toString(16);
-                    });
-                }
+                sid = generateUUID();
                 sessionStorage.setItem('vn_session_id', sid);
             }
             setSessionId(sid);
         } catch (e) {
-            console.warn("Session Storage Access/UUID Gen failed:", e);
-            // In-memory fallback if storage fails
-            setSessionId(`guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+            console.warn("Session Storage Access failed:", e);
+            // In-memory fallback if storage fails - MUST be valid UUID for DB
+            // We use the same UUID generator but don't persist it
+            setSessionId(generateUUID());
         }
     }, []);
     // Prevent double-firing in Strict Mode
