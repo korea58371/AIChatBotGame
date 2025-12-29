@@ -1300,6 +1300,29 @@ export default function VisualNovelUI() {
             })
                 .catch(err => {
                     console.error("Logic Generation Failed:", err);
+
+                    // [Logging] Fallback: Log even if Logic failed
+                    const fallbackTotalCost = storyCost; // Logic cost is 0
+                    submitGameplayLog({
+                        session_id: sessionId || '00000000-0000-0000-0000-000000000000',
+                        game_mode: useGameStore.getState().activeGameId,
+                        turn_count: turnCount,
+                        choice_selected: text,
+                        player_rank: useGameStore.getState().playerStats.playerRank,
+                        location: useGameStore.getState().currentLocation,
+                        timestamp: new Date().toISOString(),
+                        player_name: useGameStore.getState().playerName,
+                        cost: fallbackTotalCost,
+                        input_type: isDirectInput ? 'direct' : 'choice',
+                        meta: {
+                            hp: useGameStore.getState().playerStats.hp,
+                            mp: useGameStore.getState().playerStats.mp,
+                            neigong: useGameStore.getState().playerStats.neigong,
+                            error: `LogicFailed: ${err.message}` // Record error
+                        },
+                        story_output: responseText
+                    }).then(() => console.log(`📝 [Log Sent - Fallback] Cost: $${fallbackTotalCost.toFixed(6)}`));
+
                 })
                 .finally(() => {
                     setIsLogicPending(false); // [Logic Lock] Unlock input

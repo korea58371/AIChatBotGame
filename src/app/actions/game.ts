@@ -1,5 +1,7 @@
 'use server';
 
+export const maxDuration = 300; // 5 minutes timeout for long context generation
+
 import { generateResponse, generateGameLogic, generateSummary, preloadCache } from '@/lib/gemini';
 import { Message } from '@/lib/store';
 // import fs from 'fs';

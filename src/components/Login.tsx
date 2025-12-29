@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
-import { Mail, Loader2 } from 'lucide-react';
+import { Mail, Loader2, Chrome } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -32,6 +32,27 @@ export default function Login() {
             setMessage({ text: 'Check your email for the magic link!', type: 'success' });
         }
         setLoading(false);
+    };
+
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        setMessage(null);
+
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback`,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                },
+            },
+        });
+
+        if (error) {
+            setMessage({ text: error.message, type: 'error' });
+            setLoading(false);
+        }
     };
 
     const handleGuestLogin = async () => {
@@ -80,6 +101,28 @@ export default function Login() {
                     className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 rounded transition disabled:opacity-50 flex justify-center items-center gap-2"
                 >
                     {loading ? <Loader2 className="animate-spin" size={18} /> : 'Send Magic Link'}
+                </button>
+
+                <div className="relative my-4">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-600"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-gray-800 text-gray-400">Or continue with</span>
+                    </div>
+                </div>
+
+                <button
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 rounded transition disabled:opacity-50 flex justify-center items-center gap-2"
+                >
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : (
+                        <>
+                            <Chrome size={18} className="text-blue-600" />
+                            <span>Sign in with Google</span>
+                        </>
+                    )}
                 </button>
 
                 <div className="relative my-4">
