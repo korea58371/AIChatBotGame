@@ -50,7 +50,7 @@ export default function TVNews({ anchor, background, content }: TVNewsProps) {
                 )}
 
                 {/* Character Layer (Anchor/Interviewee) */}
-                {!anchorImage.includes("Unknown") && (
+                {anchorImage && !anchorImage.includes("Unknown") && (
                     <motion.img
                         key={anchor}
                         initial={{ y: 100, opacity: 0 }}
