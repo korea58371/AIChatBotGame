@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { useGameStore } from '@/lib/store';
-import { Settings, Play, Database, ShoppingBag, RotateCcw, Save } from 'lucide-react';
+import { Settings, Play, Database, ShoppingBag, RotateCcw, Save, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Login from '@/components/Login';
 
@@ -21,6 +21,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [showLogin, setShowLogin] = useState(false);
     const [showLoadModal, setShowLoadModal] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     // Game State Checks
     const [hasActiveGame, setHasActiveGame] = useState(false);
@@ -200,7 +201,18 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 {/* Overlay Gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
 
-                {/* ... (Top Bar skipped) ... */}
+                {/* Overlay Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
+
+                {/* Top Right: Settings Button */}
+                <div className="absolute top-6 right-6 z-50">
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="p-3 bg-gray-800/50 hover:bg-gray-700/80 rounded-full text-white/70 hover:text-white border border-white/10 hover:border-white/30 transition-all backdrop-blur-md"
+                    >
+                        <Settings className="w-6 h-6" />
+                    </button>
+                </div>
 
                 {/* Logo Area */}
                 <div className={`absolute top-[30%] w-full flex z-10 pointer-events-none transform -translate-y-1/2 ${activeGameId === 'wuxia' ? 'justify-center' : 'right-0 justify-end pr-10 md:pr-32'}`}>
@@ -426,7 +438,134 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </div>
-        </div>
+
+                {/* Settings / Account Modal */}
+                <AnimatePresence>
+                    {showSettings && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                            onClick={() => setShowSettings(false)}
+                        >
+                            <div
+                                className="bg-white/95 border border-white/20 w-full max-w-lg p-6 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] relative flex flex-col gap-6 backdrop-blur-xl"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+                                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                        <div className="p-2 bg-blue-50 rounded-lg">
+                                            <Settings className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        설정 <span className="text-sm font-normal text-gray-400 font-mono self-end mb-0.5">Settings</span>
+                                    </h3>
+                                    <button onClick={() => setShowSettings(false)} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-bold text-gray-600 uppercase tracking-widest flex items-center gap-2 ml-1">
+                                        <span>👤</span> My Account
+                                    </h4>
+
+                                    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200/60 shadow-inner">
+                                        {user ? (
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-3">
+                                                    {user.user_metadata?.avatar_url ? (
+                                                        <img
+                                                            src={user.user_metadata.avatar_url}
+                                                            alt="Avatar"
+                                                            className="w-10 h-10 rounded-full border border-gray-300"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">
+                                                            👤
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col text-sm overflow-hidden">
+                                                        <span className="text-gray-900 font-bold truncate text-base">{user.email}</span>
+                                                        <span className="text-gray-400 text-xs truncate font-mono">ID: {user.id.slice(0, 8)}...</span>
+                                                    </div>
+                                                    <div className="ml-auto flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100/50 shadow-sm shrink-0">
+                                                        <span className="text-xs">💰</span>
+                                                        <span className="font-mono text-sm font-bold">{coins.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="h-px bg-gray-200" />
+
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm("정말 로그아웃 하시겠습니까?")) {
+                                                                const { error } = await supabase.auth.signOut();
+                                                                if (error) {
+                                                                    alert("로그아웃 중 오류가 발생했습니다: " + error.message);
+                                                                    console.error("Logout error:", error);
+                                                                } else {
+                                                                    setUser(null);
+                                                                    setShowSettings(false);
+                                                                    window.location.reload();
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="flex-1 py-2.5 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 rounded-lg text-sm font-bold transition-all border border-gray-200 shadow-sm hover:shadow-md"
+                                                    >
+                                                        로그아웃
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            const confirmMsg = "⚠ 정말 계정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 모든 진행 데이터와 구매 내역이 영구적으로 삭제됩니다.";
+                                                            if (confirm(confirmMsg)) {
+                                                                if (prompt("삭제를 원하시면 '삭제'라고 입력해주세요.") === '삭제') {
+                                                                    try {
+                                                                        const { deleteAccount } = await import('@/app/actions/auth');
+                                                                        const result = await deleteAccount();
+                                                                        if (result.success) {
+                                                                            localStorage.clear(); // [CLEANUP] Clear all local data
+                                                                            alert("탈퇴가 완료되었습니다. 모든 데이터가 삭제되었습니다.");
+                                                                            window.location.reload();
+                                                                        } else {
+                                                                            alert("오류가 발생했습니다: " + result.error);
+                                                                        }
+                                                                    } catch (e) {
+                                                                        console.error("Delete failed:", e);
+                                                                        alert("처리 중 알 수 없는 오류가 발생했습니다.");
+                                                                    }
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+                                                    >
+                                                        회원 탈퇴
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-gray-500 text-sm">
+                                                <p className="mb-2">로그인되어 있지 않습니다.</p>
+                                                <button
+                                                    onClick={() => { setShowSettings(false); setShowLogin(true); }}
+                                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-sm"
+                                                >
+                                                    로그인 / 회원가입
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="text-center text-xs text-gray-600 font-mono mt-4">
+                                    Visual Novel AI Engine v2.5.0
+                                </div>
+                            </div>
+                        </motion.div>
+                    )
+                    }
+                </AnimatePresence >
+            </div >
+        </div >
     );
 }

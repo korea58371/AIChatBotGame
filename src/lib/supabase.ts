@@ -5,9 +5,11 @@ let supabase: ReturnType<typeof createBrowserClient> | undefined;
 
 export const createClient = () => {
     if (!supabase) {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
         supabase = createBrowserClient(
-            'https://ifrxsdeikirjxthzoxye.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmcnhzZGVpa2lyanh0aHpveHllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MzIzNzAsImV4cCI6MjA4MDQwODM3MH0.2e4gOKKFHfIvRY-kA7GWW6KNcg-rBIthijZ3Xnrpxoc'
+            supabaseUrl,
+            supabaseKey
         );
     }
     return supabase;

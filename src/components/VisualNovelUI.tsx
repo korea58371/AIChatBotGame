@@ -17,7 +17,7 @@ import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping
 import { submitGameplayLog } from '@/app/actions/log';
 
 
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2 } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { EventManager } from '@/lib/event-manager';
@@ -437,18 +437,44 @@ export default function VisualNovelUI() {
     useEffect(() => {
         let mounted = true;
 
-        // Initial Fetch (Race condition protected)
+        // Initial Fetch (Robust)
         const fetchInitialSession = async () => {
-            const { data } = await supabase.auth.getSession();
-            if (mounted && data.session) {
-                setSession(data.session);
-                // Fetch coins
+            // 1. Try getSession (Local Storage)
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+            if (mounted && sessionData.session) {
+                console.log("VN: Session found via getSession");
+                setSession(sessionData.session);
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('coins')
-                    .eq('id', data.session.user.id)
+                    .eq('id', sessionData.session.user.id)
                     .single();
                 if (mounted && profile) setUserCoins(profile.coins);
+                return;
+            }
+
+            // 2. Fallback to getUser (Server Verification) - vital for persistence issues
+            if (!sessionData.session || sessionError) {
+                console.log("VN: getSession failed/empty, trying getUser...");
+                const { data: userData, error: userError } = await supabase.auth.getUser();
+
+                if (mounted && userData.user) {
+                    console.log("VN: User found via getUser");
+                    // Construct a pseudo-session or just get session again (it might be refreshed)
+                    const { data: refreshedSession } = await supabase.auth.getSession();
+                    if (refreshedSession.session) {
+                        setSession(refreshedSession.session);
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('coins')
+                            .eq('id', refreshedSession.session.user.id)
+                            .single();
+                        if (mounted && profile) setUserCoins(profile.coins);
+                    }
+                } else {
+                    console.log("VN: No user found (Guest Mode)");
+                }
             }
         };
         fetchInitialSession();
@@ -2357,7 +2383,7 @@ export default function VisualNovelUI() {
                     onClose={() => setIsPhoneOpen(false)}
                 />
 
-                {/* Reset Confirmation Modal */}
+                {/* Settings Modal (Replaces Reset Confirm) */}
                 <AnimatePresence>
                     {showResetConfirm && (
                         <motion.div
@@ -2365,29 +2391,132 @@ export default function VisualNovelUI() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-                            onClick={(e) => e.stopPropagation()} // Prevent click-through
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="bg-slate-900 border border-slate-600 w-full max-w-md p-6 rounded-xl shadow-2xl flex flex-col gap-4">
-                                <h3 className="text-xl font-bold text-white text-center">게임 초기화</h3>
-                                <p className="text-gray-300 text-center text-sm md:text-base whitespace-pre-line">
-                                    현재 진행 상황을 초기화하고{'\n'}메인 화면으로 돌아가시겠습니까?
-                                </p>
-                                <div className="flex gap-3 justify-center mt-2">
-                                    <button
-                                        onClick={() => setShowResetConfirm(false)}
-                                        className="px-6 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold transition-colors"
-                                    >
-                                        아니오 (취소)
+                            <div className="bg-white/95 border border-white/20 w-full max-w-lg p-6 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] flex flex-col gap-6 max-h-[90vh] overflow-y-auto backdrop-blur-xl">
+                                <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+                                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                        <div className="p-2 bg-blue-50 rounded-lg">
+                                            <Settings className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        {(t as any).settings || "Settings"}
+                                    </h3>
+                                    <button onClick={() => setShowResetConfirm(false)} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
+                                        <X className="w-5 h-5" />
                                     </button>
-                                    <button
-                                        onClick={() => {
-                                            useGameStore.getState().resetGame();
-                                            router.push('/');
-                                        }}
-                                        className="px-6 py-2 rounded-lg bg-red-800 hover:bg-red-700 text-red-100 font-bold transition-colors border border-red-600"
-                                    >
-                                        예 (초기화)
-                                    </button>
+                                </div>
+
+                                {/* Account Section */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                        <span>👤</span> {(t as any).account || "Account"}
+                                    </h4>
+
+                                    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200/60 shadow-inner">
+                                        {session?.user ? (
+                                            <div className="space-y-4">
+                                                <div className="flex items-center gap-3">
+                                                    {session.user.user_metadata?.avatar_url ? (
+                                                        <img
+                                                            src={session.user.user_metadata.avatar_url}
+                                                            alt="Avatar"
+                                                            className="w-10 h-10 rounded-full border border-gray-600"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">
+                                                            👤
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col text-sm overflow-hidden">
+                                                        <span className="text-gray-900 font-bold truncate text-base">{session.user.email}</span>
+                                                        <span className="text-gray-400 text-xs truncate font-mono">ID: {session.user.id.slice(0, 8)}...</span>
+                                                    </div>
+                                                    <div className="ml-auto flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100/50 shadow-sm shrink-0">
+                                                        <span className="text-xs">💰</span>
+                                                        <span className="font-mono text-sm font-bold">{userCoins?.toLocaleString() || 0}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="h-px bg-gray-200" />
+
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm("정말 로그아웃 하시겠습니까?")) {
+                                                                const { error } = await supabase.auth.signOut();
+                                                                if (error) {
+                                                                    alert("로그아웃 중 오류가 발생했습니다: " + error.message);
+                                                                    console.error("Logout error:", error);
+                                                                } else {
+                                                                    setSession(null);
+                                                                    window.location.href = '/';
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="flex-1 py-2.5 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 rounded-lg text-sm font-bold transition-all border border-gray-200 shadow-sm hover:shadow-md"
+                                                    >
+                                                        로그아웃
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            const confirmMsg = "⚠ 정말 계정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 모든 진행 데이터와 구매 내역이 영구적으로 삭제됩니다.";
+                                                            if (confirm(confirmMsg)) {
+                                                                if (prompt("삭제를 원하시면 '삭제'라고 입력해주세요.") === '삭제') {
+                                                                    setIsProcessing(true);
+                                                                    try {
+                                                                        const { deleteAccount } = await import('@/app/actions/auth');
+                                                                        const result = await deleteAccount();
+                                                                        if (result.success) {
+                                                                            localStorage.clear(); // [CLEANUP] Clear all local data to prevent ghost state
+                                                                            alert("탈퇴가 완료되었습니다. 모든 데이터가 삭제되었습니다.");
+                                                                            window.location.href = '/';
+                                                                        } else {
+                                                                            alert("오류가 발생했습니다: " + result.error);
+                                                                        }
+                                                                    } catch (e) {
+                                                                        console.error("Delete failed:", e);
+                                                                        alert("처리 중 알 수 없는 오류가 발생했습니다.");
+                                                                    } finally {
+                                                                        setIsProcessing(false);
+                                                                    }
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+                                                    >
+                                                        회원 탈퇴
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-2 text-gray-500 text-sm">
+                                                Guest Mode (Login required for cloud save)
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Danger Zone */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-bold text-red-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                                        <span>⚠</span> Danger Zone
+                                    </h4>
+                                    <div className="bg-red-50 p-5 rounded-xl border border-red-100 shadow-inner">
+                                        <p className="text-gray-500 text-sm mb-4">
+                                            현재 진행 상황을 모두 잃고 메인 화면으로 돌아갑니다.
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                if (confirm("정말 게임을 초기화하시겠습니까? 저장되지 않은 진행 상황은 잃게 됩니다.")) {
+                                                    useGameStore.getState().resetGame();
+                                                    router.push('/');
+                                                }
+                                            }}
+                                            className="w-full py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+                                        >
+                                            게임 초기화 (Reset Game)
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
