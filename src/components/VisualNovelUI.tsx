@@ -543,51 +543,51 @@ export default function VisualNovelUI() {
                 useGameStore.getState().setAvailableExtraImages([]);
             }
 
-            // [Startup Warmup] Preload Cache in Background
-            if (isWarmupTriggered.current) return;
-            isWarmupTriggered.current = true;
+            // [Startup Warmup] Preload Cache in Background - DISABLED (Cost Saving)
+            // if (isWarmupTriggered.current) return;
+            // isWarmupTriggered.current = true;
 
-            try {
-                console.log("[System] Triggering Cache Warmup...");
-                // Pass current state (Initial)
-                serverPreloadCache(useGameStore.getState()).then((usageMetadata) => {
-                    if (usageMetadata) {
-                        const cachedTokens = (usageMetadata as any).cachedContentTokenCount || 0;
-                        const inputTokens = usageMetadata.promptTokenCount - cachedTokens;
-                        const outputTokens = usageMetadata.candidatesTokenCount;
+            // try {
+            //     console.log("[System] Triggering Cache Warmup...");
+            //     // Pass current state (Initial)
+            //     serverPreloadCache(useGameStore.getState()).then((usageMetadata) => {
+            //         if (usageMetadata) {
+            //             const cachedTokens = (usageMetadata as any).cachedContentTokenCount || 0;
+            //             const inputTokens = usageMetadata.promptTokenCount - cachedTokens;
+            //             const outputTokens = usageMetadata.candidatesTokenCount;
 
-                        // [DYNAMIC PRICING] Use Shared Config
-                        const modelName = MODEL_CONFIG.STORY;
-                        const rate = PRICING_RATES[modelName] || PRICING_RATES['gemini-2.5-flash'];
+            //             // [DYNAMIC PRICING] Use Shared Config
+            //             const modelName = MODEL_CONFIG.STORY;
+            //             const rate = PRICING_RATES[modelName] || PRICING_RATES['gemini-2.5-flash'];
 
-                        const costPer1M_Input = rate.input;
-                        const costPer1M_Output = rate.output;
-                        // Cache hit pricing is typically cheaper or same inputs. 
-                        // For Pro it is $0.3125 (Input is $1.25). 
-                        // For Flash it is $0.01875 (Input is $0.075).
-                        // Since we don't have this in PRICING_RATES fully, we can approximate or add it there.
-                        // Assuming 25% of input cost for cached input (Standard Google Ratio).
-                        const costPer1M_Cached = rate.input * 0.25;
+            //             const costPer1M_Input = rate.input;
+            //             const costPer1M_Output = rate.output;
+            //             // Cache hit pricing is typically cheaper or same inputs. 
+            //             // For Pro it is $0.3125 (Input is $1.25). 
+            //             // For Flash it is $0.01875 (Input is $0.075).
+            //             // Since we don't have this in PRICING_RATES fully, we can approximate or add it there.
+            //             // Assuming 25% of input cost for cached input (Standard Google Ratio).
+            //             const costPer1M_Cached = rate.input * 0.25;
 
-                        const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
-                        const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
-                        const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
-                        const totalCost = costInput + costCached + costOutput;
-                        const totalCostKRW = totalCost * 1480;
+            //             const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
+            //             const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
+            //             const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
+            //             const totalCost = costInput + costCached + costOutput;
+            //             const totalCostKRW = totalCost * 1480;
 
-                        console.log(`Token Usage (Cache Warmup - ${modelName}):`);
-                        console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
-                        console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)})`);
-                        console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
-                        console.log(`- Total:     $${totalCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`);
+            //             console.log(`Token Usage (Cache Warmup - ${modelName}):`);
+            //             console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
+            //             console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)})`);
+            //             console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
+            //             console.log(`- Total:     $${totalCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`);
 
-                        const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
-                        addToast(`Warmup Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
-                    }
-                });
-            } catch (e) {
-                console.error("Warmup Failed:", e);
-            }
+            //             const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
+            //             addToast(`Warmup Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
+            //         }
+            //     });
+            // } catch (e) {
+            //     console.error("Warmup Failed:", e);
+            // }
         };
         loadAssets();
     }, []);
