@@ -162,7 +162,8 @@ export interface PlayerStats {
     leadership: number; humor: number; lust: number;
   };
   relationships: Record<string, number>;
-  injuries: string[]; // [New] List of active injuries e.g. ["Right Arm Broken", "Internal bleeding"]
+  active_injuries?: string[]; // [New]
+  memories?: string[]; // [New] Character-specific memories
   fatigue: number; // [New] 0-100
   narrative_perspective?: string; // [New] '1인칭' or '3인칭'
 }
@@ -350,7 +351,7 @@ export const useGameStore = create<GameState>()(
           }
         };
       }),
-      updateCharacter: (id, data) => set((state) => {
+      updateCharacterData: (id, data) => set((state) => {
         const existingChar = state.characterData[id];
         if (!existingChar) return {};
         return {

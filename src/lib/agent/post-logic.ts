@@ -77,7 +77,9 @@ Analyze implicit changes:
 
         try {
             const result = await model.generateContent(prompt);
-            const data = JSON.parse(result.response.text());
+            const text = result.response.text();
+            console.log(`[PostLogic] Raw Output:\n${text}`); // [DEBUG]
+            const data = JSON.parse(text);
             return { ...data, usageMetadata: result.response.usageMetadata, _debug_prompt: prompt };
         } catch (e) {
             console.warn("PostLogic 분석 실패 (치명적이지 않음):", e);

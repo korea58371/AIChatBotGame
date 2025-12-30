@@ -1278,6 +1278,11 @@ export default function VisualNovelUI() {
                 new_memories: postLogic.new_memories,
                 // [Fix] Propagate Active Characters
                 activeCharacters: postLogic.activeCharacters,
+
+                // [Fix] Propagate full PostLogic object for applying Stats & Memories
+                post_logic: postLogic,
+                character_memories: postLogic.character_memories,
+
                 _debug_router: routerOut
             };
 
@@ -1697,7 +1702,7 @@ export default function VisualNovelUI() {
 
         // [New] Injuries Update
         if (logicResult.injuriesUpdate) {
-            let currentInjuries = [...(newStats.injuries || [])];
+            let currentInjuries = [...(newStats.active_injuries || [])];
 
             // Add
             if (logicResult.injuriesUpdate.add) {
@@ -1716,10 +1721,14 @@ export default function VisualNovelUI() {
                     currentInjuries = currentInjuries.filter(i => i !== injury);
                     if (currentInjuries.length < initialLen) {
                         addToast(`부상 회복(Healed): ${injury}`, 'success');
+                        hasInjuryChanges = true;
                     }
                 });
             }
-            newStats.injuries = currentInjuries;
+            if (hasInjuryChanges) {
+                newStats.active_injuries = currentInjuries;
+                addToast('부상 상태가 업데이트되었습니다.', 'warning');
+            }
         }
 
         setPlayerStats(newStats);
@@ -1801,7 +1810,7 @@ export default function VisualNovelUI() {
                     addToast(`Memories Updated: ${char.name}`, 'info');
                 }
 
-                useGameStore.getState().updateCharacter(char.id, updateData);
+                useGameStore.getState().updateCharacterData(char.id, updateData);
                 if (!updateData.memories) addToast(`Character Updated: ${char.name}`, 'info');
             });
         }
@@ -1901,16 +1910,31 @@ export default function VisualNovelUI() {
                 // Assumption: Character ID is the first part before the first underscore acting as a delimiter for emotion
                 // BUT: Some IDs actully have underscores (e.g. "jun_seo_yeon"). 
                 // Hybrid Strategy:
-                // 1. Check exact match first
-                if (availableChars.includes(rawName)) return rawName;
+                const playerStats = useGameStore.getState().playerStats;
+                const playerName = playerStats.name || 'Player';
 
-                // 2. Try removing common suffix patterns (anything starting with _Anger, _Smile, _Lv, etc is suspicious if it's not in the list)
-                // Use Regex to remove _Emotion or _Lv patterns
+                // Use Regex to remove _Emotion or _Lv patterns for cleaning
                 // Example: BaekSoYu_Anger_Lv1 -> BaekSoYu
                 const cleaned = rawName.replace(/(_[A-Z][a-z]+)+(_Lv\d+)?$/, '');
 
+                // 1. Check if it's the Player (Exact name or Alias)
+                const isPlayer = rawName === playerName
+                    || ['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인'].includes(cleaned.toLowerCase())
+                    || cleaned === playerName;
+
+                if (isPlayer) {
+                    return playerName;
+                }
+
+                // 2. Check exact match in assets
+                if (availableChars.includes(rawName)) return rawName;
+
                 // Check if cleaned version exists
                 // We also need to handle cases like "baek_so_yu" vs "BaekSoYu" -> normalize to lowercase for check
+
+                if (['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인'].includes(cleaned.toLowerCase())) {
+                    return useGameStore.getState().playerStats.name || 'Player';
+                }
 
                 // Try fuzzy match on Cleaned Name first
                 const matchClean = findBestMatch(cleaned, availableChars);
@@ -1937,23 +1961,43 @@ export default function VisualNovelUI() {
         }
 
         // [New] Character Memories Update
-        if (logicResult.character_memories) {
+        // Fix: content is nested in post_logic
+        const memorySource = logicResult.post_logic?.character_memories || logicResult.character_memories;
+
+        if (memorySource) {
+            console.log("Processing Character Memories:", logicResult.character_memories); // [DEBUG]
             const store = useGameStore.getState();
             const availableChars = store.availableCharacterImages || [];
+            const playerStats = store.playerStats;
 
-            Object.entries(logicResult.character_memories).forEach(([charId, memories]) => {
+            Object.entries(memorySource).forEach(([charId, memories]) => {
                 if (!Array.isArray(memories) || memories.length === 0) return;
 
-                // Resolve ID (Fuzzy Match)
+                // Resolve ID (Fuzzy Match + Player Map)
                 let targetId = charId;
-                const match = findBestMatch(charId, availableChars);
-                if (match) targetId = match;
+
+                // Handle Player Aliases
+                if (['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인'].includes(charId.toLowerCase())) {
+                    targetId = playerStats.name || 'Player'; // Use actual player name
+                } else {
+                    // [Fix] Resolve ID against Character Data Keys (Primary) to prevent Phantom Entries
+                    const dataKeys = Object.keys(store.characterData);
+
+                    // 1. Try match against Data Keys first (Name-based)
+                    let match = findBestMatch(charId, dataKeys);
+
+                    // 2. If no match in Data, try Assets (and hope for the best/fallback)
+                    if (!match) {
+                        match = findBestMatch(charId, availableChars);
+                    }
+
+                    if (match) targetId = match;
+                }
 
                 console.log(`[MemoryUpdate] Adding memory to ${targetId} (raw: ${charId}):`, memories);
 
                 // Update Store
-                store.addCharacterMemory(targetId, memories[0]); // Currently supporting single memory add per turn mainly
-                // If multiple, add all? definition: addCharacterMemory(id, memory)
+                store.addCharacterMemory(targetId, memories[0]);
                 if (memories.length > 1) {
                     for (let i = 1; i < memories.length; i++) {
                         store.addCharacterMemory(targetId, memories[i]);
