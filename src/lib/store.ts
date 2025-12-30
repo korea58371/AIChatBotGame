@@ -168,6 +168,14 @@ export interface PlayerStats {
   narrative_perspective?: string; // [New] '1인칭' or '3인칭'
 }
 
+export interface CharacterData {
+  id: string;
+  name: string;
+  relationship?: number;
+  memories?: string[];
+  [key: string]: any; // Allow extensibility
+}
+
 export interface Item {
   id: string;
   name: string;
