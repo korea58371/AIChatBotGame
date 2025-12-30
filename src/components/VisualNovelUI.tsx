@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
-import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache } from '@/app/actions/game';
+import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn } from '@/app/actions/game';
 import { getCharacterImage } from '@/lib/image-mapper';
 import { resolveBackground } from '@/lib/background-manager'; // Added import // Added import
 import { MODEL_CONFIG, PRICING_RATES } from '@/lib/model-config';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
+import { findBestMatch } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping'; // [New] BGM Mapping
 
@@ -1146,259 +1147,174 @@ export default function VisualNovelUI() {
                 characterCreationQuestions, constants,
                 ...prunedStateForStory
             } = rawStateForStory;
+            const storyModel = useGameStore.getState().storyModel;
+            console.log(`[VisualNovelUI] Using Story Model: ${storyModel}`);
 
-            const responsePromise = serverGenerateResponse(
+            const responsePromise = serverAgentTurn(
                 currentHistory,
                 text,
                 prunedStateForStory, // Send pruned state
                 language,
-                isDirectInput // [FIX] Pass Checked Flag
+                storyModel || 'gemini-3-pro-preview', // [FIX] 5th Arg: Model Name
+                isDirectInput // [FIX] 6th Arg: Direct Input Flag
             );
 
             const result: any = await Promise.race([responsePromise, timeoutPromise]);
 
-            // Handle both string (legacy) and object (new) return types
-            const responseText = typeof result === 'string' ? result : result.text;
-            const usageMetadata = typeof result === 'string' ? null : result.usageMetadata;
-            const usedModel = typeof result === 'string' ? 'Unknown' : (result as any).usedModel || 'Unknown';
+            // [Agent] Destructure Output
+            const responseText = result.reply;
+            const usageMetadata = result.usageMetadata;
+            const routerOut = result.router;
+            const preLogic = result.logic;
+            const postLogic = result.post_logic;
 
-            // Log Story Model Debug Info
-            // [DEBUG] Log the full response text to console as requested
-            console.log("%c[STORY MODEL OUTPUT]", "color: green; font-weight: bold; font-size: 14px;");
-            console.log(responseText);
-            setLastStoryOutput(responseText); // [Logging] Capture for analytics
+            if (usageMetadata || (result as any).allUsage) {
+                // [Detailed Agent Logging]
+                const routerDebug = (result as any).router;
+                const preLogicDebug = (result as any).logic;
+                const postLogicDebug = (result as any).post_logic;
 
-            if (typeof result !== 'string' && (result as any).systemPrompt) {
-                console.log("%c[Story Model Input - System Prompt (Static)]", "color: cyan; font-weight: bold;");
-                console.log((result as any).systemPrompt);
+                // 1. Router Log
+                console.groupCollapsed(`%c[Step 1] Router (${routerDebug.type})`, 'color: cyan; font-weight: bold;');
+                console.log(`%c[Input]`, 'color: gray; font-weight: bold;', routerDebug._debug_prompt);
+                console.log(`%c[Output]`, 'color: cyan; font-weight: bold;', {
+                    Intent: routerDebug.intent,
+                    Target: routerDebug.target || "None",
+                    Keywords: routerDebug.keywords.join(', ')
+                });
+                console.groupEnd();
 
-                if ((result as any).finalUserMessage) {
-                    console.log("%c[Story Model Input - FINAL USER MESSAGE (Includes Dynamic Prompt)]", "color: magenta; font-weight: bold;");
-                    console.log((result as any).finalUserMessage);
-                } else {
-                    console.log("%c[Story Model Input - User Message (Raw)]", "color: cyan; font-weight: bold;");
-                    console.log(text);
+                // 2. Pre-Logic Log
+                console.groupCollapsed(`%c[Step 2] Pre-Logic (${preLogicDebug.success ? 'Success' : 'Failure'})`, 'color: magenta; font-weight: bold;');
+                console.log(`%c[Input]`, 'color: gray; font-weight: bold;', preLogicDebug._debug_prompt);
+                console.log(`%c[Output]`, 'color: magenta; font-weight: bold;', {
+                    Guide: preLogicDebug.narrative_guide,
+                    Mechanics: preLogicDebug.mechanics_log,
+                    Changes: preLogicDebug.state_changes
+                });
+                console.groupEnd();
+
+                // 3. Story Log
+                console.groupCollapsed(`%c[Step 3] Story Writer`, 'color: green; font-weight: bold;');
+                if ((result as any).systemPrompt) {
+                    console.log(`%c[Input - Static (Cached)]`, 'color: gray; font-weight: bold;', (result as any).systemPrompt);
                 }
-            }
+                if ((result as any).finalUserMessage) {
+                    console.log(`%c[Input - Dynamic (Logic + User)]`, 'color: blue; font-weight: bold;', (result as any).finalUserMessage);
+                }
+                console.log(`%c[Output]`, 'color: green; font-weight: bold;', responseText);
+                console.groupEnd();
 
-            if (usageMetadata) {
-                // Pricing Calculation with Context Caching
-                // Gemini 1.5 Pro: Input $1.25, Output $5.00, Cached Input $0.3125 (per 1M)
-                // Gemini 1.5 Flash: Input $0.075, Output $0.30, Cached Input $0.01875 (per 1M)
+                // 4. Post-Logic Log
+                console.groupCollapsed(`%c[Step 4] Post-Logic`, 'color: orange; font-weight: bold;');
+                console.log(`%c[Input]`, 'color: gray; font-weight: bold;', postLogicDebug._debug_prompt);
+                console.log(`%c[Output]`, 'color: orange; font-weight: bold;', {
+                    Mood: postLogicDebug.mood_update,
+                    Relations: postLogicDebug.relationship_updates,
+                    Stats: postLogicDebug.stat_updates, // [NEW]
+                    Memories: postLogicDebug.new_memories
+                });
+                console.groupEnd();
 
-                const cachedTokens = (usageMetadata as any).cachedContentTokenCount || 0;
-                const inputTokens = usageMetadata.promptTokenCount - cachedTokens; // Non-cached input
-                const outputTokens = usageMetadata.candidatesTokenCount;
+                // [Cost Aggregation] Sum up all 5 Steps
+                const allUsage = (result as any).allUsage || { story: usageMetadata };
 
-                let costPer1M_Input = 0;
-                let costPer1M_Cached = 0;
-                let costPer1M_Output = 0;
-                let modelType = 'Pro';
+                let grandTotalTokens = 0;
+                let grandTotalCost = 0;
+                let cacheHitCount = 0;
 
-                // Pricing Table (Based on Google AI Studio Pricing) - Per 1M Tokens
-                const PRICING_TABLE = [
-                    // Gemini 3 Series (Preview)
-                    { id: 'gemini-3-flash', input: 0.50, output: 3.00, cache: 0.05, name: 'Gemini 3 Flash' },
-                    { id: 'gemini-3-pro', input: 2.00, output: 12.00, cache: 0.20, name: 'Gemini 3 Pro' },
+                // Model Pricing Mappings
+                const pricingMap: Record<string, any> = {
+                    router: PRICING_RATES['gemini-2.5-flash'],
+                    preLogic: PRICING_RATES['gemini-2.5-flash'],
+                    postLogic: PRICING_RATES['gemini-2.5-flash'], // Usually Logic
+                    story: PRICING_RATES[result.usedModel || 'gemini-2.5-flash'] || PRICING_RATES['gemini-2.5-flash']
+                };
 
-                    // Gemini 2.5 Series
-                    { id: 'gemini-2.5-flash-lite', input: 0.10, output: 0.40, cache: 0.01, name: 'Gemini 2.5 Flash-Lite' },
-                    { id: 'gemini-2.5-flash', input: 0.30, output: 2.50, cache: 0.03, name: 'Gemini 2.5 Flash' },
-                    { id: 'gemini-2.5-pro', input: 1.25, output: 10.00, cache: 0.125, name: 'Gemini 2.5 Pro' },
+                Object.entries(allUsage).forEach(([step, usage]: [string, any]) => {
+                    if (!usage) return;
 
-                    // Gemini 2.0 Series
-                    { id: 'gemini-2.0-flash-lite', input: 0.075, output: 0.30, cache: 0.00, name: 'Gemini 2.0 Flash-Lite' },
-                    { id: 'gemini-2.0-flash', input: 0.10, output: 0.40, cache: 0.025, name: 'Gemini 2.0 Flash' },
+                    const rate = pricingMap[step] || PRICING_RATES['gemini-2.5-flash'];
 
-                    // Legacy (Gemini 1.5)
-                    { id: 'gemini-1.5-flash', input: 0.075, output: 0.30, cache: 0.01875, name: 'Gemini 1.5 Flash' },
-                    { id: 'gemini-1.5-pro', input: 1.25, output: 5.00, cache: 0.3125, name: 'Gemini 1.5 Pro' },
-                ];
+                    const cached = (usage as any).cachedContentTokenCount || 0;
+                    const input = usage.promptTokenCount - cached;
+                    const output = usage.candidatesTokenCount;
 
-                // Dynamic Lookup
-                const priceConfig = PRICING_TABLE.find(p => usedModel.includes(p.id)) ||
-                    PRICING_TABLE.find(p => p.id === 'gemini-2.5-flash'); // Default Fallback
+                    const stepCost =
+                        ((input / 1_000_000) * rate.input) +
+                        ((cached / 1_000_000) * (rate.input * 0.25)) +
+                        ((output / 1_000_000) * rate.output);
 
-                costPer1M_Input = priceConfig?.input || 0;
-                costPer1M_Output = priceConfig?.output || 0;
-                costPer1M_Cached = priceConfig?.cache || 0;
-                modelType = priceConfig?.name || 'Unknown Model';
+                    grandTotalTokens += usage.promptTokenCount;
+                    grandTotalCost += stepCost;
+                    if (cached > 0) cacheHitCount++;
 
-                const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
-                const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
-                const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
-                const totalCost = costInput + costCached + costOutput;
-                storyCost = totalCost; // [Logging] Capture for total
-                const totalCostKRW = totalCost * 1480; // Exchange rate
+                    console.log(`[Cost] ${step}: Input ${input}, Cached ${cached}, Output ${output}, Cost $${stepCost.toFixed(6)}`);
+                });
+
+                storyCost = grandTotalCost; // Update Main Cost Variable
+                const totalCostKRW = grandTotalCost * 1480;
 
                 // [Verification Log]
-                console.log(`Token Usage (${usedModel}):`);
-                if (cachedTokens > 0) {
-                    console.log(`%c[🔥 CACHE HIT] Saved ${cachedTokens} tokens!`, 'color: #00ff00; font-weight: bold; font-size: 14px;');
-                } else {
-                    console.log(`%c[⚠️ MISS] Full prompt generated (${usageMetadata.promptTokenCount} tokens). Cache may be created now.`, 'color: orange;');
-                }
-                console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
-                console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)}) [SAVED]`);
-                console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
-                console.log(`- Total:     $${totalCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`);
+                console.log(`%c[TOTAL COST] $${grandTotalCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`, 'color: yellow; font-weight: bold;');
 
-                const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
-                addToast(`Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
+                const cacheMsg = cacheHitCount > 0 ? ` (Cache HIT x${cacheHitCount})` : '';
+                addToast(`Total Tokens: ${grandTotalTokens}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
             }
 
-            // [UX Improvement] Clear Character Image at start of new turn
-            // This prevents the previous turn's character from lingering during narration.
-            // It will reappear when <대사> tag is processed.
+            // [UX Improvement] Clear Character Image
             setCharacterExpression('');
 
             const segments = parseScript(responseText);
-            setLastStoryOutput(responseText); // [Logging] Capture response for next turn logic
+            setLastStoryOutput(responseText);
 
-            // 2. Generate Logic (Async)
-            setIsLogicPending(true); // [Logic Lock] Lock input
-            // [OPTIMIZATION] Prune state to reduce payload size (Server re-hydrates lore/events)
-            // Sending 300KB+ JSON causes "Server Components render" error or timeouts
-            const rawState = useGameStore.getState();
-            const {
-                lore: _l, events: _e, wikiData: _w, backgroundMappings: _b,
-                scriptQueue: _sq, displayHistory: _dh, chatHistory: _ch,
-                characterCreationQuestions: _ccq, constants: _c,
-                ...prunedState
-            } = rawState;
+            // [Agent] Construct Logic Result for Application
+            // Apply PreLogic (Stats) and PostLogic (Mood/Rel)
+            // Mapping to existing applyGameLogic schema if possible
+            const combinedLogic = {
+                ...preLogic.state_changes,
+                mood: postLogic.mood_update,
+                relationship_updates: postLogic.relationship_updates,
+                new_memories: postLogic.new_memories,
+                // [Fix] Propagate Active Characters
+                activeCharacters: postLogic.activeCharacters,
+                _debug_router: routerOut
+            };
 
-            console.log("[Client] Sending Pruned State to Logic Model...");
+            // [Logging] Submit Global Log
+            submitGameplayLog({
+                session_id: sessionId || '00000000-0000-0000-0000-000000000000',
+                game_mode: useGameStore.getState().activeGameId,
+                turn_count: turnCount,
+                choice_selected: text,
+                player_rank: useGameStore.getState().playerStats.playerRank,
+                location: useGameStore.getState().currentLocation,
+                timestamp: new Date().toISOString(),
+                player_name: useGameStore.getState().playerName,
+                cost: storyCost,
+                input_type: isDirectInput ? 'direct' : 'choice',
+                meta: {
+                    hp: useGameStore.getState().playerStats.hp,
+                    mp: useGameStore.getState().playerStats.mp,
+                    neigong: useGameStore.getState().playerStats.neigong,
+                    agent_router: routerOut.intent, // [Log] Agent Intent
+                    scenario_summary: useGameStore.getState().scenarioSummary,
+                    memories: useGameStore.getState().activeCharacters.reduce((acc: any, charName: string) => {
+                        const cData = useGameStore.getState().characterData[charName];
+                        if (cData && cData.memories) acc[charName] = cData.memories;
+                        return acc;
+                    }, {})
+                },
+                story_output: responseText
+            }).then(() => console.log(`📝 [Log Sent] Total Cost: $${storyCost.toFixed(6)}`));
 
-            serverGenerateGameLogic(
-                text,
-                responseText,
-                prunedState // Pass pruned state for context-aware spawning
-            ).then(logic => {
-                // Log Logic Model Debug Info
-                if (logic) {
-                    if (logic._debug_static_prompt) {
-                        console.log("%c[Logic Model Input - System Prompt (Static/Cached)]", "color: violet; font-weight: bold;");
-                        console.log(logic._debug_static_prompt);
-                    }
-                    if (logic._debug_prompt) {
-                        console.log("%c[Logic Model Input - Dynamic Prompt]", "color: violet; font-weight: bold;");
-                        console.log(logic._debug_prompt);
-                    }
-                    if (logic._debug_raw_response) {
-                        console.log("%c[Logic Model Output - Raw Response]", "color: violet; font-weight: bold;");
-                        console.log(logic._debug_raw_response);
-                    }
-                }
+            if (segments.length === 0) {
+                applyGameLogic(combinedLogic);
+            } else {
+                setPendingLogic(combinedLogic);
+            }
 
-                // [Logging] Calculate Logic Cost independently
-                let totalLogicCost = 0;
-                if (logic && logic._usageMetadata) {
-                    const usageMetadata = logic._usageMetadata;
-                    const modelName = MODEL_CONFIG.LOGIC;
-                    const rate = PRICING_RATES[modelName] || PRICING_RATES['gemini-2.5-flash'];
-
-                    const cachedTokens = (usageMetadata as any).cachedContentTokenCount || 0;
-                    const inputTokens = usageMetadata.promptTokenCount - cachedTokens;
-                    const outputTokens = usageMetadata.candidatesTokenCount;
-
-                    // Assuming same ratio 25% for cache for now or 0.01875 if explicit
-                    // Flash: Input 0.075, Cached ~0.01875
-                    const costPer1M_Input = rate.input;
-                    const costPer1M_Output = rate.output;
-                    const costPer1M_Cached = rate.input * 0.25;
-
-                    const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
-                    const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
-                    const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
-
-                    totalLogicCost = costInput + costCached + costOutput;
-                    const totalCostKRW = totalLogicCost * 1480;
-
-                    console.log(`Token Usage (Logic - ${modelName}):`);
-                    if (cachedTokens > 0) {
-                        console.log(`%c[🔥 CACHE HIT] Saved ${cachedTokens} tokens!`, 'color: #00ff00; font-weight: bold; font-size: 14px;');
-                    } else {
-                        console.log(`%c[⚠️ MISS] Full prompt generated (${usageMetadata.promptTokenCount} tokens). Cache may be created now.`, 'color: orange;');
-                    }
-                    console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
-                    console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)})`);
-                    console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
-                    console.log(`- Total:     $${totalLogicCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`);
-
-                    const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
-                    addToast(`Logic Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
-                }
-
-                // [Logging] Submit Final Log with Grand Total Cost (Always run)
-                const grandTotalCost = storyCost + totalLogicCost;
-
-                submitGameplayLog({
-                    session_id: sessionId || '00000000-0000-0000-0000-000000000000',
-                    game_mode: useGameStore.getState().activeGameId,
-                    turn_count: turnCount,
-                    choice_selected: text,
-                    player_rank: useGameStore.getState().playerStats.playerRank,
-                    location: useGameStore.getState().currentLocation,
-                    timestamp: new Date().toISOString(),
-                    // New Fields
-                    player_name: useGameStore.getState().playerName,
-                    cost: grandTotalCost,
-                    input_type: isDirectInput ? 'direct' : 'choice',
-                    meta: {
-                        hp: useGameStore.getState().playerStats.hp,
-                        mp: useGameStore.getState().playerStats.mp,
-                        neigong: useGameStore.getState().playerStats.neigong,
-                        scenario_summary: useGameStore.getState().scenarioSummary, // [Log] Dump Summary
-                        memories: useGameStore.getState().activeCharacters.reduce((acc: any, charName: string) => {
-                            const cData = useGameStore.getState().characterData[charName];
-                            if (cData && cData.memories) acc[charName] = cData.memories;
-                            return acc;
-                        }, {}) // [Log] Dump Memories of Active Characters
-                    },
-                    story_output: responseText
-                }).then(() => console.log(`📝 [Log Sent] Total Cost: $${grandTotalCost.toFixed(6)}`));
-
-                if (segments.length === 0) {
-                    applyGameLogic(logic);
-                } else {
-                    setPendingLogic(logic);
-                }
-            })
-                .catch(err => {
-                    console.error("Logic Generation Failed:", err);
-
-                    // [Logging] Fallback: Log even if Logic failed
-                    const fallbackTotalCost = storyCost; // Logic cost is 0
-                    submitGameplayLog({
-                        session_id: sessionId || '00000000-0000-0000-0000-000000000000',
-                        game_mode: useGameStore.getState().activeGameId,
-                        turn_count: turnCount,
-                        choice_selected: text,
-                        player_rank: useGameStore.getState().playerStats.playerRank,
-                        location: useGameStore.getState().currentLocation,
-                        timestamp: new Date().toISOString(),
-                        player_name: useGameStore.getState().playerName,
-                        cost: fallbackTotalCost,
-                        input_type: isDirectInput ? 'direct' : 'choice',
-                        meta: {
-                            hp: useGameStore.getState().playerStats.hp,
-                            mp: useGameStore.getState().playerStats.mp,
-                            neigong: useGameStore.getState().playerStats.neigong,
-                            error: `LogicFailed: ${err.message}`, // Record error
-                            scenario_summary: useGameStore.getState().scenarioSummary, // [Log] Dump Summary (Fallback)
-                            memories: useGameStore.getState().activeCharacters.reduce((acc: any, charName: string) => {
-                                const cData = useGameStore.getState().characterData[charName];
-                                if (cData && cData.memories) acc[charName] = cData.memories;
-                                return acc;
-                            }, {}) // [Log] Dump Memories (Fallback)
-                        },
-                        story_output: responseText
-                    }).then(() => console.log(`📝 [Log Sent - Fallback] Cost: $${fallbackTotalCost.toFixed(6)}`));
-
-                })
-                .finally(() => {
-                    setIsLogicPending(false); // [Logic Lock] Unlock input
-                });
+            setIsLogicPending(false); // [Logic Lock] Unlock input explicitly just in case
 
             // 3. Update State
             addMessage({ role: 'model', text: responseText });
@@ -1914,6 +1830,51 @@ export default function VisualNovelUI() {
             });
         }
 
+        // [Moved] Post-Logic Processing (Apply Outcomes)
+        if (logicResult.post_logic) {
+            const postLogic = logicResult.post_logic;
+
+            if (postLogic.mood_update) {
+                useGameStore.getState().setMood(postLogic.mood_update as any);
+            }
+
+            if (postLogic.relationship_updates) {
+                console.log("Relations Update:", postLogic.relationship_updates);
+                // TODO: Implement actual relationship update in store if needed
+            }
+
+            // [NEW] Persist Personality Stats
+            if (postLogic.stat_updates) {
+                const currentStats = useGameStore.getState().playerStats;
+                const newPersonality = { ...currentStats.personality };
+                let hasChanges = false;
+
+                Object.entries(postLogic.stat_updates).forEach(([key, val]) => {
+                    if (key in newPersonality) {
+                        // Clamp between -100 and 100
+                        const newValue = Math.max(-100, Math.min(100, (newPersonality as any)[key] + (val as number)));
+                        (newPersonality as any)[key] = newValue;
+                        hasChanges = true;
+                        if (Math.abs(val as number) >= 2) addToast(`${key} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
+                    }
+                });
+
+                if (hasChanges) {
+                    useGameStore.getState().setPlayerStats({ personality: newPersonality });
+                    console.log("Updated Personality:", newPersonality);
+                }
+            }
+
+            if (postLogic.new_memories && postLogic.new_memories.length > 0) {
+                // Initial stub for memory handling
+            }
+
+            // [Deleted] Duplicate/Broken Memory Logic
+            // The correct logic is implemented below (after activeCharacters)
+        }
+
+
+
         // Mood Update
         if (logicResult.newMood) {
             const currentMood = useGameStore.getState().currentMood;
@@ -1925,8 +1886,80 @@ export default function VisualNovelUI() {
         }
 
         if (logicResult.activeCharacters) {
-            useGameStore.getState().setActiveCharacters(logicResult.activeCharacters);
-            console.log("Active Characters Updated:", logicResult.activeCharacters);
+            // [Safety] Ensure it's an array (AI might return single string)
+            const activeList = Array.isArray(logicResult.activeCharacters)
+                ? logicResult.activeCharacters
+                : [logicResult.activeCharacters];
+
+            // [Fix] Fuzzy Match & Normalize Logic
+            const store = useGameStore.getState();
+            const availableChars = store.availableCharacterImages || [];
+
+            // Map AI output names to Valid Image Keys
+            const resolvedChars = activeList.map((rawName: string) => {
+                // [Clean] Strip emotion suffixes (e.g. "_Anger_Lv1", "_Smile")
+                // Assumption: Character ID is the first part before the first underscore acting as a delimiter for emotion
+                // BUT: Some IDs actully have underscores (e.g. "jun_seo_yeon"). 
+                // Hybrid Strategy:
+                // 1. Check exact match first
+                if (availableChars.includes(rawName)) return rawName;
+
+                // 2. Try removing common suffix patterns (anything starting with _Anger, _Smile, _Lv, etc is suspicious if it's not in the list)
+                // Use Regex to remove _Emotion or _Lv patterns
+                // Example: BaekSoYu_Anger_Lv1 -> BaekSoYu
+                const cleaned = rawName.replace(/(_[A-Z][a-z]+)+(_Lv\d+)?$/, '');
+
+                // Check if cleaned version exists
+                // We also need to handle cases like "baek_so_yu" vs "BaekSoYu" -> normalize to lowercase for check
+
+                // Try fuzzy match on Cleaned Name first
+                const matchClean = findBestMatch(cleaned, availableChars);
+                if (matchClean) {
+                    console.log(`[ActiveChar] Cleaned Match: "${rawName}" -> "${cleaned}" -> "${matchClean}"`);
+                    return matchClean;
+                }
+
+                // 3. Fuzzy match against available characters
+                const match = findBestMatch(rawName, availableChars);
+                if (match) {
+                    console.log(`[ActiveChar] Fuzzy Request: "${rawName}" -> Resolved: "${match}"`);
+                    return match;
+                }
+
+                return rawName;
+            });
+
+            // De-duplicate
+            const uniqueChars = Array.from(new Set(resolvedChars)) as string[];
+
+            useGameStore.getState().setActiveCharacters(uniqueChars);
+            console.log("Active Characters Updated:", uniqueChars);
+        }
+
+        // [New] Character Memories Update
+        if (logicResult.character_memories) {
+            const store = useGameStore.getState();
+            const availableChars = store.availableCharacterImages || [];
+
+            Object.entries(logicResult.character_memories).forEach(([charId, memories]) => {
+                if (!Array.isArray(memories) || memories.length === 0) return;
+
+                // Resolve ID (Fuzzy Match)
+                let targetId = charId;
+                const match = findBestMatch(charId, availableChars);
+                if (match) targetId = match;
+
+                console.log(`[MemoryUpdate] Adding memory to ${targetId} (raw: ${charId}):`, memories);
+
+                // Update Store
+                store.addCharacterMemory(targetId, memories[0]); // Currently supporting single memory add per turn mainly
+                // If multiple, add all? definition: addCharacterMemory(id, memory)
+                if (memories.length > 1) {
+                    for (let i = 1; i < memories.length; i++) {
+                        store.addCharacterMemory(targetId, memories[i]);
+                    }
+                }
+            });
         }
 
         // [New] Status & Personality Description Updates (Natural Language)
@@ -2426,6 +2459,32 @@ export default function VisualNovelUI() {
                                     </h4>
 
                                     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200/60 shadow-inner">
+                                        {/* Model Selector */}
+                                        <div className="mb-4 pb-4 border-b border-gray-200">
+                                            <label className="text-secondary text-xs uppercase font-bold tracking-wider mb-2 block">Story Model</label>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                {[
+                                                    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Preview)', desc: 'Highest Quality', cost: '$12.00/1M' },
+                                                    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Preview)', desc: 'High Speed', cost: '$3.00/1M' }
+                                                ].map((model) => (
+                                                    <button
+                                                        key={model.id}
+                                                        onClick={() => useGameStore.getState().setStoryModel(model.id)}
+                                                        className={`p-3 rounded-lg border text-left transition-all flex justify-between items-center ${useGameStore.getState().storyModel === model.id
+                                                            ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm'
+                                                            : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                            }`}
+                                                    >
+                                                        <div>
+                                                            <div className="font-bold text-sm">{model.name}</div>
+                                                            <div className="text-xs opacity-70">{model.desc}</div>
+                                                        </div>
+                                                        <div className="text-xs font-mono bg-black/5 px-2 py-1 rounded">{model.cost}</div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         {session?.user ? (
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
@@ -3394,6 +3453,12 @@ Instructions:
                                                 <h3 className="text-white font-bold">Current State (Saved)</h3>
                                                 <button
                                                     onClick={() => {
+                                                        // This is a placeholder for serverAgentTurn, it should not be here.
+                                                        // The instruction seems to have misplaced this code.
+                                                        // Assuming the intent was to show the updated arguments for serverAgentTurn
+                                                        // if it were called here, but it's not.
+                                                        // The original code defines a 'state' object and copies it.
+                                                        // I will keep the original functionality of copying the state.
                                                         const state = {
                                                             playerStats,
                                                             inventory,

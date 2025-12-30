@@ -58,11 +58,12 @@ export async function generateResponse(
     history: Message[],
     userMessage: string,
     gameState: any, // Pass the full game state to generate the prompt
-    language: 'ko' | 'en' | null
+    language: 'ko' | 'en' | null,
+    modelName: string = MODEL_CONFIG.STORY // [NEW] Accept model override, default to config
 ) {
     if (!apiKey) throw new Error('API Key is missing');
 
-    console.log(`[Gemini] generateResponse called. gameState.playerStats.luk: ${gameState.playerStats?.luk}`);
+    console.log(`[Gemini] generateResponse called. Model: ${modelName}. gameState.playerStats.luk: ${gameState.playerStats?.luk}`);
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -98,28 +99,35 @@ export async function generateResponse(
     // 정적(Static) 프롬프트와 동적(Dynamic) 프롬프트를 합치지 마세요.
     // Static = systemInstruction (캐시됨, 비용 절감)
     // Dynamic = 유저 메시지의 일부 (캐시 안됨, 매번 변경)
+    // Static = systemInstruction (캐시됨, 비용 절감)
+    // Dynamic = 유저 메시지의 일부 (캐시 안됨, 매번 변경)
     const systemInstruction = staticPrompt;
 
-    // 메인 스토리 모델: MODEL_CONFIG.STORY 사용
+    // [Fix] Use passed modelName if available, otherwise default to config
+    // Also ensuring no variable shadowing in loop
+    const targetModel = modelName || MODEL_CONFIG.STORY;
+
     const modelsToTry = [
-        MODEL_CONFIG.STORY,
-        'gemini-2.5-flash', // 안정적인 대체 모델
+        targetModel,
+        'gemini-2.5-flash', // Fallback
     ];
 
     let lastError;
 
-    for (const modelName of modelsToTry) {
+    // Rename loop variable to avoid shadowing arg 'modelName'
+    for (const currentModel of modelsToTry) {
         try {
-            console.log(`Trying story model: ${modelName}`);
+            console.log(`Trying story model: ${currentModel}`);
 
             const modelConfig: any = {
-                model: modelName,
+                model: currentModel,
                 safetySettings
             };
 
             // [Gemini 3 최적화] Native Thinking 활성화
             // gemini-3-pro-preview, gemini-3-flash-preview 등 'gemini-3'가 포함된 모델에 적용
-            if (modelName.includes('gemini-3') || modelName.includes('thinking')) {
+            // gemini-3-pro-preview, gemini-3-flash-preview 등 'gemini-3'가 포함된 모델에 적용
+            if (currentModel.includes('gemini-3') || currentModel.includes('thinking')) {
                 modelConfig.thinkingConfig = {
                     includeThoughts: true, // [User Request] 생각 과정 로그 확인을 위해 True 설정
                     thinkingLevel: "high"
@@ -128,6 +136,12 @@ export async function generateResponse(
 
             // [수정] 캐시 적중(Cache Hit)을 유지하기 위해 '정적 컨텍스트'만 시스템 지침으로 전달합니다.
             modelConfig.systemInstruction = systemInstruction;
+
+            // [DYNAMIC MODEL] Override model if provided
+            // [DYNAMIC MODEL] Override model if provided
+            if (currentModel) {
+                modelConfig.model = currentModel;
+            }
 
             const model = genAI.getGenerativeModel(modelConfig);
 
@@ -169,7 +183,7 @@ export async function generateResponse(
                 () => chatSession.sendMessage(finalUserMessage),
                 3,
                 1500,
-                `Story Generation (${modelName})`
+                `Story Generation (${currentModel})`
             );
             const response = result.response;
 
@@ -194,12 +208,11 @@ export async function generateResponse(
                 usageMetadata: response.usageMetadata,
                 systemPrompt: systemInstruction, // "시스템 프롬프트"로 정적 부분 로그
                 finalUserMessage: finalUserMessage, // [DEBUG] Return Actual Dynamic Input
-                usedModel: modelName,
+                usedModel: currentModel,
                 totalTokenCount: (response.usageMetadata?.promptTokenCount || 0) + (response.usageMetadata?.candidatesTokenCount || 0)
             };
-
         } catch (error: any) {
-            console.error(`Story Model ${modelName} failed:`, error.message || error);
+            console.error(`Story Model ${currentModel} failed:`, error.message || error);
             lastError = error;
             // Continue to next model in list
         }

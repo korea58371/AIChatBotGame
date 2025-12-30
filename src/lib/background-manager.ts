@@ -63,12 +63,15 @@ export function resolveBackground(tag: string): string {
     // ---------------------------------------------------------
     // AI가 "반지하" 대신 "반지하방"이라고 할 때 유용함
     const mappingKeys = Object.keys(backgroundMappings);
-    const keyMatches = stringSimilarity.findBestMatch(query, mappingKeys);
+    // [Fix] Ensure array is not empty before calling findBestMatch
+    if (mappingKeys.length > 0) {
+        const keyMatches = stringSimilarity.findBestMatch(query, mappingKeys);
 
-    if (keyMatches.bestMatch.rating > 0.6) { // 별칭에 대한 높은 신뢰도
-        const mappedFile = backgroundMappings[keyMatches.bestMatch.target];
-        console.log(`[BackgroundManager] 퍼지 별칭 매치: "${query}" -> "${keyMatches.bestMatch.target}" -> "${mappedFile}"`);
-        return `${basePath}/${mappedFile}`;
+        if (keyMatches.bestMatch.rating > 0.6) { // 별칭에 대한 높은 신뢰도
+            const mappedFile = backgroundMappings[keyMatches.bestMatch.target];
+            console.log(`[BackgroundManager] 퍼지 별칭 매치: "${query}" -> "${keyMatches.bestMatch.target}" -> "${mappedFile}"`);
+            return `${basePath}/${mappedFile}`;
+        }
     }
 
     // ---------------------------------------------------------
@@ -92,11 +95,6 @@ export function resolveBackground(tag: string): string {
 
             if (subMatch.bestMatch.rating > 0.4) {
                 console.log(`[BackgroundManager] 카테고리 제한 매치: "${query}" -> "${subMatch.bestMatch.target}"`);
-                return `/assets/backgrounds/${subMatch.bestMatch.target}`;
-            }
-
-            if (subMatch.bestMatch.rating > 0.4) {
-                console.log(`[BackgroundManager] 카테고리 제한 매치: "${query}" -> "${subMatch.bestMatch.target}"`);
                 return `${basePath}/${subMatch.bestMatch.target}`;
             }
 
@@ -110,14 +108,17 @@ export function resolveBackground(tag: string): string {
     // ---------------------------------------------------------
     // 전략 3: 전역 퍼지 파일명 (실제 파일과 대조)
     // ---------------------------------------------------------
-    const fileMatches = stringSimilarity.findBestMatch(query, backgroundFiles);
-    const bestFileMatch = fileMatches.bestMatch;
+    // [Fix] Ensure array is not empty before calling findBestMatch
+    if (backgroundFiles.length > 0) {
+        const fileMatches = stringSimilarity.findBestMatch(query, backgroundFiles);
+        const bestFileMatch = fileMatches.bestMatch;
 
-    // console.log(`[BackgroundManager] Fuzzy File Match: "${query}" -> "${bestFileMatch.target}" (Score: ${bestFileMatch.rating.toFixed(2)})`);
+        // console.log(`[BackgroundManager] Fuzzy File Match: "${query}" -> "${bestFileMatch.target}" (Score: ${bestFileMatch.rating.toFixed(2)})`);
 
-    // 임계값 증가 (0.5 -> 0.6): 일반적인 입력이 관련 없는 특정 파일과 매칭되는 것을 방지
-    if (bestFileMatch.rating > 0.6) {
-        return `${basePath}/${bestFileMatch.target}`;
+        // 임계값 증가 (0.5 -> 0.6): 일반적인 입력이 관련 없는 특정 파일과 매칭되는 것을 방지
+        if (bestFileMatch.rating > 0.6) {
+            return `${basePath}/${bestFileMatch.target}`;
+        }
     }
 
     // ---------------------------------------------------------

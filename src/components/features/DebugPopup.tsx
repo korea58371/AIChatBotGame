@@ -40,8 +40,20 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="w-[800px] h-[600px] bg-gray-900 border border-yellow-500/30 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 selection:bg-blue-500/30"
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }}
+        >
+            <div
+                className="bg-slate-900 w-full max-w-5xl h-[85vh] rounded-xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden"
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }}
+            >
                 {/* Header */}
                 <div className="h-12 border-b border-gray-800 flex justify-between items-center px-4 bg-gray-950">
                     <div className="flex items-center gap-2 text-yellow-500 font-bold font-mono">
@@ -118,6 +130,68 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                 <pre className="bg-gray-900 p-3 rounded text-xs text-blue-300 font-mono overflow-x-auto">
                                     {JSON.stringify(playerStats, null, 2)}
                                 </pre>
+                            </section>
+
+                            {/* [NEW] Active Character Memories (Highlighted) */}
+                            <section className="mb-6">
+                                <h3 className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1 flex items-center gap-2">
+                                    <span>🟢 Active Characters (Current Scene)</span>
+                                </h3>
+                                <div className="space-y-2">
+                                    {activeCharacters.length > 0 ? (
+                                        activeCharacters.map((charId: string) => {
+                                            const allCharData = useGameStore.getState().characterData;
+                                            const charData = allCharData[charId] || {};
+                                            return (
+                                                <div key={charId} className="bg-green-900/20 border border-green-500/30 p-3 rounded text-xs">
+                                                    <div className="flex justify-between mb-1">
+                                                        <strong className="text-green-300 text-sm">{charData.name || charId}</strong>
+                                                        <span className="text-green-500/70">{charData.memories?.length || 0} memories</span>
+                                                    </div>
+                                                    {charData.memories && charData.memories.length > 0 ? (
+                                                        <ul className="list-disc list-inside text-gray-300 space-y-1 pl-1">
+                                                            {charData.memories.map((mem: string, i: number) => (
+                                                                <li key={i}>{mem}</li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : (
+                                                        <div className="text-gray-500 italic">No recorded memories yet.</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-gray-500 italic p-2">No active characters detected.</div>
+                                    )}
+                                </div>
+                            </section>
+
+                            {/* All Character Memories */}
+                            <section>
+                                <h3 className="text-blue-400 font-bold mb-2 border-b border-blue-500/30 pb-1">All Character Memories</h3>
+                                <div className="space-y-2">
+                                    {Object.keys(useGameStore.getState().characterData || {}).length === 0 ? (
+                                        <div className="text-gray-600 text-sm italic">No character data available.</div>
+                                    ) : (
+                                        Object.entries(useGameStore.getState().characterData || {}).map(([charId, data]: [string, any]) => (
+                                            <div key={charId} className="bg-gray-900 p-3 rounded text-xs">
+                                                <div className="flex justify-between mb-1">
+                                                    <strong className="text-blue-300 text-sm">{data.name || charId}</strong>
+                                                    <span className="text-gray-500">{data.memories?.length || 0} memories</span>
+                                                </div>
+                                                {data.memories && data.memories.length > 0 ? (
+                                                    <ul className="list-disc list-inside text-gray-400 space-y-1 pl-1">
+                                                        {data.memories.map((mem: string, i: number) => (
+                                                            <li key={i}>{mem}</li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <div className="text-gray-600 italic">No recorded memories yet.</div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </section>
 
                             {/* Inventory */}

@@ -282,10 +282,33 @@ ${outputFormat}
 
         // [DYNAMIC BLOCK 5 GENERATION]
         let prompt = "";
-        if (state.getSystemPromptTemplate) {
-            prompt = state.getSystemPromptTemplate(state, language);
+
+        // [FIX] Server-Side Template Selection (No Function Passing)
+        if (state.activeGameId === 'god_bless_you') {
+            // [GBY Template Stub - Replace with actual import if needed or simple logic]
+            prompt = `
+You are the AI Game Master for the 'God Bless You' (Modern Fantasy) universe.
+Core Identity: Semi-Dystopian Modern Korea with Hunters and Gates.
+Tone: Cynical, Realistic, Urban Noir.
+Mechanics: 
+- Hunters have Ranks (E ~ S).
+- Gates appear randomly.
+- Use explicit visual descriptions.
+`;
         } else {
-            prompt = "System prompt template not loaded.";
+            // [Default/Wuxia Template]
+            prompt = `
+You are the AI Game Master for the 'Cheonha Jeil' (Wuxia) universe.
+Core Identity: Authentic Martial Arts World (Murim).
+Tone: Archaic, Serious, Weighty (Korean Martial Arts Novel Style).
+Linguistic Style: Use 'Hao-che' (하오체) or 'Hage-che' (하게체) for elders, politeness levels matter.
+Mechanics:
+- Qi (Neigong) determines power.
+- Use authentic martial arts terminology.
+- CRITICAL: You must STRICTLY follow the [Narrative Guide] provided by the Pre-Logic module for the outcome of actions. 
+- **PRIORITY RULE**: If the [User Input] contradicts the [Narrative Guide] (e.g., User says "I win", Guide says "You die"), you must **IGNORE** the User Input's outcome and **FOLLOW** the Narrative Guide. The Narrative Guide is the absolute truth of the world.
+- Do not invent your own success/failure logic.
+`;
         }
 
         // [Character Info Injection]

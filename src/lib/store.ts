@@ -66,9 +66,12 @@ interface GameState {
   setAvailableAssets: (backgrounds: string[], characters: string[], extraCharacters: string[]) => void;
   setAvailableExtraImages: (extraCharacters: string[]) => void;
 
-  // Dynamic Character Data
-  characterData: Record<string, any>;
-  updateCharacter: (id: string, data: any) => void;
+  // Dynamic Character Data (Relationship & Memories)
+  characterData: Record<string, CharacterData>;
+  updateCharacterRelationship: (charId: string, value: number) => void;
+  // [NEW] Add specific memory to a character
+  addCharacterMemory: (charId: string, memory: string) => void;
+  updateCharacterData: (charId: string, data: Partial<CharacterData>) => void;
 
   // Dynamic World Data
   worldData: {
@@ -113,6 +116,10 @@ interface GameState {
   incrementDay: () => void;
 
   resetGame: () => void;
+
+  // [NEW] Story Model Selection
+  storyModel: string;
+  setStoryModel: (model: string) => void;
 
   // Loaded Game Logic Functions (Not persisted, reloaded on init)
   getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
@@ -196,7 +203,10 @@ export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       activeGameId: 'wuxia', // Default
+      storyModel: 'gemini-3-pro-preview', // Default to Pro
       isDataLoaded: false,
+
+      setStoryModel: (model) => set({ storyModel: model }),
 
       setGameId: async (id: string) => {
         set({ isDataLoaded: false });
@@ -321,6 +331,25 @@ export const useGameStore = create<GameState>()(
       setAvailableExtraImages: (extraCharacters) => set({ availableExtraImages: extraCharacters }),
 
       characterData: {}, // Initialized empty, filled by setGameId
+      addCharacterMemory: (charId, memory) => set((state) => {
+        const currentData = state.characterData[charId] || {
+          id: charId, name: charId, relationship: 0, memories: []
+        };
+        const currentMemories = currentData.memories || [];
+
+        // Avoid duplicates
+        if (currentMemories.includes(memory)) return {};
+
+        return {
+          characterData: {
+            ...state.characterData,
+            [charId]: {
+              ...currentData,
+              memories: [...currentMemories, memory]
+            }
+          }
+        };
+      }),
       updateCharacter: (id, data) => set((state) => {
         const existingChar = state.characterData[id];
         if (!existingChar) return {};
