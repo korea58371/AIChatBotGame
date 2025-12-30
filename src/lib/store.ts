@@ -67,11 +67,11 @@ interface GameState {
   setAvailableExtraImages: (extraCharacters: string[]) => void;
 
   // Dynamic Character Data (Relationship & Memories)
-  characterData: Record<string, CharacterData>;
+  characterData: Record<string, GameCharacterData>;
   updateCharacterRelationship: (charId: string, value: number) => void;
   // [NEW] Add specific memory to a character
   addCharacterMemory: (charId: string, memory: string) => void;
-  updateCharacterData: (charId: string, data: Partial<CharacterData>) => void;
+  updateCharacterData: (charId: string, data: Partial<GameCharacterData>) => void;
 
   // Dynamic World Data
   worldData: {
@@ -168,7 +168,7 @@ export interface PlayerStats {
   narrative_perspective?: string; // [New] '1인칭' or '3인칭'
 }
 
-export interface CharacterData {
+export interface GameCharacterData {
   id: string;
   name: string;
   relationship?: number;
