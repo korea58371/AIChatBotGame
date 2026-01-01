@@ -16,9 +16,53 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
 
 
     // [Fix] Use stable selector to prevent infinite loops (getServerSnapshot error)
+    // [Fix] Use individual selectors to prevent infinite loops (getServerSnapshot error) caused by returning new object references
     const wikiData = useGameStore(state => state.wikiData);
+    const activeCharactersRaw = useGameStore(state => state.activeCharacters);
+    const activeCharacters = activeCharactersRaw || [];
+    const characterData = useGameStore(state => state.characterData || {});
+
     const gameWikiData = wikiData || {};
+
+    // Resolve Active Characters to Wiki Keys
+    const activeWikiKeys = React.useMemo(() => {
+        if (!activeCharacters || activeCharacters.length === 0) return [];
+
+        // Helper to find wiki key by name
+        const findWikiKey = (name: string) => {
+            if (gameWikiData[name]) return name;
+            // Try strict start match for cases like "Name (Title)"
+            return Object.keys(gameWikiData).find(k => k === name || k.startsWith(`${name} (`));
+        };
+
+        const keys = new Set<string>(); // Use Set to avoid duplicates
+
+        activeCharacters.forEach(id => {
+            // 1. Direct ID Match
+            let key = findWikiKey(id);
+            if (key) { keys.add(key); return; }
+
+            // 2. Resolve via Character Data
+            const char = characterData[id] || Object.values(characterData).find((c: any) => c.englishName === id || c.id === id);
+            if (char && char.name) {
+                key = findWikiKey(char.name);
+                if (key) { keys.add(key); return; }
+            }
+        });
+
+        console.log("Active Wiki Keys:", Array.from(keys));
+        return Array.from(keys);
+    }, [activeCharacters, gameWikiData, characterData]);
+
     const data = (gameWikiData as any)[currentDoc];
+
+    // Auto-select active character on open
+    React.useEffect(() => {
+        if (isOpen && activeWikiKeys.length > 0) {
+            // Prioritize the first active character
+            setCurrentDoc(activeWikiKeys[0]);
+        }
+    }, [isOpen]); // Only run when opening to avoid overriding user navigation
 
     // Debugging: Log loaded data keys
     React.useEffect(() => {
@@ -195,6 +239,30 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
                 <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                     {/* Sidebar Navigation */}
                     <div className="w-full md:w-64 bg-gray-50 border-r-0 md:border-r border-b md:border-b-0 border-gray-200 overflow-y-auto p-4 shrink-0 h-48 md:h-auto">
+                        {/* Active Characters Section */}
+                        {activeWikiKeys.length > 0 && (
+                            <div className="mb-6 bg-[#00A495]/10 -mx-4 px-4 py-4 border-b border-[#00A495]/20">
+                                <h3 className="text-[#00A495] font-bold border-b border-[#00A495]/30 pb-1 mb-2 text-sm uppercase flex items-center gap-2">
+                                    <span>🌟</span> 현재 등장인물
+                                </h3>
+                                <ul className="space-y-1">
+                                    {activeWikiKeys.map((key) => (
+                                        <li key={`active-${key}`}>
+                                            <button
+                                                onClick={() => setCurrentDoc(key)}
+                                                className={`w-full text-left px-2 py-1.5 rounded text-sm transition-colors truncate ${currentDoc === key
+                                                    ? 'bg-[#00A495] text-white font-bold shadow-sm'
+                                                    : 'text-gray-700 hover:bg-white hover:shadow-sm'
+                                                    }`}
+                                            >
+                                                {key}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
                         {Object.keys(groupedData).length === 0 ? (
                             <div className="text-gray-500 text-center text-sm py-4 flex flex-col gap-2">
                                 <span>검색 결과 없음</span>
