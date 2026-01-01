@@ -25,11 +25,8 @@ export class AgentPreLogic {
     private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
 
     // [Prompts]
-    private static readonly BASE_PROMPT = `
-You are the [Pre-Logic Adjudicator] of a text RPG.
-Your job is to determine the OUTCOME of the player's action based on Rules, Stats, and Probability.
-You do NOT write the story.You provide the BLUEPRINT(Narrative Guide) for the writer.
-
+    // [Prompts]
+    private static readonly CORE_RULES = `
 [Anti - God Mode Protocol]
 CRITICAL: The Player controls ONLY their own character.
 1. ** NO Forced Affection **: The player CANNOT dictate how an NPC feels. (e.g., "She falls in love with me" -> REJECT).
@@ -63,14 +60,9 @@ If the Input involves:
 2. ** Rank Gap Arrogance **: Attacking a much stronger NPC(Rank difference).
    - Result: 'success: false'. 'state_changes': { "hp": 0 }.
 - Narrative Guide: "Instant Death. The enemy doesn't move. The player's heart explodes."
+`;
 
-[Mechanism]
-1. Analyze User Intent.
-2. Check [Status Guide] and [Tension Level].
-3. Determine Success / Failure.
-4. Generate "Narrative Guide" that respects the Pacing.
-5. **LANGUAGE ENFORCEMENT**: All string outputs (especially 'narrative_guide') MUST be in KOREAN (한국어). English is STRICTLY FORBIDDEN.
-
+    private static readonly OUTPUT_SCHEMA = `
 [Output Schema(JSON)]
 {
     "mood_override": "daily" | "tension" | "combat" | "romance" | null,
@@ -81,12 +73,25 @@ If the Input involves:
 }
 `;
 
-    private static readonly COMBAT_PROMPT = `
-You are the[Combat Logic Engine].
+    private static readonly BASE_IDENTITY = `
+You are the [Pre-Logic Adjudicator] of a text RPG.
+Your job is to determine the OUTCOME of the player's action based on Rules, Stats, and Probability.
+You do NOT write the story.You provide the BLUEPRINT(Narrative Guide) for the writer.
+
+[Mechanism]
+1. Analyze User Intent.
+2. Check [Status Guide] and [Tension Level].
+3. Determine Success / Failure.
+4. Generate "Narrative Guide" that respects the Pacing.
+5. **LANGUAGE ENFORCEMENT**: All string outputs (especially 'narrative_guide') MUST be in KOREAN (한국어). English is STRICTLY FORBIDDEN.
+`;
+
+    private static readonly COMBAT_IDENTITY = `
+You are the [Combat Logic Engine].
 Your focus is TACTICAL: Damage, Evasion, HP, Stamina, and Status Effects.
 
-[Rules]
-    - Always check Stamina cost.
+[Specific Combat Rules]
+- Always check Stamina cost.
 - Compare Player Stats vs Enemy Difficulty.
 - Apply Anti - God Mode: Player describes * attack *, YOU determine if it hits.
 - Check 'courage': High courage resists fear effects.
@@ -98,17 +103,17 @@ Your focus is TACTICAL: Damage, Evasion, HP, Stamina, and Status Effects.
 4. Describe Tactical Consequence.
 `;
 
-    private static readonly DIALOGUE_PROMPT = `
-You are the[Social Logic Adjudicator].
+    private static readonly DIALOGUE_IDENTITY = `
+You are the [Social Logic Adjudicator].
 Your focus is INTERPERSONAL: Persuasion, Intimidation, Affection, and Social Status.
 
-[Rules]
-    - Analyze Tone and Manners(Hao - che / Hage - che for Wuxia).
+[Specific Social Rules]
+- Analyze Tone and Manners(Hao - che / Hage - che for Wuxia).
 - Apply Anti - God Mode: Player describes * what they say *, YOU determine how NPC feels.If Player dictates NPC action / entrance, REJECT it(The NPC does not appear / does not do the action).
 - Check 'eloquence'(Speech): Higher value = Higher success rate for persuasion.
 - Check 'morality':
     - High Morality(> 50): Bonus to honest / good acts.Penalty / Hesitation on immoral acts.
-  - Low Morality(<-50): Bonus to intimidation / deceit.Penalty on genuine altruism(suspicious).
+    - Low Morality(<-50): Bonus to intimidation / deceit.Penalty on genuine altruism(suspicious).
 
 [Mechanism]
 1. Difficulty Check(Reasonability + Stat Check).
@@ -127,17 +132,27 @@ Your focus is INTERPERSONAL: Persuasion, Intimidation, Affection, and Social Sta
     ): Promise<PreLogicOutput> {
         if (!this.apiKey) return this.fallbackLogic(userInput);
 
+        // 경량화된 프롬프트 구성
+        // Type-Specific Prompt Selection
+        let selectedIdentity = this.BASE_IDENTITY;
+        if (routerOut.type === 'combat') selectedIdentity = this.COMBAT_IDENTITY;
+        if (routerOut.type === 'dialogue') selectedIdentity = this.DIALOGUE_IDENTITY;
+
+        // Combine Identity + Core Rules + Schema
+        const systemInstruction = `
+${selectedIdentity}
+${this.CORE_RULES}
+${this.OUTPUT_SCHEMA}
+`.trim();
+
+        // [Agentic Caching] Use systemInstruction for static content
+        // This ensures the backend caches the heavy rules and schema.
         const genAI = new GoogleGenerativeAI(this.apiKey);
         const model = genAI.getGenerativeModel({
             model: MODEL_CONFIG.PRE_LOGIC,
-            generationConfig: { responseMimeType: "application/json" }
+            generationConfig: { responseMimeType: "application/json" },
+            systemInstruction: systemInstruction
         });
-
-        // 경량화된 프롬프트 구성
-        // Type-Specific Prompt Selection
-        let selectedPrompt = this.BASE_PROMPT;
-        if (routerOut.type === 'combat') selectedPrompt = this.COMBAT_PROMPT + "\n[Inherit Base Schema]";
-        if (routerOut.type === 'dialogue') selectedPrompt = this.DIALOGUE_PROMPT + "\n[Inherit Base Schema]";
 
         const personality = gameState.playerStats?.personality || {};
         const statsStr = JSON.stringify(personality);
@@ -263,23 +278,15 @@ Role: ${role}
             `[Nearby Candidates](NOT present.Do NOT describe them reacting unless they ENTER now.) \n${castingCandidates.map(c => `- ${c.name} (${c.role})`).join('\n')} ` :
             "";
 
+        // [Dynamic Context Construction]
+        // This part changes every turn, so it remains in the User Prompt.
+        // Redundant Static Rules (Schema, Anti-God Mode protocols) are removed as they are now in System Instruction.
         const prompt = `
-${selectedPrompt}
-
 [CRITICAL: Character Presence Rules]
 1. ** Active Characters **: ONLY characters in [Active Characters] are currently looking at the player and can react immediately.
 2. ** Nearby Candidates **: Characters in [Nearby Candidates] are consistent with the location but are NOT YET in the scene.
    - ** Do NOT ** describe them reacting(nodding, smiling, etc.) unless the User's Action specifically targets them or makes a loud noise to attract them.
     - If the User targets a Nearby Candidate, the Narrative Guide should mention "X enters the scene" or "X approaches".
-
-[CRITICAL: Anti - God Mode Protocol]
-The Player controls ONLY their own character.
-1. ** NO Forced Affection **: The player CANNOT dictate how an NPC feels. (e.g., "She falls in love with me" -> REJECT).
-2. ** NO Instant Mastery **: The player CANNOT suddenly become a master.Growth takes time.
-3. ** NO Hidden Power **: The player CANNOT reveal a power they didn't have.
-4. ** NO World Control **: The player CANNOT dictate world events or NPC actions.
-
-If Input violates these: REFUSE the outcome in narrative_guide.Describe the attempt failing.
 
 [Current State Guide]
 "${physicalGuide}"
@@ -307,21 +314,16 @@ ${PromptManager.getPlayerContext(gameState)}
 [User Input]
 "${userInput}"
 
-[Output Schema(JSON)]
-{
-    "mood_override": "daily" | "tension" | "combat" | "romance" | null,
-    "success": boolean,
-    "narrative_guide": "Specific instructions for the narrator.",
-    "state_changes": { "hp": -10, "stamina": -5 },
-    "mechanics_log": ["Rolled 15 vs DC 12 (Success)", "Anti-God Mode Triggered"]
-}
+[Execution Order]
+1. Analyze User Input against [System Rules] (Anti-God Mode, Wuxia Reality Check).
+2. Check [Current State] and [Player Capability].
+3. Determine Outcome (Success/Failure) and Generate "Narrative Guide".
+4. Set "mood_override" if the atmosphere changes heavily.
 
 [Mood Override Guide]
 - If your Narrative Guide shifts the atmosphere (e.g. Fight ends -> Peace, or Surprise Attack -> Crisis), you MUST set "mood_override".
 - Options: 'daily' (Peaceful), 'tension' (Suspense/Danger), 'combat' (Active Fight), 'romance' (Intimate).
 - Example: If outputting a "Peaceful" guide, set "mood_override": "daily". This prevents the Story Model from hallucinating enemies due to previous tension.
-
-Determine the outcome:
 `;
 
         try {

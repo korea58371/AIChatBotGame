@@ -587,6 +587,11 @@ export const useGameStore = create<GameState>()(
           extraOverrides: {},
           characterData: {}, // [Fix] Clear character data so it reloads fresh on next init
           lore: {}, // [Fix] Clear lore as well
+          goals: [],
+          tensionLevel: 0,
+          martialArts: [],
+          playerRealm: "삼류 (3rd Rate)",
+          userCoins: 0,
         });
       },
     }),
