@@ -461,6 +461,8 @@ export default function VisualNovelUI() {
         // Initial Fetch (Robust)
         const fetchInitialSession = async () => {
             // 1. Try getSession (Local Storage)
+            if (!supabase) return;
+
             const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
             if (mounted && sessionData.session) {
@@ -501,6 +503,7 @@ export default function VisualNovelUI() {
         fetchInitialSession();
 
         // Listen for changes
+        if (!supabase) return;
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, currentSession: any) => {
             if (mounted) {
                 setSession(currentSession);
@@ -2723,6 +2726,14 @@ export default function VisualNovelUI() {
                                     );
                                 })()}
                             </div>
+
+                            {/* Neigong (Internal Energy) */}
+                            <div className="flex items-center gap-2 ml-1 px-2 py-0.5 bg-black/30 rounded-lg border border-cyan-900/20 backdrop-blur-sm">
+                                <span className="text-cyan-400 text-xs md:text-sm font-bold font-serif">내공</span>
+                                <span className="text-cyan-100 font-mono font-bold text-xs md:text-sm">
+                                    {(playerStats.neigong || 0).toLocaleString()}년
+                                </span>
+                            </div>
                         </div>
 
                         {/* Row 2: HP & MP & Fatigue */}
@@ -2782,6 +2793,8 @@ export default function VisualNovelUI() {
                                     })()}
                                 </div>
                             </div>
+
+
 
                             {/* [New] Active Injuries Row */}
                             {playerStats.active_injuries && playerStats.active_injuries.length > 0 && (
