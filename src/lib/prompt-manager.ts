@@ -532,7 +532,20 @@ ${prompt}
 
                 // [LOGIC_FIX] Explicitly provide ID for Logic Model
                 const idStr = (c as any).id || c.englishName || "UnknownID";
-                return `- ${c.name} (ID: ${idStr} | ${age}/${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr}${appearanceStr} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
+
+                // [SPEECH TRAIT INJECTION - ENDING ONLY]
+                let speechEnding = "";
+                if (c.speech && c.speech.ending) {
+                    speechEnding = ` | Tone: ${c.speech.ending}`;
+                } else {
+                    // Fallback to legacy
+                    const legacyStyle = PromptManager.getSpeechStyle(c);
+                    if (legacyStyle && legacyStyle.ending !== 'Unknown') {
+                        speechEnding = ` | Tone: ${legacyStyle.ending}`;
+                    }
+                }
+
+                return `- ${c.name} (ID: ${idStr} | ${age}/${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr}${appearanceStr}${speechEnding} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
             })
             .join('\n');
     }
@@ -1103,12 +1116,20 @@ ${spawnCandidates || "None"}
             }
 
             // [SPEECH STYLE INJECTION]
-            // [SPEECH STYLE INJECTION] - Uses new Helper
-            const speechInfo = PromptManager.getSpeechStyle(char);
-            if (speechInfo) {
-                charInfo += `\n- Speech Style: ${speechInfo.style}`;
-                if (speechInfo.ending !== 'Unknown') charInfo += `\n- Ending Style: ${speechInfo.ending}`;
-                if (speechInfo.callSign) charInfo += `\n- Call Sign (to Player): ${speechInfo.callSign}`;
+            // Priority 1: New 'speech' object (High Fidelity)
+            if (char.speech) {
+                if (char.speech.style) charInfo += `\n- Speech Style: ${char.speech.style}`;
+                if (char.speech.ending) charInfo += `\n- Ending Style: ${char.speech.ending}`;
+                if (char.speech.habits) charInfo += `\n- Speech Habits: ${char.speech.habits}`;
+            }
+            // Priority 2: Legacy Helper (Fallback)
+            else {
+                const speechInfo = PromptManager.getSpeechStyle(char);
+                if (speechInfo) {
+                    charInfo += `\n- Speech Style: ${speechInfo.style}`;
+                    if (speechInfo.ending !== 'Unknown') charInfo += `\n- Ending Style: ${speechInfo.ending}`;
+                    if (speechInfo.callSign) charInfo += `\n- Call Sign (to Player): ${speechInfo.callSign}`;
+                }
             }
 
             // [INTIMATE/EROTIC MOOD] -> Inject Secret Body Data
