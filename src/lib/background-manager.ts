@@ -136,7 +136,11 @@ export function resolveBackground(tag: string): string {
     // 2. 검색어를 분해하여 매핑 키와 대조 (예: "던전_하수구_미로" -> "하수구" 키 찾기)
     const queryParts = query.split('_');
     if (queryParts.length > 1) {
-        for (const part of queryParts) {
+        // [MODIFIED] 우선순위 변경: 뒤쪽 단어(장소)부터 검색 (마을_시장 -> 시장 먼저 검색)
+        // [User Request] 없는 이미지 매칭 시, 지역보다 장소로 검색을 우선시
+        const reversedParts = [...queryParts].reverse();
+
+        for (const part of reversedParts) {
             // 너무 짧은 단어는 제외 (오매칭 방지)
             if (part.length < 2) continue;
 

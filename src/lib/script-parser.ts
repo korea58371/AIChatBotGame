@@ -33,12 +33,41 @@ export function parseScript(text: string): ScriptSegment[] {
 
     // Improved regex to capture tag and content
     // Matches <TagName>Content
-    const regex = /<([^>]+)>([\s\S]*?)(?=$|<[^>]+>)/g;
+    // Improved regex to capture tag and content
+    // Matches <TagName>Content or [TagName]Content
+    // Supports attributes in tags (e.g. <Background space_station>)
+    const regex = /(?:<|\[)([^>\]]+)(?:>|\])([\s\S]*?)(?=$|(?:<|\[)[^>\]]+(?:>|\]))/g;
 
     let match;
+    let lastIndex = 0;
+
+    // [Fix] Capture leading text (before the first tag)
+    // If the logical text starts without a tag (e.g. just narration), we must capture it.
+    // We do this by checking if the first match starts after index 0.
+    const firstMatch = regex.exec(text);
+    if (firstMatch && firstMatch.index > 0) {
+        const leadingText = text.substring(0, firstMatch.index).trim();
+        if (leadingText) {
+            // [Fix] Split by newlines first to ensure paragraphs are preserved
+            // Just like <narration> handling logic
+            const lines = leadingText.split('\n');
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                const sentences = splitSentences(line.trim());
+                sentences.forEach(s => {
+                    if (s.trim()) segments.push({ type: 'narration', content: s.trim() });
+                });
+            });
+        }
+    }
+
+    // Reset regex for the loop
+    regex.lastIndex = 0;
 
     while ((match = regex.exec(text)) !== null) {
-        const tagName = match[1].trim();
+        const fullTagName = match[1].trim();
+        // Remove attributes/extra text to get just the tag name
+        const tagName = fullTagName.split(/\s+/)[0];
         const content = match[2].trim();
         if (tagName === '배경') {
             let bgKey = content;
@@ -85,15 +114,13 @@ export function parseScript(text: string): ScriptSegment[] {
                 const trimmedLine = line.trim();
                 if (!trimmedLine) continue;
 
-                // Simple Line-Based Parsing (User Request: Don't split sentences if structure is good)
-                // [Update] Apply Auto-Formatting for readability
-                const formatted = formatForReadability(trimmedLine);
+                // [Update] Use robust splitSentences logic instead of simple regex
+                // This handles quotes, brackets, and prevents over-splitting short sentences
+                const sentences = splitSentences(trimmedLine);
 
-                // [User Request] Split into multiple segments instead of just line breaks
-                const parts = formatted.split('\n');
-                for (const part of parts) {
-                    if (part.trim()) {
-                        segments.push({ type: 'narration', content: part.trim() });
+                for (const sentence of sentences) {
+                    if (sentence.trim()) {
+                        segments.push({ type: 'narration', content: sentence.trim() });
                     }
                 }
             }
@@ -160,29 +187,39 @@ export function parseScript(text: string): ScriptSegment[] {
                     narrationContent = splitMatch[2].trim();
                 }
 
-                // [Update] Apply Auto-Formatting
-                dialogueContent = formatForReadability(dialogueContent);
-                if (narrationContent) narrationContent = formatForReadability(narrationContent);
+                // [Update] REMOVED formatForReadability in favor of splitSentences consistency
+                // dialogueContent = formatForReadability(dialogueContent);
+                // if (narrationContent) narrationContent = formatForReadability(narrationContent);
 
                 // Split dialogue content by separate lines for sequential display
-                const speechLines = dialogueContent.split('\n');
-                for (const line of speechLines) {
-                    if (line.trim()) {
-                        segments.push({
-                            type: 'dialogue',
-                            content: line.trim().replace(/^"(.*)"$/, '$1').replace(/^“(.*)”$/, '$1'), // [Fix] Strip quotes
-                            character: name,
-                            characterImageKey: imageKey, // Pass if parsed
-                            expression: expression || '기본'
-                        });
+                // If the dialogue is long, we split it into multiple 'dialogue' segments with the same speaker/expression
+                // But first, we respect existing newlines
+                const dLines = dialogueContent.split('\n');
+                for (const line of dLines) {
+                    if (!line.trim()) continue;
+                    const sentences = splitSentences(line.trim());
+                    for (const sent of sentences) {
+                        if (sent.trim()) {
+                            segments.push({
+                                type: 'dialogue',
+                                content: sent.trim().replace(/^"(.*)"$/, '$1').replace(/^“(.*)”$/, '$1'),
+                                character: name,
+                                characterImageKey: imageKey,
+                                expression: expression || '기본'
+                            });
+                        }
                     }
                 }
 
                 if (narrationContent) {
-                    // Also split narration content by line
+                    // split narration content
                     const nLines = narrationContent.split('\n');
                     for (const nl of nLines) {
-                        if (nl.trim()) segments.push({ type: 'narration', content: nl.trim() });
+                        if (!nl.trim()) continue;
+                        const nSentences = splitSentences(nl.trim());
+                        for (const ns of nSentences) {
+                            if (ns.trim()) segments.push({ type: 'narration', content: ns.trim() });
+                        }
                     }
                 }
             } else {
@@ -282,6 +319,87 @@ export function parseScript(text: string): ScriptSegment[] {
                 expression: background, // We use 'expression' field to store the extra metadata (background)
                 content: msgContent
             });
+        } else if (tagName.toLowerCase() === 'stat' || tagName.toLowerCase() === 'state') {
+            // [New] Inline Stat Update
+            // <Stat hp="-10" mp="5">
+            // Content might be empty or description
+
+            // Extract attributes using regex
+            const attributes: Record<string, number> = {};
+            const attrRegex = /(\w+)=["']([^"']*)["']/g;
+            let attrMatch;
+
+            // Re-scan the full tag content to find attributes
+            // match[0] contains the full tag like <Stat hp="-10">
+            const fullTag = match[0];
+            while ((attrMatch = attrRegex.exec(fullTag)) !== null) {
+                const key = attrMatch[1];
+                const val = parseFloat(attrMatch[2]);
+                if (!isNaN(val)) {
+                    attributes[key] = val;
+                }
+            }
+
+            segments.push({
+                type: 'command',
+                commandType: 'update_stat',
+                content: JSON.stringify(attributes)
+            });
+
+            // If there's text content after the tag, add it as narration/dialogue
+            // [Fix] Use robust splitting logic (Newlines -> splitSentences)
+            if (content.trim()) {
+                const lines = content.trim().split('\n');
+                lines.forEach(line => {
+                    if (!line.trim()) return;
+                    const sentences = splitSentences(line.trim());
+                    sentences.forEach(s => {
+                        if (s.trim()) segments.push({ type: 'narration', content: s.trim() });
+                    });
+                });
+            }
+
+        } else if (tagName.toLowerCase() === 'rel' || tagName.toLowerCase() === 'relationship') {
+            // [New] Inline Relationship Update
+            // <Rel char="chilsung" val="5"> or <Rel id="chilsung" value="5">
+
+            const attrRegex = /(\w+)=["']([^"']*)["']/g;
+            let attrMatch;
+            const fullTag = match[0];
+
+            let charId = '';
+            let value = 0;
+
+            while ((attrMatch = attrRegex.exec(fullTag)) !== null) {
+                const key = attrMatch[1].toLowerCase();
+                const valStr = attrMatch[2];
+
+                if (key === 'char' || key === 'id' || key === 'character') {
+                    charId = valStr;
+                } else if (key === 'val' || key === 'value' || key === 'amount') {
+                    value = parseFloat(valStr);
+                }
+            }
+
+            if (charId && !isNaN(value)) {
+                segments.push({
+                    type: 'command',
+                    commandType: 'update_relationship',
+                    content: JSON.stringify({ charId, value })
+                });
+            }
+
+            if (content.trim()) {
+                const lines = content.trim().split('\n');
+                lines.forEach(line => {
+                    if (!line.trim()) return;
+                    const sentences = splitSentences(line.trim());
+                    sentences.forEach(s => {
+                        if (s.trim()) segments.push({ type: 'narration', content: s.trim() });
+                    });
+                });
+            }
+
         } else if (tagName === '기사') {
             // <기사>Title_Source: Content
             const colonIndex = content.indexOf(':');
@@ -314,6 +432,19 @@ export function parseScript(text: string): ScriptSegment[] {
             // The system prompt generates <Think>...</Think> blocks for internal reasoning.
             // We consciously ignore this content so it doesn't appear in the game UI.
             continue;
+        } else if (tagName.toLowerCase() === 'mem' || tagName.toLowerCase() === 'memory') {
+            // [Fix] Ignore Memory tags (Metadata)
+            // They are injected by PostLogic for context but shouldn't be visible
+            if (content.trim()) {
+                const lines = content.trim().split('\n');
+                lines.forEach(line => {
+                    if (!line.trim()) return;
+                    const sentences = splitSentences(line.trim());
+                    sentences.forEach(s => {
+                        if (s.trim()) segments.push({ type: 'narration', content: s.trim() });
+                    });
+                });
+            }
         } else {
             const colonIndex = tagName.indexOf(':');
             if (colonIndex !== -1) {
@@ -333,7 +464,7 @@ export function parseScript(text: string): ScriptSegment[] {
                 if (tagName.startsWith('/')) {
                     continue;
                 }
-                segments.push({ type: 'narration', content: `[${tagName}] ${content}` });
+                segments.push({ type: 'narration', content: `[${fullTagName}] ${content}` });
             }
         }
     }
@@ -348,7 +479,19 @@ export function parseScript(text: string): ScriptSegment[] {
 
     // If no tags found, treat entire text as narration (fallback for legacy/error)
     if (segments.length === 0 && text.trim()) {
-        segments.push({ type: 'narration', content: text.trim() });
+        const lines = text.split(/\n+/); // Split by one or more newlines
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine) {
+                // [Update] Apply splitSentences to each line individually
+                const sentences = splitSentences(trimmedLine);
+                for (const sentence of sentences) {
+                    if (sentence.trim()) {
+                        segments.push({ type: 'narration', content: sentence.trim() });
+                    }
+                }
+            }
+        }
     }
 
     return segments;
@@ -379,9 +522,9 @@ function splitSentences(text: string): string[] {
             }
 
             // 2. Check overlap logic (Next Char)
-            // If next char is NOT space and NOT EOF, it's likely not a split (e.g. 1.5, 3.14, www.google.com)
+            // If next char is NOT whitespace (Space, Tab, Newline, NBSP) and NOT EOF, it's likely not a split (e.g. 1.5, 3.14)
             // But if it is End of String, we validly split (and push).
-            if (j < text.length && text[j] !== ' ' && text[j] !== '\n') {
+            if (j < text.length && !/\s/.test(text[j])) {
                 continue;
             }
 

@@ -249,7 +249,7 @@ export class DataManager {
 
                         // [데이터 강화] Locations.json을 worldModule.locations로 평탄화 (Flatten)
                         if (loreModule?.WuxiaLore?.locations) {
-                            const locSource = loreModule.WuxiaLore.locations;
+                            const locSource = loreModule.WuxiaLore.locations as any;
                             const flatLocations: Record<string, any> = {};
 
                             // Helper to add location
@@ -257,32 +257,68 @@ export class DataManager {
                                 if (key) flatLocations[key] = data;
                             };
 
-                            // 1. Faction Locations (e.g., "무림맹 정문")
-                            locSource.faction_locations?.forEach((faction: any) => {
-                                faction.locations?.forEach((loc: any) => {
-                                    // Map by "Faction Name" (e.g., "무림맹 정문") - Preferred
-                                    addLoc(`${faction.faction_name} ${loc.name}`, loc);
-                                    // Map by "Name" (e.g., "정문") - Fallback, might collide
-                                    if (!flatLocations[loc.name]) addLoc(loc.name, loc);
-                                });
-                            });
+                            // [New] 3-Tier Hierarchy: Region > Zone > Spot
+                            if (locSource.regions) {
+                                Object.entries(locSource.regions).forEach(([regionName, regionData]: [string, any]) => {
+                                    if (regionData.zones) {
+                                        Object.entries(regionData.zones).forEach(([zoneName, zoneData]: [string, any]) => {
+                                            // 1. Map Zone (e.g. "사천당가")
+                                            flatLocations[zoneName] = {
+                                                ...zoneData,
+                                                type: 'zone',
+                                                region: regionName
+                                            };
 
-                            // 2. Regional Locations (e.g., "중원 번화가")
-                            locSource.regional_locations?.forEach((region: any) => {
-                                region.locations?.forEach((loc: any) => {
-                                    addLoc(`${region.region_name} ${loc.name}`, loc);
-                                    if (!flatLocations[loc.name]) addLoc(loc.name, loc);
-                                });
-                            });
+                                            // 2. Map Spots (e.g. "사천당가 가주 집무실")
+                                            if (zoneData.spots && Array.isArray(zoneData.spots)) {
+                                                zoneData.spots.forEach((spotName: string) => {
+                                                    // Full Name: "Zone Spot"
+                                                    const fullName = `${zoneName} ${spotName}`;
+                                                    const spotData = {
+                                                        name: spotName,
+                                                        type: 'spot',
+                                                        parent: zoneName,
+                                                        region: regionName,
+                                                        description: `[${regionName} > ${zoneName}] ${spotName}` // Auto-desc
+                                                    };
 
-                            // 3. Common Locations (e.g., "객잔 1층")
-                            locSource.common_locations?.forEach((type: any) => {
-                                type.locations?.forEach((loc: any) => {
-                                    // Usually just Name is unique enough for common places like "객잔 1층"
-                                    addLoc(loc.name, loc);
-                                    addLoc(`${type.type_name} ${loc.name}`, loc);
+                                                    flatLocations[fullName] = spotData;
+
+                                                    // Short Name: "Spot" (Fallback, e.g. "정문")
+                                                    // Only set if not exists, to prevent collision overriding
+                                                    if (!flatLocations[spotName]) {
+                                                        flatLocations[spotName] = spotData;
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
                                 });
-                            });
+                            }
+                            // [Legacy Support]
+                            else {
+                                // 1. Faction Locations
+                                locSource.faction_locations?.forEach((faction: any) => {
+                                    faction.locations?.forEach((loc: any) => {
+                                        addLoc(`${faction.faction_name} ${loc.name}`, loc);
+                                        if (!flatLocations[loc.name]) addLoc(loc.name, loc);
+                                    });
+                                });
+                                // 2. Regional Locations
+                                locSource.regional_locations?.forEach((region: any) => {
+                                    region.locations?.forEach((loc: any) => {
+                                        addLoc(`${region.region_name} ${loc.name}`, loc);
+                                        if (!flatLocations[loc.name]) addLoc(loc.name, loc);
+                                    });
+                                });
+                                // 3. Common Locations
+                                locSource.common_locations?.forEach((type: any) => {
+                                    type.locations?.forEach((loc: any) => {
+                                        addLoc(loc.name, loc);
+                                        addLoc(`${type.type_name} ${loc.name}`, loc);
+                                    });
+                                });
+                            }
 
                             // Assign to worldModule
                             if (!worldModule) worldModule = { locations: {}, items: {} };

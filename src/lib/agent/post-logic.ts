@@ -1,89 +1,280 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MODEL_CONFIG } from '../model-config';
+import { RelationshipManager } from '../relationship-manager';
 
 export interface PostLogicOutput {
     mood_update?: string;
+    location_update?: string; // [NEW] Region_Place
     relationship_updates?: Record<string, number>; // ID: 변경량
     stat_updates?: Record<string, number>; // [NEW] Personality Stat Updates (morality, eloquence, etc.)
     new_memories?: string[];
-    character_memories?: Record<string, string[]>; // [NEW] Character specific memories
+    character_memories?: Record<string, string[]>; // [NEW] Character specific memories (Long-term ONLY)
     activeCharacters?: string[]; // [NEW] Active characters in scene
+    inline_triggers?: { quote: string, tag: string }[]; // [NEW] Quotes to inject tags into
     summary_trigger?: boolean;
+
+    // [Narrative Systems]
+    goal_updates?: { id: string, status: 'COMPLETED' | 'FAILED' | 'ACTIVE', updates?: string }[];
+    new_goals?: { description: string, type: 'MAIN' | 'SUB' }[];
+    tension_update?: number; // Delta
+
     usageMetadata?: any; // [Cost] 토큰 사용량
     _debug_prompt?: string; // [Debug] 실제 프롬프트
 }
 
 export class AgentPostLogic {
-    private static apiKey: string | undefined = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
 
     private static readonly SYSTEM_PROMPT = `
 You are the [Post-Logic Analyst].
 Your job is to read the generated story turn and identify IMPLICIT changes in the game state.
-Focus on: Emotion (Mood), Relationships, Long-term Memories, and PERSONALITY SHIFTS.
+Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS, GOALS, and TENSION.
+
+[Memory Logic] (Strict Filtering)
+- **Do NOT record trivial events.** (e.g. "We ate dinner", "He smiled at me", "I felt sad") -> These are handled by Relationship Score.
+- **Record ONLY Long-term Significant Facts:**
+  1. **Promises/Contracts:** "Promised to meet at the teahouse at noon", "Agreed to kill the Demon King".
+  2. **Permanent Changes:** "Lost a left arm", "Acquired the Legendary Sword", "Housing burned down".
+  3. **Skill/Growth:** "Learned the Flying Dragon Fist", "Realized the Dao of Empty Sky".
+  4. **Major Secrets:** "Learned that the Player is actually the King", "Discovered the spy".
+- **Format:** Keep it concise. "Promise: Meet at Teahouse", "Injury: Lost Left Eye".
+
+[Goal Tracking]
+- Identify if the player creates a new Goal ("I will become the Alliance Leader").
+- Monitor [Active Goals] for progress, completion, or failure based on the story.
+
+[Narrative Tension]
+- Estimate the shift in narrative tension (-100 to +100).
+- **Crisis/Fight Start:** +20 ~ +50
+- **Escalation/Danger:** +10 ~ +20
+- **Resolution/Victory:** -20 ~ -50 (Relief)
+- **Peaceful Moment:** -5 ~ -10 (Relaxation)
 
 [Rules]
 - Personality Stats: morality, courage, energy, decision, lifestyle, openness, warmth, eloquence, leadership, humor, lust.
-- Range: -100 to 100.
-- Update logic:
-  - Lying/Stealing -> morality -2
-  - Heroic act/Sacrifice -> morality +3
-  - Witty remark -> humor +2
-  - Leading the party -> leadership +2
+- Physical/Mental Stats: hp (Physical Condition), mp (Mental Focus/Energy).
+[Rules]
+- Personality Stats (-100 to 100):
+   - morality: -100 (Fiend/No Conscience) <-> 100 (Saint/Paragon)
+   - courage: -100 (Coward) <-> 100 (Heroic)
+   - energy: -100 (Lethargic) <-> 100 (Energetic)
+   - decision: -100 (Indecisive) <-> 100 (Decisive)
+   - lifestyle: -100 (Chaotic) <-> 100 (Disciplined)
+   - openness: -100 (Closed) <-> 100 (Open)
+   - warmth: -100 (Cold) <-> 100 (Warm)
+   - eloquence: -100 (Mute/Blunt) <-> 100 (Orator)
+   - leadership: -100 (Follower) <-> 100 (Leader)
+   - humor: -100 (Serious) <-> 100 (Jester)
+   - lust: -100 (Ascetic) <-> 100 (Hedonist)
+
+- Physical/Mental Stats: hp, mp, str, agi, int, vit, luk.
+
+[Personality Update Guidelines] (Consistency & Inertia)
+- **Principle:** Stats represent a developing character arc.
+- **Diminishing Returns (Saturation):**
+  - High stats (>80) do NOT increase from minor actions. A 'Saint' giving a coin gets +0 Morality.
+  - To reach Extremes (90+), one must make **Sacrifices** or face **Major Risks**.
+- **The "Hypocrisy" Check (Expectation Gap):**
+  - If a character has EXTREME stats (>90), they are held to a higher standard.
+  - Example: A 'Saint' (Morality 95) who gives food but *hesitates* or *complains* -> **Morality -5**.
+    - Why? Because it breaks the image of perfection. A normal person would get +2, but a Saint fails expectations.
+- **Inertia (Gravity):**
+  - It is hard to build (Climb), easy to destroy (Fall).
+  - One major crime can drop Morality 100 -> 50. But one good deed cannot fix Morality -100 -> -50.
+  - **Out-of-Character:** A Saint (100) committing murder -> -60 (Major Corruption). A Villain (-100) saving a cat -> +5 (Rare kindness).
+
+[Relationship Update Guidelines] (Relationship Inertia)
+- **Principle:** Relationships take time to build. Do NOT allow instant massive jumps (e.g., Stranger -> Lover in one turn).
+- **Update Magnitude Limits (per turn):**
+  - **Small (+1 ~ +3):** Compliments, small favours, pleasant small talk, initial attraction.
+  - **Medium (+4 ~ +9):** Unexpected help, deep emotional connection, first date, protecting someone.
+  - **Large (+10 ~ +15):** Saving life, major sacrifice, accepting a confession (Only if already at high affection).
+  - **Extreme (+20):** Life-altering commitment (e.g. Marriage proposal accepted), taking a bullet.
+- **Negative Caps:** Betrayal or murder can drop affinity fast (-20 ~ -50), but simple disagreements or rudeness should be small (-1 ~ -5).
+- **Tier Gating:** You cannot skip multiple tiers instantly. 
+  - If the narrative feels like a 'Lover' interaction but the previous score was 0 (Stranger), do NOT set the score to 100.
+  - Instead, apply a Large update (+15) and suggest a 'romance' mood to push direction, respecting the progression speed.
+
+- **Diminishing Returns (Saturation):**
+  - **High Tiers (Lvl 5+):** Routine compliments or small talk (+1) should eventually have 0 effect. Only meaningful events matter.
+    - Example: A 'Lover' saying "I love you" is expected (0 or +1), not a major event (+10).
+    - To gain score at high tiers, the player must show *new* devotion or shared hardship.
+  - **Low Tiers (Lvl 0~2):** Small talk (+1~3) is effective for building initial rapport.
+
+- **Relative Impact (Betrayal):**
+  - **High Tiers:** A betrayal or rude remark hits HARDER. (e.g., Stranger being rude = -2, Lover being rude = -10).
+
+- **Extreme Thresholds (Lock-in / Resilience):**
+  - **Blind Devotion (Score > 90):** The character is deeply devoted. 
+    - Minor offenses (-1 ~ -10) are ignored or interpreted positively (teasing). 
+    - Only "Catastrophic Betrayal" (e.g., trying to kill them) can break this state (-50).
+  - **Vendetta / Nemesis (Score < -90):** The character loathes the player.
+    - Compliments or gifts (+1 ~ +10) are REJECTED or viewed as insults/traps (0 change).
+    - Only a "Life Debt" or "World-Shaking Redemption" can unlock this state.
+
+[Inline Event Triggers] (CRITICAL)
+You must identify the EXACT sentence segment (quote) where a change happens and generate a tag for it.
+- Usage: When the text describes an event that justifies a stat/relationship change.
+- Format:
+  - quote: The exact substring from the AI's response (unique enough to find).
+  - tag: <Stat hp='-5'> or <Rel char='Name' val='5'>
+
+[Location Updates]
+- Identify if the characters have moved to a NEW significant location.
+- Format: "Region_Place" in KOREAN (e.g., "사천_성도", "하북_팽가", "중원_객잔", "북해_빙궁").
+- Use standard Wuxia region names: 중원, 사천, 하북, 산동, 북해, 남만, 서역, 등.
+- If no change, return null.
 
 [Output Schema (JSON)]
 {
   "mood_update": "tension" | "romance" | "daily" | null,
+  "location_update": "Region_Place" | null,
   "relationship_updates": { "character_id": 5, "another_char": -2 },
-  "stat_updates": { "morality": -2, "eloquence": 1 },
+  "stat_updates": { "morality": -2, "eloquence": 1, "hp": -5, "mp": 2 },
   "character_memories": { 
       "soso": ["Player praised my cooking", "Player asked about my past"], 
       "chilsung": ["Player defeated me", "Player gave me a healing potion"] 
   },
-  "activeCharacters": ["soso", "chilsung"], // [NEW] List of character IDs actively SPEAKING or ACTING.
-  "summary_trigger": false
+  "inline_triggers": [
+      { "quote": "The bandit's blade grazed my arm!", "tag": "<Stat hp='-5'>" },
+      { "quote": "She laughed at my joke.", "tag": "<Rel char='NamgungSeAh' val='5'>" }
+  ],
+  "tension_update": number, // Optional: Shift in tension (-100 to +100)
+  "new_goals": [{ "type": "MAIN" | "SUB", "description": "Goal description" }], // Optional
+  "goal_updates": [{ "id": "goal_id", "status": "COMPLETED" | "FAILED" | "ACTIVE" }], // Optional
+  "activeCharacters": ["soso", "chilsung"], 
+  "summary_trigger": false,
+  "goal_updates": [ { "id": "goal_1", "status": "COMPLETED" } ],
+  "new_goals": [ { "description": "Survive the ambush", "type": "SUB" } ],
+  "tension_update": 10
 }
 [Critically Important]
 - For 'activeCharacters', list EVERY character ID that speaks or performs an action in the text.
 - For 'character_memories', extract 1 key memory per active character if they had significant interaction with the player this turn.
-- If a character merely observes, do not generate a memory unless they have an internal reaction.
+- The 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.
 `;
 
     static async analyze(
         userMessage: string,
         aiResponse: string,
-        currentMood: string
+        currentMood: string,
+        validCharacters: string[],
+        playerName: string,
+        currentStats: any,
+        activeRelationships: any,
+        gameState: any, // [NEW] Full State access for Maps
+        language: 'ko' | 'en' | null = 'ko'
     ): Promise<PostLogicOutput> {
-        if (!this.apiKey) return {};
+        // [DEBUG] Log Inputs
+        // console.log(`[AgentPostLogic] Input Length: ${storyText.length}, Mood: ${currentMood}`);
 
-        const genAI = new GoogleGenerativeAI(this.apiKey);
+        const apiKey = this.apiKey;
+        if (!apiKey) return {};
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+
+        // [Context Caching]
+        // Split Static (System Instruction) and Dynamic (User Message)
+        const staticSystemPrompt = this.SYSTEM_PROMPT;
+
         const model = genAI.getGenerativeModel({
-            model: MODEL_CONFIG.LOGIC, // 표준 Logic/Flash 모델 사용
-            generationConfig: { responseMimeType: "application/json" }
+            model: MODEL_CONFIG.LOGIC, // Standard Logic/Flash Model
+            generationConfig: { responseMimeType: "application/json" },
+            systemInstruction: staticSystemPrompt // [CACHE ENABLED] Pass static prompt here
         });
 
-        const prompt = `
-${this.SYSTEM_PROMPT}
+        // [Mini-Map Injection for Validation]
+        let locationContext = "";
+        const currentLocation = gameState.currentLocation || "Unknown";
+        const locationsData = gameState.lore?.locations;
 
-[Interaction]
-User: ${userMessage}
-AI: ${aiResponse}
+        if (locationsData && locationsData.regions && currentLocation) {
+            // Simply list ALL Region Names + Current Zone Spots
+            const regionsList = Object.keys(locationsData.regions);
+            let currentZoneSpots: string[] = [];
+            let currentRegionName = "Unknown";
 
-[Current State]
-Mood: ${currentMood}
+            // Find current zone spots
+            for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
+                if (rData.zones && rData.zones[currentLocation]) {
+                    currentRegionName = rName;
+                    currentZoneSpots = rData.zones[currentLocation].spots || [];
+                    break;
+                }
+                if (rName === currentLocation) {
+                    currentRegionName = rName;
+                }
+            }
 
-Analyze implicit changes:
+            locationContext = `
+[World Map Data]
+- Valid Major Regions (for long travel): ${regionsList.join(', ')}
+- Current Location: ${currentLocation} (Region: ${currentRegionName})
+- Valid Local Spots (for local move): ${currentZoneSpots.join(', ')}
+`;
+        }
+
+        const dynamicPrompt = `
+[Context Data]
+Current Mood: ${currentMood}
+Player Name: ${playerName}
+Valid Character IDs (Target Whitelist): ${JSON.stringify(validCharacters)}
+Current Stats: ${JSON.stringify(currentStats)}
+Current Relationships: ${JSON.stringify(activeRelationships)}
+Current Tension: ${gameState.tensionLevel || 0}/100
+Active Goals: ${JSON.stringify(gameState.goals ? gameState.goals.filter((g: any) => g.status === 'ACTIVE') : [])}
+${locationContext}
+
+[Relationship Tiers Guide]
+${RelationshipManager.getPromptContext()}
+Check if the AI's portrayal matches these tiers. If not, suggest a mood update.
+
+[Input Story Turn]
+User Input: "${userMessage}"
+AI Story:
+"""
+${aiResponse}
+"""
+
+[Instruction]
+Analyze the [Input Story Turn] based on the rules in the System Prompt.
+Generate the JSON output.
 `;
 
         try {
-            const result = await model.generateContent(prompt);
-            const text = result.response.text();
-            console.log(`[PostLogic] Raw Output:\n${text}`); // [DEBUG]
-            const data = JSON.parse(text);
-            return { ...data, usageMetadata: result.response.usageMetadata, _debug_prompt: prompt };
-        } catch (e) {
-            console.warn("PostLogic 분석 실패 (치명적이지 않음):", e);
-            return {};
+            const result = await model.generateContent(dynamicPrompt);
+            const response = result.response;
+            const text = response.text();
+
+            // Usage Metadata for Cost Calculation
+            const usage = response.usageMetadata;
+
+            try {
+                const json = JSON.parse(text);
+
+                // [Validation] Ensure inline_triggers exist
+                if (!json.inline_triggers) json.inline_triggers = [];
+
+                return {
+                    ...json,
+                    usageMetadata: usage,
+                    _debug_prompt: dynamicPrompt // Log only dynamic part for valid debug (Static is cached)
+                };
+            } catch (e) {
+                console.error("[AgentPostLogic] JSON Parse Error:", e);
+                console.error("Raw Text:", text);
+                return {
+                    mood_update: undefined,
+                    summary_trigger: false,
+                    usageMetadata: usage,
+                    _debug_prompt: dynamicPrompt
+                };
+            }
+
+        } catch (error) {
+            console.error("[AgentPostLogic] API Error:", error);
+            return { mood_update: undefined, summary_trigger: false };
         }
     }
 }

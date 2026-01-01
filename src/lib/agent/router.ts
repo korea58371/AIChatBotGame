@@ -14,7 +14,7 @@ export interface RouterOutput {
 }
 
 export class AgentRouter {
-    private static apiKey: string | undefined = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
 
     // 정적 라우터 시스템 프롬프트 (제로샷)
     // 속도와 정확성에 최적화됨
@@ -54,7 +54,9 @@ Output: {"type": "system", "intent": "Check Status", "keywords": ["Status Window
 
     static async analyze(
         messages: Message[],
-        lastSystemMessage: string
+        lastSystemMessage: string,
+        activeCharacterNames: string[] = [], // [NEW] Active Characters for better NER
+        lastTurnSummary: string = "" // [NEW] Context from previous turn
     ): Promise<RouterOutput> {
         if (!this.apiKey) {
             console.error("AgentRouter: API 키가 누락되었습니다.");
@@ -74,6 +76,8 @@ Output: {"type": "system", "intent": "Check Status", "keywords": ["Status Window
 ${this.ROUTER_PROMPT}
 
 [Current Context]
+Active Characters (Visible): ${activeCharacterNames.join(', ') || "None"}
+Last Turn Summary: "${lastTurnSummary || "None (Infer from history)"}"
 Last System Output: "${lastSystemMessage.slice(-300)}"
 User Input: "${userMessage}"
 

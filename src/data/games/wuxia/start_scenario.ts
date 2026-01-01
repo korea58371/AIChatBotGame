@@ -17,7 +17,8 @@ export const CHARACTER_CREATION_QUESTIONS = [
             { value: 'good', label: "1. [선행] \"사람이 그러면 안 되지!\" 위험을 무릅쓰고라도 돕는다." },
             { value: 'pragmatic', label: "2. [실리] \"돕고는 싶지만, 내 목숨이 먼저다.\" 안전할 때만 돕는다." },
             { value: 'selfish', label: "3. [이기] \"내 코가 석 자다.\" 철저히 외면하고 내 갈 길만 간다." },
-            { value: 'calculation', label: "4. [계산] \"저걸 도와주면 콩고물이 떨어질까?\" 이득이 될 때만 움직인다." }
+            { value: 'calculation', label: "4. [계산] \"저걸 도와주면 콩고물이 떨어질까?\" 이득이 될 때만 움직인다." },
+            { value: 'evil', label: "5. [악행] \"재밌어 보이는데?\" 괴롭힘에 동참하여 더 심하게 짓밟는다." }
         ]
     },
     {
@@ -38,7 +39,8 @@ export const CHARACTER_CREATION_QUESTIONS = [
             { value: 'money', label: "1. [재물] \"돈이 최고야!\" 현대 지식으로 떼돈을 벌고 싶다." },
             { value: 'attention', label: "2. [관심/명예] \"내가 바로 주인공!\" 사람들의 관심을 받고 유명해지고 싶다." },
             { value: 'safety', label: "3. [안전] \"안 다치고 싶어.\" 튼튼한 호위무사나 안전한 은신처가 절실하다." },
-            { value: 'pleasure', label: "4. [쾌락/음식] \"맛있는 거나 먹자.\" 맛집 탐방이나 유흥을 즐기고 싶다." }
+            { value: 'pleasure', label: "4. [쾌락/음식] \"맛있는 거나 먹자.\" 맛집 탐방이나 유흥을 즐기고 싶다." },
+            { value: 'growth', label: "5. [성장/무공] \"강해지고 싶어.\" 절세신공을 익혀 무림의 고수가 되고 싶다." }
         ]
     },
     {

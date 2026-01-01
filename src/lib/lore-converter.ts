@@ -742,9 +742,14 @@ export class LoreConverter {
         if (possessorText) {
             output += possessorText + "\n\n";
         }
-        if (lore.charactersDetail) {
-            output += LoreConverter.convertCharacters(lore.charactersDetail, mood) + "\n\n";
-        }
+
+        // [OPTIMIZATION] Character Dump Removed
+        // We no longer dump the entire character database here.
+        // Active characters are injected dynamically by PromptManager.
+        // Referenced characters are retrieved by AgentRetriever.
+        // if (lore.charactersDetail) {
+        //     output += LoreConverter.convertCharacters(lore.charactersDetail, mood) + "\n\n";
+        // }
 
         if (lore.romance_guide) {
             output += LoreConverter.convertRomance(lore.romance_guide) + "\n\n";

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { ScriptSegment } from '@/lib/script-parser';
 import { MoodType } from '@/data/prompts/moods';
 import { DataManager, GameData } from './data-manager';
+import { PromptManager } from './prompt-manager';
 
 export interface Message {
   role: 'user' | 'model';
@@ -138,6 +139,23 @@ interface GameState {
   // [New] Dynamic Extra Character Mappings
   extraOverrides?: Record<string, string>;
   setExtraOverride: (name: string, imageKey: string) => void;
+
+  // [New] Narrative Systems (Goals & Tension)
+  goals: GameGoal[];
+  addGoal: (goal: GameGoal) => void;
+  updateGoal: (id: string, updates: Partial<GameGoal>) => void;
+
+  tensionLevel: number; // 0-100
+  setTensionLevel: (level: number) => void;
+  updateTensionLevel: (delta: number) => void;
+}
+
+export interface GameGoal {
+  id: string;
+  description: string;
+  type: 'MAIN' | 'SUB';
+  status: 'ACTIVE' | 'COMPLETED' | 'FAILED';
+  createdTurn: number;
 }
 
 export interface PlayerStats {
@@ -203,7 +221,7 @@ const INITIAL_STATS: PlayerStats = {
     leadership: 0, humor: 0, lust: 0
   },
   relationships: {},
-  injuries: [],
+  active_injuries: [],
   fatigue: 0,
   narrative_perspective: '3인칭' // Default
 };
@@ -340,6 +358,16 @@ export const useGameStore = create<GameState>()(
       setAvailableExtraImages: (extraCharacters) => set({ availableExtraImages: extraCharacters }),
 
       characterData: {}, // Initialized empty, filled by setGameId
+      updateCharacterRelationship: (charId, value) => set((state) => {
+        const char = state.characterData[charId];
+        if (!char) return {};
+        return {
+          characterData: {
+            ...state.characterData,
+            [charId]: { ...char, relationship: value }
+          }
+        };
+      }),
       addCharacterMemory: (charId, memory) => set((state) => {
         const currentData = state.characterData[charId] || {
           id: charId, name: charId, relationship: 0, memories: []
@@ -459,31 +487,50 @@ export const useGameStore = create<GameState>()(
         extraOverrides: { ...state.extraOverrides, [name]: imageKey }
       })),
 
-      resetGame: () => set({
-        chatHistory: [],
-        displayHistory: [],
-        currentBackground: 'default',
-        characterExpression: 'normal',
-        activeCharacters: [],
-        currentLocation: 'home',
-        scenarioSummary: '',
-        turnCount: 0,
-        day: 1,
-        time: 'Morning',
-        currentEvent: '',
-        currentMood: 'daily',
-        statusDescription: '건강함',
-        personalityDescription: '평범함',
-        playerStats: JSON.parse(JSON.stringify(INITIAL_STATS)), // [Fix] Deep clone to prevent polluted reference
-        inventory: [],
-        scriptQueue: [],
-        currentSegment: null,
-        choices: [],
-        textMessageHistory: {},
-        triggeredEvents: [],
-        activeEvent: null,
-        extraOverrides: {}
-      }),
+      goals: [],
+      addGoal: (goal) => set((state) => ({
+        goals: [...state.goals, goal]
+      })),
+      updateGoal: (id, updates) => set((state) => ({
+        goals: state.goals.map(g => g.id === id ? { ...g, ...updates } : g)
+      })),
+
+      tensionLevel: 0,
+      setTensionLevel: (level) => set({ tensionLevel: Math.max(0, Math.min(100, level)) }),
+      updateTensionLevel: (delta) => set((state) => ({
+        tensionLevel: Math.max(0, Math.min(100, state.tensionLevel + delta))
+      })),
+
+      resetGame: () => {
+        PromptManager.clearPromptCache();
+        set({
+          chatHistory: [],
+          displayHistory: [],
+          currentBackground: 'default',
+          characterExpression: 'normal',
+          activeCharacters: [],
+          currentLocation: 'home',
+          scenarioSummary: '',
+          turnCount: 0,
+          day: 1,
+          time: 'Morning',
+          currentEvent: '',
+          currentMood: 'daily',
+          statusDescription: '건강함',
+          personalityDescription: '평범함',
+          playerStats: JSON.parse(JSON.stringify(INITIAL_STATS)), // [Fix] Deep clone to prevent polluted reference
+          inventory: [],
+          scriptQueue: [],
+          currentSegment: null,
+          choices: [],
+          textMessageHistory: {},
+          triggeredEvents: [],
+          activeEvent: null,
+          extraOverrides: {},
+          characterData: {}, // [Fix] Clear character data so it reloads fresh on next init
+          lore: {}, // [Fix] Clear lore as well
+        });
+      },
     }),
     {
       name: 'vn-game-storage-v2', // [Fix] Invalidate old cache to apply Second Rate fix

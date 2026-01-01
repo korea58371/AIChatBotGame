@@ -48,7 +48,7 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
             groups[category].push(key);
         });
         return groups;
-    }, [searchTerm]);
+    }, [searchTerm, gameWikiData]);
 
     if (!isOpen) return null;
 

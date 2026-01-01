@@ -5,11 +5,19 @@
   --foreground: #171717;
 }
 
+@font-face {
+  font-family: 'YiSunShin';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/YiSunShinRegular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: 'YiSunShin', serif;
 }
 
 @media (prefers-color-scheme: dark) {

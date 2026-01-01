@@ -3,9 +3,12 @@ import { AgentRouter } from './router';
 import { AgentRetriever } from './retriever';
 import { AgentPreLogic } from './pre-logic';
 import { AgentPostLogic } from './post-logic';
+import { AgentSummary } from './summary';
+import { AgentCasting } from './casting'; // [NEW]
 import { generateResponse } from '../gemini'; // 기존 함수 재사용/리팩토링
 import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../model-config';
+import { PromptManager } from '../prompt-manager';
 
 export class AgentOrchestrator {
 
@@ -22,18 +25,59 @@ export class AgentOrchestrator {
     ) {
         console.log(`[AgentOrchestrator] 턴 시작... 입력: "${userInput}"`);
         const startTime = Date.now();
+        const t1 = Date.now();
 
         // [Step 1] Router: 의도 파악 (Determine Intent)
         // 컨텍스트를 위해 최근 기록 전달 (예: 대화의 연속성)
-        const routerOut = await AgentRouter.analyze(history, gameState.lastSystemMessage || "");
+        // [Fix] Extract last system message from history if not explicit in gameState
+        let lastContext = gameState.lastSystemMessage || "";
+        if (!lastContext && history.length > 0) {
+            const lastModelMsg = [...history].reverse().find(m => m.role === 'model');
+            if (lastModelMsg) lastContext = lastModelMsg.text;
+        }
+
+        // [Sanitize] Remove UI Tags (Choice, Bg, BGM) to reduce noise for Router
+        lastContext = lastContext
+            .replace(/<선택지[^>]*>.*?(\n|$)/g, '') // Remove Choice lines
+            .replace(/<배경:[^>]*>/g, '')           // Remove Background tags
+            .replace(/<BGM:[^>]*>/g, '')            // Remove BGM tags
+            .trim();
+
+        // [Fix] Extract active characters for Router Context
+        const activeCharacterNames: string[] = [];
+        if (gameState.activeCharacters && gameState.characterData) {
+            gameState.activeCharacters.forEach((id: string) => {
+                const char = gameState.characterData[id];
+                if (char && char.name) activeCharacterNames.push(char.name);
+            });
+        }
+
+        const lastTurnSummary = gameState.lastTurnSummary || ""; // [NEW] Context
+
+        // [Step 1] Router & Casting (Parallel Execution)
+        const [routerOut, allCastingCandidates] = await Promise.all([
+            AgentRouter.analyze(history, lastContext, activeCharacterNames, lastTurnSummary),
+            AgentCasting.analyze(gameState, lastTurnSummary, userInput)
+        ]);
+
+        // Filter valid suggestions for Retriever (Score >= 1.0 is already filtered in Casting, but we take top 10)
+        // [Modified] Increased from 3 to 10 to allow "Tiered Visibility" (Active/Mentioned/Potential)
+        const suggestions = allCastingCandidates.slice(0, 10);
+
+        const t2 = Date.now();
         console.log(`[AgentOrchestrator] 라우터 의도: ${routerOut.type} -> ${routerOut.intent}`);
+        if (suggestions.length > 0) {
+            console.log(`[AgentOrchestrator] 캐스팅 추천: ${suggestions.map(c => c.name).join(', ')}`);
+        }
 
         // [Step 2] Retriever: 컨텍스트 검색 (Fetch Context)
-        const retrievedContext = await AgentRetriever.retrieveContext(routerOut, gameState);
+        const retrievedContext = await AgentRetriever.retrieveContext(routerOut, gameState, suggestions);
+        const t3 = Date.now();
         console.log(`[AgentOrchestrator] 검색된 컨텍스트 길이: ${retrievedContext.length} chars`);
 
         // [Step 3] Pre-Logic: 룰 판정 (Adjudicate Rules)
-        const preLogicOut = await AgentPreLogic.adjudicate(routerOut, retrievedContext, userInput, gameState);
+        const preLogicOut = await AgentPreLogic.adjudicate(routerOut, retrievedContext, userInput, gameState, lastTurnSummary, suggestions);
+        const t4 = Date.now();
         console.log(`[AgentOrchestrator] Pre-Logic 결과: ${preLogicOut.success ? '성공' : '실패'}`);
         console.log(`[AgentOrchestrator] 서사 가이드: "${preLogicOut.narrative_guide}"`);
 
@@ -47,6 +91,7 @@ export class AgentOrchestrator {
 ${preLogicOut.narrative_guide}
 
 [Context data]
+${PromptManager.getActiveCharacterProps(gameState)}
 ${retrievedContext}
 
 [Player Action]
@@ -63,12 +108,81 @@ ${userInput}
             language,
             modelName // [NEW] Pass model name
         );
+        const t5 = Date.now();
+
+        // [Scrubbing] Remove any hallucinated or cached tags from Story Model output
+        // We want Pure Text for Post-Logic analysis.
+        // Remove both [Tag ...] and <Tag ...> patterns just in case.
+        let cleanStoryText = storyResult.text
+            .replace(/\[Stat[^\]]*\]/gi, '')
+            .replace(/<Stat[^>]*>/gi, '')
+            .replace(/\[Rel[^\]]*\]/gi, '')
+            .replace(/<Rel[^>]*>/gi, '')
+            .replace(/\[Relationship[^\]]*\]/gi, '')
+            .replace(/<Relationship[^>]*>/gi, '');
+
+        console.log(`[AgentOrchestrator] Scrubbed Text Length: ${storyResult.text.length} -> ${cleanStoryText.length}`);
 
         // [Step 5] Post-Logic: 상태 분석 (Fire-and-Forget / Async)
         // UI 반환을 위해 이를 엄격하게 기다리진 않지만, 일단 상태 무결성을 위해 await 합니다.
         // 실제 서버 액션에서는 일찍 리턴할 수도 있지만, Vercel 서버 액션은 떠있는 프로미스를 죽일 수 있습니다.
         // 따라서 await 합니다.
-        const postLogicOut = await AgentPostLogic.analyze(userInput, storyResult.text, gameState.currentMood || "daily");
+        // [Optimized] Extract Whitelist from GameState
+        // Fix: Use 'characterData' keys as the source of truth for existing characters
+        const validCharacters = Object.keys(gameState.characterData || {});
+        const playerName = gameState.playerName || 'Player';
+
+        // [Parallel Execution] Post-Logic & Turn Summary
+        // [Parallel Execution] Post-Logic & Turn Summary
+        const [postLogicOut, summaryResult] = await Promise.all([
+            AgentPostLogic.analyze(
+                userInput,
+                cleanStoryText,
+                gameState.currentMood || "daily",
+                validCharacters,
+                playerName,
+                gameState.playerStats || {},
+                gameState.playerStats?.relationships || {},
+                gameState, // [NEW] Pass Full GameState
+                language
+            ),
+            AgentSummary.summarize(apiKey, history, cleanStoryText)
+        ]);
+
+        const t6 = Date.now();
+
+        // [Refactor] Inject Inline Event Tags into Story Text (Post-Processing)
+        let finalStoryText = cleanStoryText; // Start with clean text
+        if (postLogicOut.inline_triggers && postLogicOut.inline_triggers.length > 0) {
+            console.log(`[AgentOrchestrator] Injecting ${postLogicOut.inline_triggers.length} inline tags...`);
+            postLogicOut.inline_triggers.forEach(trigger => {
+                // Find trigger.quote in finalStoryText and append trigger.tag
+                // Use simple string replace (first occurrence)
+                if (finalStoryText.includes(trigger.quote)) {
+                    finalStoryText = finalStoryText.replace(trigger.quote, `${trigger.quote} ${trigger.tag}`);
+                    console.log(`   -> Injected "${trigger.tag}" after "${trigger.quote.substring(0, 15)}..."`);
+                } else {
+                    console.warn(`   -> Warning: Could not find quote "${trigger.quote}" for tag "${trigger.tag}"`);
+                }
+            });
+        }
+
+        // [Fallback] Relationship Safety Net
+        // Check if relationship updates in JSON are present in the text tags. If not, append them.
+        if (postLogicOut.relationship_updates) {
+            Object.entries(postLogicOut.relationship_updates).forEach(([charId, val]) => {
+                // Heuristic Check: Does the text contain a Rel tag with this CharID?
+                // matches char="id" or id="id" inside a tag
+                // Note: This is a loose check to avoid double-applying.
+                const hasTag = new RegExp(`(char|id)=["']?${charId}["']?`, 'i').test(finalStoryText);
+
+                if (!hasTag) {
+                    console.log(`[AgentOrchestrator] Fallback: Appending missing relationship tag for ${charId} (${val})`);
+                    // Append invisible command at the end
+                    finalStoryText += `\n<Rel char="${charId}" val="${val}">`;
+                }
+            });
+        }
 
         const totalTime = Date.now() - startTime;
         console.log(`[AgentOrchestrator] 턴 완료 (${totalTime}ms)`);
@@ -81,26 +195,41 @@ ${userInput}
             (storyResult as any).usedModel || MODEL_CONFIG.STORY,
             storyResult.usageMetadata?.promptTokenCount || 0,
             storyResult.usageMetadata?.candidatesTokenCount || 0,
-            (storyResult.usageMetadata as any)?.cachedContentTokenCount || 0 // [NEW] Pass Cached Tokens
+            (storyResult.usageMetadata as any)?.cachedContentTokenCount || 0
         );
+        const summaryCost = calculateCost(MODEL_CONFIG.SUMMARY || 'gemini-2.5-flash', summaryResult.usageMetadata?.promptTokenCount || 0, summaryResult.usageMetadata?.candidatesTokenCount || 0, summaryResult.usageMetadata?.cachedContentTokenCount || 0);
 
-        const totalCost = routerCost + preLogicCost + postLogicCost + storyCost;
+        const totalCost = routerCost + preLogicCost + postLogicCost + storyCost + summaryCost;
 
         return {
-            reply: storyResult.text,
-            logic: preLogicOut, // 판정 결과 노출
-            post_logic: postLogicOut, // 상태 업데이트 노출
-            router: routerOut, // 디버그 정보
+            reply: finalStoryText,
+            raw_story: cleanStoryText,
+            logic: preLogicOut,
+            post_logic: postLogicOut,
+            summary: summaryResult.summary, // [NEW] Turn Summary Text
+            summaryDebug: { // [NEW] Summary Debug Info
+                _debug_prompt: summaryResult._debug_prompt
+            },
+            router: routerOut,
+            casting: allCastingCandidates, // [NEW] Returns ALL candidates for UI debugging
             usageMetadata: storyResult.usageMetadata,
             usedModel: (storyResult as any).usedModel,
-            // [Cost Aggregation]
             allUsage: {
                 router: routerOut.usageMetadata,
                 preLogic: preLogicOut.usageMetadata,
                 postLogic: postLogicOut.usageMetadata,
-                story: storyResult.usageMetadata
+                story: storyResult.usageMetadata,
+                summary: summaryResult.usageMetadata // [NEW]
             },
-            cost: totalCost, // [NEW] Actual calculated cost
+            latencies: {
+                router: (t2 - t1),
+                retriever: (t3 - t2),
+                preLogic: (t4 - t3),
+                story: (t5 - t4),
+                postLogic: (t6 - t5),
+                total: totalTime
+            },
+            cost: totalCost,
             systemPrompt: (storyResult as any).systemPrompt,
             finalUserMessage: (storyResult as any).finalUserMessage
         };

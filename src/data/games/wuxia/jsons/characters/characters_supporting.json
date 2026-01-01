@@ -2,6 +2,26 @@
     "독고천": {
         "title": "무림맹주, 독고천",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 1.0,
+            "lifecycle": {
+                "start": 3,
+                "peak": 6,
+                "end": 99
+            },
+            "region": {
+                "home": "무림맹",
+                "active_zones": [
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "맹주",
+                "정의",
+                "검황",
+                "권력"
+            ]
+        },
         "profile": {
             "소속": "무림맹 / 독고세가",
             "신분": "무림맹주 / 검황 / 천하제일인",
@@ -49,6 +69,28 @@
     "천위강": {
         "title": "천마신교주, 천위강",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 1.0,
+            "lifecycle": {
+                "start": 3,
+                "peak": 7,
+                "end": 99
+            },
+            "region": {
+                "home": "십만대산",
+                "active_zones": [
+                    "중원_전역",
+                    "전장"
+                ]
+            },
+            "tags": [
+                "마교",
+                "천마",
+                "공포",
+                "딸바보",
+                "최종보스"
+            ]
+        },
         "profile": {
             "소속": "천마신교",
             "신분": "교주 / 천마 / 마도제일인",
@@ -91,11 +133,36 @@
         "preferences": {
             "좋아하는 것": "힘, 정복, 딸(천예령)",
             "싫어하는 것": "약함, 변명, 정파 위선"
+        },
+        "인간관계": {
+            "천예령": "딸 (유일한 역린/사랑)",
+            "혈비": "충신 (믿음직함)"
         }
     },
     "남궁천": {
         "title": "남궁가주, 남궁천",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 3,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "안휘",
+                "active_zones": [
+                    "안휘",
+                    "무림맹"
+                ]
+            },
+            "tags": [
+                "가주",
+                "남궁",
+                "호통",
+                "뇌전"
+            ]
+        },
         "profile": {
             "소속": "남궁세가",
             "신분": "가주 / 뇌제 / 오대세가 맹주",
@@ -139,11 +206,37 @@
         "preferences": {
             "좋아하는 것": "독주, 대련, 명검 수집",
             "싫어하는 것": "무례함, 계략(제갈세가 혐오)"
+        },
+        "인간관계": {
+            "남궁세아": "딸 (자부심/사랑)",
+            "남궁진": "아들 (엄격/기대)",
+            "남궁혁": "조카/호위 (신뢰)"
         }
     },
     "장무극": {
         "title": "패천맹주, 장무극",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.9,
+            "lifecycle": {
+                "start": 3,
+                "peak": 6,
+                "end": 99
+            },
+            "region": {
+                "home": "패천맹",
+                "active_zones": [
+                    "중원_전역",
+                    "암흑가"
+                ]
+            },
+            "tags": [
+                "사파",
+                "야망",
+                "배신",
+                "권력"
+            ]
+        },
         "profile": {
             "소속": "패천맹 / 녹림",
             "신분": "맹주 / 흑제 / 사파 패왕",
@@ -194,6 +287,26 @@
     "연무린": {
         "title": "북해빙궁주, 연무린",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 3,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "북해빙궁",
+                "active_zones": [
+                    "북해"
+                ]
+            },
+            "tags": [
+                "빙궁주",
+                "냉기",
+                "딸바보",
+                "고독"
+            ]
+        },
         "profile": {
             "소속": "북해빙궁",
             "신분": "궁주 / 빙황",
@@ -241,6 +354,27 @@
     "금만수": {
         "title": "대통상회주, 금만수",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.7,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "대통상회",
+                "active_zones": [
+                    "중원_전역",
+                    "객잔"
+                ]
+            },
+            "tags": [
+                "상인",
+                "돈",
+                "딸바보",
+                "투자"
+            ]
+        },
         "profile": {
             "소속": "대통상회",
             "신분": "상회주 / 천하제일갑부",
@@ -287,6 +421,27 @@
     "남궁진": {
         "title": "남궁소가주, 남궁진",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "안휘",
+                "active_zones": [
+                    "안휘",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "오빠",
+                "질투",
+                "남궁",
+                "노력"
+            ]
+        },
         "profile": {
             "소속": "남궁세가",
             "신분": "소가주 / 창궁검 / 후기지수",
@@ -333,6 +488,27 @@
     "모용휘": {
         "title": "모용소가주, 모용휘",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "요녕",
+                "active_zones": [
+                    "요녕",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "모용",
+                "계략",
+                "야망",
+                "오빠"
+            ]
+        },
         "profile": {
             "소속": "모용세가",
             "신분": "소가주 / 수라선 / 후기지수",
@@ -373,11 +549,36 @@
         "preferences": {
             "좋아하는 것": "바둑, 계략 성공, 다도",
             "싫어하는 것": "변수, 더러운 것, 남궁진(단순무식)"
+        },
+        "인간관계": {
+            "모용예린": "여동생 (이용 대상/보호)",
+            "제갈연주": "라이벌 (지략 대결)"
         }
     },
     "당보": {
         "title": "사천당가, 당보",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.9,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "사천",
+                "active_zones": [
+                    "사천",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "당가",
+                "비도",
+                "장난",
+                "독"
+            ]
+        },
         "profile": {
             "소속": "사천당가",
             "신분": "직계 / 비도술의 천재 / 후기지수",
@@ -425,6 +626,27 @@
     "팽대광": {
         "title": "하북의 광견, 팽대광",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "하북",
+                "active_zones": [
+                    "하북",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "팽가",
+                "근육",
+                "단순",
+                "의리"
+            ]
+        },
         "profile": {
             "소속": "하북팽가",
             "신분": "소가주 / 팽소소의 오빠",
@@ -475,6 +697,27 @@
     "주진양": {
         "title": "아미의 2인자, 주진양",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.9,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "사천",
+                "active_zones": [
+                    "사천",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "아미",
+                "라이벌",
+                "질투",
+                "이인자"
+            ]
+        },
         "profile": {
             "소속": "아미파",
             "신분": "이대제자 / 백소유의 라이벌",
@@ -524,6 +767,27 @@
     "팽무도": {
         "title": "도왕, 팽무도",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 3,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "하북",
+                "active_zones": [
+                    "하북",
+                    "무림맹"
+                ]
+            },
+            "tags": [
+                "가주",
+                "도왕",
+                "호탕",
+                "딸바보"
+            ]
+        },
         "profile": {
             "소속": "하북팽가",
             "신분": "가주 / 도왕 / 사황",
@@ -570,6 +834,26 @@
     "당문식": {
         "title": "독왕, 당문식",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 3,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "사천",
+                "active_zones": [
+                    "사천"
+                ]
+            },
+            "tags": [
+                "가주",
+                "독왕",
+                "냉혹",
+                "완벽주의"
+            ]
+        },
         "profile": {
             "소속": "사천당가",
             "신분": "가주 / 독왕 / 사황",
@@ -612,11 +896,35 @@
         "preferences": {
             "좋아하는 것": "신종 독, 정적(고요), 차",
             "싫어하는 것": "소란, 해독제, 무능"
+        },
+        "인간관계": {
+            "당소율": "딸 (후계자/엄격)",
+            "당보": "조카 (골칫덩이/재능 인정)"
         }
     },
     "야율 바르칸": {
         "title": "야왕, 야율 바르칸",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 3,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "남만",
+                "active_zones": [
+                    "남만"
+                ]
+            },
+            "tags": [
+                "야수",
+                "궁주",
+                "힘",
+                "단순"
+            ]
+        },
         "profile": {
             "소속": "남만 야수궁",
             "신분": "궁주 / 야왕 / 사황",
@@ -663,6 +971,26 @@
     "무영": {
         "title": "살왕, 무영",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 3,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "무영살막",
+                "active_zones": [
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "암살",
+                "살왕",
+                "그림자",
+                "무감정"
+            ]
+        },
         "profile": {
             "소속": "무영살막",
             "신분": "막주 / 살왕 / 사황",
@@ -709,6 +1037,27 @@
     "현명": {
         "title": "달마원주, 현명",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.7,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "소림",
+                "active_zones": [
+                    "숭산",
+                    "무림맹"
+                ]
+            },
+            "tags": [
+                "소림",
+                "불교",
+                "온화",
+                "고수"
+            ]
+        },
         "profile": {
             "소속": "소림사",
             "신분": "달마원주 / 대사",
@@ -756,6 +1105,27 @@
     "현무": {
         "title": "무당 장로, 현무",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.7,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "무당",
+                "active_zones": [
+                    "무당",
+                    "무림맹"
+                ]
+            },
+            "tags": [
+                "무당",
+                "규율",
+                "엄격",
+                "도사"
+            ]
+        },
         "profile": {
             "소속": "무당파",
             "신분": "장로 / 규율 담당",
@@ -802,6 +1172,27 @@
     "운검": {
         "title": "매화검존, 운검",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 1.0,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "섬서",
+                "active_zones": [
+                    "섬서",
+                    "화산"
+                ]
+            },
+            "tags": [
+                "화산",
+                "매화",
+                "교관",
+                "검술"
+            ]
+        },
         "profile": {
             "소속": "화산파",
             "신분": "장로 / 검술 교관",
@@ -848,6 +1239,27 @@
     "정허": {
         "title": "철혈여승, 정허",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.9,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "사천",
+                "active_zones": [
+                    "사천",
+                    "아미"
+                ]
+            },
+            "tags": [
+                "아미",
+                "장로",
+                "다혈질",
+                "보호자"
+            ]
+        },
         "profile": {
             "소속": "아미파",
             "신분": "장로 / 절심사태의 사제",
@@ -894,6 +1306,28 @@
     "공손월": {
         "title": "검선, 공손월",
         "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.5,
+            "lifecycle": {
+                "start": 3,
+                "peak": 6,
+                "end": 99
+            },
+            "region": {
+                "home": "청해",
+                "active_zones": [
+                    "청해",
+                    "곤륜",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "검선",
+                "전설",
+                "신비",
+                "4차원"
+            ]
+        },
         "profile": {
             "소속": "곤륜파",
             "신분": "원로 / 은거 기인",
@@ -939,6 +1373,27 @@
     "홍칠": {
         "title": "취협, 홍칠",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 1.1,
+            "lifecycle": {
+                "start": 2,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "객잔"
+                ]
+            },
+            "tags": [
+                "개방",
+                "거지",
+                "술",
+                "정보"
+            ]
+        },
         "profile": {
             "소속": "개방",
             "신분": "8결 장로 / 분타주",
@@ -986,6 +1441,26 @@
     "당명": {
         "title": "독수, 당명",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "사천",
+                "active_zones": [
+                    "사천"
+                ]
+            },
+            "tags": [
+                "당가",
+                "독",
+                "연구",
+                "매드사이언티스트"
+            ]
+        },
         "profile": {
             "소속": "사천당가",
             "신분": "장로 / 당소율의 당숙",
@@ -1032,6 +1507,27 @@
     "남궁휘": {
         "title": "창왕, 남궁휘",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.9,
+            "lifecycle": {
+                "start": 2,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "안휘",
+                "active_zones": [
+                    "안휘",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "남궁",
+                "창",
+                "자유",
+                "호걸"
+            ]
+        },
         "profile": {
             "소속": "남궁세가",
             "신분": "장로 / 창왕",
@@ -1078,6 +1574,27 @@
     "혈비": {
         "title": "혈마, 혈비",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 1.2,
+            "lifecycle": {
+                "start": 2,
+                "peak": 6,
+                "end": 99
+            },
+            "region": {
+                "home": "십만대산",
+                "active_zones": [
+                    "중원_전역",
+                    "전장"
+                ]
+            },
+            "tags": [
+                "마교",
+                "피",
+                "살인",
+                "우아"
+            ]
+        },
         "profile": {
             "소속": "천마신교",
             "신분": "좌호법 / 마교 서열 3위",
@@ -1124,6 +1641,27 @@
     "흑풍": {
         "title": "녹림 대채주, 흑풍",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 1.0,
+            "lifecycle": {
+                "start": 2,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "산",
+                "active_zones": [
+                    "산채",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "녹림",
+                "산적",
+                "약탈",
+                "도끼"
+            ]
+        },
         "profile": {
             "소속": "녹림 / 패천맹",
             "신분": "대채주 / 산적 두목",
@@ -1170,6 +1708,26 @@
     "혜심": {
         "title": "십팔동인 조장, 혜심",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.5,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "소림",
+                "active_zones": [
+                    "소림사"
+                ]
+            },
+            "tags": [
+                "소림",
+                "동인",
+                "문지기",
+                "우직"
+            ]
+        },
         "profile": {
             "소속": "소림사",
             "신분": "18동인 조장 / 무승",
@@ -1216,6 +1774,27 @@
     "청운": {
         "title": "무당삼검, 청운",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.7,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "무당",
+                "active_zones": [
+                    "무당",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "무당",
+                "청풍",
+                "예의",
+                "중재"
+            ]
+        },
         "profile": {
             "소속": "무당파",
             "신분": "3대 제자 / 후기지수",
@@ -1261,6 +1840,28 @@
     "유성": {
         "title": "매화검수, 유성",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "섬서",
+                "active_zones": [
+                    "섬서",
+                    "화산",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "화산",
+                "쾌검",
+                "사형",
+                "보호"
+            ]
+        },
         "profile": {
             "소속": "화산파",
             "신분": "2대 제자 / 화영의 사형",
@@ -1306,6 +1907,27 @@
     "왕초": {
         "title": "4결 개방도, 왕초",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.6,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "시장"
+                ]
+            },
+            "tags": [
+                "개방",
+                "거지",
+                "골목대장",
+                "돌머리"
+            ]
+        },
         "profile": {
             "소속": "개방",
             "신분": "4결 제자 / 조장",
@@ -1352,6 +1974,27 @@
     "당비": {
         "title": "암기수, 당비",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.7,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "사천",
+                "active_zones": [
+                    "사천",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "당가",
+                "암기",
+                "은신",
+                "그림자"
+            ]
+        },
         "profile": {
             "소속": "사천당가",
             "신분": "직계 제자 / 암살조",
@@ -1398,6 +2041,26 @@
     "남궁혁": {
         "title": "호위대장, 남궁혁",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.7,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "안휘",
+                "active_zones": [
+                    "안휘"
+                ]
+            },
+            "tags": [
+                "남궁",
+                "호위",
+                "충성",
+                "철벽"
+            ]
+        },
         "profile": {
             "소속": "남궁세가",
             "신분": "호위대장 / 방계 무사",
@@ -1444,6 +2107,26 @@
     "모용구": {
         "title": "모용세가 총관, 모용구",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.6,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "요녕",
+                "active_zones": [
+                    "요녕"
+                ]
+            },
+            "tags": [
+                "모용",
+                "집사",
+                "주판",
+                "깐깐"
+            ]
+        },
         "profile": {
             "소속": "모용세가",
             "신분": "총관 / 집사",
@@ -1489,6 +2172,27 @@
     "도끼": {
         "title": "녹림 행동대장, 도끼",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.5,
+            "lifecycle": {
+                "start": 2,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "산",
+                "active_zones": [
+                    "산채",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "녹림",
+                "행동대장",
+                "무식",
+                "쌍도끼"
+            ]
+        },
         "profile": {
             "소속": "녹림",
             "신분": "행동대장 / 돌격대장",
@@ -1535,6 +2239,28 @@
     "조명": {
         "title": "하오문 객주, 조명",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.6,
+            "lifecycle": {
+                "start": 1,
+                "peak": 99,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "객잔",
+                    "뒷골목"
+                ]
+            },
+            "tags": [
+                "하오문",
+                "정보",
+                "소식통",
+                "비굴"
+            ]
+        },
         "profile": {
             "소속": "하오문",
             "신분": "객주 운영자 / 정보상",
@@ -1580,6 +2306,27 @@
     "한철": {
         "title": "표두, 한철",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.7,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "길"
+                ]
+            },
+            "tags": [
+                "표국",
+                "표두",
+                "책임감",
+                "호위"
+            ]
+        },
         "profile": {
             "소속": "중원표국",
             "신분": "표두 / 호위 무사",
@@ -1626,6 +2373,26 @@
     "왕노야": {
         "title": "객잔 주인, 왕노야",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 1,
+                "peak": 99,
+                "end": 99
+            },
+            "region": {
+                "home": "객잔",
+                "active_zones": [
+                    "객잔"
+                ]
+            },
+            "tags": [
+                "객잔",
+                "주인",
+                "정보",
+                "수다"
+            ]
+        },
         "profile": {
             "소속": "용문객잔",
             "신분": "주인 / 전직 표사",
@@ -1672,6 +2439,27 @@
     "박철": {
         "title": "남궁세가 문지기, 박철",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.4,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "안휘",
+                "active_zones": [
+                    "남궁세가",
+                    "대문"
+                ]
+            },
+            "tags": [
+                "남궁",
+                "문지기",
+                "게으름",
+                "소식"
+            ]
+        },
         "profile": {
             "소속": "남궁세가",
             "신분": "문지기 / 하인",
@@ -1718,6 +2506,27 @@
     "소칠": {
         "title": "꼬마 거지, 소칠",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.5,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "시장"
+                ]
+            },
+            "tags": [
+                "개방",
+                "거지",
+                "아이",
+                "정보"
+            ]
+        },
         "profile": {
             "소속": "개방",
             "신분": "1결 제자 / 정보원",
@@ -1764,6 +2573,27 @@
     "조삼": {
         "title": "산적 졸개, 조삼",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.3,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "산",
+                "active_zones": [
+                    "산채",
+                    "길"
+                ]
+            },
+            "tags": [
+                "녹림",
+                "산적",
+                "겁쟁이",
+                "도주"
+            ]
+        },
         "profile": {
             "소속": "녹림",
             "신분": "말단 산적",
@@ -1810,6 +2640,26 @@
     "연성": {
         "title": "소림사 동자승, 연성",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.4,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "소림",
+                "active_zones": [
+                    "소림사"
+                ]
+            },
+            "tags": [
+                "소림",
+                "동자승",
+                "귀여움",
+                "순수"
+            ]
+        },
         "profile": {
             "소속": "소림사",
             "신분": "동자승 / 견습생",
@@ -1856,6 +2706,26 @@
     "명심": {
         "title": "무당파 도동, 명심",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.4,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "무당",
+                "active_zones": [
+                    "무당파"
+                ]
+            },
+            "tags": [
+                "무당",
+                "도동",
+                "잠",
+                "나태"
+            ]
+        },
         "profile": {
             "소속": "무당파",
             "신분": "도동 / 잡일 담당",
@@ -1902,6 +2772,27 @@
     "김포": {
         "title": "상단 호위, 김포",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.4,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "상단"
+                ]
+            },
+            "tags": [
+                "상단",
+                "호위",
+                "투덜이",
+                "현실"
+            ]
+        },
         "profile": {
             "소속": "대통상회",
             "신분": "말단 호위무사",
@@ -1947,6 +2838,27 @@
     "개눈": {
         "title": "뒷골목 왈패, 개눈",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.3,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "뒷골목",
+                    "시장"
+                ]
+            },
+            "tags": [
+                "양아치",
+                "비열",
+                "정보",
+                "약자"
+            ]
+        },
         "profile": {
             "소속": "무소속 / 동네 깡패",
             "신분": "골목대장",
@@ -1993,6 +2905,27 @@
     "초련": {
         "title": "약초꾼 제자, 초련",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.5,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "산",
+                "active_zones": [
+                    "산",
+                    "약초"
+                ]
+            },
+            "tags": [
+                "약초",
+                "제자",
+                "성실",
+                "길잡이"
+            ]
+        },
         "profile": {
             "소속": "약왕곡(지부)",
             "신분": "견습생",
@@ -2038,6 +2971,27 @@
     "돌쇠": {
         "title": "남궁세가 돌쇠, 돌쇠",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.4,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "안휘",
+                "active_zones": [
+                    "남궁세가",
+                    "짐꾼"
+                ]
+            },
+            "tags": [
+                "남궁",
+                "머슴",
+                "힘",
+                "우직"
+            ]
+        },
         "profile": {
             "소속": "남궁세가",
             "신분": "머슴 / 짐꾼",
@@ -2084,6 +3038,27 @@
     "칠성": {
         "title": "돈귀신, 칠성",
         "appearance_phase": 2,
+        "system_logic": {
+            "base_weight": 0.5,
+            "lifecycle": {
+                "start": 2,
+                "peak": 5,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "시장"
+                ]
+            },
+            "tags": [
+                "개방",
+                "거지",
+                "돈",
+                "수전노"
+            ]
+        },
         "profile": {
             "소속": "개방",
             "신분": "소방주(예정) / 거지",
@@ -2130,6 +3105,27 @@
     "왕곡추": {
         "title": "색마, 왕곡추",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.4,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "기루"
+                ]
+            },
+            "tags": [
+                "색마",
+                "여자",
+                "가출",
+                "대물"
+            ]
+        },
         "profile": {
             "소속": "무소속 (가출 도련님)",
             "신분": "자칭 사랑꾼 / 타칭 색마",
@@ -2176,6 +3172,27 @@
     "고준": {
         "title": "소설 [천하제일]의 소설 속 주인공, 고준",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.8,
+            "lifecycle": {
+                "start": 1,
+                "peak": 99,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "사건"
+                ]
+            },
+            "tags": [
+                "주인공",
+                "협객",
+                "정의",
+                "기연"
+            ]
+        },
         "profile": {
             "소속": "무림맹 / 독고세가",
             "신분": "원작 소설 주인공 / 협객",
@@ -2222,6 +3239,27 @@
     "마광철": {
         "title": "인간흉기(?), 마광철",
         "appearance_phase": 1,
+        "system_logic": {
+            "base_weight": 0.4,
+            "lifecycle": {
+                "start": 1,
+                "peak": 4,
+                "end": 99
+            },
+            "region": {
+                "home": "중원",
+                "active_zones": [
+                    "중원_전역",
+                    "뒷골목"
+                ]
+            },
+            "tags": [
+                "바보",
+                "겁쟁이",
+                "오해",
+                "흉기"
+            ]
+        },
         "profile": {
             "소속": "무소속 / 사파 지망생",
             "신분": "동네 바보 형 / 자칭 살수",
@@ -2263,6 +3301,77 @@
         "preferences": {
             "좋아하는 것": "소동물, 뜨개질",
             "싫어하는 것": "싸움, 피, 무서운 사람"
+        }
+    },
+    "약선": {
+        "title": "약왕곡주, 약선",
+        "appearance_phase": 3,
+        "system_logic": {
+            "base_weight": 0.5,
+            "lifecycle": {
+                "start": 3,
+                "peak": 6,
+                "end": 99
+            },
+            "region": {
+                "home": "약왕곡",
+                "active_zones": [
+                    "약왕곡",
+                    "중원_전역"
+                ]
+            },
+            "tags": [
+                "의선",
+                "약왕",
+                "치료",
+                "괴팍"
+            ]
+        },
+        "profile": {
+            "소속": "약왕곡",
+            "신분": "곡주 / 의선 / 삼선",
+            "나이": "80대 추정",
+            "신체": "165cm, 50kg",
+            "별명": "죽은 자도 살리는 의술",
+            "성별": "남성"
+        },
+        "personality": {
+            "표면적 성격": "괴팍함, 욕쟁이",
+            "내면/애정 성격": "생명 존중(츤데레), 손녀 바보(한설희)"
+        },
+        "social": {
+            "의신": "천하 제일 의술",
+            "구원자": "수많은 고수의 생명 은인"
+        },
+        "강함": {
+            "등급": "절정 - 최상",
+            "power_level": 5.0,
+            "description": "무공보다는 의술과 독술의 정점",
+            "skills": {
+                "약왕신권": "약초 캐던 호미질에서 창안된, 급소를 정확히 타격하는 권법 [효과] 적에게 물리적/내적 타격. [장점] 전투의 흐름 주도. [단점] 기력 소모.",
+                "점혈법": "인체의 혈도를 짚어 마비시키거나 잠재력을 깨우는 의술 겸 무공 [효과] 적에게 물리적/내적 타격. [장점] 전투의 흐름 주도. [단점] 기력 소모.",
+                "만독불침": "[내공] 수만 가지 약초와 독초를 섭취하여 얻은 체질. [효과] 모든 독 면역.",
+                "약왕보": "[경공] 험준한 산세를 타며 약초를 캐던 보법. [장점] 등반/회피."
+            }
+        },
+        "외형": {
+            "머리색": "산발한 백발",
+            "눈색": "장난기/통찰력",
+            "얼굴형/인상": "주름 자글자글, 개구진 미소",
+            "체형": "구부정함, 지팡이",
+            "outfit_style": "약 냄새 나는 누더기, 호리병(술/약)"
+        },
+        "secret": {
+            "주의": "취미",
+            "내용": "신약루 실험(마루타 모집)"
+        },
+        "인간관계": {
+            "한설희": "손녀 (수제자/사랑)",
+            "당문식": "악우 (독 vs 약 라이벌)"
+        },
+        "preferences": {
+            "좋아하는 것": "희귀 약초, 술, 건강한 환자(?), 한설희",
+            "싫어하는 것": "말 안 듣는 환자, 돌팔이, 사천당가"
         }
     }
 }

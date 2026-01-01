@@ -109,7 +109,7 @@ export async function generateResponse(
 
     const modelsToTry = [
         targetModel,
-        'gemini-2.5-flash', // Fallback
+        MODEL_CONFIG.LOGIC, // Fallback
     ];
 
     let lastError;
@@ -290,7 +290,7 @@ export async function generateGameLogic(
     const staticPrompt = await PromptManager.getSharedStaticContext(gameState);
 
     // Logic uses MODEL_CONFIG.LOGIC (Optimized for speed)
-    const modelsToTry = [MODEL_CONFIG.LOGIC, 'gemini-2.5-flash'];
+    const modelsToTry = [MODEL_CONFIG.LOGIC, MODEL_CONFIG.PRE_LOGIC];
 
     for (const modelName of modelsToTry) {
         try {

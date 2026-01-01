@@ -7,18 +7,20 @@ import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn } from '@/app/actions/game';
 import { getCharacterImage } from '@/lib/image-mapper';
-import { resolveBackground } from '@/lib/background-manager'; // Added import // Added import
+import { resolveBackground } from '@/lib/background-manager';
+import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
 import { MODEL_CONFIG, PRICING_RATES } from '@/lib/model-config';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { findBestMatch } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
-import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping'; // [New] BGM Mapping
+import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping';
+import { FAME_TITLES, FATIGUE_LEVELS } from '@/data/games/wuxia/constants'; // [New] UI Constants
 
 
 import { submitGameplayLog } from '@/app/actions/log';
 
 
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { EventManager } from '@/lib/event-manager';
@@ -43,6 +45,7 @@ const translations = {
         cancel: "Cancel",
         action: "Action",
         charInfo: "Character Information",
+        wiki: "Wiki",
         heroism: "Heroism",
         morality: "Morality",
         selfishness: "Selfishness",
@@ -94,6 +97,7 @@ const translations = {
         cancel: "취소",
         action: "실행",
         charInfo: "캐릭터 정보",
+        wiki: "위키",
         heroism: "영웅심",
         morality: "도덕성",
         selfishness: "이기심",
@@ -344,7 +348,8 @@ export default function VisualNovelUI() {
         initialScenario,
         characterCreationQuestions, // Added
         day,
-        time
+        time,
+        characterData // [New] Get character data for UI
     } = useGameStore();
 
     const supabase = createClient();
@@ -522,6 +527,7 @@ export default function VisualNovelUI() {
     // Hydration Fix & Asset Loading
     const [sessionId, setSessionId] = useState<string>('');
     const [isMounted, setIsMounted] = useState(false);
+    const [turnSummary, setTurnSummary] = useState<string | null>(null); // [NEW] Summary State
 
     // Initialize Session ID
     // [Logging] Hydrate lastStoryOutput from history on mount (in case of refresh)
@@ -859,6 +865,117 @@ export default function VisualNovelUI() {
                 if (nextSegment.commandType === 'set_time') {
                     console.log(`[Command] Updating Time: ${nextSegment.content}`);
                     useGameStore.getState().setTime(nextSegment.content);
+                } else if (nextSegment.commandType === 'update_stat') {
+                    try {
+                        const changes = JSON.parse(nextSegment.content);
+                        console.log(`[Command] Update Stat:`, changes);
+                        const currentStats = useGameStore.getState().playerStats;
+                        const newStats = { ...currentStats };
+
+                        Object.keys(changes).forEach(originalKey => {
+                            const key = originalKey.toLowerCase(); // [Fix] Normalize key to handle 'Morality' vs 'morality'
+
+                            if (['hp', 'mp', 'gold', 'fame', 'morality'].includes(key)) return; // Handled above (assuming changes.hp check uses original key? No, changes.hp is case-sensitive!)
+
+                            // Wait, if I access `changes.hp` explicitly above, and changes has "HP", `changes.hp` is undefined.
+                            // I should probably iterate ALL keys and handle them dynamically to be safe, 
+                            // OR map changes to a lower-cased object first.
+
+                        });
+
+                        // Better approach: Normalize entire changes object first
+                        const normalizedChanges: Record<string, any> = {};
+                        Object.keys(changes).forEach(k => normalizedChanges[k.toLowerCase()] = changes[k]);
+
+                        // Now use normalizedChanges for everything
+                        if (normalizedChanges.hp !== undefined) {
+                            const val = Number(normalizedChanges.hp);
+                            if (!isNaN(val)) {
+                                newStats.hp = Math.min(Math.max(0, newStats.hp + val), newStats.maxHp);
+                                addToast(`HP ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
+                            }
+                        }
+                        if (normalizedChanges.mp !== undefined) {
+                            const val = Number(normalizedChanges.mp);
+                            if (!isNaN(val)) {
+                                newStats.mp = Math.min(Math.max(0, newStats.mp + val), newStats.maxMp);
+                                addToast(`MP ${val > 0 ? '+' : ''}${val}`, 'info');
+                            }
+                        }
+                        if (normalizedChanges.gold !== undefined) {
+                            const val = Number(normalizedChanges.gold);
+                            if (!isNaN(val)) {
+                                newStats.gold = Math.max(0, newStats.gold + val);
+                                addToast(`Gold ${val > 0 ? '+' : ''}${val}`, 'success');
+                            }
+                        }
+                        if (normalizedChanges.fame !== undefined) {
+                            const val = Number(normalizedChanges.fame);
+                            if (!isNaN(val)) {
+                                newStats.fame = Math.max(0, (newStats.fame || 0) + val);
+                                addToast(`Fame ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
+                            }
+                        }
+                        if (normalizedChanges.morality !== undefined) {
+                            const val = Number(normalizedChanges.morality);
+                            if (!isNaN(val)) {
+                                newStats.personality = { ...newStats.personality, morality: Math.min(100, Math.max(-100, (newStats.personality?.morality || 0) + val)) };
+                                addToast(`Morality ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
+                            }
+                        }
+
+                        // Generic Fallback
+                        Object.keys(normalizedChanges).forEach(key => {
+                            if (['hp', 'mp', 'gold', 'fame', 'morality'].includes(key)) return;
+
+                            const val = Number(normalizedChanges[key]);
+                            if (!isNaN(val)) {
+                                if (typeof (newStats as any)[key] === 'number') {
+                                    (newStats as any)[key] = ((newStats as any)[key] as number) + val;
+                                    addToast(`${key.toUpperCase()} ${val > 0 ? '+' : ''}${val}`, 'info');
+                                } else if (newStats.personality && typeof (newStats.personality as any)[key] === 'number') {
+                                    (newStats.personality as any)[key] = ((newStats.personality as any)[key] as number) + val;
+                                    addToast(`${key.toUpperCase()} ${val > 0 ? '+' : ''}${val}`, 'info');
+                                }
+                            }
+                        });
+
+
+                        useGameStore.getState().setPlayerStats(newStats);
+
+                    } catch (e) {
+                        console.error("Failed to parse update_stat command:", e);
+                    }
+                } else if (nextSegment.commandType === 'update_relationship') {
+                    try {
+                        const data = JSON.parse(nextSegment.content);
+                        if (data.charId && data.value) {
+                            const val = Number(data.value);
+                            console.log(`[Command] Update Rel: ${data.charId} += ${val}`);
+
+                            // [Fix] Update PlayerStats (Primary Data Source for UI)
+                            const currentStats = useGameStore.getState().playerStats;
+                            const currentRel = currentStats.relationships[data.charId] || 0;
+                            const newRel = currentRel + val;
+
+                            useGameStore.getState().setPlayerStats({
+                                relationships: {
+                                    ...currentStats.relationships,
+                                    [data.charId]: newRel
+                                }
+                            });
+
+                            // [Fix] Sync CharacterData (Secondary)
+                            useGameStore.getState().updateCharacterRelationship(data.charId, newRel);
+
+                            // Try to resolve name for toast
+                            const charData = useGameStore.getState().characterData[data.charId];
+                            const name = charData ? charData.name : data.charId;
+                            addToast(`${name} 호감도 ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse update_relationship command:", e);
+                    }
                 }
             } else if (nextSegment.type === 'bgm') {
                 // [New] Handle BGM
@@ -1131,7 +1248,8 @@ export default function VisualNovelUI() {
                 constants: currentState.constants, // [CRITICAL] Helper constants (Rules/Famous Chars)
                 lore: currentState.lore, // [CRITICAL] Full Lore Data
                 isDirectInput: isDirectInput, // Inject Flag
-                isGodMode: currentState.isGodMode // Pass God Mode Flag to Server
+                isGodMode: currentState.isGodMode, // Pass God Mode Flag to Server
+                lastTurnSummary: turnSummary // [NEW] Pass Last Turn Summary
             }));
 
             // Race Condition for Timeout
@@ -1168,14 +1286,25 @@ export default function VisualNovelUI() {
             const preLogic = result.logic;
             const postLogic = result.post_logic;
 
+            // [Summary Agent] Update UI
+            if (result.summary) {
+                setTurnSummary(result.summary);
+            } else {
+                setTurnSummary(null);
+            }
+
             if (usageMetadata || (result as any).allUsage) {
                 // [Detailed Agent Logging]
                 const routerDebug = (result as any).router;
                 const preLogicDebug = (result as any).logic;
                 const postLogicDebug = (result as any).post_logic;
 
+                // 0. Latency & Cost Log (New)
+                const latencies = (result as any).latencies || {};
+                console.log(`%c[Telemetry] Total: ${latencies.total}ms | Cost: $${(result as any).cost?.toFixed(6)}`, 'color: gray;');
+
                 // 1. Router Log
-                console.groupCollapsed(`%c[Step 1] Router (${routerDebug.type})`, 'color: cyan; font-weight: bold;');
+                console.groupCollapsed(`%c[Step 1] Router (${latencies.router}ms) (${routerDebug.type})`, 'color: cyan; font-weight: bold;');
                 console.log(`%c[Input]`, 'color: gray; font-weight: bold;', routerDebug._debug_prompt);
                 console.log(`%c[Output]`, 'color: cyan; font-weight: bold;', {
                     Intent: routerDebug.intent,
@@ -1184,8 +1313,27 @@ export default function VisualNovelUI() {
                 });
                 console.groupEnd();
 
+                // 1.5 Casting Log (New)
+                const castingDebug = (result as any).casting;
+                if (castingDebug) {
+                    const candidateCount = castingDebug.length;
+                    console.groupCollapsed(`%c[Step 1.5] Casting Director (${candidateCount} candidates scanned)`, candidateCount > 0 ? 'color: purple; font-weight: bold;' : 'color: gray;');
+
+                    if (candidateCount === 0) {
+                        console.log("No candidates found (All filtered by Phase/Region/Active). check AgentCasting logic.");
+                    } else {
+                        // Display Top 15
+                        console.log(`%c[Leaderboard (Top 15)]`, 'color: purple; font-weight: bold;', castingDebug.slice(0, 15).map((c: any) => ({
+                            Name: c.name,
+                            Score: c.score.toFixed(2),
+                            Reasons: c.reasons.join(', ')
+                        })));
+                    }
+                    console.groupEnd();
+                }
+
                 // 2. Pre-Logic Log
-                console.groupCollapsed(`%c[Step 2] Pre-Logic (${preLogicDebug.success ? 'Success' : 'Failure'})`, 'color: magenta; font-weight: bold;');
+                console.groupCollapsed(`%c[Step 2] Pre-Logic (${latencies.preLogic}ms) (${preLogicDebug.success ? 'Success' : 'Failure'})`, 'color: magenta; font-weight: bold;');
                 console.log(`%c[Input]`, 'color: gray; font-weight: bold;', preLogicDebug._debug_prompt);
                 console.log(`%c[Output]`, 'color: magenta; font-weight: bold;', {
                     Guide: preLogicDebug.narrative_guide,
@@ -1195,26 +1343,39 @@ export default function VisualNovelUI() {
                 console.groupEnd();
 
                 // 3. Story Log
-                console.groupCollapsed(`%c[Step 3] Story Writer`, 'color: green; font-weight: bold;');
+                console.groupCollapsed(`%c[Step 3] Story Writer (${latencies.story}ms)`, 'color: green; font-weight: bold;');
                 if ((result as any).systemPrompt) {
                     console.log(`%c[Input - Static (Cached)]`, 'color: gray; font-weight: bold;', (result as any).systemPrompt);
                 }
                 if ((result as any).finalUserMessage) {
                     console.log(`%c[Input - Dynamic (Logic + User)]`, 'color: blue; font-weight: bold;', (result as any).finalUserMessage);
                 }
-                console.log(`%c[Output]`, 'color: green; font-weight: bold;', responseText);
+                console.log(`%c[Output]`, 'color: green; font-weight: bold;', (result as any).raw_story || responseText);
                 console.groupEnd();
 
+                console.log(`%c[Final Script]`, 'color: cyan; font-weight: bold;', responseText || (result as any).raw_story);
+
                 // 4. Post-Logic Log
-                console.groupCollapsed(`%c[Step 4] Post-Logic`, 'color: orange; font-weight: bold;');
+                console.groupCollapsed(`%c[Step 4] Post-Logic (${latencies.postLogic}ms)`, 'color: orange; font-weight: bold;');
                 console.log(`%c[Input]`, 'color: gray; font-weight: bold;', postLogicDebug._debug_prompt);
                 console.log(`%c[Output]`, 'color: orange; font-weight: bold;', {
                     Mood: postLogicDebug.mood_update,
                     Relations: postLogicDebug.relationship_updates,
-                    Stats: postLogicDebug.stat_updates, // [NEW]
+                    Stats: postLogicDebug.stat_updates,
+                    Tension: postLogicDebug.tension_update, // [NEW]
+                    NewGoals: postLogicDebug.new_goals, // [NEW]
+                    GoalUpdates: postLogicDebug.goal_updates, // [NEW]
                     Memories: postLogicDebug.new_memories
                 });
                 console.groupEnd();
+
+                // 4.5. Summary Log
+                if ((result as any).summaryDebug) {
+                    console.groupCollapsed(`%c[Step 5.5] Turn Summarizer`, 'color: yellow; font-weight: bold;');
+                    console.log(`%c[Input]`, 'color: gray; font-weight: bold;', (result as any).summaryDebug._debug_prompt);
+                    console.log(`%c[Output]`, 'color: yellow; font-weight: bold;', result.summary);
+                    console.groupEnd();
+                }
 
                 // [Cost Aggregation] Sum up all 5 Steps
                 const allUsage = (result as any).allUsage || { story: usageMetadata };
@@ -1225,16 +1386,17 @@ export default function VisualNovelUI() {
 
                 // Model Pricing Mappings
                 const pricingMap: Record<string, any> = {
-                    router: PRICING_RATES['gemini-2.5-flash'],
-                    preLogic: PRICING_RATES['gemini-2.5-flash'],
-                    postLogic: PRICING_RATES['gemini-2.5-flash'], // Usually Logic
-                    story: PRICING_RATES[result.usedModel || 'gemini-2.5-flash'] || PRICING_RATES['gemini-2.5-flash']
+                    router: PRICING_RATES[MODEL_CONFIG.ROUTER],
+                    preLogic: PRICING_RATES[MODEL_CONFIG.PRE_LOGIC],
+                    postLogic: PRICING_RATES[MODEL_CONFIG.LOGIC], // Use LOGIC config for PostLogic
+                    story: PRICING_RATES[result.usedModel || MODEL_CONFIG.STORY] || PRICING_RATES[MODEL_CONFIG.STORY],
+                    summary: PRICING_RATES[MODEL_CONFIG.SUMMARY || 'gemini-2.5-flash'] || PRICING_RATES['gemini-2.5-flash']
                 };
 
                 Object.entries(allUsage).forEach(([step, usage]: [string, any]) => {
                     if (!usage) return;
 
-                    const rate = pricingMap[step] || PRICING_RATES['gemini-2.5-flash'];
+                    const rate = pricingMap[step] || PRICING_RATES[MODEL_CONFIG.LOGIC];
 
                     const cached = (usage as any).cachedContentTokenCount || 0;
                     const input = usage.promptTokenCount - cached;
@@ -1265,19 +1427,65 @@ export default function VisualNovelUI() {
             // [UX Improvement] Clear Character Image
             setCharacterExpression('');
 
-            const segments = parseScript(responseText);
-            setLastStoryOutput(responseText);
+            // [Fix] Data Flow Consistency
+            // We fixed the parser to handle tags + text correctly (no clumping).
+            // Now we MUST usage responseText (which has tags) to ensure Stat Notifications work.
+            // result.raw_story has NO tags, so playing it effectively disables inline events live.
+            const textToParse = responseText || result.raw_story;
+            const segments = parseScript(textToParse);
+
+            // Keep responseText for lastStoryOutput? Or use textToParse?
+            // Usually lastStoryOutput is for display if segments fail?
+            // Let's use clean text for safety.
+            setLastStoryOutput(textToParse);
 
             // [Agent] Construct Logic Result for Application
             // Apply PreLogic (Stats) and PostLogic (Mood/Rel)
-            // Mapping to existing applyGameLogic schema if possible
+
+            // 1. Extract HP/MP from PostLogic Stats
+            // [Fix] Disable block application for HP/MP because they are handled by Inline Tags now.
+            const plStats = postLogic.stat_updates || {};
+            const plHp = 0; // Handled by Inline Tags
+            const plMp = 0; // Handled by Inline Tags
+
+            // 2. Filter Personality Stats (Remove HP/MP)
+            // [Fix] Original declaration removed to prevent duplicate identifier error.
+            // const plPersonality = { ...plStats };
+            // delete plPersonality.hp;
+            // delete plPersonality.mp;
+
+            // 3. Transform Relationships (Record -> Array)
+            // [Fix] Disable block application for Relationships. Rely on Inline Tags.
+            const plRelationships = undefined;
+            /* const plRelationships = postLogic.relationship_updates
+                ? Object.entries(postLogic.relationship_updates).map(([id, val]) => ({ characterId: id, change: val }))
+                : undefined; */
+
+            // [Fix] Disable block application for Personality/Misc Stats. Rely on Inline Tags.
+            const plPersonality = undefined; // Was { ...plStats }
+
             const combinedLogic = {
                 ...preLogic.state_changes,
+
+                // [Refined] Merge HP/MP Changes (PreLogic Rules + PostLogic Narrative)
+                hpChange: (preLogic.state_changes?.hpChange || 0) + plHp,
+                mpChange: (preLogic.state_changes?.mpChange || 0) + plMp,
+
+                // [Refined] Pass Transformed Relationships & Personality
+                relationshipChange: plRelationships,
+                personalityChange: plPersonality,
+
+
                 mood: postLogic.mood_update,
-                relationship_updates: postLogic.relationship_updates,
+                location: postLogic.location_update, // [NEW]
                 new_memories: postLogic.new_memories,
                 // [Fix] Propagate Active Characters
                 activeCharacters: postLogic.activeCharacters,
+
+                // [Narrative Systems]
+                tension_update: postLogic.tension_update,
+                goal_updates: postLogic.goal_updates,
+                new_goals: postLogic.new_goals,
 
                 // [Fix] Propagate full PostLogic object for applying Stats & Memories
                 post_logic: postLogic,
@@ -1305,7 +1513,7 @@ export default function VisualNovelUI() {
                     agent_router: routerOut.intent, // [Log] Agent Intent
                     scenario_summary: useGameStore.getState().scenarioSummary,
                     memories: useGameStore.getState().activeCharacters.reduce((acc: any, charName: string) => {
-                        const cData = useGameStore.getState().characterData[charName];
+                        const cData = useGameStore.getState().characterData[charName] as any;
                         if (cData && cData.memories) acc[charName] = cData.memories;
                         return acc;
                     }, {})
@@ -1322,7 +1530,9 @@ export default function VisualNovelUI() {
             setIsLogicPending(false); // [Logic Lock] Unlock input explicitly just in case
 
             // 3. Update State
-            addMessage({ role: 'model', text: responseText });
+            // [Context Separation] Use raw_story (clean) for history if available, fall back to responseText
+            const historyText = result.raw_story || responseText;
+            addMessage({ role: 'model', text: historyText });
 
             // Update Average Response Time (Weighted: 70% history, 30% recent)
             const duration = Date.now() - startTime;
@@ -1330,6 +1540,7 @@ export default function VisualNovelUI() {
 
             // Start playing
             if (segments.length > 0) {
+                console.log(`[VisualNovelUI] Setting Script Queue (Size: ${segments.length})`);
                 // Skip initial background, command, AND BGM segments
                 let startIndex = 0;
                 while (startIndex < segments.length && (segments[startIndex].type === 'background' || segments[startIndex].type === 'command' || segments[startIndex].type === 'bgm')) {
@@ -1340,7 +1551,19 @@ export default function VisualNovelUI() {
                         setBackground(resolvedBg);
                     } else if (seg.type === 'command') {
                         if (seg.commandType === 'set_time') {
-                            useGameStore.getState().setTime(seg.content);
+                            const timeStr = seg.content;
+                            useGameStore.getState().setTime(timeStr);
+
+                            // [New] Auto-Parse Day from String (e.g. "2일차")
+                            // Format: "2일차 14:00 (낮)"
+                            const dayMatch = timeStr.match(/(\d+)일차/);
+                            if (dayMatch) {
+                                const newDay = parseInt(dayMatch[1], 10);
+                                if (!isNaN(newDay)) {
+                                    useGameStore.getState().setDay(newDay);
+                                    console.log(`[Time] Auto-update Day: ${newDay}`);
+                                }
+                            }
                         }
                     } else if (seg.type === 'bgm') {
                         // [Fix] Play BGM immediately if it's at the start
@@ -1624,6 +1847,17 @@ export default function VisualNovelUI() {
             addToast("휴식을 취했습니다. (피로도 초기화)", 'success');
             console.log("[Logic] isSleep: True -> Day Advanced, Fatigue Reset");
         }
+
+        // [New] Location Update (From PostLogic)
+        if (logicResult.location) {
+            const currentLoc = useGameStore.getState().currentLocation;
+            // Only update if changed (ignoring null/undefined)
+            if (logicResult.location && currentLoc !== logicResult.location) {
+                useGameStore.getState().setCurrentLocation(logicResult.location);
+                console.log(`[Logic] Location Updated: ${currentLoc} -> ${logicResult.location}`);
+            }
+        }
+
         // [New] Time Progression Logic (Only if not sleeping)
         else if (logicResult.timeConsumed) {
             const timeMap = ['morning', 'afternoon', 'evening', 'night'];
@@ -1655,13 +1889,14 @@ export default function VisualNovelUI() {
             }
         }
 
-        // [Fix] Update Fame & Fate (Was missing!)
-        if (logicResult.fameChange) {
-            newStats.fame = (newStats.fame || 0) + logicResult.fameChange;
-        }
-        if (logicResult.fateChange) {
-            newStats.fate = (newStats.fate || 0) + logicResult.fateChange;
-        }
+        // [Fix] REMOVED Redundant Fame & Fate Logic Update
+        // Similar to HP/MP, these are now handled via tags or were duplicated above.
+        // if (logicResult.fameChange) {
+        //     newStats.fame = (newStats.fame || 0) + logicResult.fameChange;
+        // }
+        // if (logicResult.fateChange) {
+        //     newStats.fate = (newStats.fate || 0) + logicResult.fateChange;
+        // }
 
         // Personality
         if (logicResult.personalityChange) {
@@ -1701,6 +1936,7 @@ export default function VisualNovelUI() {
         console.log('New Stats after update:', newStats);
 
         // [New] Injuries Update
+        let hasInjuryChanges = false;
         if (logicResult.injuriesUpdate) {
             let currentInjuries = [...(newStats.active_injuries || [])];
 
@@ -1717,21 +1953,53 @@ export default function VisualNovelUI() {
             // Remove
             if (logicResult.injuriesUpdate.remove) {
                 logicResult.injuriesUpdate.remove.forEach((injury: string) => {
-                    const initialLen = currentInjuries.length;
-                    currentInjuries = currentInjuries.filter(i => i !== injury);
-                    if (currentInjuries.length < initialLen) {
+                    const idx = currentInjuries.indexOf(injury);
+                    if (idx > -1) {
+                        currentInjuries.splice(idx, 1);
                         addToast(`부상 회복(Healed): ${injury}`, 'success');
-                        hasInjuryChanges = true;
                     }
                 });
             }
-            if (hasInjuryChanges) {
-                newStats.active_injuries = currentInjuries;
-                addToast('부상 상태가 업데이트되었습니다.', 'warning');
-            }
+            newStats.active_injuries = currentInjuries;
+            hasInjuryChanges = true;
         }
 
-        setPlayerStats(newStats);
+        // [Narrative Systems: Tension & Goals]
+        if (logicResult.tension_update) {
+            useGameStore.getState().updateTensionLevel(logicResult.tension_update);
+            console.log(`[Narrative] Tension Updated: ${logicResult.tension_update}`);
+        }
+
+        if (logicResult.new_goals) {
+            logicResult.new_goals.forEach((g: any) => {
+                const newGoal = {
+                    id: `goal_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                    description: g.description,
+                    type: g.type,
+                    status: 'ACTIVE',
+                    createdTurn: useGameStore.getState().turnCount
+                };
+                // @ts-ignore
+                useGameStore.getState().addGoal(newGoal);
+                addToast(`New Goal: ${g.description}`, 'info');
+            });
+        }
+
+        if (logicResult.goal_updates) {
+            logicResult.goal_updates.forEach((u: any) => {
+                // @ts-ignore
+                useGameStore.getState().updateGoal(u.id, { status: u.status });
+                if (u.status === 'COMPLETED') addToast(`Goal Completed!`, 'success');
+                if (u.status === 'FAILED') addToast(`Goal Failed!`, 'warning');
+            });
+        }
+
+        // Final Commit
+        if (Object.keys(logicResult).some(k => k === 'hpChange' || k === 'mpChange' || k === 'statChange' || k === 'personalityChange' || k === 'relationshipChange') || hasInjuryChanges) {
+            useGameStore.getState().setPlayerStats(newStats);
+        }
+
+
 
         // Toasts
         if (logicResult.hpChange) addToast(`${t.hp} ${logicResult.hpChange > 0 ? '+' : ''}${logicResult.hpChange}`, logicResult.hpChange > 0 ? 'success' : 'warning');
@@ -1788,6 +2056,7 @@ export default function VisualNovelUI() {
             const currentFaction = useGameStore.getState().playerStats.faction;
             if (currentFaction !== logicResult.factionChange) {
                 newStats.faction = logicResult.factionChange;
+                useGameStore.getState().setPlayerStats(newStats);
                 addToast(`소속 변경: ${logicResult.factionChange}`, 'success');
                 console.log(`Faction updated from ${currentFaction} to ${logicResult.factionChange}`);
             }
@@ -1910,8 +2179,7 @@ export default function VisualNovelUI() {
                 // Assumption: Character ID is the first part before the first underscore acting as a delimiter for emotion
                 // BUT: Some IDs actully have underscores (e.g. "jun_seo_yeon"). 
                 // Hybrid Strategy:
-                const playerStats = useGameStore.getState().playerStats;
-                const playerName = playerStats.name || 'Player';
+                const playerName = useGameStore.getState().playerName || 'Player';
 
                 // Use Regex to remove _Emotion or _Lv patterns for cleaning
                 // Example: BaekSoYu_Anger_Lv1 -> BaekSoYu
@@ -1933,7 +2201,7 @@ export default function VisualNovelUI() {
                 // We also need to handle cases like "baek_so_yu" vs "BaekSoYu" -> normalize to lowercase for check
 
                 if (['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인'].includes(cleaned.toLowerCase())) {
-                    return useGameStore.getState().playerStats.name || 'Player';
+                    return useGameStore.getState().playerName || 'Player';
                 }
 
                 // Try fuzzy match on Cleaned Name first
@@ -1953,8 +2221,9 @@ export default function VisualNovelUI() {
                 return rawName;
             });
 
-            // De-duplicate
-            const uniqueChars = Array.from(new Set(resolvedChars)) as string[];
+            // De-duplicate & Remove Player
+            const playerName = useGameStore.getState().playerName || 'Player';
+            const uniqueChars = Array.from(new Set(resolvedChars)).filter(c => c !== playerName) as string[];
 
             useGameStore.getState().setActiveCharacters(uniqueChars);
             console.log("Active Characters Updated:", uniqueChars);
@@ -1978,7 +2247,7 @@ export default function VisualNovelUI() {
 
                 // Handle Player Aliases
                 if (['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인'].includes(charId.toLowerCase())) {
-                    targetId = playerStats.name || 'Player'; // Use actual player name
+                    targetId = useGameStore.getState().playerName || 'Player'; // Use actual player name
                 } else {
                     // [Fix] Resolve ID against Character Data Keys (Primary) to prevent Phantom Entries
                     const dataKeys = Object.keys(store.characterData);
@@ -1986,7 +2255,27 @@ export default function VisualNovelUI() {
                     // 1. Try match against Data Keys first (Name-based)
                     let match = findBestMatch(charId, dataKeys);
 
-                    // 2. If no match in Data, try Assets (and hope for the best/fallback)
+                    // 2. Reverse Lookup via Maps (Asset ID -> Data Key)
+                    // If the AI output an Asset ID (e.g. "NamgungSeAh") instead of Name ("남궁세아")
+                    if (!match) {
+                        const potentialAssetId = findBestMatch(charId, availableChars) || charId;
+
+                        // Helper to find key for value
+                        const findKeyForValue = (map: Record<string, string> | undefined, val: string) => {
+                            if (!map) return null;
+                            return Object.keys(map).find(key => map[key] === val && dataKeys.includes(key));
+                        };
+
+                        const mappedKey = findKeyForValue(store.characterMap, potentialAssetId)
+                            || findKeyForValue(store.extraMap, potentialAssetId);
+
+                        if (mappedKey) {
+                            match = mappedKey;
+                            console.log(`[ID Resolution] Resolved ${charId} -> ${potentialAssetId} -> ${mappedKey}`);
+                        }
+                    }
+
+                    // 3. Fallback: Asset ID
                     if (!match) {
                         match = findBestMatch(charId, availableChars);
                     }
@@ -2179,268 +2468,243 @@ export default function VisualNovelUI() {
                     </AnimatePresence>
                 </div>
 
-                <div className="absolute top-0 left-0 right-0 p-[2vw] md:p-6 flex justify-between items-start pointer-events-none">
-                    {/* Left: Player Info & Stats */}
-                    <div className="flex flex-col gap-[1vh] pointer-events-none">
-                        <div className="flex items-center gap-[3vw] md:gap-4 z-40 relative pointer-events-auto">
-                            {/* Restored Portrait Button */}
+                {/* [WUXIA UI OVERHAUL] Top Layer */}
+                <div className="absolute top-0 left-0 w-full p-4 md:p-6 flex justify-between items-start pointer-events-none z-50 font-sans">
+
+                    {/* LEFT: Player Status (Beads, Stamp, Profile) */}
+                    <div className="pointer-events-auto flex flex-col gap-2">
+
+                        {/* Row 1: Profile + Basic Info + Rank + Title */}
+                        <div className="flex items-center gap-6">
+                            {/* Profile Image with Custom Background */}
                             <div
-                                className="w-[15vw] h-[15vw] md:w-[min(4vw,96px)] md:h-[min(4vw,96px)] rounded-full border-2 border-yellow-500 overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[0_0_10px_rgba(234,179,8,0.5)]"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowCharacterInfo(true);
-                                }}
+                                className="relative group cursor-pointer transition-transform hover:scale-105 flex-shrink-0"
+                                onClick={() => setShowCharacterInfo(true)}
                             >
-                                {isMounted ? (
-                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" className="w-full h-full object-cover bg-gray-800" />
-                                ) : (
-                                    <div className="w-full h-full bg-gray-700 animate-pulse" />
-                                )}
-                            </div>
-
-                            <h1 className="text-[4vw] md:text-[min(1.5vw,36px)] font-bold text-white drop-shadow-md tracking-wider">
-                                {isMounted ? playerName : "Loading..."}
-                            </h1>
-                        </div>
-
-                        <div className="flex flex-col gap-[1vh] md:gap-3 mt-[1vh] md:mt-4 items-start opacity-95 hover:opacity-100 transition-opacity w-[35vw] md:w-[15vw] z-20 relative pointer-events-auto">
-                            {/* HP Bar */}
-                            <div className="relative w-full h-[2.5vh] md:h-[min(2.5vh,36px)] transform -skew-x-6 overflow-hidden rounded-lg border border-red-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(220,38,38,0.4)]">
-                                <div className="absolute inset-0 bg-red-900/20" />
-                                <div
-                                    className="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(220,38,38,0.7)]"
-                                    style={{ width: `${(playerStats.hp / playerStats.maxHp) * 100}%` }}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-between px-[2vw] md:px-6 transform skew-x-6">
-                                    <span className="text-[2.5vw] md:text-[min(0.8vw,21px)] font-bold text-red-100 drop-shadow-md">체력 (HP)</span>
-                                    <span className="text-[2.5vw] md:text-[min(0.8vw,21px)] font-bold text-white drop-shadow-md">{Math.round((playerStats.hp / playerStats.maxHp) * 100)}%</span>
+                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-zinc-500/30 overflow-hidden shadow-2xl relative z-10 bg-black">
+                                    {/* Placeholder for Profile */}
+                                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-600">
+                                        {isMounted ? (
+                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-2xl">👤</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* MP Bar */}
-                            <div className="relative w-full h-[2vh] md:h-[min(2vh,30px)] transform -skew-x-6 overflow-hidden rounded-lg border border-blue-900/60 bg-black/70 backdrop-blur-md shadow-[0_0_15px_rgba(37,99,235,0.4)]">
-                                <div className="absolute inset-0 bg-blue-900/20" />
-                                <div
-                                    className="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_20px_rgba(37,99,235,0.7)]"
-                                    style={{ width: `${(playerStats.mp / playerStats.maxMp) * 100}%` }}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-between px-[2vw] md:px-6 transform skew-x-6">
-                                    <span className="text-[2vw] md:text-[min(0.7vw,19px)] font-bold text-blue-100 drop-shadow-md">정신력 (MP)</span>
-                                    <span className="text-[2vw] md:text-[min(0.7vw,19px)] font-bold text-white drop-shadow-md">{Math.round((playerStats.mp / playerStats.maxMp) * 100)}%</span>
+                            {/* Info Group: Name & Time */}
+                            <div className="relative flex flex-col gap-1 -mt-2 pl-4 py-2">
+                                {/* Text Background (Brush Stroke) - Moved Here */}
+                                <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[280%] h-[280%] -z-10 pointer-events-none -ml-24">
+                                    <img
+                                        src="/assets/wuxia/interface/UI_ProfileBG.png"
+                                        alt=""
+                                        className="w-full h-full object-fill opacity-80"
+                                        onError={(e) => e.currentTarget.style.display = 'none'}
+                                    />
                                 </div>
-                            </div>
 
-                            {/* Fatigue Bar (Slimmer) */}
-                            <div className="relative w-full h-[1.2vh] md:h-[1.2vh] overflow-hidden rounded-full border border-purple-900/40 bg-black/60 backdrop-blur-sm mt-[0.5vh]">
-                                <div
-                                    className="h-full bg-gradient-to-r from-purple-900 via-purple-700 to-purple-500 transition-all duration-500 ease-out"
-                                    style={{ width: `${Math.min(100, (playerStats.fatigue || 0))}%` }}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-[1.8vw] md:text-[0.6vw] font-bold text-purple-200/80 drop-shadow-sm tracking-widest">FATIGUE {playerStats.fatigue || 0}%</span>
-                                </div>
-                            </div>
-
-                            {/* Status Grid (2x2) */}
-                            <div className="grid grid-cols-2 gap-[1vw] md:gap-3 w-full mt-[0.5vh]">
-                                {/* Rank */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-yellow-700/30 p-[1vw] md:p-3 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[min(6vh,90px)]">
-                                    <span className="text-yellow-600/80 text-[2.5vw] md:text-[min(0.6vw,18px)] font-bold tracking-widest mb-[0.5vh] uppercase">경지</span>
-                                    <span className="text-yellow-100 font-bold text-[3vw] md:text-[min(0.8vw,24px)] text-center leading-tight break-keep">
-                                        {(() => {
-                                            const rankKey = playerStats.playerRank || '';
-                                            const hierarchy = martialArtsLevels as any;
-                                            const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
-                                            return (rankData?.name || rankKey || '미정').split('(')[0].trim();
-                                        })()}
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <span className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg font-serif tracking-widest">
+                                        {playerName || '이름 없음'}
+                                    </span>
+                                    <span className="px-3 py-1 rounded-full bg-zinc-800/80 border border-zinc-600/30 text-sm md:text-base text-zinc-300 font-bold">
+                                        {(playerStats.faction || '무소속').split(' ')[0]}
                                     </span>
                                 </div>
-
-                                {/* Neigong */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-blue-700/30 p-[1vw] md:p-3 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[min(6vh,90px)]">
-                                    <span className="text-blue-500/80 text-[2.5vw] md:text-[min(0.6vw,18px)] font-bold tracking-widest mb-[0.5vh] uppercase">내공</span>
-                                    <span className="text-blue-100 font-bold text-[3vw] md:text-[min(0.8vw,24px)]">
-                                        {playerStats.neigong < 60
-                                            ? `${(playerStats.neigong || 0).toFixed(0)}년`
-                                            : `${Math.floor(playerStats.neigong / 60)}갑자`
-                                        }
-                                    </span>
-                                </div>
-
-                                {/* Faction */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-indigo-700/30 p-[1vw] md:p-3 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[min(6vh,90px)]">
-                                    <span className="text-indigo-500/80 text-[2.5vw] md:text-[min(0.6vw,18px)] font-bold tracking-widest mb-[0.5vh] uppercase">소속</span>
-                                    <span className="text-indigo-100 font-bold text-[3vw] md:text-[min(0.8vw,24px)] text-center">
-                                        {(playerStats.faction || '방랑객').split(' ')[0]}
-                                    </span>
-                                </div>
-
-                                {/* Time (Wuxia Style) */}
-                                <div className="bg-gradient-to-br from-zinc-900/90 to-black/90 border border-emerald-700/30 p-[1vw] md:p-3 rounded-lg flex flex-col items-center justify-center shadow-lg backdrop-blur-md min-h-[8vh] md:min-h-[min(6vh,90px)]">
-                                    <span className="text-emerald-600/80 text-[2.5vw] md:text-[min(0.6vw,18px)] font-bold tracking-widest mb-[0.5vh] uppercase">{day || 1}일차</span>
-                                    <span className="text-emerald-100 font-bold text-[2.5vw] md:text-[min(0.7vw,21px)] font-serif flex flex-col items-center">
+                                {/* Time Display */}
+                                <div className="flex items-center gap-2 text-zinc-300 text-lg md:text-xl mt-0 font-serif tracking-wide">
+                                    <span className="text-emerald-400 font-bold">{day || 1}일차</span>
+                                    <span className="w-px h-3 bg-zinc-600 mx-1" />
+                                    <span>
                                         {(() => {
                                             const wuxiaTime: Record<string, { name: string, time: string }> = {
-                                                morning: { name: '진시(辰)', time: '07:00 ~ 09:00' },
-                                                afternoon: { name: '미시(未)', time: '13:00 ~ 15:00' },
-                                                evening: { name: '술시(戌)', time: '19:00 ~ 21:00' },
-                                                night: { name: '자시(子)', time: '23:00 ~ 01:00' },
-                                                dawn: { name: '인시(寅)', time: '03:00 ~ 05:00' }
+                                                morning: { name: '진시(辰)', time: '09:00' },
+                                                afternoon: { name: '미시(未)', time: '14:00' },
+                                                evening: { name: '술시(戌)', time: '20:00' },
+                                                night: { name: '자시(子)', time: '00:00' },
+                                                dawn: { name: '인시(寅)', time: '04:00' }
                                             };
-                                            const timeKey = (time || 'morning').toLowerCase();
-                                            const t = wuxiaTime[timeKey];
-
-                                            // [New] Support Custom Time String (e.g. "14:40 낮")
-                                            if (!t) {
-                                                return <span className="text-[2.5vw] md:text-[0.8vw]">{time}</span>;
-                                            }
-
-                                            return (
-                                                <>
-                                                    <span>{t.name}</span>
-                                                    <span className="text-[2vw] md:text-[0.6vw] text-emerald-400/70 font-sans tracking-tight">({t.time})</span>
-                                                </>
-                                            );
+                                            const t = wuxiaTime[(time || 'morning').toLowerCase()];
+                                            return t ? `${t.name} (${t.time})` : (time || '').replace(/^\d+일차\s*/, '');
                                         })()}
                                     </span>
+                                </div>
+                            </div>
+
+                            {/* Rank Box with Custom Background */}
+                            <div className="relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 -ml-2">
+                                <img
+                                    src="/assets/wuxia/interface/UI_RankBG.png"
+                                    alt="Rank BG"
+                                    className="absolute inset-0 w-full h-full object-contain"
+                                    onError={(e) => {
+                                        // Fallback style if image fails
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.parentElement!.classList.add('bg-red-700', 'rounded-lg', 'border', 'border-red-500');
+                                    }}
+                                />
+                                <span className="relative z-10 text-2xl md:text-3xl font-serif font-bold text-white drop-shadow-md tracking-widest pb-1">
+                                    {(() => {
+                                        const rankKey = playerStats.playerRank || '삼류';
+                                        const hierarchy = martialArtsLevels as any;
+                                        const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
+                                        // Display simplified name (e.g. 삼류)
+                                        return (rankData?.name || rankKey).split('(')[0];
+                                    })()}
+                                </span>
+                            </div>
+
+                            {/* Fame Title (Moved Here) */}
+                            <div className="flex items-center gap-2 -ml-2 group cursor-pointer">
+                                {(() => {
+                                    const fame = playerStats.fame || 0;
+                                    let titleObj = FAME_TITLES[0];
+                                    for (let i = FAME_TITLES.length - 1; i >= 0; i--) {
+                                        if (fame >= FAME_TITLES[i].threshold) {
+                                            titleObj = FAME_TITLES[i];
+                                            break;
+                                        }
+                                    }
+                                    return (
+                                        <div className="flex flex-col">
+                                            <span className={`font-bold font-serif text-xl md:text-2xl ${titleObj.color} drop-shadow-md`}>
+                                                {titleObj.title}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+
+                        {/* Row 2: HP & MP & Fatigue */}
+                        <div className="flex flex-col gap-1 pl-4 mt-1">
+                            {/* HP Bar (Above MP) */}
+                            {/* HP Bar (Above MP) */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-red-400 text-sm font-bold font-serif min-w-[24px]">HP</span>
+                                <div className="w-48 md:w-64 h-4 md:h-5 bg-black/60 border border-red-900/50 rounded-full overflow-hidden relative shadow-inner">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-red-900 via-red-600 to-red-500 transition-all duration-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+                                        style={{ width: `${(playerStats.hp / playerStats.maxHp) * 100}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* MP Beads & Fatigue Row */}
+                            <div className="flex items-center gap-4">
+                                {/* MP Beads (10 Orbs) */}
+                                <div className="flex items-center gap-1 p-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/5">
+                                    {Array.from({ length: 10 }).map((_, i) => {
+                                        const currentMpPerc = (playerStats.mp / playerStats.maxMp) * 100; // 0-100
+                                        const beadThreshold = (i + 1) * 10; // 10, 20, ..., 100
+                                        const isActive = currentMpPerc >= beadThreshold - 5; // Forgiveness
+
+                                        return (
+                                            <div
+                                                key={i}
+                                                className={`w-3 h-3 md:w-4 md:h-4 rounded-full transition-all duration-500 ${isActive
+                                                    ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] scale-110'
+                                                    : 'bg-zinc-800 border border-zinc-700 opacity-50'
+                                                    }`}
+                                                // CSS Radial Gradient for "Bead" look
+                                                style={isActive ? {
+                                                    background: 'radial-gradient(circle at 30% 30%, #bfdbfe 0%, #3b82f6 40%, #1e40af 100%)'
+                                                } : {}}
+                                            />
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Fatigue Icon */}
+                                <div className="relative group cursor-help">
+                                    {(() => {
+                                        const fat = playerStats.fatigue || 0;
+                                        // Find level
+                                        const level = FATIGUE_LEVELS.find(l => fat >= l.min && fat <= l.max) || FATIGUE_LEVELS[2];
+                                        return (
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-black/40 border border-white/10 backdrop-blur-md text-xl md:text-2xl shadow-lg transition-transform hover:scale-110">
+                                                {level.icon}
+                                                {/* Tooltip */}
+                                                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-zinc-700">
+                                                    <span className={level.color}>{level.label}</span> (피로도: {fat}%)
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Right: Resources & Settings */}
-                    <div className="pointer-events-auto flex flex-col items-end gap-[1vh] md:gap-3 z-40">
-                        {/* Resource Container */}
-                        <div className="flex items-center gap-[2vw] md:gap-3 bg-black/40 backdrop-blur-md px-[3vw] py-[1vh] md:px-6 md:py-3 rounded-xl border border-white/10 shadow-2xl">
-                            {/* Gold */}
-                            <div className="flex items-center gap-[1vw] md:gap-3 border-r border-white/10 pr-[2vw] md:pr-6">
-                                <div className="w-[4vw] h-[4vw] md:w-8 md:h-8 rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
-                                    <span className="text-[2.5vw] md:text-xl">🟡</span>
-                                </div>
-                                <span className="text-yellow-100 font-bold font-mono text-[2.5vw] md:text-[min(0.8vw,24px)]">{playerStats.gold.toLocaleString()} G</span>
+                    {/* RIGHT: Resources (Minimalist) */}
+                    <div className="pointer-events-auto flex flex-col items-end gap-2">
+                        {/* Fame Title Badge (Removed - Moved to Top Left) */}
+
+                        {/* Resources Row (Icons Only) */}
+                        <div className="flex items-center gap-3">
+                            {/* Gold (Yeopjeon) */}
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full border border-yellow-900/30">
+                                <span className="text-lg">💰</span> {/* Placeholder for Yeopjeon Icon */}
+                                <span className="text-yellow-100 font-mono font-bold text-sm">
+                                    {(playerStats.gold || 0).toLocaleString()}
+                                </span>
                             </div>
 
-                            {/* Fame */}
-                            <div className="flex items-center gap-[1vw] md:gap-3 border-r border-white/10 pr-[2vw] md:pr-6">
-                                <span className="text-[3vw] md:text-2xl drop-shadow-sm">👑</span>
-                                <span className="text-purple-100 font-bold font-mono text-[2.5vw] md:text-[min(0.8vw,24px)]">{playerStats.fame}</span>
-                            </div>
-
-                            {/* Cash (Coins) */}
-                            <div className="flex items-center gap-[1vw] md:gap-3 pl-[1vw] md:pl-3">
-                                <div className="w-[3.5vw] h-[3.5vw] md:w-8 md:h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-[1.5vw] md:text-[14px] text-black font-extrabold shadow-sm ring-1 ring-yellow-300">
-                                    C
-                                </div>
-                                <span className="text-yellow-400 font-bold font-mono text-[2.5vw] md:text-[min(0.8vw,24px)]">{userCoins.toLocaleString()}</span>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-
-                                        /**
-                                         * [SECURITY NOTICE - REAL PAYMENTS]
-                                         * This "Optimistic Update" is for PROTOTYPING & FREE CHARGING only.
-                                         * In production: Integrated PG Window -> Server Webhook -> DB Update.
-                                         * Client should NEVER update coins directly.
-                                         */
-
-                                        const currentUser = session?.user;
-
-                                        // [Dev Mode] Allow charging without login for testing
-                                        if (!currentUser) {
-                                            console.warn("[Dev] Charging coins without active session (Guest Mode)");
-                                        }
-
-                                        // 2. OPTIMISTIC UPDATE: Update UI immediately
-                                        const newCoins = userCoins + 50;
-                                        setUserCoins(newCoins);
-                                        addToast("Charged 50 Coins! (Test)", 'success');
-
-                                        // 3. Background DB Sync (Only if logged in)
-                                        if (currentUser) {
-                                            supabase.from('profiles').update({ coins: newCoins }).eq('id', currentUser.id)
-                                                .then(({ error }: { error: any }) => {
-                                                    if (error) {
-                                                        console.error("Background DB Sync Failed:", error);
-                                                    } else {
-                                                        console.log("DB Sync Success");
-                                                    }
-                                                });
-                                        }
-                                    }}
-                                    className="ml-[0.5vw] md:ml-1 w-[3.5vw] h-[3.5vw] md:w-5 md:h-5 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center text-[2vw] md:text-xs shadow hover:scale-110 transition-transform"
-                                >
-                                    +
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Top Right Controls */}
-                        <div className="flex gap-[1vw] md:gap-2">
-                            {/* Phone Button */}
-                            <button
-                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
-                                onClick={(e) => { e.stopPropagation(); setIsPhoneOpen(true); }}
-                                title="Smartphone"
+                            {/* Cash (Wonbo/Spirit Stone) */}
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full border border-blue-900/30 cursor-pointer hover:bg-black/60"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const newCoins = userCoins + 50;
+                                    setUserCoins(newCoins);
+                                    addToast("영석 50개 충전 (테스트)", 'success');
+                                }}
                             >
-                                <div className="text-[4vw] md:text-3xl">📱</div>
-                            </button>
-
-                            {/* Inventory Button */}
-                            <button
-                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
-                                onClick={(e) => { e.stopPropagation(); setShowInventory(true); }}
-                                title="Inventory"
-                            >
-                                <Package className="w-[5vw] h-[5vw] md:w-8 md:h-8" />
-                            </button>
+                                <span className="text-lg">💎</span> {/* Placeholder for Spirit Stone */}
+                                <span className="text-blue-200 font-mono font-bold text-sm">
+                                    {userCoins.toLocaleString()}
+                                </span>
+                            </div>
 
                             {/* Settings Button */}
                             <button
-                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowResetConfirm(true);
-                                }}
-                                title="Settings"
+                                aria-label="Settings"
+                                onClick={() => setShowResetConfirm(true)}
+                                className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-colors shadow-lg"
                             >
-                                <Settings className="w-[5vw] h-[5vw] md:w-8 md:h-8" />
+                                <Settings className="w-5 h-5" />
                             </button>
 
-                            {/* Fullscreen Button */}
-                            <button
-                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-gray-700/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!document.fullscreenElement) {
-                                        document.documentElement.requestFullscreen().catch(err => {
-                                            console.error(`Error attempting to enable fullscreen: ${err.message}`);
-                                        });
-                                    } else {
-                                        if (document.exitFullscreen) {
-                                            document.exitFullscreen();
-                                        }
-                                    }
-                                }}
-                                title="Toggle Fullscreen"
-                            >
-                                {isFullscreen ? <Minimize className="w-[5vw] h-[5vw] md:w-8 md:h-8" /> : <Maximize className="w-[5vw] h-[5vw] md:w-8 md:h-8" />}
-                            </button>
-
-                            {/* Wiki Button */}
-                            <button
-                                className="w-[10vw] h-[10vw] md:w-[min(2.5vw,72px)] md:h-[min(2.5vw,72px)] flex items-center justify-center bg-gray-800/60 backdrop-blur-md hover:bg-[#00A495]/80 rounded-[2vw] md:rounded-lg text-gray-300 hover:text-white border border-gray-600 transition-all shadow-lg pointer-events-auto"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    console.log("🖱️ Wiki Button Clicked");
-                                    setShowWiki(true);
-                                }}
-                                title="Wiki"
-                            >
-                                <div className="font-bold text-[3vw] md:text-xl">W</div>
-                            </button>
+                            {/* Debug Button (Localhost Only) */}
+                            {isLocalhost && (
+                                <button
+                                    onClick={() => setIsDebugOpen(true)}
+                                    className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-900/50 backdrop-blur-md flex items-center justify-center text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors shadow-lg"
+                                >
+                                    <Bolt className="w-5 h-5" />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* Status Message (Center Toast) */}
+                <AnimatePresence>
+                    {statusMessage && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-50 pointer-events-none"
+                        >
+                            <div className="bg-black/80 backdrop-blur-md text-white border border-white/20 px-6 py-2 rounded-full shadow-2xl flex items-center gap-3">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-sm md:text-base font-medium tracking-wide">{statusMessage}</span>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 -> Z-20 (Basic UI) */}
                 <div className="absolute bottom-[5vh] right-[4vw] md:bottom-10 md:right-8 flex gap-[1vw] md:gap-2 z-40 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
@@ -2457,6 +2721,13 @@ export default function VisualNovelUI() {
                     >
                         <Save className="w-[3vw] h-[3vw] md:w-[14px] md:h-[14px]" />
                         {t.save}
+                    </button>
+                    <button
+                        className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
+                        onClick={(e) => { e.stopPropagation(); setShowWiki(true); }}
+                    >
+                        <Book className="w-[3vw] h-[3vw] md:w-[14px] md:h-[14px]" />
+                        {(t as any).wiki || "Wiki"}
                     </button>
                 </div>
 
@@ -2639,27 +2910,7 @@ export default function VisualNovelUI() {
                     )}
                 </AnimatePresence>
 
-                {/* Top Right Menu */}
-                <div className="absolute top-[2vh] md:top-4 right-[2vw] md:right-8 flex gap-2 z-50 pointer-events-auto">
-                    {/* Debug Button (Localhost Only) */}
-                    {isLocalhost && (
-                        <button
-                            onClick={() => setIsDebugOpen(true)}
-                            className="p-3 bg-red-900/80 backdrop-blur border border-red-500/30 rounded-full text-red-500 hover:bg-red-500/20 hover:scale-110 transition-all shadow-lg pointer-events-auto"
-                            title="Debug Console"
-                        >
-                            <Bolt size={20} />
-                        </button>
-                    )}
-
-                    <button
-                        onClick={() => setShowCharacterInfo(true)}
-                        className="p-3 bg-gray-800/80 backdrop-blur border border-yellow-500/30 rounded-full text-yellow-500 hover:bg-yellow-500/20 hover:scale-110 transition-all shadow-lg pointer-events-auto"
-                        title={t.charInfo}
-                    >
-                        <Settings size={20} />
-                    </button>
-                </div>
+                {/* Top Right Menu (Removed - Merged into Top Resources Row & Profile Click) */}
 
                 {/* Toast Notifications */}
                 <div className="fixed top-24 right-4 z-50 flex flex-col gap-2 pointer-events-none">
@@ -2686,6 +2937,17 @@ export default function VisualNovelUI() {
                     choices.length > 0 && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-auto z-30 p-4">
                             <div className="flex flex-col gap-3 md:gap-4 w-[85vw] md:w-[min(50vw,800px)] items-center">
+                                {/* [NEW] Turn Summary Display */}
+                                {turnSummary && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="w-full bg-black/80 border-l-4 border-yellow-500 rounded-r-lg p-4 mb-2 backdrop-blur-sm shadow-lg max-w-2xl"
+                                    >
+                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-1">Current Situation</h4>
+                                        <p className="text-gray-200 text-sm leading-relaxed">{turnSummary}</p>
+                                    </motion.div>
+                                )}
                                 {choices.map((choice, idx) => (
                                     <motion.button
                                         key={idx}
@@ -2816,7 +3078,8 @@ Instructions:
 1. Ignore any previous static Start Scenario.
 2. Start the story immediately from the Prologue or Chapter 1.
 3. Reflect the chosen Identity, Goal, Specialty, and Personality in the narrative.
-4. Output the first scene now.
+4. STRICTLY RESPECT the chosen 'Narrative Perspective' (e.g., if '1인칭', use '나'/'내' (I/My) exclusively. Do NOT use '당신' (You)).
+5. Output the first scene now.
 `;
                                                 // Call handleSend with isDirectInput=true (hidden from history usually? No, handleSend adds to history)
                                                 // We want this to be a system instruction.
@@ -3373,28 +3636,102 @@ Instructions:
                                         </div>
                                     </div>
 
-                                    {/* Right Column: Relationships & Skills */}
+                                    {/* Right Column: Active Characters & Relationships & Skills */}
                                     <div className="space-y-8">
+                                        {/* Active Characters Section */}
+                                        <div className="bg-gray-800 p-6 rounded-lg border border-green-500/50">
+                                            <h3 className="text-xl font-bold text-green-400 mb-4 border-b border-green-500/30 pb-2">
+                                                현장 인물 (Active Characters)
+                                            </h3>
+                                            {useGameStore.getState().activeCharacters.length === 0 ? (
+                                                <p className="text-gray-500 italic">현재 장면에 다른 인물이 없습니다.</p>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {useGameStore.getState().activeCharacters.map((charId: string) => {
+                                                        const charInfo = useGameStore.getState().characterData[charId];
+                                                        return (
+                                                            <div key={charId} className="flex items-center justify-between bg-black/40 p-3 rounded-lg border border-green-900/50">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden border border-gray-600">
+                                                                        {/* Placeholder or actual image if we had access easy */}
+                                                                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400">
+                                                                            {charInfo?.name?.[0] || charId[0]}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-bold text-green-300">{charInfo?.name || charId}</div>
+                                                                        <div className="text-xs text-green-500/70">
+                                                                            {charInfo?.memories?.length || 0} memories recorded
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                {/* Status Tag (Optional) */}
+                                                                <div className="px-2 py-1 bg-green-900/30 rounded text-xs text-green-400">
+                                                                    Present
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <div className="bg-black/40 p-6 rounded-lg border border-gray-700">
                                             <h3 className="text-xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{t.relationships}</h3>
                                             {Object.keys(playerStats.relationships || {}).length === 0 ? (
                                                 <p className="text-gray-500 italic">{t.noRelationships}</p>
                                             ) : (
                                                 <div className="space-y-3">
-                                                    {Object.entries(playerStats.relationships || {}).map(([charId, affinity]) => (
-                                                        <div key={charId} className="flex items-center justify-between">
-                                                            <span className="font-bold text-gray-200">{charId}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-32 bg-gray-700 rounded-full h-2">
-                                                                    <div
-                                                                        className={`h-2 rounded-full ${affinity > 0 ? 'bg-pink-500' : 'bg-gray-500'}`}
-                                                                        style={{ width: `${Math.min(100, Math.abs(affinity))}%` }}
-                                                                    ></div>
+                                                    {Object.entries(playerStats.relationships || {}).map(([charId, affinity]) => {
+                                                        const charMemories = characterData?.[charId]?.memories || [];
+                                                        const tierInfo = RelationshipManager.getTier(affinity);
+
+                                                        return (
+                                                            <div key={charId} className="flex flex-col bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
+                                                                <div className="flex flex-col gap-2 mb-3">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="font-bold text-gray-200 text-lg">{charId}</span>
+                                                                        <span className={`text-xl font-bold ${affinity > 0 ? 'text-pink-400' : 'text-gray-400'}`}>{affinity}</span>
+                                                                    </div>
+
+                                                                    {/* Tier Badge & Progress */}
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <div className="flex justify-between items-end">
+                                                                            <span className="text-xs text-yellow-500 font-mono font-bold uppercase tracking-wider">
+                                                                                {tierInfo.tier}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                                                                            <div
+                                                                                className={`h-full rounded-full transition-all duration-500 ${affinity > 0 ? 'bg-gradient-to-r from-pink-600 to-pink-400' : 'bg-gray-500'}`}
+                                                                                style={{ width: `${Math.min(100, Math.abs(affinity))}%` }}
+                                                                            />
+                                                                        </div>
+                                                                        <p className="text-xs text-gray-400 mt-1 italic leading-relaxed">
+                                                                            "{tierInfo.description}"
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
-                                                                <span className={`text-sm font-bold ${affinity > 0 ? 'text-pink-400' : 'text-gray-400'}`}>{affinity}</span>
+
+                                                                {/* Memories Display */}
+                                                                {charMemories.length > 0 && (
+                                                                    <div className="mt-1 pl-2 border-l-2 border-yellow-700/50">
+                                                                        <p className="text-xs text-yellow-500 font-bold mb-1">기억 (Read-Only):</p>
+                                                                        <ul className="list-disc list-inside space-y-0.5">
+                                                                            {charMemories.slice(-3).map((mem, i) => (
+                                                                                <li key={i} className="text-xs text-gray-400 line-clamp-1" title={mem}>
+                                                                                    {mem}
+                                                                                </li>
+                                                                            ))}
+                                                                            {charMemories.length > 3 && (
+                                                                                <li className="text-xs text-gray-500 italic">...외 {charMemories.length - 3}개</li>
+                                                                            )}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>

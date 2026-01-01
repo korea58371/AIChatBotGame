@@ -1,12 +1,13 @@
 'use server';
 
 import { generateResponse, generateGameLogic, generateSummary, preloadCache } from '@/lib/gemini';
+import { MODEL_CONFIG } from '@/lib/model-config';
 import { AgentOrchestrator } from '@/lib/agent/orchestrator'; // [NEW] 오케스트레이터 임포트
 import { Message } from '@/lib/store';
 // import fs from 'fs';
 // import path from 'path';
 
-const API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
     console.error("GEMINI_API_KEY가 환경 변수에 설정되지 않았습니다!");
@@ -18,7 +19,7 @@ export async function serverAgentTurn(
     userMessage: string,
     gameState: any,
     language: 'ko' | 'en' | null,
-    modelName: string = 'gemini-3-pro-preview', // [NEW] Default to Pro
+    modelName: string = MODEL_CONFIG.STORY, // [NEW] Default to Config
     isDirectInput: boolean = false
 ) {
     console.log(`[ServerAction] 에이전트 턴 시작. Luk: ${gameState.playerStats?.luk}`);

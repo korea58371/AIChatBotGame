@@ -1,5 +1,6 @@
 
-export type RelationshipTier = 'Stranger' | 'Acquaintance' | 'Friend' | 'CloseFriend' | 'Lover';
+// [Updated] Granular 20-Step Tiers
+export type RelationshipTier = string;
 
 export interface TierInfo {
     tier: RelationshipTier;
@@ -10,41 +11,29 @@ export interface TierInfo {
 }
 
 export const RELATIONSHIP_TIERS: TierInfo[] = [
-    {
-        tier: 'Stranger',
-        minScore: -100,
-        maxScore: 20,
-        description: "낯선 사람 또는 엄격한 비즈니스 관계.",
-        allowedInteractions: "격식체 사용. 예의 바르지만 거리를 둠. **로맨스 절대 불가**. 상호작용은 방어적이어야 함."
-    },
-    {
-        tier: 'Acquaintance',
-        minScore: 21,
-        maxScore: 40,
-        description: "이름은 아는 사이, 우호적이지만 가깝지는 않음.",
-        allowedInteractions: "가벼운 존댓말. 스몰 토크. 표면적인 정보 공유. **로맨스 금지**."
-    },
-    {
-        tier: 'Friend',
-        minScore: 41,
-        maxScore: 70,
-        description: "신뢰할 수 있는 친구.",
-        allowedInteractions: "편안한 말투(반말 가능). 농담. 감정적 지지. 가벼운 플러팅(장난스러운 수준만). 신체 접촉은 하이파이브나 등을 두드리는 정도로 제한."
-    },
-    {
-        tier: 'CloseFriend',
-        minScore: 71,
-        maxScore: 90,
-        description: "깊고 개인적인 유대감. 잠재적인 연인 관계.",
-        allowedInteractions: "비밀 공유. 취약점 드러내기. 강한 로맨틱 텐션/암시. 감정적인 순간에 손 잡기나 포옹 가능. **아직 고백 단계는 아님**."
-    },
-    {
-        tier: 'Lover',
-        minScore: 91,
-        maxScore: 999,
-        description: "깊이 사랑하는 사이, 헌신적인 관계 또는 영혼의 동반자.",
-        allowedInteractions: "완전한 로맨스. 사랑 고백. 키스 및 스킨십. 무조건적인 지지."
-    }
+    // --- NEGATIVE RANGE (-100 ~ -1) ---
+    { tier: 'Lvl -10 (Nemesis / 불대천지수)', minScore: -100, maxScore: -91, description: "살의를 품은 원수. 만나는 즉시 칼을 뽑음.", allowedInteractions: "즉각적인 공격. 대화 거부. 살기 등등." },
+    { tier: 'Lvl -9 (Hostile / 적대)', minScore: -90, maxScore: -81, description: "명확한 적의. 기회만 되면 해치려 함.", allowedInteractions: "욕설, 비난, 함정 파기." },
+    { tier: 'Lvl -8 (Hated / 증오)', minScore: -80, maxScore: -71, description: "혐오하는 사이. 말 섞기조차 싫어함.", allowedInteractions: "냉대, 무시, 침 뱉기." },
+    { tier: 'Lvl -7 (Threat / 위협)', minScore: -70, maxScore: -61, description: "서로를 위협으로 간주.", allowedInteractions: "경고, 협박, 무기 과시." },
+    { tier: 'Lvl -6 (Rival / 견제)', minScore: -60, maxScore: -51, description: "경쟁자. 사사건건 방해함.", allowedInteractions: "비꼬기, 도발, 방해 공작." },
+    { tier: 'Lvl -5 (Unpleasant / 불쾌)', minScore: -50, maxScore: -41, description: "비호감. 행동 하나하나가 거슬림.", allowedInteractions: "짜증, 퉁명스러운 대답." },
+    { tier: 'Lvl -4 (Distrust / 불신)', minScore: -40, maxScore: -31, description: "믿지 못함. 의심의 눈초리.", allowedInteractions: "정보 숨기기, 거짓말, 떠보기." },
+    { tier: 'Lvl -3 (Wary / 경계)', minScore: -30, maxScore: -21, description: "경계심을 품음.", allowedInteractions: "거리 두기, 단답형 대화." },
+    { tier: 'Lvl -2 (Awkward / 어색)', minScore: -20, maxScore: -11, description: "불편한 사이.", allowedInteractions: "어색한 침묵, 눈 피하기." },
+    { tier: 'Lvl -1 (Indifferent- / 냉담)', minScore: -10, maxScore: -1, description: "관심 없으나 부정적 기류.", allowedInteractions: "무관심, 사무적인 태도." },
+
+    // --- POSITIVE RANGE (0 ~ 100) ---
+    { tier: 'Lvl 0 (Stranger / 초면)', minScore: 0, maxScore: 9, description: "완전한 타인. 예의를 갖춘 비즈니스 관계.", allowedInteractions: "격식체. 예의 바르지만 거리감 유지. **로맨스 불가**." },
+    { tier: 'Lvl 1 (Acquaintance / 구면)', minScore: 10, maxScore: 19, description: "안면 튼 사이. 가벼운 인사.", allowedInteractions: "가벼운 존댓말/스몰토크. 이름 기억함." },
+    { tier: 'Lvl 2 (Friendly / 호감)', minScore: 20, maxScore: 29, description: "좋은 인상. 대화가 즐거움.", allowedInteractions: "웃음, 호의적인 태도. 식사 제안." },
+    { tier: 'Lvl 3 (Companion / 동료)', minScore: 30, maxScore: 39, description: "협력적인 관계.", allowedInteractions: "정보 공유. 가벼운 부탁. 등을 맡길 수 있음(초기)." },
+    { tier: 'Lvl 4 (Trust / 신뢰)', minScore: 40, maxScore: 49, description: "등을 맡길 수 있음.", allowedInteractions: "거짓 없는 대화. 위험 감수하고 도움." },
+    { tier: 'Lvl 5 (Close Friend / 절친)', minScore: 50, maxScore: 59, description: "사적인 비밀 공유 가능.", allowedInteractions: "편한 말투(반말). 깊은 고민 상담. 맹목적 내 편." },
+    { tier: 'Lvl 6 (Bonded / 유대)', minScore: 60, maxScore: 69, description: "깊은 정서적 유대.", allowedInteractions: "눈빛만으로 통함. 강한 정서적 지지." },
+    { tier: 'Lvl 7 (Admired / 은애)', minScore: 70, maxScore: 79, description: "썸/존경. 로맨틱 텐션 시작.", allowedInteractions: "설렘, 가벼운 스킨십(손잡기), 간접적 고백." },
+    { tier: 'Lvl 8 (Devotion / 헌신)', minScore: 80, maxScore: 89, description: "깊은 사랑.", allowedInteractions: "사랑 고백. 키스. 목숨 건 헌신." },
+    { tier: 'Lvl 9 (Soulmate / 연인)', minScore: 90, maxScore: 999, description: "운명의 상대. 생사를 함께함.", allowedInteractions: "영혼의 동반자. 모든 것을 공유함." }
 ];
 
 export class RelationshipManager {
@@ -55,9 +44,18 @@ export class RelationshipManager {
     static getCharacterInstructions(name: string, score: number): string {
         const tier = this.getTier(score);
         return `
-- **관계 (Relationship)**: ${tier.tier} (점수: ${score})
-- **행동 규칙 (Behavior Rule)**: ${tier.allowedInteractions}
-- **제약 사항 (Constraint)**: ${tier.description} 이 친밀도 레벨을 초과하여 행동하지 마십시오.
+[SYSTEM-INTERNAL DO NOT OUTPUT]
+(Relationship Info for AI Judgment Only)
+- Tier: ${tier.tier} (Score: ${score})
+- Roleplay: ${tier.allowedInteractions}
+- Constraint: ${tier.description} Do NOT exceed this intimacy.
+[/SYSTEM-INTERNAL]
 `.trim();
+    }
+
+    static getPromptContext(): string {
+        return RELATIONSHIP_TIERS.map(t =>
+            `- [${t.minScore} ~ ${t.maxScore}] ${t.tier}: ${t.description} (Interactions: ${t.allowedInteractions})`
+        ).join('\n');
     }
 }
