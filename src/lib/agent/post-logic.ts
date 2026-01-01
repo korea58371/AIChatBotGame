@@ -4,29 +4,29 @@ import { MODEL_CONFIG } from '../model-config';
 import { RelationshipManager } from '../relationship-manager';
 
 export interface PostLogicOutput {
-    mood_update?: string;
-    location_update?: string; // [NEW] Region_Place
-    relationship_updates?: Record<string, number>; // ID: 변경량
-    stat_updates?: Record<string, number>; // [NEW] Personality Stat Updates (morality, eloquence, etc.)
-    new_memories?: string[];
-    character_memories?: Record<string, string[]>; // [NEW] Character specific memories (Long-term ONLY)
-    activeCharacters?: string[]; // [NEW] Active characters in scene
-    inline_triggers?: { quote: string, tag: string }[]; // [NEW] Quotes to inject tags into
-    summary_trigger?: boolean;
+  mood_update?: string;
+  location_update?: string; // [NEW] Region_Place
+  relationship_updates?: Record<string, number>; // ID: 변경량
+  stat_updates?: Record<string, number>; // [NEW] Personality Stat Updates (morality, eloquence, etc.)
+  new_memories?: string[];
+  character_memories?: Record<string, string[]>; // [NEW] Character specific memories (Long-term ONLY)
+  activeCharacters?: string[]; // [NEW] Active characters in scene
+  inline_triggers?: { quote: string, tag: string }[]; // [NEW] Quotes to inject tags into
+  summary_trigger?: boolean;
 
-    // [Narrative Systems]
-    goal_updates?: { id: string, status: 'COMPLETED' | 'FAILED' | 'ACTIVE', updates?: string }[];
-    new_goals?: { description: string, type: 'MAIN' | 'SUB' }[];
-    tension_update?: number; // Delta
+  // [Narrative Systems]
+  goal_updates?: { id: string, status: 'COMPLETED' | 'FAILED' | 'ACTIVE', updates?: string }[];
+  new_goals?: { description: string, type: 'MAIN' | 'SUB' }[];
+  tension_update?: number; // Delta
 
-    usageMetadata?: any; // [Cost] 토큰 사용량
-    _debug_prompt?: string; // [Debug] 실제 프롬프트
+  usageMetadata?: any; // [Cost] 토큰 사용량
+  _debug_prompt?: string; // [Debug] 실제 프롬프트
 }
 
 export class AgentPostLogic {
-    private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
+  private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
 
-    private static readonly SYSTEM_PROMPT = `
+  private static readonly SYSTEM_PROMPT = `
 You are the [Post-Logic Analyst].
 Your job is to read the generated story turn and identify IMPLICIT changes in the game state.
 Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS, GOALS, and TENSION.
@@ -44,12 +44,25 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 - Identify if the player creates a new Goal ("I will become the Alliance Leader").
 - Monitor [Active Goals] for progress, completion, or failure based on the story.
 
-[Narrative Tension]
-- Estimate the shift in narrative tension (-100 to +100).
-- **Crisis/Fight Start:** +20 ~ +50
-- **Escalation/Danger:** +10 ~ +20
-- **Resolution/Victory:** -20 ~ -50 (Relief)
-- **Peaceful Moment:** -5 ~ -10 (Relaxation)
+[Narrative Tension System] (-100 ~ +100)
+- **Concept**: Tension is the "Probability of Crisis". High Tension = Danger imminent. Negative Tension = Guaranteed Peace (Cool-down).
+- **ACCUMULATION (Time/Environment/Inaction):**
+  - **Dangerous Place/Night:** +1 ~ +3 (Slow passive rise)
+  - **Ignoring Flags:** +5 ~ +10 (User ignores warning clues)
+  - **Active Provocation:** +10 ~ +20 (Spike, but survivable)
+  - **Static Combat:** +1 (Very slow rise during stalemate)
+
+- **RESOLUTION (The "Cool-down" Rule):**
+  - If a Crisis/Combat is **Resolved** (Win/Escape/Negotiate/Avoid):
+    - **Invert Current Tension**: Delta = -(Current Tension * 1.5). 
+      - Example: Current 60 -> Resolved -> Delta -90 -> Result -30.
+    - **Logic**: Higher tension solved = Longer peace period.
+  
+- **RECOVERY (Peace Period):**
+  - If Tension is Negative (< 0):
+    - **Natural Recovery:** +3 ~ +5 (Return to 0).
+  - If Tension is Positive but Character is RESTING/SAFE (e.g. Inn, Home):
+    - **Natural Decay:** -5 ~ -10 (Relaxation).
 
 [Rules]
 - Personality Stats: morality, courage, energy, decision, lifestyle, openness, warmth, eloquence, leadership, humor, lust.
@@ -86,15 +99,18 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 
 [Relationship Update Guidelines] (Relationship Inertia)
 - **Principle:** Relationships take time to build. Do NOT allow instant massive jumps (e.g., Stranger -> Lover in one turn).
-- **Update Magnitude Limits (per turn):**
-  - **Small (+1 ~ +3):** Compliments, small favours, pleasant small talk, initial attraction.
-  - **Medium (+4 ~ +9):** Unexpected help, deep emotional connection, first date, protecting someone.
-  - **Large (+10 ~ +15):** Saving life, major sacrifice, accepting a confession (Only if already at high affection).
-  - **Extreme (+20):** Life-altering commitment (e.g. Marriage proposal accepted), taking a bullet.
-- **Negative Caps:** Betrayal or murder can drop affinity fast (-20 ~ -50), but simple disagreements or rudeness should be small (-1 ~ -5).
-- **Tier Gating:** You cannot skip multiple tiers instantly. 
-  - If the narrative feels like a 'Lover' interaction but the previous score was 0 (Stranger), do NOT set the score to 100.
-  - Instead, apply a Large update (+15) and suggest a 'romance' mood to push direction, respecting the progression speed.
+- **Update Magnitude Limits (per turn) [STRICT]:**
+  - **Small (+1 ~ +2):** Compliments, agreement, pleasant small talk. (Standard)
+  - **Medium (+3 ~ +5):** Gifts, significant favors, deep emotional moment.
+  - **Large (+6 ~ +10):** Saving a life, major sacrifice. (Very Rare)
+  - **FORBIDDEN (> +10):** Do NOT change score by more than 10 in a single turn. Relationships must not jump instantly.
+- **Negative Limits:** 
+  - **Mild (-1 ~ -3):** Disagreement, unwanted teasing, minor rudeness.
+  - **Moderate (-4 ~ -9):** Insults, threats, major argument.
+  - **Severe (-10):** Betrayal, attack. (Max drop per turn is -10).
+- **Tier Gating:** 
+  - Even if the vibe is 'Romantic', if the score is 0 (Stranger), only give +5 (Medium increase). Do not jump to 50.
+  - Advance ONE tier at a time.
 
 - **Diminishing Returns (Saturation):**
   - **High Tiers (Lvl 5+):** Routine compliments or small talk (+1) should eventually have 0 effect. Only meaningful events matter.
@@ -150,72 +166,73 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
   "tension_update": 10
 }
 [Critically Important]
+- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'mechanics_log', 'character_memories') MUST be in KOREAN (한국어).
 - For 'activeCharacters', list EVERY character ID that speaks or performs an action in the text.
 - For 'character_memories', extract 1 key memory per active character if they had significant interaction with the player this turn.
 - The 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.
 `;
 
-    static async analyze(
-        userMessage: string,
-        aiResponse: string,
-        currentMood: string,
-        validCharacters: string[],
-        playerName: string,
-        currentStats: any,
-        activeRelationships: any,
-        gameState: any, // [NEW] Full State access for Maps
-        language: 'ko' | 'en' | null = 'ko'
-    ): Promise<PostLogicOutput> {
-        // [DEBUG] Log Inputs
-        // console.log(`[AgentPostLogic] Input Length: ${storyText.length}, Mood: ${currentMood}`);
+  static async analyze(
+    userMessage: string,
+    aiResponse: string,
+    currentMood: string,
+    validCharacters: string[],
+    playerName: string,
+    currentStats: any,
+    activeRelationships: any,
+    gameState: any, // [NEW] Full State access for Maps
+    language: 'ko' | 'en' | null = 'ko'
+  ): Promise<PostLogicOutput> {
+    // [DEBUG] Log Inputs
+    // console.log(`[AgentPostLogic] Input Length: ${storyText.length}, Mood: ${currentMood}`);
 
-        const apiKey = this.apiKey;
-        if (!apiKey) return {};
+    const apiKey = this.apiKey;
+    if (!apiKey) return {};
 
-        const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenerativeAI(apiKey);
 
-        // [Context Caching]
-        // Split Static (System Instruction) and Dynamic (User Message)
-        const staticSystemPrompt = this.SYSTEM_PROMPT;
+    // [Context Caching]
+    // Split Static (System Instruction) and Dynamic (User Message)
+    const staticSystemPrompt = this.SYSTEM_PROMPT;
 
-        const model = genAI.getGenerativeModel({
-            model: MODEL_CONFIG.LOGIC, // Standard Logic/Flash Model
-            generationConfig: { responseMimeType: "application/json" },
-            systemInstruction: staticSystemPrompt // [CACHE ENABLED] Pass static prompt here
-        });
+    const model = genAI.getGenerativeModel({
+      model: MODEL_CONFIG.LOGIC, // Standard Logic/Flash Model
+      generationConfig: { responseMimeType: "application/json" },
+      systemInstruction: staticSystemPrompt // [CACHE ENABLED] Pass static prompt here
+    });
 
-        // [Mini-Map Injection for Validation]
-        let locationContext = "";
-        const currentLocation = gameState.currentLocation || "Unknown";
-        const locationsData = gameState.lore?.locations;
+    // [Mini-Map Injection for Validation]
+    let locationContext = "";
+    const currentLocation = gameState.currentLocation || "Unknown";
+    const locationsData = gameState.lore?.locations;
 
-        if (locationsData && locationsData.regions && currentLocation) {
-            // Simply list ALL Region Names + Current Zone Spots
-            const regionsList = Object.keys(locationsData.regions);
-            let currentZoneSpots: string[] = [];
-            let currentRegionName = "Unknown";
+    if (locationsData && locationsData.regions && currentLocation) {
+      // Simply list ALL Region Names + Current Zone Spots
+      const regionsList = Object.keys(locationsData.regions);
+      let currentZoneSpots: string[] = [];
+      let currentRegionName = "Unknown";
 
-            // Find current zone spots
-            for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
-                if (rData.zones && rData.zones[currentLocation]) {
-                    currentRegionName = rName;
-                    currentZoneSpots = rData.zones[currentLocation].spots || [];
-                    break;
-                }
-                if (rName === currentLocation) {
-                    currentRegionName = rName;
-                }
-            }
+      // Find current zone spots
+      for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
+        if (rData.zones && rData.zones[currentLocation]) {
+          currentRegionName = rName;
+          currentZoneSpots = rData.zones[currentLocation].spots || [];
+          break;
+        }
+        if (rName === currentLocation) {
+          currentRegionName = rName;
+        }
+      }
 
-            locationContext = `
+      locationContext = `
 [World Map Data]
 - Valid Major Regions (for long travel): ${regionsList.join(', ')}
 - Current Location: ${currentLocation} (Region: ${currentRegionName})
 - Valid Local Spots (for local move): ${currentZoneSpots.join(', ')}
 `;
-        }
+    }
 
-        const dynamicPrompt = `
+    const dynamicPrompt = `
 [Context Data]
 Current Mood: ${currentMood}
 Player Name: ${playerName}
@@ -242,39 +259,52 @@ Analyze the [Input Story Turn] based on the rules in the System Prompt.
 Generate the JSON output.
 `;
 
-        try {
-            const result = await model.generateContent(dynamicPrompt);
-            const response = result.response;
-            const text = response.text();
+    try {
+      const result = await model.generateContent(dynamicPrompt);
+      const response = result.response;
+      const text = response.text();
 
-            // Usage Metadata for Cost Calculation
-            const usage = response.usageMetadata;
+      // Usage Metadata for Cost Calculation
+      const usage = response.usageMetadata;
 
-            try {
-                const json = JSON.parse(text);
+      try {
+        const json = JSON.parse(text);
 
-                // [Validation] Ensure inline_triggers exist
-                if (!json.inline_triggers) json.inline_triggers = [];
+        // [Validation] Ensure inline_triggers exist
+        if (!json.inline_triggers) json.inline_triggers = [];
 
-                return {
-                    ...json,
-                    usageMetadata: usage,
-                    _debug_prompt: dynamicPrompt // Log only dynamic part for valid debug (Static is cached)
-                };
-            } catch (e) {
-                console.error("[AgentPostLogic] JSON Parse Error:", e);
-                console.error("Raw Text:", text);
-                return {
-                    mood_update: undefined,
-                    summary_trigger: false,
-                    usageMetadata: usage,
-                    _debug_prompt: dynamicPrompt
-                };
+        // [Safety Clamp] Enforce Relationship Inertia
+        if (json.relationship_updates) {
+          for (const key in json.relationship_updates) {
+            let val = json.relationship_updates[key];
+            // Hard Clamp: Max +/- 10 change per turn
+            if (typeof val === 'number') {
+              if (val > 10) val = 10;
+              if (val < -10) val = -10;
+              json.relationship_updates[key] = val;
             }
-
-        } catch (error) {
-            console.error("[AgentPostLogic] API Error:", error);
-            return { mood_update: undefined, summary_trigger: false };
+          }
         }
+
+        return {
+          ...json,
+          usageMetadata: usage,
+          _debug_prompt: dynamicPrompt // Log only dynamic part for valid debug (Static is cached)
+        };
+      } catch (e) {
+        console.error("[AgentPostLogic] JSON Parse Error:", e);
+        console.error("Raw Text:", text);
+        return {
+          mood_update: undefined,
+          summary_trigger: false,
+          usageMetadata: usage,
+          _debug_prompt: dynamicPrompt
+        };
+      }
+
+    } catch (error) {
+      console.error("[AgentPostLogic] API Error:", error);
+      return { mood_update: undefined, summary_trigger: false };
     }
+  }
 }

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
-import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn } from '@/app/actions/game';
+import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn, serverGenerateCharacterMemorySummary } from '@/app/actions/game';
 import { getCharacterImage } from '@/lib/image-mapper';
 import { resolveBackground } from '@/lib/background-manager';
 import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
@@ -303,6 +303,8 @@ const formatText = (text: string) => {
 
 export default function VisualNovelUI() {
     const [isFullscreen, setIsFullscreen] = useState(false);
+    // [New] Profile Tab State
+    const [activeProfileTab, setActiveProfileTab] = useState<'basic' | 'martial_arts' | 'relationships'>('basic');
     const router = useRouter();
     const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -1369,6 +1371,24 @@ export default function VisualNovelUI() {
                 });
                 console.groupEnd();
 
+                // 5. Martial Arts (New)
+                const maDebug = (result as any).martial_arts_debug;
+                if (maDebug) {
+                    // Check logic result for actual changes
+                    const maResult = (result as any).martial_arts;
+                    console.groupCollapsed(`%c[Step 4.5] Martial Arts (${latencies.martial_arts}ms)`, 'color: red; font-weight: bold;');
+                    console.log(`%c[Input]`, 'color: gray; font-weight: bold;', maDebug._debug_prompt);
+                    console.log(`%c[Output]`, 'color: red; font-weight: bold;', {
+                        Realm: maResult?.realm_update,
+                        Progress: maResult?.realm_progress_delta,
+                        NewArgs: maResult?.new_arts,
+                        UpdatedArts: maResult?.updated_arts,
+                        Stagnation: maResult?.growthStagnation,
+                        Audit: maResult?.stat_updates
+                    });
+                    console.groupEnd();
+                }
+
                 // 4.5. Summary Log
                 if ((result as any).summaryDebug) {
                     console.groupCollapsed(`%c[Step 5.5] Turn Summarizer`, 'color: yellow; font-weight: bold;');
@@ -1390,7 +1410,8 @@ export default function VisualNovelUI() {
                     preLogic: PRICING_RATES[MODEL_CONFIG.PRE_LOGIC],
                     postLogic: PRICING_RATES[MODEL_CONFIG.LOGIC], // Use LOGIC config for PostLogic
                     story: PRICING_RATES[result.usedModel || MODEL_CONFIG.STORY] || PRICING_RATES[MODEL_CONFIG.STORY],
-                    summary: PRICING_RATES[MODEL_CONFIG.SUMMARY || 'gemini-2.5-flash'] || PRICING_RATES['gemini-2.5-flash']
+                    summary: PRICING_RATES[MODEL_CONFIG.SUMMARY || 'gemini-2.5-flash'] || PRICING_RATES['gemini-2.5-flash'],
+                    martial_arts: PRICING_RATES[MODEL_CONFIG.LOGIC] // Uses same model as Logic usually
                 };
 
                 Object.entries(allUsage).forEach(([step, usage]: [string, any]) => {
@@ -1490,6 +1511,9 @@ export default function VisualNovelUI() {
                 // [Fix] Propagate full PostLogic object for applying Stats & Memories
                 post_logic: postLogic,
                 character_memories: postLogic.character_memories,
+
+                // [Wuxia] Martial Arts Logic
+                martial_arts: result.martial_arts,
 
                 _debug_router: routerOut
             };
@@ -1806,6 +1830,7 @@ export default function VisualNovelUI() {
         console.log('Current Stats before update:', currentStats);
 
         const newStats = { ...currentStats };
+        let hasInjuryChanges = false;
 
         // [Fix] Deep clone nested objects to prevent mutation of INITIAL_STATS
         newStats.relationships = { ...(newStats.relationships || {}) };
@@ -1817,6 +1842,20 @@ export default function VisualNovelUI() {
             })
         };
         newStats.skills = [...(newStats.skills || [])];
+        // Initialize stagnation if missing
+        if (typeof newStats.growthStagnation !== 'number') newStats.growthStagnation = 0;
+
+        // [Growth Monitoring] Detect significant growth to reset Stagnation
+        const isGrowthEvent =
+            (logicResult.neigongChange && logicResult.neigongChange > 0) ||
+            logicResult.realmChange || // Hypothetical field, but let's assume specific realm update logic down below covers it
+            logicResult.new_martial_art || // Check if logic returns this
+            (logicResult.expChange && logicResult.expChange > 10); // Major EXP gain
+
+        if (isGrowthEvent) {
+            newStats.growthStagnation = 0;
+            // console.log("[Growth] Stagnation Reset!");
+        }
 
         // Initialize if missing (Redundant but safe)
         if (!newStats.relationships) newStats.relationships = {};
@@ -1887,6 +1926,12 @@ export default function VisualNovelUI() {
                 currentState.setTime(newTime);
                 console.log(`[Time] ${currentTime} -> ${newTime} (+${daysPassed} days)`);
             }
+
+            // [Growth Monitoring] Increment Stagnation if time passed AND no growth this turn
+            if (!isGrowthEvent) {
+                // Increment by 1 per logic execution (Turn)
+                newStats.growthStagnation = (newStats.growthStagnation || 0) + 1;
+            }
         }
 
         // [Fix] REMOVED Redundant Fame & Fate Logic Update
@@ -1936,9 +1981,9 @@ export default function VisualNovelUI() {
         console.log('New Stats after update:', newStats);
 
         // [New] Injuries Update
-        let hasInjuryChanges = false;
         if (logicResult.injuriesUpdate) {
             let currentInjuries = [...(newStats.active_injuries || [])];
+            let changed = false;
 
             // Add
             if (logicResult.injuriesUpdate.add) {
@@ -1946,23 +1991,109 @@ export default function VisualNovelUI() {
                     if (!currentInjuries.includes(injury)) {
                         currentInjuries.push(injury);
                         addToast(`부상 발생(Injury): ${injury}`, 'warning');
+                        changed = true;
                     }
                 });
             }
 
             // Remove
             if (logicResult.injuriesUpdate.remove) {
-                logicResult.injuriesUpdate.remove.forEach((injury: string) => {
-                    const idx = currentInjuries.indexOf(injury);
-                    if (idx > -1) {
-                        currentInjuries.splice(idx, 1);
-                        addToast(`부상 회복(Healed): ${injury}`, 'success');
+                const initialLen = currentInjuries.length;
+                currentInjuries = currentInjuries.filter(inj => !logicResult.injuriesUpdate.remove.includes(inj));
+                if (currentInjuries.length !== initialLen) {
+                    addToast("부상 회복!", 'success');
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                newStats.active_injuries = currentInjuries;
+                hasInjuryChanges = true;
+            }
+        }
+
+        // [Wuxia] Martial Arts Processing (Realm, Skills, Stagnation)
+        if (logicResult.martial_arts) {
+            const ma = logicResult.martial_arts;
+            let hasGrowth = false;
+
+            // 1. Realm Update
+            if (ma.realm_update) {
+                newStats.realm = ma.realm_update; // e.g., '일류'
+                addToast(`경지 돌파! [${ma.realm_update}]에 도달했습니다.`, 'success');
+                hasGrowth = true;
+            }
+
+            // 2. Realm Progress
+            if (ma.realm_progress_delta) {
+                const currentProg = newStats.realmProgress || 0;
+                newStats.realmProgress = Math.min(100, Math.max(0, currentProg + ma.realm_progress_delta));
+                // Wait, if progress reaches 100, logic should probably flag it? 
+                // Currently usually handled by Agent deciding "Realm Update".
+                if (ma.realm_progress_delta > 0) hasGrowth = true;
+                console.log(`[MartialArts] Progress: ${currentProg} -> ${newStats.realmProgress} (+${ma.realm_progress_delta})`);
+            }
+
+            // 3. New Arts
+            if (ma.new_arts && ma.new_arts.length > 0) {
+                if (!newStats.martialArts) newStats.martialArts = [];
+                ma.new_arts.forEach((art: any) => {
+                    // Check duplicate ID
+                    if (!newStats.martialArts.find((a: any) => a.id === art.id)) {
+                        newStats.martialArts.push(art);
+                        addToast(`새로운 무공 습득: ${art.name}`, 'success');
+                        hasGrowth = true;
                     }
                 });
             }
-            newStats.active_injuries = currentInjuries;
-            hasInjuryChanges = true;
+
+            // 4. Updated Arts
+            if (ma.updated_arts && ma.updated_arts.length > 0) {
+                if (!newStats.martialArts) newStats.martialArts = [];
+                ma.updated_arts.forEach((update: any) => {
+                    const idx = newStats.martialArts.findIndex((a: any) => a.id === update.id);
+                    if (idx !== -1) {
+                        const art = newStats.martialArts[idx];
+                        art.proficiency = Math.min(100, Math.max(0, (art.proficiency || 0) + update.proficiency_delta));
+                        if (update.proficiency_delta > 0) hasGrowth = true;
+                    }
+                });
+            }
+
+            // 5. Stat Updates (Penalties/Injuries from Audit)
+            if (ma.stat_updates) {
+                if (ma.stat_updates.hp) newStats.hp = Math.max(0, (newStats.hp || 0) + ma.stat_updates.hp);
+                if (ma.stat_updates.mp) newStats.mp = Math.max(0, (newStats.mp || 0) + ma.stat_updates.mp);
+
+                // Merge Injuries
+                if (ma.stat_updates.active_injuries) {
+                    const currentInj = newStats.active_injuries || [];
+                    ma.stat_updates.active_injuries.forEach((inj: string) => {
+                        if (!currentInj.includes(inj)) {
+                            currentInj.push(inj);
+                            addToast(`내상(Internal Injury): ${inj}`, 'warning');
+                        }
+                    });
+                    newStats.active_injuries = currentInj;
+                }
+            }
+
+            // 6. Growth Stagnation Logic
+            if (hasGrowth) {
+                newStats.growthStagnation = 0;
+            } else {
+                newStats.growthStagnation = (newStats.growthStagnation || 0) + 1;
+            }
+            console.log(`[MartialArts] Stagnation: ${newStats.growthStagnation}`);
+        } else {
+            // No MA output (non-combat turn?), increment stagnation if it's Wuxia mode?
+            // Actually, keep it safe. Only increment if explicit logic ran.
+            // If explicit logic ran (martial_arts exists) but empty, it hits the else above? 
+            // AgentMartialArts always returns empty object {} if no change?
+            // If empty object, hasGrowth = false -> Stagnation +1. Correct.
         }
+
+
 
         // [Narrative Systems: Tension & Goals]
         if (logicResult.tension_update) {
@@ -2291,6 +2422,22 @@ export default function VisualNovelUI() {
                     for (let i = 1; i < memories.length; i++) {
                         store.addCharacterMemory(targetId, memories[i]);
                     }
+                }
+
+                // [Optimization] Check & Summarize Memory if > 10
+                // We use fire-and-forget async call
+                const freshState = useGameStore.getState();
+                const currentMemories = freshState.characterData[targetId]?.memories || [];
+                if (currentMemories.length > 10) {
+                    serverGenerateCharacterMemorySummary(targetId, currentMemories)
+                        .then((summaryList) => {
+                            if (Array.isArray(summaryList)) {
+                                useGameStore.getState().updateCharacterData(targetId, { memories: summaryList });
+                                console.log(`[Memory] Summarized ${targetId}: ${currentMemories.length} -> ${summaryList.length}`);
+                                // Optional: addToast(`Memories Consolidated: ${targetId}`, 'info');
+                            }
+                        })
+                        .catch(err => console.warn(`[Memory] Summary Failed for ${targetId}:`, err));
                 }
             });
         }
@@ -2635,6 +2782,23 @@ export default function VisualNovelUI() {
                                     })()}
                                 </div>
                             </div>
+
+                            {/* [New] Active Injuries Row */}
+                            {playerStats.active_injuries && playerStats.active_injuries.length > 0 && (
+                                <div className="flex flex-col gap-1 mt-2 animate-in fade-in slide-in-from-left-2 duration-500 items-start">
+                                    {playerStats.active_injuries.map((injury, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center gap-2 px-2 py-1 bg-red-950/90 border border-red-500/50 rounded shadow-md backdrop-blur-md"
+                                        >
+                                            <span className="text-base">🩹</span>
+                                            <span className="text-red-100 text-base font-bold font-serif min-w-fit whitespace-nowrap tracking-wide">
+                                                {injury}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -3566,191 +3730,295 @@ Instructions:
                                     </div>
                                     <button onClick={() => setShowCharacterInfo(false)} className="text-gray-400 hover:text-white text-xl">×</button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                                    {/* Left Column: Basic Info & Personality */}
-                                    <div className="space-y-8">
-                                        {/* Base Stats Section */}
-                                        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                                            <h3 className="text-blue-400 font-bold mb-4 border-b border-gray-600 pb-2">{t.baseStats}</h3>
-                                            <div className="space-y-2 text-sm">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-300">{t.str}</span>
-                                                    <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.str || 10}</span>
+                                {/* Tab Navigation */}
+                                <div className="flex border-b border-gray-700 bg-black/40">
+                                    <button
+                                        onClick={() => setActiveProfileTab('basic')}
+                                        className={`flex-1 py-3 text-center font-bold transition-colors ${activeProfileTab === 'basic' ? 'bg-yellow-600/20 text-yellow-400 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                    >
+                                        기본 정보 (Basic)
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveProfileTab('martial_arts')}
+                                        className={`flex-1 py-3 text-center font-bold transition-colors ${activeProfileTab === 'martial_arts' ? 'bg-yellow-600/20 text-yellow-400 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                    >
+                                        무공 정보 (Martial Arts)
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveProfileTab('relationships')}
+                                        className={`flex-1 py-3 text-center font-bold transition-colors ${activeProfileTab === 'relationships' ? 'bg-yellow-600/20 text-yellow-400 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                    >
+                                        호감도 (Affinity)
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                                    {/* Tab Content: Basic Info */}
+                                    {activeProfileTab === 'basic' && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                                            {/* Left Column: Stats & Personality */}
+                                            <div className="space-y-8">
+                                                {/* Base Stats Section */}
+                                                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                                                    <h3 className="text-blue-400 font-bold mb-4 border-b border-gray-600 pb-2">{t.baseStats}</h3>
+                                                    <div className="space-y-2 text-sm">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-gray-300">{t.str}</span>
+                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.str || 10}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-gray-300">{t.agi}</span>
+                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.agi || 10}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-gray-300">{t.int}</span>
+                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.int || 10}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-gray-300">{t.vit}</span>
+                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.vit || 10}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-gray-300">{t.luk}</span>
+                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.luk || 10}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-300">{t.agi}</span>
-                                                    <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.agi || 10}</span>
+
+                                                {/* Personality Section */}
+                                                <div className="space-y-2">
+                                                    {[
+                                                        { key: 'morality', label: '도덕성', color: 'text-green-400', bar: 'bg-green-600' },
+                                                        { key: 'courage', label: '용기', color: 'text-red-400', bar: 'bg-red-600' },
+                                                        { key: 'energy', label: '에너지', color: 'text-yellow-400', bar: 'bg-yellow-600' },
+                                                        { key: 'decision', label: '의사결정', color: 'text-blue-400', bar: 'bg-blue-600' },
+                                                        { key: 'lifestyle', label: '생활양식', color: 'text-purple-400', bar: 'bg-purple-600' },
+                                                        { key: 'openness', label: '수용성', color: 'text-indigo-400', bar: 'bg-indigo-600' },
+                                                        { key: 'warmth', label: '대인온도', color: 'text-pink-400', bar: 'bg-pink-600' },
+                                                        { key: 'eloquence', label: '화술', color: 'text-teal-400', bar: 'bg-teal-600' },
+                                                        { key: 'leadership', label: '통솔력', color: 'text-orange-400', bar: 'bg-orange-600' },
+                                                    ].map((trait) => (
+                                                        <div key={trait.key}>
+                                                            <div className="flex justify-between mb-1">
+                                                                <span className="text-gray-300 text-xs">{trait.label}</span>
+                                                                <span className={`text-xs ${trait.color}`}>
+                                                                    {/* @ts-ignore */}
+                                                                    {playerStats.personality?.[trait.key] || 0}
+                                                                </span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-700 rounded-full h-1.5 relative">
+                                                                {/* Center line */}
+                                                                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-500"></div>
+                                                                <div
+                                                                    className={`${trait.bar} h-1.5 rounded-full absolute top-0 bottom-0 transition-all duration-500`}
+                                                                    style={{
+                                                                        /* @ts-ignore */
+                                                                        left: (playerStats.personality?.[trait.key] || 0) < 0 ? `${50 + (playerStats.personality?.[trait.key] || 0) / 2}%` : '50%',
+                                                                        /* @ts-ignore */
+                                                                        width: `${Math.abs((playerStats.personality?.[trait.key] || 0)) / 2}%`
+                                                                    }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-300">{t.int}</span>
-                                                    <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.int || 10}</span>
+                                            </div>
+
+                                            {/* Right Column (Basic): Active Chars & Skills */}
+                                            <div className="space-y-8">
+                                                {/* Active Characters Section */}
+                                                <div className="bg-gray-800 p-6 rounded-lg border border-green-500/50">
+                                                    <h3 className="text-xl font-bold text-green-400 mb-4 border-b border-green-500/30 pb-2">
+                                                        현장 인물 (Active Characters)
+                                                    </h3>
+                                                    {useGameStore.getState().activeCharacters.length === 0 ? (
+                                                        <p className="text-gray-500 italic">현재 장면에 다른 인물이 없습니다.</p>
+                                                    ) : (
+                                                        <div className="space-y-3">
+                                                            {useGameStore.getState().activeCharacters.map((charId: string) => {
+                                                                const charInfo = useGameStore.getState().characterData[charId];
+                                                                return (
+                                                                    <div key={charId} className="flex items-center justify-between bg-black/40 p-3 rounded-lg border border-green-900/50">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden border border-gray-600">
+                                                                                {/* Placeholder or actual image if we had access easy */}
+                                                                                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400">
+                                                                                    {charInfo?.name?.[0] || charId[0]}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="font-bold text-green-300">{charInfo?.name || charId}</div>
+                                                                                <div className="text-xs text-green-500/70">
+                                                                                    {charInfo?.memories?.length || 0} memories recorded
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        {/* Status Tag (Optional) */}
+                                                                        <div className="px-2 py-1 bg-green-900/30 rounded text-xs text-green-400">
+                                                                            Present
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-300">{t.vit}</span>
-                                                    <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.vit || 10}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-300">{t.luk}</span>
-                                                    <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.luk || 10}</span>
+
+                                                <div className="bg-black/40 p-6 rounded-lg border border-gray-700">
+                                                    <h3 className="text-xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{t.skills}</h3>
+                                                    {(playerStats.skills || []).length === 0 ? (
+                                                        <p className="text-gray-500 italic">{t.noSkills}</p>
+                                                    ) : (
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {playerStats.skills.map((skill, idx) => (
+                                                                <span key={idx} className="px-3 py-1 bg-blue-900/50 border border-blue-500 rounded-full text-blue-200 text-sm">
+                                                                    {skill}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
+                                    )}
 
-                                        {/* Personality Section */}
-                                        {/* Personality Section */}
-                                        <div className="space-y-2">
-                                            {[
-                                                { key: 'morality', label: '도덕성', color: 'text-green-400', bar: 'bg-green-600' },
-                                                { key: 'courage', label: '용기', color: 'text-red-400', bar: 'bg-red-600' },
-                                                { key: 'energy', label: '에너지', color: 'text-yellow-400', bar: 'bg-yellow-600' },
-                                                { key: 'decision', label: '의사결정', color: 'text-blue-400', bar: 'bg-blue-600' },
-                                                { key: 'lifestyle', label: '생활양식', color: 'text-purple-400', bar: 'bg-purple-600' },
-                                                { key: 'openness', label: '수용성', color: 'text-indigo-400', bar: 'bg-indigo-600' },
-                                                { key: 'warmth', label: '대인온도', color: 'text-pink-400', bar: 'bg-pink-600' },
-                                                { key: 'eloquence', label: '화술', color: 'text-teal-400', bar: 'bg-teal-600' },
-                                                { key: 'leadership', label: '통솔력', color: 'text-orange-400', bar: 'bg-orange-600' },
-                                            ].map((trait) => (
-                                                <div key={trait.key}>
-                                                    <div className="flex justify-between mb-1">
-                                                        <span className="text-gray-300 text-xs">{trait.label}</span>
-                                                        <span className={`text-xs ${trait.color}`}>
-                                                            {/* @ts-ignore */}
-                                                            {playerStats.personality?.[trait.key] || 0}
+                                    {/* Tab Content: Martial Arts */}
+                                    {activeProfileTab === 'martial_arts' && (
+                                        <div className="space-y-8">
+                                            {/* Martial Arts Section (Wuxia Mode) */}
+                                            {/* Always show if manually selected, or show empty state */}
+                                            <div className="bg-gray-800 p-6 rounded-lg border border-yellow-600/50">
+                                                <div className="flex justify-between items-center mb-4 border-b border-yellow-600/30 pb-2">
+                                                    <h3 className="text-xl font-bold text-yellow-400">
+                                                        무공 (Martial Arts)
+                                                    </h3>
+                                                    <div className="px-3 py-1 bg-yellow-900/40 rounded border border-yellow-600/50">
+                                                        <span className="text-yellow-200 font-bold font-mono">
+                                                            {playerStats.realm || '삼류(3rd Rate)'}
                                                         </span>
-                                                    </div>
-                                                    <div className="w-full bg-gray-700 rounded-full h-1.5 relative">
-                                                        {/* Center line */}
-                                                        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-500"></div>
-                                                        <div
-                                                            className={`${trait.bar} h-1.5 rounded-full absolute top-0 bottom-0 transition-all duration-500`}
-                                                            style={{
-                                                                /* @ts-ignore */
-                                                                left: (playerStats.personality?.[trait.key] || 0) < 0 ? `${50 + (playerStats.personality?.[trait.key] || 0) / 2}%` : '50%',
-                                                                /* @ts-ignore */
-                                                                width: `${Math.abs((playerStats.personality?.[trait.key] || 0)) / 2}%`
-                                                            }}
-                                                        ></div>
+                                                        {playerStats.realmProgress !== undefined && (
+                                                            <span className="text-xs text-yellow-500 ml-2">
+                                                                ({playerStats.realmProgress}%)
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
 
-                                    {/* Right Column: Active Characters & Relationships & Skills */}
-                                    <div className="space-y-8">
-                                        {/* Active Characters Section */}
-                                        <div className="bg-gray-800 p-6 rounded-lg border border-green-500/50">
-                                            <h3 className="text-xl font-bold text-green-400 mb-4 border-b border-green-500/30 pb-2">
-                                                현장 인물 (Active Characters)
-                                            </h3>
-                                            {useGameStore.getState().activeCharacters.length === 0 ? (
-                                                <p className="text-gray-500 italic">현재 장면에 다른 인물이 없습니다.</p>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {useGameStore.getState().activeCharacters.map((charId: string) => {
-                                                        const charInfo = useGameStore.getState().characterData[charId];
-                                                        return (
-                                                            <div key={charId} className="flex items-center justify-between bg-black/40 p-3 rounded-lg border border-green-900/50">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden border border-gray-600">
-                                                                        {/* Placeholder or actual image if we had access easy */}
-                                                                        <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400">
-                                                                            {charInfo?.name?.[0] || charId[0]}
-                                                                        </div>
-                                                                    </div>
+                                                {(!playerStats.martialArts || playerStats.martialArts.length === 0) ? (
+                                                    <div className="text-center py-6 border border-dashed border-gray-700 rounded-lg">
+                                                        <p className="text-gray-500 italic mb-2">익힌 무공이 없습니다.</p>
+                                                        <p className="text-xs text-gray-600">수련이나 깨달음을 통해 무공을 습득하세요.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        {playerStats.martialArts.map((art: any, idx: number) => (
+                                                            <div key={idx} className="bg-black/30 p-4 rounded border border-gray-700 hover:border-yellow-500/50 transition-colors">
+                                                                <div className="flex justify-between items-start mb-2">
                                                                     <div>
-                                                                        <div className="font-bold text-green-300">{charInfo?.name || charId}</div>
-                                                                        <div className="text-xs text-green-500/70">
-                                                                            {charInfo?.memories?.length || 0} memories recorded
-                                                                        </div>
+                                                                        <span className="font-bold text-gray-200 text-lg">{art.name}</span>
+                                                                        <span className="text-xs text-gray-500 ml-2">[{art.rank || 'Unknown'}]</span>
                                                                     </div>
+                                                                    <span className="text-xs font-mono text-yellow-500 border border-yellow-500/30 px-2 py-0.5 rounded">
+                                                                        {art.type}
+                                                                    </span>
                                                                 </div>
-                                                                {/* Status Tag (Optional) */}
-                                                                <div className="px-2 py-1 bg-green-900/30 rounded text-xs text-green-400">
-                                                                    Present
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        <div className="bg-black/40 p-6 rounded-lg border border-gray-700">
-                                            <h3 className="text-xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{t.relationships}</h3>
-                                            {Object.keys(playerStats.relationships || {}).length === 0 ? (
-                                                <p className="text-gray-500 italic">{t.noRelationships}</p>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {Object.entries(playerStats.relationships || {}).map(([charId, affinity]) => {
-                                                        const charMemories = characterData?.[charId]?.memories || [];
-                                                        const tierInfo = RelationshipManager.getTier(affinity);
-
-                                                        return (
-                                                            <div key={charId} className="flex flex-col bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
-                                                                <div className="flex flex-col gap-2 mb-3">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="font-bold text-gray-200 text-lg">{charId}</span>
-                                                                        <span className={`text-xl font-bold ${affinity > 0 ? 'text-pink-400' : 'text-gray-400'}`}>{affinity}</span>
+                                                                {/* Proficiency Bar */}
+                                                                <div className="flex items-center gap-2 mb-3">
+                                                                    <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                                                        <div
+                                                                            className="h-full bg-gradient-to-r from-yellow-700 to-yellow-500"
+                                                                            style={{ width: `${art.proficiency || 0}%` }}
+                                                                        />
                                                                     </div>
+                                                                    <span className="text-xs text-gray-400 font-mono w-10 text-right">
+                                                                        {art.proficiency || 0}%
+                                                                    </span>
+                                                                </div>
 
-                                                                    {/* Tier Badge & Progress */}
-                                                                    <div className="flex flex-col gap-1">
-                                                                        <div className="flex justify-between items-end">
-                                                                            <span className="text-xs text-yellow-500 font-mono font-bold uppercase tracking-wider">
-                                                                                {tierInfo.tier}
+                                                                {/* Description & Effects */}
+                                                                <p className="text-sm text-gray-400 line-clamp-2 mb-2 min-h-[2.5em]">{art.description}</p>
+                                                                {art.effects && art.effects.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {art.effects.map((eff: string, i: number) => (
+                                                                            <span key={i} className="text-xs px-2 py-1 bg-gray-800 text-gray-300 rounded border border-gray-700">
+                                                                                {eff}
                                                                             </span>
-                                                                        </div>
-                                                                        <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                                                                            <div
-                                                                                className={`h-full rounded-full transition-all duration-500 ${affinity > 0 ? 'bg-gradient-to-r from-pink-600 to-pink-400' : 'bg-gray-500'}`}
-                                                                                style={{ width: `${Math.min(100, Math.abs(affinity))}%` }}
-                                                                            />
-                                                                        </div>
-                                                                        <p className="text-xs text-gray-400 mt-1 italic leading-relaxed">
-                                                                            "{tierInfo.description}"
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Memories Display */}
-                                                                {charMemories.length > 0 && (
-                                                                    <div className="mt-1 pl-2 border-l-2 border-yellow-700/50">
-                                                                        <p className="text-xs text-yellow-500 font-bold mb-1">기억 (Read-Only):</p>
-                                                                        <ul className="list-disc list-inside space-y-0.5">
-                                                                            {charMemories.slice(-3).map((mem, i) => (
-                                                                                <li key={i} className="text-xs text-gray-400 line-clamp-1" title={mem}>
-                                                                                    {mem}
-                                                                                </li>
-                                                                            ))}
-                                                                            {charMemories.length > 3 && (
-                                                                                <li className="text-xs text-gray-500 italic">...외 {charMemories.length - 3}개</li>
-                                                                            )}
-                                                                        </ul>
+                                                                        ))}
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
+                                    )}
 
-                                        <div className="bg-black/40 p-6 rounded-lg border border-gray-700">
-                                            <h3 className="text-xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{t.skills}</h3>
-                                            {(playerStats.skills || []).length === 0 ? (
-                                                <p className="text-gray-500 italic">{t.noSkills}</p>
-                                            ) : (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {playerStats.skills.map((skill, idx) => (
-                                                        <span key={idx} className="px-3 py-1 bg-blue-900/50 border border-blue-500 rounded-full text-blue-200 text-sm">
-                                                            {skill}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
+                                    {/* Tab Content: Relationships */}
+                                    {activeProfileTab === 'relationships' && (
+                                        <div className="space-y-8">
+                                            <div className="bg-black/40 p-6 rounded-lg border border-gray-700">
+                                                <h3 className="text-xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{t.relationships}</h3>
+                                                {Object.keys(playerStats.relationships || {}).length === 0 ? (
+                                                    <p className="text-gray-500 italic text-center py-8">{t.noRelationships}</p>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {Object.entries(playerStats.relationships || {}).map(([charId, affinity]) => {
+                                                            const charMemories = characterData?.[charId]?.memories || [];
+                                                            const tierInfo = RelationshipManager.getTier(affinity);
+
+                                                            return (
+                                                                <div key={charId} className="flex flex-col bg-gray-800/50 p-4 rounded-lg border border-gray-700/50 hover:bg-gray-800 transition-colors">
+                                                                    <div className="flex flex-col gap-2 mb-3">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <span className="font-bold text-gray-200 text-lg">{charId}</span>
+                                                                            <span className={`text-xl font-bold ${affinity > 0 ? 'text-pink-400' : 'text-gray-400'}`}>{affinity}</span>
+                                                                        </div>
+
+                                                                        {/* Tier Badge & Progress */}
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <div className="flex justify-between items-end">
+                                                                                <span className="text-xs text-yellow-500 font-mono font-bold uppercase tracking-wider">
+                                                                                    {tierInfo.tier}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                                                                                <div
+                                                                                    className={`h-full rounded-full transition-all duration-500 ${affinity > 0 ? 'bg-gradient-to-r from-pink-600 to-pink-400' : 'bg-gray-500'}`}
+                                                                                    style={{ width: `${Math.min(100, Math.abs(affinity))}%` }}
+                                                                                />
+                                                                            </div>
+                                                                            <p className="text-xs text-gray-400 mt-1 italic leading-relaxed">
+                                                                                "{tierInfo.description}"
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Memories Display */}
+                                                                    {charMemories.length > 0 && (
+                                                                        <div className="mt-auto pl-2 border-l-2 border-yellow-700/50 pt-2">
+                                                                            <p className="text-xs text-yellow-500 font-bold mb-1">기억 (Read-Only):</p>
+                                                                            <ul className="list-disc list-inside space-y-0.5">
+                                                                                {charMemories.slice(-3).map((mem, i) => (
+                                                                                    <li key={i} className="text-xs text-gray-400 line-clamp-1" title={mem}>
+                                                                                        {mem}
+                                                                                    </li>
+                                                                                ))}
+                                                                                {charMemories.length > 3 && (
+                                                                                    <li className="text-xs text-gray-500 italic">...외 {charMemories.length - 3}개</li>
+                                                                                )}
+                                                                            </ul>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </motion.div>
                         </div>

@@ -485,6 +485,66 @@ export async function generateSummary(
     }
 }
 
+// Memory Summarization for Characters: Use Configured Model (Gemini 2.5 Flash)
+export async function generateCharacterMemorySummary(
+    apiKey: string,
+    characterName: string,
+    existingMemories: string[]
+): Promise<string[]> {
+    if (!apiKey || existingMemories.length <= 10) return existingMemories;
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+        model: MODEL_CONFIG.SUMMARY, // Logic/Flash Model
+        safetySettings
+    });
+
+    const memoryText = existingMemories.map(m => `- ${m}`).join('\n');
+
+    const prompt = `
+    당신은 RPG 게임의 '캐릭터 기억 관리자'입니다.
+    현재 [${characterName}] 캐릭터의 기억이 너무 많아져서 정리가 필요합니다.
+    자잘한 기억들을 병합하고, 중요한 사건 위주로 요약하여 **10개 이하의 핵심 기억 리스트**로 재구성하십시오.
+
+    [입력된 기억 목록]
+    ${memoryText}
+
+    [작성 지침]
+    1. **중요도 기반 선별**: 약속, 원한, 생명의 은인, 주요 퀘스트 관련 정보를 최우선으로 남기십시오.
+    2. **병합**: "같이 밥을 먹음", "같이 차를 마심" -> "플레이어와 식사를 하며 친해짐" 처럼 비슷한 사건은 하나로 합치십시오.
+    3. **최신성 유지**: 가장 최근에 발생한 중요한 변화는 상세히 기록하십시오.
+    4. **형식**: JSON String Array ("[...]").
+
+    [요약된 기억 리스트 (JSON Array)]:
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = result.response;
+        const text = response.text();
+
+        // JSON Parsing Attempt
+        const firstBracket = text.indexOf('[');
+        const lastBracket = text.lastIndexOf(']');
+
+        if (firstBracket !== -1 && lastBracket !== -1) {
+            const jsonText = text.substring(firstBracket, lastBracket + 1);
+            const parsed = JSON.parse(jsonText);
+            if (Array.isArray(parsed)) {
+                console.log(`[MemorySummary] Summarized ${characterName}'s memories: ${existingMemories.length} -> ${parsed.length}`);
+                return parsed;
+            }
+        }
+
+        throw new Error("Failed to parse JSON response");
+
+    } catch (error: any) {
+        console.warn(`[MemorySummary] Failed to summarize memories for ${characterName}:`, error);
+        // Fallback: Just keep the last 10 if AI fails
+        return existingMemories.slice(-10);
+    }
+}
+
 // [Startup Warmup]
 // Fire-and-forget request to create/warm the cache.
 export async function preloadCache(apiKey: string, initialState: any) {

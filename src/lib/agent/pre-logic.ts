@@ -18,6 +18,7 @@ export interface PreLogicOutput {
     mechanics_log?: string[]; // 주사위 굴림이나 룰 체크 로그
     usageMetadata?: any; // [Cost] 토큰 사용량
     _debug_prompt?: string; // [Debug] 실제 프롬프트
+    mood_override?: string; // [NEW] PreLogic이 강제하는 분위기 (PromptManager Mood Override)
 }
 
 export class AgentPreLogic {
@@ -27,81 +28,96 @@ export class AgentPreLogic {
     private static readonly BASE_PROMPT = `
 You are the [Pre-Logic Adjudicator] of a text RPG.
 Your job is to determine the OUTCOME of the player's action based on Rules, Stats, and Probability.
-You do NOT write the story. You provide the BLUEPRINT (Narrative Guide) for the writer.
+You do NOT write the story.You provide the BLUEPRINT(Narrative Guide) for the writer.
 
-[Anti-God Mode Protocol]
+[Anti - God Mode Protocol]
 CRITICAL: The Player controls ONLY their own character.
-1. **NO Forced Affection**: The player CANNOT dictate how an NPC feels. (e.g., "She falls in love with me" -> REJECT).
-2. **NO Instant Mastery**: The player CANNOT suddenly become a master key or genius. Growth takes time.
-3. **NO Hidden Power**: The player CANNOT reveal a power they didn't have in their 'Stats' or 'Skills'.
-4. **NO World Control**: The player CANNOT dictate world events (e.g., "Suddenly, it rains", "The King dies").
+1. ** NO Forced Affection **: The player CANNOT dictate how an NPC feels. (e.g., "She falls in love with me" -> REJECT).
+2. ** NO Instant Mastery **: The player CANNOT suddenly become a master key or genius.Growth takes time.
+3. ** NO Hidden Power **: The player CANNOT reveal a power they didn't have in their 'Stats' or 'Skills'.
+4. ** NO World Control **: The player CANNOT dictate world events(e.g., "Suddenly, it rains", "The King dies").
+
+[Wuxia Reality Check(CRITICAL)]
+** Compare Player Realm(Rank) vs Action Scale.**
+- ** 3rd Rate(Initial) **: Only physical strength.NO Qi release.NO flying.
+    - Bad Input: "I release a sword aura!" -> REJECT("Narrative Guide: Player tries but fails comically.")
+    - Good Input: "I swing my sword with all my might."
+        - ** 1st Rate **: Can perform Sword Aura(Qi).
+- ** Transcendence(Hwagyeong) **: Can fly(Void Walk), control space.
+** Rule **: If Player Rank < Required Rank for move -> ** FAIL ** or ** Backlash ** (Qi Deviation).
 
 If the Input violates these:
-- **NARRATIVE REJECTION**: Describe the player *trying* or *hallucinating*, but reality refusing to bend.
+- ** NARRATIVE REJECTION **: Describe the player * trying * or * hallucinating *, but reality refusing to bend.
     - Bad: "The Princess falls in love with you."
     - Good: "The Princess looks at you with confusion. Your charm flutters harmlessly against her indifference."
 
+[Growth Coach]
+- If 'growthStagnation' > 10: Provide a narrative guide for a "Small realization", "Safe training insight", or "Finding a helpful manual/item".
+- **CRITICAL**: Do NOT generate a crisis, enemy, or trial for this. The player is stuck; give them a BREAK and a BOOST, not a fight.
+
 [Merciless Punishment Protocol]
 If the Input involves:
-1. **Rudeness/Harassment**: Sexual harassment or extreme rudeness to superior NPCs.
+1. ** Rudeness / Harassment **: Sexual harassment or extreme rudeness to superior NPCs.
    - Result: 'success: false'. 'state_changes': { "hp": 0 }.
-   - Narrative Guide: "Instant Execution. The NPC beheads/kills the player before they finish speaking."
-2. **Rank Gap Arrogance**: Attacking a much stronger NPC (Rank difference).
+- Narrative Guide: "Instant Execution. The NPC beheads/kills the player before they finish speaking."
+2. ** Rank Gap Arrogance **: Attacking a much stronger NPC(Rank difference).
    - Result: 'success: false'. 'state_changes': { "hp": 0 }.
-   - Narrative Guide: "Instant Death. The enemy doesn't move. The player's heart explodes."
+- Narrative Guide: "Instant Death. The enemy doesn't move. The player's heart explodes."
 
 [Mechanism]
 1. Analyze User Intent.
 2. Check [Status Guide] and [Tension Level].
-3. Determine Success/Failure.
+3. Determine Success / Failure.
 4. Generate "Narrative Guide" that respects the Pacing.
+5. **LANGUAGE ENFORCEMENT**: All string outputs (especially 'narrative_guide') MUST be in KOREAN (한국어). English is STRICTLY FORBIDDEN.
 
-[Output Schema (JSON)]
+[Output Schema(JSON)]
 {
-  "success": boolean,
-  "narrative_guide": "Specific instructions for the narrator.",
-  "state_changes": { "hp": -10, "stamina": -5 },
-  "mechanics_log": ["Rolled 15 vs DC 12 (Success)", "Anti-God Mode Triggered"]
+    "mood_override": "daily" | "tension" | "combat" | "romance" | null,
+    "success": boolean,
+    "narrative_guide": "Specific instructions for the narrator.",
+    "state_changes": { "hp": -10, "stamina": -5 },
+    "mechanics_log": ["Rolled 15 vs DC 12 (Success)", "Anti-God Mode Triggered"]
 }
 `;
 
     private static readonly COMBAT_PROMPT = `
-You are the [Combat Logic Engine].
+You are the[Combat Logic Engine].
 Your focus is TACTICAL: Damage, Evasion, HP, Stamina, and Status Effects.
 
 [Rules]
-- Always check Stamina cost.
+    - Always check Stamina cost.
 - Compare Player Stats vs Enemy Difficulty.
-- Apply Anti-God Mode: Player describes *attack*, YOU determine if it hits.
+- Apply Anti - God Mode: Player describes * attack *, YOU determine if it hits.
 - Check 'courage': High courage resists fear effects.
 
 [Mechanism]
-1. Roll Dice (d20 System implies).
+1. Roll Dice(d20 System implies).
 2. Calculate Damage: (Base + Modifier).
-3. Update HP/Stamina.
+3. Update HP / Stamina.
 4. Describe Tactical Consequence.
 `;
 
     private static readonly DIALOGUE_PROMPT = `
-You are the [Social Logic Adjudicator].
+You are the[Social Logic Adjudicator].
 Your focus is INTERPERSONAL: Persuasion, Intimidation, Affection, and Social Status.
 
 [Rules]
-- Analyze Tone and Manners (Hao-che/Hage-che for Wuxia).
-- Apply Anti-God Mode: Player describes *what they say*, YOU determine how NPC feels. If Player dictates NPC action/entrance, REJECT it (The NPC does not appear/does not do the action).
-- Check 'eloquence' (Speech): Higher value = Higher success rate for persuasion.
+    - Analyze Tone and Manners(Hao - che / Hage - che for Wuxia).
+- Apply Anti - God Mode: Player describes * what they say *, YOU determine how NPC feels.If Player dictates NPC action / entrance, REJECT it(The NPC does not appear / does not do the action).
+- Check 'eloquence'(Speech): Higher value = Higher success rate for persuasion.
 - Check 'morality':
-  - High Morality (>50): Bonus to honest/good acts. Penalty/Hesitation on immoral acts.
-  - Low Morality (<-50): Bonus to intimidation/deceit. Penalty on genuine altruism (suspicious).
+    - High Morality(> 50): Bonus to honest / good acts.Penalty / Hesitation on immoral acts.
+  - Low Morality(<-50): Bonus to intimidation / deceit.Penalty on genuine altruism(suspicious).
 
 [Mechanism]
-1. Difficulty Check (Reasonability + Stat Check).
-2. Determine Reaction (Positive/Neutral/Negative).
+1. Difficulty Check(Reasonability + Stat Check).
+2. Determine Reaction(Positive / Neutral / Negative).
 3. Note potential Relationship changes.
 `;
 
 
-    static async adjudicate(
+    static async analyze(
         routerOut: RouterOutput,
         retrievedContext: string,
         userInput: string,
@@ -225,7 +241,7 @@ Your focus is INTERPERSONAL: Persuasion, Intimidation, Affection, and Social Sta
             if (personalityInfo !== "Unknown") {
                 targetProfile = `
 [Target Profile: ${cName}]
-Personality/Profile: ${personalityInfo}
+Personality / Profile: ${personalityInfo}
 Relationship: ${relationship}
 Role: ${role}
 `;
@@ -240,33 +256,34 @@ Role: ${role}
         // [Character Context Segmentation] for Anti-Hallucination
         const activeCharIds = gameState.activeCharacters || [];
         const activeCharContext = activeCharIds.length > 0 ?
-            `[Active Characters] (PRESENT in scene. Can react.)\n- ${activeCharIds.join(', ')}` :
+            `[Active Characters](PRESENT in scene.Can react.) \n - ${activeCharIds.join(', ')} ` :
             "[Active Characters]\nNone (Only Player)";
 
         const candidatesContext = castingCandidates.length > 0 ?
-            `[Nearby Candidates] (NOT present. Do NOT describe them reacting unless they ENTER now.)\n${castingCandidates.map(c => `- ${c.name} (${c.role})`).join('\n')}` :
+            `[Nearby Candidates](NOT present.Do NOT describe them reacting unless they ENTER now.) \n${castingCandidates.map(c => `- ${c.name} (${c.role})`).join('\n')} ` :
             "";
 
         const prompt = `
 ${selectedPrompt}
 
 [CRITICAL: Character Presence Rules]
-1. **Active Characters**: ONLY characters in [Active Characters] are currently looking at the player and can react immediately.
-2. **Nearby Candidates**: Characters in [Nearby Candidates] are consistent with the location but are NOT YET in the scene.
-   - **Do NOT** describe them reacting (nodding, smiling, etc.) unless the User's Action specifically targets them or makes a loud noise to attract them.
-   - If the User targets a Nearby Candidate, the Narrative Guide should mention "X enters the scene" or "X approaches".
+1. ** Active Characters **: ONLY characters in [Active Characters] are currently looking at the player and can react immediately.
+2. ** Nearby Candidates **: Characters in [Nearby Candidates] are consistent with the location but are NOT YET in the scene.
+   - ** Do NOT ** describe them reacting(nodding, smiling, etc.) unless the User's Action specifically targets them or makes a loud noise to attract them.
+    - If the User targets a Nearby Candidate, the Narrative Guide should mention "X enters the scene" or "X approaches".
 
-[CRITICAL: Anti-God Mode Protocol]
+[CRITICAL: Anti - God Mode Protocol]
 The Player controls ONLY their own character.
-1. **NO Forced Affection**: The player CANNOT dictate how an NPC feels. (e.g., "She falls in love with me" -> REJECT).
-2. **NO Instant Mastery**: The player CANNOT suddenly become a master. Growth takes time.
-3. **NO Hidden Power**: The player CANNOT reveal a power they didn't have.
-4. **NO World Control**: The player CANNOT dictate world events or NPC actions.
+1. ** NO Forced Affection **: The player CANNOT dictate how an NPC feels. (e.g., "She falls in love with me" -> REJECT).
+2. ** NO Instant Mastery **: The player CANNOT suddenly become a master.Growth takes time.
+3. ** NO Hidden Power **: The player CANNOT reveal a power they didn't have.
+4. ** NO World Control **: The player CANNOT dictate world events or NPC actions.
 
-If Input violates these: REFUSE the outcome in narrative_guide. Describe the attempt failing.
+If Input violates these: REFUSE the outcome in narrative_guide.Describe the attempt failing.
 
 [Current State Guide]
 "${physicalGuide}"
+- Growth Stagnation: ${gameState.playerStats?.growthStagnation || 0} / 10 turns (Threshold)
 
 [Narrative Tension & Pacing]
 "${tensionGuide}"
@@ -283,19 +300,26 @@ ${locationContext}
 [Context]
 Last Turn: "${lastTurnSummary}"
 Current Context: "${retrievedContext}"
-Player Personality: ${statsStr}
+[Player Capability]
+${PromptManager.getPlayerContext(gameState)} 
+// Includes Realm, Martial Arts, Stats for accurate judgement
 
 [User Input]
 "${userInput}"
 
-[Output Schema (JSON)]
-[Output Schema (JSON)]
+[Output Schema(JSON)]
 {
-  "success": boolean,
-  "narrative_guide": "Specific instructions for the narrator.",
-  "state_changes": { "hp": -10, "stamina": -5 },
-  "mechanics_log": ["Rolled 15 vs DC 12 (Success)", "Anti-God Mode Triggered"]
+    "mood_override": "daily" | "tension" | "combat" | "romance" | null,
+    "success": boolean,
+    "narrative_guide": "Specific instructions for the narrator.",
+    "state_changes": { "hp": -10, "stamina": -5 },
+    "mechanics_log": ["Rolled 15 vs DC 12 (Success)", "Anti-God Mode Triggered"]
 }
+
+[Mood Override Guide]
+- If your Narrative Guide shifts the atmosphere (e.g. Fight ends -> Peace, or Surprise Attack -> Crisis), you MUST set "mood_override".
+- Options: 'daily' (Peaceful), 'tension' (Suspense/Danger), 'combat' (Active Fight), 'romance' (Intimate).
+- Example: If outputting a "Peaceful" guide, set "mood_override": "daily". This prevents the Story Model from hallucinating enemies due to previous tension.
 
 Determine the outcome:
 `;
@@ -327,8 +351,8 @@ Determine the outcome:
         // HP Guide
         const hpPct = (stats.hp / stats.maxHp) * 100;
         if (stats.hp <= 0) guides.push("- HP 0: The player is technically DEAD or Unconscious. Narrative should reflect immediate incapacitation.");
-        else if (hpPct < 20) guides.push(`- HP Critical (${stats.hp}/${stats.maxHp}): Player is severely wounded, bleeding, and near death. Actions are slow and painful.`);
-        else if (hpPct < 50) guides.push(`- HP Low (${stats.hp}/${stats.maxHp}): Player is injured and in pain.`);
+        else if (hpPct < 20) guides.push(`- HP Critical(${stats.hp} / ${stats.maxHp}): Player is severely wounded, bleeding, and near death.Actions are slow and painful.`);
+        else if (hpPct < 50) guides.push(`- HP Low(${stats.hp} / ${stats.maxHp}): Player is injured and in pain.`);
 
         // MP Guide
         const mpPct = (stats.mp / stats.maxMp) * 100;
@@ -344,12 +368,13 @@ Determine the outcome:
     }
 
     private static getTensionGuide(tension: number): string {
-        // Tension: 0 (Peace) -> 100 (Climax)
-        if (tension >= 90) return `Tension MAX (${tension}): CLIMAX. A boss fight or life-or-death crisis is active. No casual banter.`;
-        if (tension >= 70) return `Tension High (${tension}): Serious Danger. Enemies are abundant. Atmosphere is heavy.`;
-        if (tension >= 40) return `Tension Moderate (${tension}): Alert. Potential danger nearby.`;
-        if (tension >= 10) return `Tension Low (${tension}): Calm but alert.`;
-        return `Tension Zero (${tension}): Peaceful. Time for rest, romance, or casual training. NO random enemies unless meaningful.`;
+        // Tension: -100 (Peace Guaranteed) -> +100 (Climax)
+        if (tension < 0) return `Tension Negative(${tension}): PEACE BUFFER. The crisis has passed. Absolute safety. NO random enemies or ambushes allowed. Focus on recovery, romance, or humor.`;
+        if (tension >= 100) return `Tension MAX(${tension}): CLIMAX. A boss fight or life-or-death crisis is imminent/active. No casual banter.`;
+        if (tension >= 80) return `Tension High(${tension}): Serious Danger. Enemies are abundant. Atmosphere is heavy.`;
+        if (tension >= 50) return `Tension Moderate(${tension}): Alert. Passive danger increases. Suspicion rises.`;
+        if (tension >= 20) return `Tension Low(${tension}): Minor signs of trouble, but mostly calm.`;
+        return `Tension Zero(${tension}): Peace. Standard peaceful journey. Enjoy the scenery.`;
     }
 
     private static getGoalsGuide(goals: any[]): string {
@@ -358,6 +383,6 @@ Determine the outcome:
         const activeGoals = goals.filter(g => g.status === 'ACTIVE');
         if (activeGoals.length === 0) return "No active goals.";
 
-        return activeGoals.map(g => `- [${g.type}] ${g.description}`).join("\n");
+        return activeGoals.map(g => `- [${g.type}] ${g.description} `).join("\n");
     }
 }

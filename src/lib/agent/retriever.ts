@@ -32,13 +32,15 @@ export class AgentRetriever {
         let context = "";
 
         // 1. Casting/Encounter Suggestions (Priority)
-        // 1. Casting/Encounter Suggestions (Priority)
         if (suggestedCharacters.length > 0) {
             context += `[Casting Suggestions]\n`;
             suggestedCharacters.forEach(candidate => {
                 const charData = candidate.data;
                 const desc = charData.profile?.신분 || charData.title || "Unknown";
                 const appearance = charData.외형?.얼굴형_인상 || charData.외형?.outfit_style || "";
+
+                // [NEW] Faction Info
+                const faction = charData.faction || charData.profile?.소속 || "Unknown";
 
                 // Tiered Information based on Score/Reasons
                 const isMentioned = candidate.reasons.some((r: string) => r.includes('Mentioned'));
@@ -48,12 +50,15 @@ export class AgentRetriever {
                 if (isMentioned) tag = "[Mentioned/Relevant]";
                 else if (isActiveRegion) tag = "[Nearby]";
 
-                context += `- ${tag} Name: ${candidate.name} (${charData.title})\n  Identity: ${desc}\n  Appearance: ${appearance}\n  Logic: ${candidate.reasons.join(', ')}\n`;
+                // [EXPANDED] Always include Personality/Speech for consistency
+                const pVal = charData.personality ? JSON.stringify(charData.personality) : "Unknown";
 
-                // Add Personality only if relevant (mentioned or active region) to save tokens
-                if (isMentioned || isActiveRegion) {
-                    context += `  Personality: ${JSON.stringify(charData.personality)}\n`;
-                }
+                // Inference Speech Style (Reuse logic if possible, or simple check)
+                let speechStyle = "Unknown";
+                if (charData.relationshipInfo?.speechStyle) speechStyle = charData.relationshipInfo.speechStyle;
+                else if (JSON.stringify(charData).includes("존댓말")) speechStyle = "Polite/Honorific";
+
+                context += `- ${tag} Name: ${candidate.name} (${charData.title})\n  Identity: ${desc} | Faction: ${faction}\n  Appearance: ${appearance}\n  Personality: ${pVal}\n  Speech: ${speechStyle}\n`;
             });
             context += "\n";
         }

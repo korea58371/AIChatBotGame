@@ -33,6 +33,8 @@ export async function serverAgentTurn(
             if (data.lore) gameState.lore = data.lore;
             if (data.backgroundMappings) gameState.backgroundMappings = data.backgroundMappings;
             if (data.extraMap) gameState.extraMap = data.extraMap;
+            // [Fix] Rehydrate Character Data for PromptManager
+            if (data.characters) gameState.characterData = data.characters;
         } catch (e) {
             console.error(`[ServerAction] 재수화 실패:`, e);
         }
@@ -105,6 +107,15 @@ export async function serverGenerateSummary(
 ) {
     if (!API_KEY) return currentSummary;
     return generateSummary(API_KEY, currentSummary, recentDialogue);
+}
+
+export async function serverGenerateCharacterMemorySummary(
+    characterName: string,
+    existingMemories: string[]
+) {
+    if (!API_KEY) return existingMemories;
+    const { generateCharacterMemorySummary } = await import('@/lib/gemini');
+    return generateCharacterMemorySummary(API_KEY as string, characterName, existingMemories);
 }
 
 // [최적화] Vercel이 300MB+ 이미지를 번들링하는 것을 방지하기 위해 미리 생성된 Assets Manifest 사용

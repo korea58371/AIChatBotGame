@@ -1,6 +1,7 @@
 import { getMoodPrompts, MoodType } from '../data/prompts/moods';
 import { RelationshipManager } from './relationship-manager';
 import { LoreConverter } from './lore-converter';
+import { GameState } from './store';
 
 interface SpawnRules {
     locations?: string[];
@@ -65,42 +66,52 @@ interface LightweightCharacter {
     description?: string; // 짧은 설명
 }
 
-interface GameState {
-    activeCharacters: string[]; // 현재 씬에 있는 캐릭터들의 ID
-    currentLocation: string;
-    scenarioSummary: string;
-    currentEvent: string;
-    characterData?: Record<string, Character>; // 동적 캐릭터 데이터
-    worldData?: {
-        locations: Record<string, string | { description: string, secrets: string[] }>;
-        items: Record<string, string>;
-    };
-    playerStats: any;
-    inventory: any[];
-    currentMood: MoodType;
-    playerName: string;
-    availableBackgrounds?: string[];
-    availableCharacterImages?: string[];
-    availableExtraImages?: string[]; // 추가됨
-    isDirectInput?: boolean;
-    getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
-    constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string;[key: string]: string };
-    lore?: any;
-    activeGameId?: string; // 게임별 로직을 위해 추가됨
-    backgroundMappings?: Record<string, string>; // 무협 한국어 키를 위해 추가됨
-    extraMap?: Record<string, string>; // 인터페이스에 추가됨
-    characterMap?: Record<string, string>; // [수정] ID 해결을 위해 추가됨
-    isGodMode?: boolean; // God Mode Flag
-
-    // [Narrative Systems]
-    goals?: any[]; // { id, description, type, status }
-    tensionLevel?: number; // 0-100
-}
+// [REMOVED local GameState to use imported store.ts definition]
 
 export class PromptManager {
+    static getSpeechStyle(char: any): { style: string, ending: string, callSign: string } | null {
+        // 1. Explicit Relationship Info
+        if (char.relationshipInfo) {
+            const { speechStyle, endingStyle, callSign } = char.relationshipInfo;
+            if (speechStyle || endingStyle || callSign) {
+                return {
+                    style: speechStyle || 'Unknown',
+                    ending: endingStyle || 'Unknown',
+                    callSign: callSign || ''
+                };
+            }
+        }
+
+        // 2. Legacy Tone
+        if (char.tone) {
+            return { style: char.tone, ending: 'Unknown', callSign: '' };
+        }
+
+        // 3. Inference from Personality/Description
+        const searchTarget = JSON.stringify({
+            p: char.personality,
+            d: char.description,
+            pf: char.profile,
+            sys: char.system_logic
+        });
+
+        // Heuristic Keys
+        if (searchTarget.includes('존댓말') || searchTarget.includes('경어') || searchTarget.includes('예의')) {
+            return { style: '존댓말 (Polite/Honorific)', ending: '~해요 / ~습니다', callSign: '' };
+        }
+        if (searchTarget.includes('반말') || searchTarget.includes('하대') || searchTarget.includes('거만')) {
+            return { style: '반말 (Casual/Authoritative)', ending: '~해라 / ~다', callSign: '' };
+        }
+        if (searchTarget.includes('사투리')) {
+            return { style: '사투리 (Dialect)', ending: 'Unknown', callSign: '' };
+        }
+
+        return null;
+    }
+
     // [CACHE CONFIG]
     private static readonly CACHE_PREFIX = 'PROMPT_CACHE_';
-    private static readonly CACHE_VERSION = 'v1.2'; // Increment this to invalidate all caches
+    private static readonly CACHE_VERSION = 'v1.3'; // Increment this to invalidate all caches
 
     // [New] Cache Management Methods
     static async clearPromptCache(gameId?: string) {
@@ -299,12 +310,14 @@ Core Identity: Semi - Dystopian Modern Korea with Hunters and Gates.
             // [Default/Wuxia Template]
             prompt = `
 You are the AI Game Master for the 'Cheonha Jeil'(Wuxia) universe.
-Core Identity: Authentic Martial Arts World(Murim).
-                Tone: Archaic, Serious, Weighty(Korean Martial Arts Novel Style).
+Core Identity: Authentic Orthodox Wuxia (Jeongtong Murim) & Heroic Growth Saga.
+                Tone: Chivalrous, Witty, and Heroic (Korean Wuxia Novel Style).
 Linguistic Style: Use 'Hao-che'(하오체) or 'Hage-che'(하게체) for elders, politeness levels matter.
                 Mechanics:
                 - Qi(Neigong) determines power.
 - Use authentic martial arts terminology.
+- **[ATMOSPHERE]**: Emphasize **Growth**, **Friendship**, **Chivalry(Hyeop)**, and **Humor**.
+- **[PROTAGONIST CORRECTION]**: The Player is the Main Character (Protagonist). Generally favor the protagonist. Provide 'Giyeon'(Miraculous Encounters) or lucky breaks in desperate situations. Avoid meaningless deaths. Support their path to becoming the "World's Best".
 - CRITICAL: You must STRICTLY follow the [Narrative Direction] provided by the Pre-Logic module for the outcome of actions. 
 - ** PRIORITY RULE **: If the [User Input] contradicts the [Narrative Direction] (e.g., User says "I win", Guide says "You die"), you must ** IGNORE ** the User Input's outcome and **FOLLOW** the Narrative Direction. The Narrative Direction is the absolute truth of the world.
                 - Do not invent your own success / failure logic.
@@ -386,7 +399,7 @@ ${prompt}
 
         // [Language Instruction]
         if (language === 'ko') {
-            prompt += `\n\n ** IMPORTANT: ALL OUTPUT MUST BE IN KOREAN(한국어).** `;
+            prompt += `\n\n ** [CRITICAL LANGUAGE INSTRUCTION] **\n1. **ALL OUTPUT MUST BE IN KOREAN (한국어).**\n2. Do NOT use English in the narrative, dialogue, or system messages.\n3. English is ONLY allowed for specific code keys if absolutely necessary, but strictly forbidden in visible text.\n4. Even if the Context contains English, you must TRANSLATE it to Korean for the output.`;
         } else if (language === 'en') {
             prompt += `\n\n ** IMPORTANT: ALL OUTPUT MUST BE IN ENGLISH.** `;
         }
@@ -403,7 +416,13 @@ ${prompt}
         const charsData = state.characterData || {};
         const activeCharIds = new Set(state.activeCharacters.map(id => id.toLowerCase()));
 
-        return Object.values(charsData).map((c: any) => {
+        // [FIX] Filter out already active characters
+        return Object.values(charsData).filter((c: any) => {
+            const cId = (c.id || c.englishName || c.name || "").toLowerCase();
+            const cName = (c.name || "").toLowerCase();
+            // Check against Active IDs (which might be IDs or Names)
+            return !activeCharIds.has(cId) && !activeCharIds.has(cName);
+        }).map((c: any) => {
             let score = 0;
             let tags = [];
 
@@ -940,6 +959,12 @@ ${spawnCandidates || "None"}
                 charInfo += `\n- Martial Arts Rank: ${maVal}`;
             } else if (char['강함']?.['등급']) {
                 charInfo += `\n- Rank: ${char['강함']['등급']}`;
+                // [FIX] Always show Skill Names summary (User Request)
+                if (char['강함'].skills) {
+                    const skills = char['강함'].skills;
+                    const skillNames = Array.isArray(skills) ? skills.join(', ') : Object.keys(skills).join(', ');
+                    charInfo += `\n- Skills: ${skillNames}`;
+                }
             }
 
             // Appearance (Legacy + Standard)
@@ -958,18 +983,18 @@ ${spawnCandidates || "None"}
             if (char.description) charInfo += `\n- Current State: ${char.description}`;
 
             // 2. Relationship Pacing (Dynamic)
-            const relScore = state.playerStats.relationships?.[charId] || 0;
+            // [FIX] Robust Lookup: Check ID, Name, and Korean Name
+            const relScore = state.playerStats.relationships?.[charId] ||
+                state.playerStats.relationships?.[char.name] ||
+                (char.이름 ? state.playerStats.relationships?.[char.이름] : 0) || 0;
             // Note: RelationshipManager might expect Name or ID. It usually handles Name.
             const relationshipInstructions = RelationshipManager.getCharacterInstructions(char.name, relScore);
             charInfo += `\n- Relation: ${relationshipInstructions.replace(/\n/g, ' ')}`;
 
             // [Logic Model Injection] Tone & Speech Style
-            if (char.relationshipInfo) {
-                const { callSign, speechStyle, endingStyle } = char.relationshipInfo;
-                if (callSign) charInfo += `\n- Call Sign: "${callSign}"`;
-                if (speechStyle) charInfo += `\n- Speech Style: ${speechStyle}`;
-                if (endingStyle) charInfo += `\n- Ending Style: ${endingStyle}`;
-            }
+            // [Logic Model Injection] Tone & Speech Style
+            // Replaced by standardized helper below
+            // if (char.relationshipInfo) { ... }
 
             // 3. Memories (Dynamic)
             if (char.memories && char.memories.length > 0) {
@@ -1025,7 +1050,34 @@ ${spawnCandidates || "None"}
                 }
             }
 
-            // 5. [NEW] Dynamic Mood Injection
+            // 5. [NEW] Peer Relationships (Who they know in the scene)
+            // If multiple characters are active, mention how they feel about each other
+            if (activeCharIds.length > 1) {
+                const peerRelations: string[] = [];
+                activeCharIds.forEach(otherId => {
+                    if (otherId === charId) return; // Skip self
+
+                    const otherChar = resolveChar(otherId);
+                    if (!otherChar) return;
+
+                    const otherName = otherChar.name || otherChar.이름 || otherId;
+
+                    // Check declared relationships
+                    const relations = { ...(char.relationships || {}), ...(char['인간관계'] || {}) };
+                    // Find relation by Name or ID
+                    const relDesc = relations[otherName] || relations[otherId] || relations[otherChar.englishName || ''];
+
+                    if (relDesc) {
+                        peerRelations.push(`-> ${otherName}: ${relDesc}`);
+                    }
+                });
+
+                if (peerRelations.length > 0) {
+                    charInfo += `\n- [Peer Relations]: ${peerRelations.join(' / ')}`;
+                }
+            }
+
+            // 6. [NEW] Dynamic Mood Injection
             // Inject heavy data only when relevant to save tokens and focus attention.
 
             // [COMBAT MOOD] -> Inject Martial Arts Details
@@ -1050,6 +1102,15 @@ ${spawnCandidates || "None"}
                 }
             }
 
+            // [SPEECH STYLE INJECTION]
+            // [SPEECH STYLE INJECTION] - Uses new Helper
+            const speechInfo = PromptManager.getSpeechStyle(char);
+            if (speechInfo) {
+                charInfo += `\n- Speech Style: ${speechInfo.style}`;
+                if (speechInfo.ending !== 'Unknown') charInfo += `\n- Ending Style: ${speechInfo.ending}`;
+                if (speechInfo.callSign) charInfo += `\n- Call Sign (to Player): ${speechInfo.callSign}`;
+            }
+
             // [INTIMATE/EROTIC MOOD] -> Inject Secret Body Data
             // We interpret 'romance' broadly or specific 'erotic' moods if defined.
             // Assuming 'erotic' or high-stakes romance.
@@ -1069,12 +1130,69 @@ ${spawnCandidates || "None"}
                 if (char.preferences) {
                     charInfo += `\n- Preferences: ${JSON.stringify(char.preferences)}`;
                 }
+            } else {
+                // [DEFAULT/ALL MOODS] Inject Personality Summary ALWAYS (User Request)
+                if (char.personality) {
+                    const pVal = typeof char.personality === 'string' ? char.personality : JSON.stringify(char.personality);
+                    charInfo += `\n- Personality(Detailed): ${pVal}`;
+                }
             }
 
             return charInfo;
         }).filter(Boolean).join('\n\n');
 
         return charInfos || "No other characters are currently present.";
+    }
+
+    // [NEW] Get Player's Context (Stats + Martial Arts)
+    static getPlayerContext(state: GameState): string {
+        const stats = state.playerStats || {};
+        // [FIX] Fallback for legacy save data: Check root first, then playerStats
+        const arts = (state.martialArts && state.martialArts.length > 0)
+            ? state.martialArts
+            : ((state.playerStats as any)?.martialArts || []);
+
+        const realm = state.playerRealm || "삼류 (3rd Rate)";
+
+        let context = `### [PLAYER] ${state.playerName || 'Player'}\n`;
+        context += `- Realm: ${realm}\n`;
+
+        // 1. Stats Summary & Reputation
+        if (stats) {
+            // Use destructuring to exclude relationships cleanly
+            const { relationships, fame, fate, ...relevantStats } = stats;
+            context += `- Stats: ${JSON.stringify(relevantStats)}\n`;
+            if (fame !== undefined) context += `- Fame: ${fame} (Titles: ${state.constants?.FAME_TITLES?.[state.playerStats?.fameTitleIndex || 0] || 'Unknown'})\n`;
+            if (fate !== undefined) context += `- Fate: ${fate}\n`;
+
+            // Current Conditions (Active Injuries/Buffs)
+            if (stats.active_injuries && stats.active_injuries.length > 0) {
+                context += `- [CONDITION]: Active Injuries: ${stats.active_injuries.join(', ')}\n`;
+            }
+        }
+
+        // 2. Martial Arts (CRITICAL)
+        if (arts.length > 0) {
+            context += `- Martial Arts:\n`;
+            arts.forEach((art: any) => {
+                const proficiency = art.proficiency || 0;
+                context += `  - [${art.name}] (${art.rank || 'Unranked'}) ${proficiency}%: ${art.description || ''}\n`;
+            });
+        } else {
+            context += `- Martial Arts: No specific arts learned yet.\n`;
+        }
+
+        // 3. Inventory Summary (Equipped + Key Items)
+        if (state.inventory && state.inventory.length > 0) {
+            const equipped = state.inventory.filter((i: any) => i.isEquipped).map((i: any) => i.name).join(', ');
+            const others = state.inventory.filter((i: any) => !i.isEquipped).map((i: any) => i.name).join(', ');
+
+            context += `- Inventory:\n`;
+            if (equipped) context += `  - Equipped: ${equipped}\n`;
+            if (others) context += `  - Bag: ${others}\n`;
+        }
+
+        return context;
     }
 
     // [Helper] YAML-style formatter for God Bless You characters
@@ -1104,6 +1222,14 @@ ${spawnCandidates || "None"}
             // Combat Stats from Ranks
             // If c.rank exists or similar
             if (c.profile && c.profile['등급']) lines.push(`- Rank: ${c.profile['등급']}`);
+
+            // [SPEECH STYLE]
+            const speechInfoComb = PromptManager.getSpeechStyle(c);
+            if (speechInfoComb) {
+                if (speechInfoComb.style) lines.push(`- Speech Style: ${speechInfoComb.style}`);
+                if (speechInfoComb.ending !== 'Unknown') lines.push(`- Ending Style: ${speechInfoComb.ending}`);
+                if (speechInfoComb.callSign) lines.push(`- Call Sign: ${speechInfoComb.callSign}`);
+            }
 
             // Job/Class
             // Social / Job Info
@@ -1142,6 +1268,14 @@ ${spawnCandidates || "None"}
                 Object.entries(c.secret_data).forEach(([k, v]) => {
                     lines.push(`  - ${k}: ${JSON.stringify(v)}`);
                 });
+            }
+
+
+            // [SPEECH STYLE]
+            const speechInfoRom = PromptManager.getSpeechStyle(c);
+            if (speechInfoRom) {
+                if (speechInfoRom.style) lines.push(`- Speech Style: ${speechInfoRom.style}`);
+                if (speechInfoRom.ending !== 'Unknown') lines.push(`- Ending Style: ${speechInfoRom.ending}`);
             }
 
             // Personality (Full + Inner)
@@ -1195,6 +1329,15 @@ ${spawnCandidates || "None"}
             Object.entries(jobData).forEach(([k, v]) => {
                 lines.push(`  - ${k}: ${v}`);
             });
+        }
+
+
+        // [SPEECH STYLE]
+        const speechInfoDef = PromptManager.getSpeechStyle(c);
+        if (speechInfoDef) {
+            if (speechInfoDef.style) lines.push(`- Speech Style: ${speechInfoDef.style}`);
+            if (speechInfoDef.ending !== 'Unknown') lines.push(`- Ending Style: ${speechInfoDef.ending}`);
+            if (speechInfoDef.callSign) lines.push(`- Call Sign: ${speechInfoDef.callSign}`);
         }
 
         // 5. Personality (KV List)

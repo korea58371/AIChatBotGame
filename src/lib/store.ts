@@ -10,7 +10,7 @@ export interface Message {
   text: string;
 }
 
-interface GameState {
+export interface GameState {
   // Game Configuration
   activeGameId: string;
   setGameId: (id: string) => Promise<void>;
@@ -131,7 +131,11 @@ interface GameState {
   wikiData?: any; // [NEW] Added wikiData
   characterMap?: Record<string, string>;
   extraMap?: Record<string, string>;
-  constants?: { FAMOUS_CHARACTERS: string; CORE_RULES: string };
+  constants?: {
+    FAMOUS_CHARACTERS: string;
+    CORE_RULES: string;
+    [key: string]: string;
+  };
 
   lore?: any;
   characterCreationQuestions?: any[]; // [NEW] Added for generic creation support
@@ -141,6 +145,8 @@ interface GameState {
   setExtraOverride: (name: string, imageKey: string) => void;
 
   // [New] Narrative Systems (Goals & Tension)
+
+
   goals: GameGoal[];
   addGoal: (goal: GameGoal) => void;
   updateGoal: (id: string, updates: Partial<GameGoal>) => void;
@@ -148,6 +154,24 @@ interface GameState {
   tensionLevel: number; // 0-100
   setTensionLevel: (level: number) => void;
   updateTensionLevel: (delta: number) => void;
+
+  // [NEW] Martial Arts & Realm State
+  playerRealm: string;
+  martialArts: MartialArt[];
+  setPlayerRealm: (realm: string) => void;
+  addMartialArt: (art: MartialArt) => void;
+  updateMartialArt: (id: string, updates: Partial<MartialArt>) => void;
+}
+
+export interface MartialArt {
+  id: string;
+  name: string;
+  rank: string; // e.g. "3성", "절정"
+  type: string; // "Swordsmanship", "Neigong"
+  description: string;
+  proficiency: number; // 0-100
+  effects: string[];
+  createdTurn: number;
 }
 
 export interface GameGoal {
@@ -184,6 +208,24 @@ export interface PlayerStats {
   memories?: string[]; // [New] Character-specific memories
   fatigue: number; // [New] 0-100
   narrative_perspective?: string; // [New] '1인칭' or '3인칭'
+
+  // [Wuxia] Martial Arts System
+  realm: string; // 삼류, 이류, 일류, etc.
+  realmProgress: number; // 0-100%
+  growthStagnation: number; // Turn count without growth
+  martialArts: MartialArt[];
+  fameTitleIndex?: number; // [New] Index for FAME_TITLES
+}
+
+export interface MartialArt {
+  id: string;
+  name: string;
+  type: string; // 검법, 도법, 권법, etc.
+  rank: string; // 삼류, 이류, ... 현경
+  description: string;
+  proficiency: number; // 0-100
+  effects: string[];
+  createdTurn: number;
 }
 
 export interface GameCharacterData {
@@ -223,7 +265,12 @@ const INITIAL_STATS: PlayerStats = {
   relationships: {},
   active_injuries: [],
   fatigue: 0,
-  narrative_perspective: '3인칭' // Default
+  narrative_perspective: '3인칭', // Default
+  realm: '삼류',
+  realmProgress: 0,
+  growthStagnation: 0,
+  martialArts: [],
+  fameTitleIndex: 0
 };
 
 export const useGameStore = create<GameState>()(
@@ -496,9 +543,20 @@ export const useGameStore = create<GameState>()(
       })),
 
       tensionLevel: 0,
-      setTensionLevel: (level) => set({ tensionLevel: Math.max(0, Math.min(100, level)) }),
+      setTensionLevel: (level) => set({ tensionLevel: Math.max(-100, Math.min(100, level)) }),
       updateTensionLevel: (delta) => set((state) => ({
-        tensionLevel: Math.max(0, Math.min(100, state.tensionLevel + delta))
+        tensionLevel: Math.max(-100, Math.min(100, state.tensionLevel + delta))
+      })),
+
+      // [NEW] Martial Arts Implementation
+      playerRealm: "삼류 (3rd Rate)",
+      martialArts: [],
+      setPlayerRealm: (realm) => set({ playerRealm: realm }),
+      addMartialArt: (art) => set((state) => ({
+        martialArts: [...state.martialArts, art]
+      })),
+      updateMartialArt: (id, updates) => set((state) => ({
+        martialArts: state.martialArts.map(a => a.id === id ? { ...a, ...updates } : a)
       })),
 
       resetGame: () => {

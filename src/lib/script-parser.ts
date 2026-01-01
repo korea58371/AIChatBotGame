@@ -31,12 +31,20 @@ export function parseScript(text: string): ScriptSegment[] {
     // We split by newlines first to handle line-based parsing safely, 
     // but since the AI might output multiple tags, we should look for the tag pattern.
 
-    // Improved regex to capture tag and content
-    // Matches <TagName>Content
-    // Improved regex to capture tag and content
-    // Matches <TagName>Content or [TagName]Content
-    // Supports attributes in tags (e.g. <Background space_station>)
-    const regex = /(?:<|\[)([^>\]]+)(?:>|\])([\s\S]*?)(?=$|(?:<|\[)[^>\]]+(?:>|\]))/g;
+    // [Fix] Strict Regex to avoid parsing text like <천하제일> as tags.
+    // Only match known system tags or tags with colons (Name:Expression).
+    const knownTags = [
+        '배경', 'BGM', '시간', '시스템팝업', '시스템', '나레이션',
+        '선택지.*?', '대사', '문자', '답장', '전화', 'TV뉴스', '기사', '떠남',
+        'State', 'Stat', 'Relationship', 'Rel', 'Think', '/Think', 'Memory', 'Mem', 'Injury', 'Tension'
+    ].join('|');
+
+    // Pattern: < ( (Keyword)(Spaces...)? | (Any:Any) ) >
+    // We use a strict pattern for the tag name to ensure we don't pick up random <Text>.
+    const tagPattern = `(?:(?:${knownTags})(?:\\s+[^>]*)?|[^>]*:[^>]*)`;
+
+    // Regex: <(TagPattern)> (Content) (?= End | <(TagPattern)>)
+    const regex = new RegExp(`<(${tagPattern})>([\\s\\S]*?)(?=$|<(?:${tagPattern})>)`, 'gi');
 
     let match;
     let lastIndex = 0;
@@ -128,7 +136,7 @@ export function parseScript(text: string): ScriptSegment[] {
             const choiceId = parseInt(tagName.replace('선택지', ''));
             segments.push({
                 type: 'choice',
-                content: content.replace(/\([^)]*\)/g, '').trim(),
+                content: content.trim(),
                 choiceId: isNaN(choiceId) ? 0 : choiceId
             });
         } else if (tagName === '대사') {
@@ -358,6 +366,29 @@ export function parseScript(text: string): ScriptSegment[] {
                     });
                 });
             }
+        } else if (tagName.toLowerCase() === 'tension') {
+            // [New] Tension Update
+            // <Tension val="10">
+            const attrRegex = /(\w+)=["']([^"']*)["']/g;
+            let attrMatch;
+            const fullTag = match[0];
+            let val = 0;
+
+            while ((attrMatch = attrRegex.exec(fullTag)) !== null) {
+                const key = attrMatch[1].toLowerCase();
+                const v = parseFloat(attrMatch[2]);
+                if (key === 'val' || key === 'value' || key === 'amount') {
+                    val = v;
+                }
+            }
+
+            if (!isNaN(val)) {
+                segments.push({
+                    type: 'command',
+                    commandType: 'update_tension', // Specific command type for Tension
+                    content: val.toString()
+                });
+            }
 
         } else if (tagName.toLowerCase() === 'rel' || tagName.toLowerCase() === 'relationship') {
             // [New] Inline Relationship Update
@@ -445,6 +476,10 @@ export function parseScript(text: string): ScriptSegment[] {
                     });
                 });
             }
+        } else if (tagName.toLowerCase() === 'injury') {
+            // [Ignore] Injury tags are for UI state updates, not narrative text.
+            // We ignore them here to prevent them from being rendered as "[Injury] ...".
+            continue;
         } else {
             const colonIndex = tagName.indexOf(':');
             if (colonIndex !== -1) {

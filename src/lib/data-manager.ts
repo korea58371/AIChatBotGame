@@ -198,17 +198,19 @@ export class DataManager {
                         // 이를 'loreModule.WuxiaLore.charactersDetail'에서 가져와서 채워 넣습니다.
 
                         if (charactersModule && loreModule?.WuxiaLore?.charactersDetail) {
-                            const mainChars = Object.values(loreModule.WuxiaLore.charactersDetail.characters_main || {});
-                            const suppChars = Object.values(loreModule.WuxiaLore.charactersDetail.characters_supporting || {});
-                            const detailedList = [...mainChars, ...suppChars];
+                            // [Fix] Use Object.entries to preserve keys (names) as fallback
+                            const mainCharsEntries = Object.entries(loreModule.WuxiaLore.charactersDetail.characters_main || {});
+                            const suppCharsEntries = Object.entries(loreModule.WuxiaLore.charactersDetail.characters_supporting || {});
+                            const detailedEntries = [...mainCharsEntries, ...suppCharsEntries];
 
                             const detailedMap = new Map();
-                            detailedList.forEach((d: any) => {
-                                const rawName = d.profile?.이름 || d.basic_profile?.이름 || "";
+                            detailedEntries.forEach(([key, val]: [string, any]) => {
+                                // Priority: 1. profile name, 2. basic_profile name, 3. Dictionary Key
+                                const rawName = val.profile?.이름 || val.basic_profile?.이름 || key;
                                 // Extract "연화린" from "연화린 (延花凛)"
                                 const cleanName = rawName.split('(')[0].trim();
                                 if (cleanName) {
-                                    detailedMap.set(cleanName, d);
+                                    detailedMap.set(cleanName, val);
                                 }
                             });
 
@@ -353,14 +355,19 @@ export class DataManager {
             }
             // [Existing] Handle Array-based Character Data (Wuxia)
             else if (Array.isArray(finalCharacters)) {
-                finalCharacters = finalCharacters.map((c: any) => {
+                // [Standardization] Convert Array to Dictionary for consistent Key lookup
+                const charDict: Record<string, any> = {};
+                finalCharacters.forEach((c: any) => {
                     // Hydrate Name from Profile if missing
                     if (!c.name && c.profile && c.profile['이름']) {
                         // e.g. "천서윤 (千瑞yoon)" -> "천서윤"
                         c.name = c.profile['이름'].split('(')[0].trim();
                     }
-                    return c;
+                    if (c.name) {
+                        charDict[c.name] = c;
+                    }
                 });
+                finalCharacters = charDict;
             }
 
             return {

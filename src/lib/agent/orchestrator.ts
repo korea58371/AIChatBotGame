@@ -5,6 +5,7 @@ import { AgentPreLogic } from './pre-logic';
 import { AgentPostLogic } from './post-logic';
 import { AgentSummary } from './summary';
 import { AgentCasting } from './casting'; // [NEW]
+import { AgentMartialArts } from './martial-arts'; // [NEW]
 import { generateResponse } from '../gemini'; // 기존 함수 재사용/리팩토링
 import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../model-config';
@@ -76,10 +77,18 @@ export class AgentOrchestrator {
         console.log(`[AgentOrchestrator] 검색된 컨텍스트 길이: ${retrievedContext.length} chars`);
 
         // [Step 3] Pre-Logic: 룰 판정 (Adjudicate Rules)
-        const preLogicOut = await AgentPreLogic.adjudicate(routerOut, retrievedContext, userInput, gameState, lastTurnSummary, suggestions);
+        const preLogicOut = await AgentPreLogic.analyze(routerOut, retrievedContext, userInput, gameState, lastTurnSummary, suggestions);
         const t4 = Date.now();
         console.log(`[AgentOrchestrator] Pre-Logic 결과: ${preLogicOut.success ? '성공' : '실패'}`);
         console.log(`[AgentOrchestrator] 서사 가이드: "${preLogicOut.narrative_guide}"`);
+
+        // [Mood Override] PreLogic determines the atmosphere of the current turn
+        // If PreLogic explicitly requests a mood shift (e.g. Combat -> Daily), we honor it for this turn's prompt.
+        let effectiveGameState = gameState;
+        if (preLogicOut.mood_override) {
+            console.log(`[AgentOrchestrator] Mood Override Triggered: ${gameState.currentMood} -> ${preLogicOut.mood_override}`);
+            effectiveGameState = { ...gameState, currentMood: preLogicOut.mood_override };
+        }
 
         // [Step 4] Story Generation (Narrator)
         // Pre-Logic 가이드 + 검색된 컨텍스트를 프롬프트에 주입
@@ -91,7 +100,9 @@ export class AgentOrchestrator {
 ${preLogicOut.narrative_guide}
 
 [Context data]
-${PromptManager.getActiveCharacterProps(gameState)}
+[Context data]
+${PromptManager.getPlayerContext(effectiveGameState)} // [NEW] Player Stats & Martial Arts
+${PromptManager.getActiveCharacterProps(effectiveGameState)}
 ${retrievedContext}
 
 [Player Action]
@@ -104,7 +115,7 @@ ${userInput}
             apiKey,
             history,
             compositeInput,
-            gameState,
+            effectiveGameState,
             language,
             modelName // [NEW] Pass model name
         );
@@ -119,7 +130,9 @@ ${userInput}
             .replace(/\[Rel[^\]]*\]/gi, '')
             .replace(/<Rel[^>]*>/gi, '')
             .replace(/\[Relationship[^\]]*\]/gi, '')
-            .replace(/<Relationship[^>]*>/gi, '');
+            .replace(/<Relationship[^>]*>/gi, '')
+            .replace(/\[Tension[^\]]*\]/gi, '')
+            .replace(/<Tension[^>]*>/gi, '');
 
         console.log(`[AgentOrchestrator] Scrubbed Text Length: ${storyResult.text.length} -> ${cleanStoryText.length}`);
 
@@ -134,7 +147,8 @@ ${userInput}
 
         // [Parallel Execution] Post-Logic & Turn Summary
         // [Parallel Execution] Post-Logic & Turn Summary
-        const [postLogicOut, summaryResult] = await Promise.all([
+        // [Parallel Execution] Post-Logic & Turn Summary & Martial Arts
+        const [postLogicOut, summaryResult, martialArtsOut] = await Promise.all([
             AgentPostLogic.analyze(
                 userInput,
                 cleanStoryText,
@@ -146,7 +160,14 @@ ${userInput}
                 gameState, // [NEW] Pass Full GameState
                 language
             ),
-            AgentSummary.summarize(apiKey, history, cleanStoryText)
+            AgentSummary.summarize(apiKey, history, cleanStoryText),
+            AgentMartialArts.analyze(
+                userInput,
+                cleanStoryText,
+                gameState.playerStats?.realm || '삼류',
+                gameState.playerStats || {},
+                gameState.turnCount || 0
+            )
         ]);
 
         const t6 = Date.now();
@@ -198,17 +219,22 @@ ${userInput}
             (storyResult.usageMetadata as any)?.cachedContentTokenCount || 0
         );
         const summaryCost = calculateCost(MODEL_CONFIG.SUMMARY || 'gemini-2.5-flash', summaryResult.usageMetadata?.promptTokenCount || 0, summaryResult.usageMetadata?.candidatesTokenCount || 0, summaryResult.usageMetadata?.cachedContentTokenCount || 0);
+        const martialCost = calculateCost(MODEL_CONFIG.LOGIC, martialArtsOut.usageMetadata?.promptTokenCount || 0, martialArtsOut.usageMetadata?.candidatesTokenCount || 0, martialArtsOut.usageMetadata?.cachedContentTokenCount || 0);
 
-        const totalCost = routerCost + preLogicCost + postLogicCost + storyCost + summaryCost;
+        const totalCost = routerCost + preLogicCost + postLogicCost + storyCost + summaryCost + martialCost;
 
         return {
             reply: finalStoryText,
             raw_story: cleanStoryText,
             logic: preLogicOut,
             post_logic: postLogicOut,
+            martial_arts: martialArtsOut, // [NEW]
             summary: summaryResult.summary, // [NEW] Turn Summary Text
             summaryDebug: { // [NEW] Summary Debug Info
                 _debug_prompt: summaryResult._debug_prompt
+            },
+            martial_arts_debug: { // [NEW] Martial Arts Debug Info
+                _debug_prompt: martialArtsOut._debug_prompt
             },
             router: routerOut,
             casting: allCastingCandidates, // [NEW] Returns ALL candidates for UI debugging
@@ -219,7 +245,8 @@ ${userInput}
                 preLogic: preLogicOut.usageMetadata,
                 postLogic: postLogicOut.usageMetadata,
                 story: storyResult.usageMetadata,
-                summary: summaryResult.usageMetadata // [NEW]
+                summary: summaryResult.usageMetadata, // [NEW]
+                martialArts: martialArtsOut.usageMetadata // [NEW]
             },
             latencies: {
                 router: (t2 - t1),

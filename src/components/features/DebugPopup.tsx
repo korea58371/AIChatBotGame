@@ -19,6 +19,7 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
     const scenarioSummary = useGameStore(state => state.scenarioSummary);
     const userCoins = useGameStore(state => state.userCoins);
     const gameId = useGameStore(state => state.activeGameId);
+    const tensionLevel = useGameStore(state => state.tensionLevel);
 
     const [activeTab, setActiveTab] = useState<'script' | 'memory' | 'story'>('script');
     const [scriptInput, setScriptInput] = useState('');
@@ -120,6 +121,7 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                     <div className="flex justify-between bg-gray-900 p-2 rounded"><span className="text-gray-500">Location</span> <span className="text-white">{currentLocation}</span></div>
                                     <div className="flex justify-between bg-gray-900 p-2 rounded"><span className="text-gray-500">Coins</span> <span className="text-yellow-400">{userCoins} G</span></div>
+                                    <div className="flex justify-between bg-gray-900 p-2 rounded"><span className="text-gray-500">Tension</span> <span className="text-red-400">{tensionLevel ?? 0}/100</span></div>
                                     <div className="flex justify-between bg-gray-900 p-2 rounded"><span className="text-gray-500">Active Characters</span> <span className="text-white">{activeCharacters.join(', ') || 'None'}</span></div>
                                 </div>
                             </section>

@@ -196,7 +196,7 @@ export class AgentCasting {
         candidates.sort((a, b) => b.score - a.score);
 
         // Return top 3? or all qualified? Let's return top 3 for now to avoid overcrowding
-        const topCandidates = candidates.slice(0, 3);
+        const topCandidates = candidates.slice(0, 10);
 
         if (candidates.length > 0) {
             console.log(`[Casting(Recruitment)] Top Candidates: ${topCandidates.map(c => `${c.name}(${c.score.toFixed(1)})`).join(', ')}`);
