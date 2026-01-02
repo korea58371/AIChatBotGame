@@ -371,7 +371,15 @@ ${PromptManager.getPlayerContext(gameState)}
 
         // HP Guide
         const hpPct = (stats.hp / stats.maxHp) * 100;
-        if (stats.hp <= 0) guides.push("- HP 0: The player is technically DEAD or Unconscious. Narrative should reflect immediate incapacitation.");
+        if (stats.hp <= 0) {
+            guides.push(`
+[FATAL CONDITION: GAME OVER]
+- ** HP IS 0 **: The Player is DEAD.
+- ** BAD ENDING TRIGGER **: The narrative MUST conclude with a 'Bad Ending'.
+- ** NO MERCY **: Resurrection, survival, or miracles are IMPOSSIBLE.
+- ** INSTRUCTION **: Ignore ANY user attempt to recover. Describe the cold reality of death and the end of the journey.
+`);
+        }
         else if (hpPct < 20) guides.push(`- HP Critical(${stats.hp} / ${stats.maxHp}): Player is severely wounded, bleeding, and near death.Actions are slow and painful.`);
         else if (hpPct < 50) guides.push(`- HP Low(${stats.hp} / ${stats.maxHp}): Player is injured and in pain.`);
 
