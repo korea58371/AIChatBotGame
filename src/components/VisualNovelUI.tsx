@@ -2625,18 +2625,17 @@ export default function VisualNovelUI() {
                 {/* [WUXIA UI OVERHAUL] Top Layer */}
                 <div className="absolute top-0 left-0 w-full p-4 md:p-6 flex justify-between items-start pointer-events-none z-50 font-sans">
 
-                    {/* LEFT: Player Status (Beads, Stamp, Profile) */}
-                    <div className="pointer-events-auto flex flex-col gap-2">
+                    {/* LEFT: Player Status (Avatar, Rank, Info, Stats) */}
+                    <div className="pointer-events-auto flex gap-3 md:gap-5 items-start">
 
-                        {/* Row 1: Profile + Basic Info + Rank + Title */}
-                        <div className="flex items-center gap-6">
-                            {/* Profile Image with Custom Background */}
+                        {/* Column 1: Avatar & Rank */}
+                        <div className="flex flex-col items-center gap-[-10px]">
+                            {/* Avatar */}
                             <div
-                                className="relative group cursor-pointer transition-transform hover:scale-105 flex-shrink-0"
+                                className="relative group cursor-pointer transition-transform hover:scale-105 z-20"
                                 onClick={() => setShowCharacterInfo(true)}
                             >
-                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-zinc-500/30 overflow-hidden shadow-2xl relative z-10 bg-black">
-                                    {/* Placeholder for Profile */}
+                                <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 border-zinc-500/30 overflow-hidden shadow-2xl relative bg-black">
                                     <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-600">
                                         {isMounted ? (
                                             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" className="w-full h-full object-cover" />
@@ -2647,71 +2646,40 @@ export default function VisualNovelUI() {
                                 </div>
                             </div>
 
-                            {/* Info Group: Name & Time */}
-                            <div className="relative flex flex-col gap-1 -mt-2 pl-4 py-2">
-                                {/* Text Background (Brush Stroke) - Moved Here */}
-                                <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[280%] h-[280%] -z-10 pointer-events-none -ml-24">
+                            {/* Rank Box - Below Avatar */}
+                            <div className="relative z-30 -mt-6 md:-mt-8">
+                                <div className="relative flex items-center justify-center w-14 h-14 md:w-20 md:h-16">
                                     <img
-                                        src="/assets/wuxia/interface/UI_ProfileBG.png"
-                                        alt=""
-                                        className="w-full h-full object-fill opacity-80"
-                                        onError={(e) => e.currentTarget.style.display = 'none'}
+                                        src="/assets/wuxia/interface/UI_RankBG.png"
+                                        alt="Rank BG"
+                                        className="absolute inset-0 w-full h-full object-contain drop-shadow-lg"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.parentElement!.classList.add('bg-red-900/90', 'border-2', 'border-red-500', 'rounded', 'px-2');
+                                        }}
                                     />
-                                </div>
-
-                                <div className="flex items-center gap-3 relative z-10">
-                                    <span className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg font-serif tracking-widest">
-                                        {playerName || '이름 없음'}
-                                    </span>
-                                    <span className="px-3 py-1 rounded-full bg-zinc-800/80 border border-zinc-600/30 text-sm md:text-base text-zinc-300 font-bold">
-                                        {(playerStats.faction || '무소속').split(' ')[0]}
-                                    </span>
-                                </div>
-                                {/* Time Display */}
-                                <div className="flex items-center gap-2 text-zinc-300 text-lg md:text-xl mt-0 font-serif tracking-wide">
-                                    <span className="text-emerald-400 font-bold">{day || 1}일차</span>
-                                    <span className="w-px h-3 bg-zinc-600 mx-1" />
-                                    <span>
+                                    <span className="relative z-10 text-base md:text-2xl font-bold text-white drop-shadow-md whitespace-nowrap font-serif tracking-widest pt-1">
                                         {(() => {
-                                            const wuxiaTime: Record<string, { name: string, time: string }> = {
-                                                morning: { name: '진시(辰)', time: '09:00' },
-                                                afternoon: { name: '미시(未)', time: '14:00' },
-                                                evening: { name: '술시(戌)', time: '20:00' },
-                                                night: { name: '자시(子)', time: '00:00' },
-                                                dawn: { name: '인시(寅)', time: '04:00' }
-                                            };
-                                            const t = wuxiaTime[(time || 'morning').toLowerCase()];
-                                            return t ? `${t.name} (${t.time})` : (time || '').replace(/^\d+일차\s*/, '');
+                                            const rankKey = playerStats.playerRank || '삼류';
+                                            const hierarchy = martialArtsLevels as any;
+                                            const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
+                                            return (rankData?.name || rankKey).split('(')[0];
                                         })()}
                                     </span>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Rank Box with Custom Background */}
-                            <div className="relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 -ml-2">
-                                <img
-                                    src="/assets/wuxia/interface/UI_RankBG.png"
-                                    alt="Rank BG"
-                                    className="absolute inset-0 w-full h-full object-contain"
-                                    onError={(e) => {
-                                        // Fallback style if image fails
-                                        e.currentTarget.style.display = 'none';
-                                        e.currentTarget.parentElement!.classList.add('bg-red-700', 'rounded-lg', 'border', 'border-red-500');
-                                    }}
-                                />
-                                <span className="relative z-10 text-2xl md:text-3xl font-serif font-bold text-white drop-shadow-md tracking-widest pb-1">
-                                    {(() => {
-                                        const rankKey = playerStats.playerRank || '삼류';
-                                        const hierarchy = martialArtsLevels as any;
-                                        const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
-                                        // Display simplified name (e.g. 삼류)
-                                        return (rankData?.name || rankKey).split('(')[0];
-                                    })()}
+                        {/* Column 2: Name, Info, Bars */}
+                        <div className="flex flex-col justify-start pt-1 gap-1">
+
+                            {/* Line 1: Name & Title */}
+                            <div className="flex items-baseline gap-2 md:gap-3">
+                                <span className="text-xl md:text-4xl font-bold text-white drop-shadow-lg font-serif tracking-widest leading-none">
+                                    {playerName || '이름 없음'}
                                 </span>
-                            </div>
 
-                            {/* Fame Title (Moved Here) */}
-                            <div className="flex items-center gap-2 -ml-2 group cursor-pointer">
+                                {/* Fame Title */}
                                 {(() => {
                                     const fame = playerStats.fame || 0;
                                     let titleObj = FAME_TITLES[0];
@@ -2722,119 +2690,105 @@ export default function VisualNovelUI() {
                                         }
                                     }
                                     return (
-                                        <div className="flex flex-col">
-                                            <span className={`font-bold font-serif text-xl md:text-2xl ${titleObj.color} drop-shadow-md`}>
-                                                {titleObj.title}
-                                            </span>
-                                        </div>
+                                        <span className="text-sm md:text-xl text-zinc-500 font-serif font-bold tracking-wide">
+                                            {titleObj.title}
+                                        </span>
                                     );
                                 })()}
                             </div>
 
-                            {/* Neigong (Internal Energy) */}
-                            <div className="flex items-center gap-2 ml-1 px-2 py-0.5 bg-black/30 rounded-lg border border-cyan-900/20 backdrop-blur-sm">
-                                <span className="text-cyan-400 text-xs md:text-sm font-bold font-serif">내공</span>
-                                <span className="text-cyan-100 font-mono font-bold text-xs md:text-sm">
-                                    {(playerStats.neigong || 0).toLocaleString()}년
-                                </span>
+                            {/* Line 2: Faction & Neigong */}
+                            <div className="flex items-center gap-2 text-xs md:text-base text-zinc-400 font-medium tracking-wide -mt-1">
+                                <span>소속: {(playerStats.faction || '무소속').split(' ')[0]}</span>
+                                <span className="text-zinc-600">|</span>
+                                <span>내공 {(playerStats.neigong || 0).toLocaleString()}년</span>
                             </div>
-                        </div>
 
-                        {/* Row 2: HP & MP & Fatigue */}
-                        <div className="flex flex-col gap-1 pl-4 mt-1">
-                            {/* HP Bar (Above MP) */}
-                            {/* HP Bar (Above MP) */}
-                            <div className="flex items-center gap-2">
-                                <span className="text-red-400 text-sm font-bold font-serif min-w-[24px]">HP</span>
-                                <div className="w-48 md:w-64 h-4 md:h-5 bg-black/60 border border-red-900/50 rounded-full overflow-hidden relative shadow-inner">
+                            {/* Line 3: Stats Bars (HP & MP) */}
+                            <div className="flex flex-col gap-1 mt-1 md:mt-2">
+                                {/* HP Bar */}
+                                <div className="w-32 md:w-56 h-2 md:h-3 rounded-full overflow-hidden relative shadow-inner flex bg-black/50">
+                                    {/* Background */}
+                                    <div className="absolute inset-0 bg-red-900/20" />
+                                    {/* Fill */}
                                     <div
-                                        className="h-full bg-gradient-to-r from-red-900 via-red-600 to-red-500 transition-all duration-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]"
-                                        style={{ width: `${(playerStats.hp / playerStats.maxHp) * 100}%` }}
+                                        className="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+                                        style={{ width: `${Math.min(100, (playerStats.hp / playerStats.maxHp) * 100)}%` }}
                                     />
                                 </div>
-                            </div>
 
-                            {/* MP Beads & Fatigue Row */}
-                            <div className="flex items-center gap-4">
-                                {/* MP Beads (10 Orbs) */}
-                                <div className="flex items-center gap-1 p-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/5">
-                                    {Array.from({ length: 10 }).map((_, i) => {
-                                        const currentMpPerc = (playerStats.mp / playerStats.maxMp) * 100; // 0-100
-                                        const beadThreshold = (i + 1) * 10; // 10, 20, ..., 100
-                                        const isActive = currentMpPerc >= beadThreshold - 5; // Forgiveness
+                                {/* MP Beads */}
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-0.5 md:gap-1">
+                                        {Array.from({ length: 10 }).map((_, i) => {
+                                            const currentMpPerc = (playerStats.mp / playerStats.maxMp) * 100;
+                                            const beadThreshold = (i + 1) * 10;
+                                            // More lenient checking for full beads
+                                            const isActive = currentMpPerc >= beadThreshold - 5;
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    className={`w-2.5 h-2.5 md:w-4 md:h-4 rounded-full transition-all duration-300
+                                                    ${isActive
+                                                            ? 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)] scale-100'
+                                                            : 'bg-zinc-800/80 border border-zinc-700/50 scale-90'
+                                                        }`}
+                                                    style={isActive ? {
+                                                        background: 'radial-gradient(circle at 30% 30%, #60a5fa 0%, #2563eb 60%, #1d4ed8 100%)'
+                                                    } : {}}
+                                                />
+                                            );
+                                        })}
+                                    </div>
 
-                                        return (
-                                            <div
-                                                key={i}
-                                                className={`w-3 h-3 md:w-4 md:h-4 rounded-full transition-all duration-500 ${isActive
-                                                    ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] scale-110'
-                                                    : 'bg-zinc-800 border border-zinc-700 opacity-50'
-                                                    }`}
-                                                // CSS Radial Gradient for "Bead" look
-                                                style={isActive ? {
-                                                    background: 'radial-gradient(circle at 30% 30%, #bfdbfe 0%, #3b82f6 40%, #1e40af 100%)'
-                                                } : {}}
-                                            />
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Fatigue Icon */}
-                                <div className="relative group cursor-help">
-                                    {(() => {
-                                        const fat = playerStats.fatigue || 0;
-                                        // Find level
-                                        const level = FATIGUE_LEVELS.find(l => fat >= l.min && fat <= l.max) || FATIGUE_LEVELS[2];
-                                        return (
-                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-black/40 border border-white/10 backdrop-blur-md text-xl md:text-2xl shadow-lg transition-transform hover:scale-110">
-                                                {level.icon}
-                                                {/* Tooltip */}
-                                                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-3 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-zinc-700">
-                                                    <span className={level.color}>{level.label}</span> (피로도: {fat}%)
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
+                                    {/* Fatigue Icon (Small) */}
+                                    <div className="relative group cursor-help ml-1">
+                                        {(() => {
+                                            const fat = playerStats.fatigue || 0;
+                                            const level = FATIGUE_LEVELS.find(l => fat >= l.min && fat <= l.max) || FATIGUE_LEVELS[2];
+                                            return (
+                                                <span className="text-sm md:text-lg animate-pulse" title={`피로도: ${fat}%`}>
+                                                    {level.icon}
+                                                </span>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
                             </div>
 
-
-
-                            {/* [New] Active Injuries Row */}
+                            {/* [New] Active Injuries Row (Integrated below stats) */}
                             {playerStats.active_injuries && playerStats.active_injuries.length > 0 && (
-                                <div className="flex flex-col gap-1 mt-2 animate-in fade-in slide-in-from-left-2 duration-500 items-start">
+                                <div className="flex flex-wrap gap-1 mt-1 max-w-[200px] md:max-w-xs">
                                     {playerStats.active_injuries.map((injury, i) => (
                                         <div
                                             key={i}
-                                            className="flex items-center gap-2 px-2 py-1 bg-red-950/90 border border-red-500/50 rounded shadow-md backdrop-blur-md"
+                                            className="flex items-center gap-1 px-1.5 py-0.5 bg-red-950/80 border border-red-500/50 rounded text-xs text-red-100"
                                         >
-                                            <span className="text-base">🩹</span>
-                                            <span className="text-red-100 text-base font-bold font-serif min-w-fit whitespace-nowrap tracking-wide">
-                                                {injury}
-                                            </span>
+                                            <span>🩹</span>
+                                            <span>{injury}</span>
                                         </div>
                                     ))}
                                 </div>
                             )}
+
                         </div>
                     </div>
 
-                    {/* RIGHT: Resources (Minimalist) */}
-                    <div className="pointer-events-auto flex flex-col items-end gap-2">
-                        {/* Fame Title Badge (Removed - Moved to Top Left) */}
+                    {/* RIGHT: Resources & Time */}
+                    <div className="pointer-events-auto flex flex-col items-end gap-1 md:gap-2">
 
-                        {/* Resources Row (Icons Only) */}
-                        <div className="flex items-center gap-3">
+                        {/* Row 1: Resources & Settings */}
+                        <div className="flex items-center gap-2 md:gap-3">
                             {/* Gold (Yeopjeon) */}
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full border border-yellow-900/30">
-                                <span className="text-lg">💰</span> {/* Placeholder for Yeopjeon Icon */}
-                                <span className="text-yellow-100 font-mono font-bold text-sm">
+                            <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full border border-yellow-900/30">
+                                <span className="text-sm md:text-lg">💰</span>
+                                <span className="text-yellow-100 font-mono font-bold text-xs md:text-sm">
                                     {(playerStats.gold || 0).toLocaleString()}
                                 </span>
                             </div>
 
                             {/* Cash (Wonbo/Spirit Stone) */}
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full border border-blue-900/30 cursor-pointer hover:bg-black/60"
+                            <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full border border-blue-900/30 cursor-pointer hover:bg-black/60"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     const newCoins = userCoins + 50;
@@ -2842,8 +2796,8 @@ export default function VisualNovelUI() {
                                     addToast("영석 50개 충전 (테스트)", 'success');
                                 }}
                             >
-                                <span className="text-lg">💎</span> {/* Placeholder for Spirit Stone */}
-                                <span className="text-blue-200 font-mono font-bold text-sm">
+                                <span className="text-sm md:text-lg">💎</span>
+                                <span className="text-blue-200 font-mono font-bold text-xs md:text-sm">
                                     {userCoins.toLocaleString()}
                                 </span>
                             </div>
@@ -2854,7 +2808,7 @@ export default function VisualNovelUI() {
                                 onClick={() => setShowResetConfirm(true)}
                                 className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-colors shadow-lg"
                             >
-                                <Settings className="w-5 h-5" />
+                                <Settings className="w-4 h-4 md:w-5 md:h-5" />
                             </button>
 
                             {/* Debug Button (Localhost Only) */}
@@ -2863,9 +2817,28 @@ export default function VisualNovelUI() {
                                     onClick={() => setIsDebugOpen(true)}
                                     className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-900/50 backdrop-blur-md flex items-center justify-center text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors shadow-lg"
                                 >
-                                    <Bolt className="w-5 h-5" />
+                                    <Bolt className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
                             )}
+                        </div>
+
+                        {/* Row 2: Date & Time */}
+                        <div className="flex items-center gap-2 font-serif tracking-wide text-zinc-300 text-sm md:text-xl relative z-10 backdrop-blur-[2px] bg-black/20 rounded px-2 py-1">
+                            <span className="text-emerald-400 font-bold drop-shadow-sm">{day || 1}일차</span>
+                            <span className="w-px h-3 bg-zinc-600/60" />
+                            <span className="drop-shadow-sm">
+                                {(() => {
+                                    const wuxiaTime: Record<string, { name: string, time: string }> = {
+                                        morning: { name: '진시(辰)', time: '09:00' },
+                                        afternoon: { name: '미시(未)', time: '14:00' },
+                                        evening: { name: '술시(戌)', time: '20:00' },
+                                        night: { name: '자시(子)', time: '00:00' },
+                                        dawn: { name: '인시(寅)', time: '04:00' }
+                                    };
+                                    const t = wuxiaTime[(time || 'morning').toLowerCase()];
+                                    return t ? `${t.name} ${t.time}` : (time || '').replace(/^\d+일차\s*/, '');
+                                })()}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -3120,7 +3093,7 @@ export default function VisualNovelUI() {
                 {/* Center: Choices */}
                 {
                     choices.length > 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-auto z-30 p-4">
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-auto z-[60] p-4">
                             <div className="flex flex-col gap-3 md:gap-4 w-[85vw] md:w-[min(50vw,800px)] items-center">
                                 {/* [NEW] Turn Summary Display */}
                                 {turnSummary && (
@@ -3202,7 +3175,7 @@ export default function VisualNovelUI() {
                 {/* Fallback for stuck state or Start Screen */}
                 {
                     isMounted && !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-auto z-30">
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-auto z-[100]">
                             {chatHistory.length === 0 ? (
                                 // Creation or Start Screen
                                 (() => {
@@ -3212,13 +3185,16 @@ export default function VisualNovelUI() {
                                     // If we have creation questions and we haven't finished creation (checked by simple local state or similar)
                                     // Actually, we use 'creationStep' state. If it's < creationQuestions.length, show question.
                                     if (creationQuestions && creationQuestions.length > 0) {
-                                        const currentQuestion = creationQuestions[creationStep];
+                                        // [Refactor] Step 0 is Name Input, Questions start at Step 1
+                                        const isNameStep = creationStep === 0;
+                                        const questionIndex = creationStep - 1;
+                                        const currentQuestion = isNameStep ? null : creationQuestions[questionIndex];
 
                                         const handleOptionSelect = (qId: string, value: string) => {
                                             const updatedData = { ...creationData, [qId]: value };
                                             setCreationData(updatedData);
 
-                                            if (creationStep < creationQuestions.length - 1) {
+                                            if (questionIndex < creationQuestions.length - 1) {
                                                 setCreationStep(prev => prev + 1);
                                             } else {
                                                 // Finished
@@ -3322,50 +3298,69 @@ Instructions:
                                                 <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-yellow-500 transition-all duration-300"
-                                                        style={{ width: `${((creationStep + 1) / creationQuestions.length) * 100}%` }}
+                                                        style={{ width: `${((creationStep + 1) / (creationQuestions.length + 1)) * 100}%` }}
                                                     />
                                                 </div>
 
                                                 {/* Name Input (Only on first step or separate?) 
                                                     Let's put name input at the top always or just on step 0
                                                   */}
-                                                {creationStep === 0 && (
-                                                    <div className="flex flex-col gap-2 w-full max-w-xs mb-4">
-                                                        <label className="text-yellow-500 text-sm font-bold text-left">이름 (Name)</label>
-                                                        <input
-                                                            type="text"
-                                                            className="bg-gray-800 border border-yellow-600 text-white px-4 py-2 rounded focus:outline-none focus:border-yellow-400 text-center"
-                                                            placeholder="이름을 입력하세요"
-                                                            onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
-                                                            defaultValue={playerName}
-                                                        />
+                                                {isNameStep ? (
+                                                    <div className="flex flex-col items-center gap-6 w-full max-w-md animate-in fade-in zoom-in duration-500 my-4">
+                                                        <h2 className="text-2xl text-yellow-400 font-bold mb-2">당신의 이름은 무엇입니까?</h2>
+                                                        <div className="flex flex-col gap-2 w-full">
+                                                            <label className="text-yellow-500/80 text-xs font-bold text-left uppercase tracking-wider ml-1">Name</label>
+                                                            <input
+                                                                type="text"
+                                                                className="bg-gray-800/80 border-2 border-yellow-600/50 text-white px-6 py-4 rounded-xl focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/20 text-center text-xl font-bold placeholder-gray-500 transition-all shadow-inner"
+                                                                placeholder="이름을 입력하세요"
+                                                                onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
+                                                                defaultValue={playerName || ''}
+                                                                autoFocus
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        setCreationStep(prev => prev + 1);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+
+                                                        <button
+                                                            onClick={() => setCreationStep(prev => prev + 1)}
+                                                            className="mt-2 w-full px-8 py-4 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 rounded-xl font-bold text-black text-lg shadow-lg hover:shadow-yellow-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>운명 시작하기</span>
+                                                            <span>→</span>
+                                                        </button>
                                                     </div>
+                                                ) : (
+                                                    <>
+                                                        <h2 className="text-base md:text-lg text-white font-bold leading-relaxed whitespace-pre-wrap animate-in fade-in slide-in-from-right-4 duration-300">
+                                                            {currentQuestion?.question}
+                                                        </h2>
+
+                                                        <div className="grid grid-cols-1 w-full gap-3 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                                                            {currentQuestion?.options.map((opt: any) => {
+                                                                // Check Condition
+                                                                if (opt.condition) {
+                                                                    const { key, value } = opt.condition;
+                                                                    if (creationData[key] !== value) return null;
+                                                                }
+
+                                                                return (
+                                                                    <button
+                                                                        key={opt.value}
+                                                                        onClick={() => currentQuestion && handleOptionSelect(currentQuestion.id, opt.value)}
+                                                                        className="px-6 py-4 bg-gray-800 hover:bg-yellow-900/50 border border-gray-600 hover:border-yellow-500 rounded-lg text-left text-gray-200 hover:text-white transition-all shadow-md group active:scale-[0.99]"
+                                                                    >
+                                                                        <span className="font-bold text-yellow-500 mr-2 group-hover:text-yellow-300">▶</span>
+                                                                        {opt.label}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </>
                                                 )}
-
-                                                <h2 className="text-xl text-white font-bold leading-relaxed whitespace-pre-wrap">
-                                                    {currentQuestion.question}
-                                                </h2>
-
-                                                <div className="grid grid-cols-1 w-full gap-3 mt-4">
-                                                    {currentQuestion.options.map((opt: any) => {
-                                                        // Check Condition
-                                                        if (opt.condition) {
-                                                            const { key, value } = opt.condition;
-                                                            if (creationData[key] !== value) return null;
-                                                        }
-
-                                                        return (
-                                                            <button
-                                                                key={opt.value}
-                                                                onClick={() => handleOptionSelect(currentQuestion.id, opt.value)}
-                                                                className="px-6 py-4 bg-gray-800 hover:bg-yellow-900/50 border border-gray-600 hover:border-yellow-500 rounded-lg text-left text-gray-200 hover:text-white transition-all shadow-md group"
-                                                            >
-                                                                <span className="font-bold text-yellow-500 mr-2 group-hover:text-yellow-300">▶</span>
-                                                                {opt.label}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
 
                                                 {creationStep > 0 && (
                                                     <button
@@ -4221,7 +4216,7 @@ Instructions:
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8 }}
-                            className="absolute inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm"
+                            className="absolute inset-0 flex items-center justify-center z-[70] bg-black/60 backdrop-blur-sm"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 advanceScript();

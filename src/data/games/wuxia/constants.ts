@@ -175,13 +175,13 @@ export const WUXIA_FIRST_TURN_EXAMPLE_3RD = `
 
 /* [BLOCK 4: UI CONSTANTS] */
 export const FAME_TITLES = [
-   { threshold: 0, title: "무명소졸 (無名小卒)", color: "text-zinc-500" },
-   { threshold: 100, title: "신진기수 (新進氣銳)", color: "text-emerald-400" },
-   { threshold: 500, title: "일방명사 (一方名士)", color: "text-blue-400" },
-   { threshold: 1000, title: "명성자자 (名聲藉藉)", color: "text-indigo-400" },
-   { threshold: 3000, title: "명진사해 (名振四海)", color: "text-purple-400" },
-   { threshold: 10000, title: "위진천하 (威震天下)", color: "text-amber-400" },
-   { threshold: 50000, title: "무림신화 (武林神話)", color: "text-red-500" }
+   { threshold: 0, title: "무명소졸", color: "text-zinc-500" },
+   { threshold: 100, title: "신진기수", color: "text-emerald-400" },
+   { threshold: 500, title: "일방명사", color: "text-blue-400" },
+   { threshold: 1000, title: "명성자자", color: "text-indigo-400" },
+   { threshold: 3000, title: "명진사해", color: "text-purple-400" },
+   { threshold: 10000, title: "위진천하", color: "text-amber-400" },
+   { threshold: 50000, title: "무림신화", color: "text-red-500" }
 ];
 
 export const FATIGUE_LEVELS = [

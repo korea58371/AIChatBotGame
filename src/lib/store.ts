@@ -568,6 +568,7 @@ export const useGameStore = create<GameState>()(
           characterExpression: 'normal',
           activeCharacters: [],
           currentLocation: 'home',
+          playerName: '주인공', // [Fix] Reset player name
           scenarioSummary: '',
           turnCount: 0,
           day: 1,
