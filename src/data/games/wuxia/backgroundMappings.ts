@@ -168,5 +168,12 @@ export const backgroundMappings: Record<string, string> = {
     '공용_황무지2': 'Common_Wasteland2.jpg',
     '황실_장군부': 'Imperial_GeneralMansion.jpg',
     '흑사파본거지': 'BlackSnakeSect_Base.jpg',
+
+    // 악인곡 (Villain's Valley)
+    '악인곡_고문실': 'VillainsValley_TortureChamber.jpg',
+    '악인곡_곡입구': 'VillainsValley_Entrance.jpg',
+    '악인곡_시체처리장': 'VillainsValley_CorpseDisposal.jpg',
+    '악인곡_해골제단': 'VillainsValley_SkullAltar.jpg',
+    '악인곡_혈마전': 'VillainsValley_BloodDemonHall.jpg',
     'home': 'Common_AbandonedHouse.jpg', // Fallback for default state
 };

@@ -24,7 +24,7 @@ export const RELATIONSHIP_TIERS: TierInfo[] = [
     { tier: 'Lvl -1 (Indifferent- / 냉담)', minScore: -10, maxScore: -1, description: "관심 없으나 부정적 기류.", allowedInteractions: "무관심, 사무적인 태도." },
 
     // --- POSITIVE RANGE (0 ~ 100) ---
-    { tier: 'Lvl 0 (Stranger / 초면)', minScore: 0, maxScore: 9, description: "완전한 타인. 예의를 갖춘 비즈니스 관계.", allowedInteractions: "격식체. 예의 바르지만 거리감 유지. **로맨스 불가**." },
+    { tier: 'Lvl 0 (Stranger / 초면)', minScore: 0, maxScore: 9, description: "완전한 타인. 무관심.", allowedInteractions: "격식체. 무관심. **로맨스 불가**." },
     { tier: 'Lvl 1 (Acquaintance / 구면)', minScore: 10, maxScore: 19, description: "안면 튼 사이. 가벼운 인사.", allowedInteractions: "가벼운 존댓말/스몰토크. 이름 기억함." },
     { tier: 'Lvl 2 (Friendly / 호감)', minScore: 20, maxScore: 29, description: "좋은 인상. 대화가 즐거움.", allowedInteractions: "웃음, 호의적인 태도. 식사 제안." },
     { tier: 'Lvl 3 (Companion / 동료)', minScore: 30, maxScore: 39, description: "협력적인 관계.", allowedInteractions: "정보 공유. 가벼운 부탁. 등을 맡길 수 있음(초기)." },

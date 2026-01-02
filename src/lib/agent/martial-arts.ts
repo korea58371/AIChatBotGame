@@ -52,9 +52,9 @@ You must also act as a REALITY AUDITOR to prevent "God Mode" (OP) exploits.
 
 [Rules]
 - **Realm Progress**: 
-  - Routine training: +1~5%
-  - Life/Death Combat: +5~10%
-  - Enlightenment (Epiphany): +20~50%
+  - Routine training: +1~3%
+  - Life/Death Combat: +3~8%
+  - Enlightenment (Epiphany): +10~20%
 - **OP Prevention**: 
   - If (Player = 3rd Rate) AND (Story = "Smashes mountain"):
     - Result: Skill = "Mountain Smashing (Delusion)", Effect = "Self-Stun", Injury = "Broken Arm".
@@ -134,6 +134,24 @@ Generate the JSON output.
 
       try {
         const json = JSON.parse(text);
+
+        // [Safety Guard for Growth]
+        // Prevent "Indiscriminate Vertical Rise" (무분별한 수직상승 방지)
+        if (json.realm_progress_delta && typeof json.realm_progress_delta === 'number') {
+          const originalDelta = json.realm_progress_delta;
+          const MAX_GROWTH_CAP = 20; // Max 20% per turn (Event hardcore limit)
+
+          if (originalDelta > MAX_GROWTH_CAP) {
+            json.realm_progress_delta = MAX_GROWTH_CAP;
+            json.audit_log = (json.audit_log || "") + ` [System] Growth capped from ${originalDelta}% to ${MAX_GROWTH_CAP}%.`;
+          }
+
+          // [Sanity Check] If Realm Update is requested, check if it makes sense
+          // But we trust the Agent's decision on 'Epiphany' causing a breakthrough, 
+          // provided the growth was sufficient or they were already at 99%.
+          // We'll leave Realm Update logic to the Agent, but we MUST control the numeric delta.
+        }
+
         return {
           ...json,
           usageMetadata: response.usageMetadata,

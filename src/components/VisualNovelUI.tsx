@@ -2112,6 +2112,11 @@ export default function VisualNovelUI() {
             if (ma.stat_updates) {
                 if (ma.stat_updates.hp) newStats.hp = Math.max(0, (newStats.hp || 0) + ma.stat_updates.hp);
                 if (ma.stat_updates.mp) newStats.mp = Math.max(0, (newStats.mp || 0) + ma.stat_updates.mp);
+                // [Fix] Connect Neigong Update from Martial Arts Agent
+                if (ma.stat_updates.neigong) {
+                    newStats.neigong = Math.max(0, (newStats.neigong || 0) + ma.stat_updates.neigong);
+                    addToast(`내공(Internal Energy) ${ma.stat_updates.neigong > 0 ? '+' : ''}${ma.stat_updates.neigong}년`, 'success');
+                }
 
                 // Merge Injuries
                 if (ma.stat_updates.active_injuries) {

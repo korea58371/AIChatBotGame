@@ -273,16 +273,47 @@ Generate the JSON output.
         // [Validation] Ensure inline_triggers exist
         if (!json.inline_triggers) json.inline_triggers = [];
 
-        // [Safety Clamp] Enforce Relationship Inertia
+        // [Safety Clamp & Diminishing Returns] Check Relationship Inertia
         if (json.relationship_updates) {
+          const currentRels = activeRelationships || {};
+
           for (const key in json.relationship_updates) {
             let val = json.relationship_updates[key];
-            // Hard Clamp: Max +/- 10 change per turn
-            if (typeof val === 'number') {
-              if (val > 10) val = 10;
-              if (val < -10) val = -10;
-              json.relationship_updates[key] = val;
+
+            // Validate value type
+            if (typeof val !== 'number') continue;
+
+            // [Damping Logic]
+            // Principle: Building trust gets harder as it gets higher. Destroying it is always fast.
+            const currentScore = currentRels[key] || 0;
+
+            // Only apply damping to POSITIVE growth
+            if (val > 0) {
+              let factor = 1.0;
+
+              // Tier Thresholds for Damping
+              if (currentScore >= 90) factor = 0.1;       // Lvl 9 (Soulmate): Requires life-altering events
+              else if (currentScore >= 70) factor = 0.3;  // Lvl 7+ (Admired): Very hard to progress
+              else if (currentScore >= 50) factor = 0.5;  // Lvl 5+ (Close Friend): Harder
+              else if (currentScore >= 30) factor = 0.8;  // Lvl 3+ (Companion): Slightly resistant
+
+              // Apply factor
+              const dampened = val * factor;
+
+              // Rounding Strategy:
+              // - Normal Rounding allows +1 to become 0 (which is desired for trivial acts at high tiers)
+              // - Ensure at least 1 point if the original event was HUGE (> 5) and factor didn't kill it completely?
+              //   Math.round handles this well. 0.3 * 5 = 1.5 -> 2. 0.1 * 5 = 0.5 -> 1.
+              val = Math.round(dampened);
             }
+
+            // [Hard Clamp] Absolute Turn Limit
+            // Even a "World Saving" event shouldn't instantly jump +50.
+            // Max +10 / -10 per turn is the hard limit for pacing.
+            if (val > 10) val = 10;
+            if (val < -10) val = -10;
+
+            json.relationship_updates[key] = val;
           }
         }
 
