@@ -41,7 +41,11 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 // 1. Race getSession against a 1s timeout
                 // 2. Also listen for onAuthStateChange (below)
 
-                if (!supabase) return;
+                if (!supabase) {
+                    console.log("No Supabase client (Local Mode)");
+                    setIsLoading(false);
+                    return;
+                }
 
                 const sessionPromise = supabase.auth.getSession();
                 const timeoutPromise = new Promise<{ data: { session: null }, error: any }>((resolve) => {
