@@ -1,5 +1,5 @@
 export const MODEL_CONFIG = {
-    STORY: 'gemini-3-pro-preview', // Main Story (Synced with Cache)
+    STORY: 'gemini-3-flash-preview', // Main Story (Synced with Cache)
     LOGIC: 'gemini-2.5-flash',       // Game Logic (Fast, JSON)
     SUMMARY: 'gemini-2.5-flash',      // Summarization (Cheap)
     ROUTER: 'gemini-2.5-flash-lite',       // [NEW] Intent Classification

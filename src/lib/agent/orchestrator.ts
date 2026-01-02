@@ -22,7 +22,7 @@ export class AgentOrchestrator {
         history: Message[],
         userInput: string,
         language: 'ko' | 'en' | null = 'ko',
-        modelName: string = 'gemini-3-pro-preview' // [NEW]
+        modelName: string = MODEL_CONFIG.STORY // [NEW]
     ) {
         console.log(`[AgentOrchestrator] 턴 시작... 입력: "${userInput}"`);
         const startTime = Date.now();
