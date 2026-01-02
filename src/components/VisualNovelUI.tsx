@@ -4402,7 +4402,7 @@ Instructions:
                 {/* Dialogue / Narration Layer */}
                 {
                     currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
-                        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-8 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[25vh] md:h-[min(18vh,375px)]">
+                        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-20 md:pb-16 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[40vh] md:h-[min(30vh,600px)]">
                             <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                                 {/* Dialogue Control Bar */}
 
