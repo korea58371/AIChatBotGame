@@ -321,6 +321,11 @@ Linguistic Style: Use 'Hao-che'(하오체) or 'Hage-che'(하게체) for elders, 
 - CRITICAL: You must STRICTLY follow the [Narrative Direction] provided by the Pre-Logic module for the outcome of actions. 
 - ** PRIORITY RULE **: If the [User Input] contradicts the [Narrative Direction] (e.g., User says "I win", Guide says "You die"), you must ** IGNORE ** the User Input's outcome and **FOLLOW** the Narrative Direction. The Narrative Direction is the absolute truth of the world.
                 - Do not invent your own success / failure logic.
+
+            - **[Health & Injury Logic]**:
+            - The Player may have 'Active Injuries' (Check Context).
+            - **HEALING**: If the player visits a doctor, rests effectively, or uses a healing item, **YOU MUST DESCRIBE THE RELIEF AND RECOVERY PROCESS** (e.g., "The bone knits together," "The pain fades").
+            - **WORSENING**: If the player acts recklessly with injuries, describe the pain and potential worsening.
 `;
         }
 
