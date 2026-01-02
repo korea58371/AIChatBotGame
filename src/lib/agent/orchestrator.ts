@@ -188,21 +188,42 @@ ${userInput}
             });
         }
 
-        // [Fallback] Relationship Safety Net
-        // Check if relationship updates in JSON are present in the text tags. If not, append them.
         if (postLogicOut.relationship_updates) {
             Object.entries(postLogicOut.relationship_updates).forEach(([charId, val]) => {
                 // Heuristic Check: Does the text contain a Rel tag with this CharID?
-                // matches char="id" or id="id" inside a tag
-                // Note: This is a loose check to avoid double-applying.
                 const hasTag = new RegExp(`(char|id)=["']?${charId}["']?`, 'i').test(finalStoryText);
 
                 if (!hasTag) {
                     console.log(`[AgentOrchestrator] Fallback: Appending missing relationship tag for ${charId} (${val})`);
-                    // Append invisible command at the end
                     finalStoryText += `\n<Rel char="${charId}" val="${val}">`;
                 }
             });
+        }
+
+        // [Death Cleanup Protocol]
+        // Ensure dead characters are removed from the active list.
+        if (postLogicOut.activeCharacters) {
+            const deadIds = new Set<string>();
+
+            // 1. Check existing GameState for dead characters
+            if (gameState.characterData) {
+                for (const [id, char] of Object.entries(gameState.characterData)) {
+                    if ((char as any).hp !== undefined && (char as any).hp <= 0) {
+                        deadIds.add(id);
+                    }
+                }
+            }
+
+            // 2. Check Pre-Logic State Changes (Current Turn Deaths inside preLogicOut.state_changes.character_updates if existing)
+            // For now, relies on GameState.
+
+            if (deadIds.size > 0) {
+                const originalCount = postLogicOut.activeCharacters.length;
+                postLogicOut.activeCharacters = postLogicOut.activeCharacters.filter(id => !deadIds.has(id));
+                if (postLogicOut.activeCharacters.length < originalCount) {
+                    console.log(`[Orchestrator] Removed dead characters from active list: ${originalCount} -> ${postLogicOut.activeCharacters.length}`);
+                }
+            }
         }
 
         const totalTime = Date.now() - startTime;

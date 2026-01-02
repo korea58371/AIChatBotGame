@@ -51,7 +51,9 @@ export interface GameState {
 
   // Lore & Prompt State
   activeCharacters: string[];
+  deadCharacters?: string[]; // [NEW] List of dead character IDs
   setActiveCharacters: (chars: string[]) => void;
+  addDeadCharacter?: (id: string) => void;
   currentLocation: string;
   setCurrentLocation: (loc: string) => void;
   scenarioSummary: string;
@@ -385,7 +387,9 @@ export const useGameStore = create<GameState>()(
       setGodMode: (active) => set({ isGodMode: active }),
 
       activeCharacters: [],
+      deadCharacters: [], // [NEW] Added for death tracking
       setActiveCharacters: (chars) => set({ activeCharacters: chars }),
+      addDeadCharacter: (id) => set((state) => ({ deadCharacters: [...(state.deadCharacters || []), id] })),
       currentLocation: '폐가', // Default Wuxia Start (Abandoned House)
       setCurrentLocation: (loc) => set({ currentLocation: loc }),
       scenarioSummary: '',

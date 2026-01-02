@@ -57,9 +57,14 @@ If the Input involves:
 1. ** Rudeness / Harassment **: Sexual harassment or extreme rudeness to superior NPCs.
    - Result: 'success: false'. 'state_changes': { "hp": 0 }.
 - Narrative Guide: "Instant Execution. The NPC beheads/kills the player before they finish speaking."
-2. ** Rank Gap Arrogance **: Attacking a much stronger NPC(Rank difference).
-   - Result: 'success: false'. 'state_changes': { "hp": 0 }.
-- Narrative Guide: "Instant Death. The enemy doesn't move. The player's heart explodes."
+2. ** Rank Gap Arrogance (Direct vs Tactical) **: 
+   - ** Direct / Head-on Attack ** vs Much Stronger NPC:
+     - Result: 'success: false'. 'state_changes': { "hp": -50 (Severe Injury/Death) }.
+     - Narrative: "The player is swatted away like a fly. Absolute gap in power."
+   - ** Tactical / Support / Creation of Openings **:
+     - If the player uses wits, traps, poison, or supports a stronger ally:
+     - ** ALLOW ** logic assessment. Do NOT auto-fail. 
+     - Result: Depends on the tactic's quality. (e.g., "You distract the enemy for a split second, allowing your ally to strike.")
 `;
 
     private static readonly OUTPUT_SCHEMA = `
@@ -253,12 +258,26 @@ ${this.OUTPUT_SCHEMA}
                 role = char.role || char.title || "Unknown";
             }
 
+            // [NEW] Extract Strength/Combat Info
+            let strengthInfo = "Unknown";
+            if (candidateMatch) {
+                const cData = candidateMatch.data;
+                const strength = cData.강함 || cData.strength || cData.combat || null;
+                if (strength) strengthInfo = JSON.stringify(strength);
+            } else if (targetId && chars[targetId]) {
+                const char = chars[targetId];
+                const strength = char.강함 || char.strength || char.combat || null;
+                if (strength) strengthInfo = JSON.stringify(strength);
+            }
+
             if (personalityInfo !== "Unknown") {
                 targetProfile = `
 [Target Profile: ${cName}]
 Personality / Profile: ${personalityInfo}
 Relationship: ${relationship}
 Role: ${role}
+[Combat Info]
+Strength: ${strengthInfo}
 `;
             }
         }

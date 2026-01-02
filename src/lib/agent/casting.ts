@@ -65,6 +65,20 @@ export class AgentCasting {
                 continue;
             }
 
+            // [CRITICAL] Filter: Dead Characters
+            // Check dynamic state for death markers
+            const charState = gameState.characterData?.[id];
+            if (charState) {
+                if (charState.isDead || (charState.hp !== undefined && charState.hp <= 0)) {
+                    // Skip dead characters UNLESS the user explicitly calls for a ghost/memory?
+                    // For now, strict exclusion to prevent zombies.
+                    continue;
+                }
+            }
+            if (gameState.deadCharacters && gameState.deadCharacters.includes(id)) {
+                continue;
+            }
+
             // CRITICAL: Mention Detection (Moved Up for Override)
             let isUserMentioned = false;
             let isContextMentioned = false;

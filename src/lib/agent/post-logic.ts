@@ -13,6 +13,7 @@ export interface PostLogicOutput {
   activeCharacters?: string[]; // [NEW] Active characters in scene
   inline_triggers?: { quote: string, tag: string }[]; // [NEW] Quotes to inject tags into
   summary_trigger?: boolean;
+  dead_character_ids?: string[]; // [NEW] Characters confirmed dead this turn
 
   // [Narrative Systems]
   goal_updates?: { id: string, status: 'COMPLETED' | 'FAILED' | 'ACTIVE', updates?: string }[];
@@ -107,7 +108,8 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 - **Negative Limits:** 
   - **Mild (-1 ~ -3):** Disagreement, unwanted teasing, minor rudeness.
   - **Moderate (-4 ~ -9):** Insults, threats, major argument.
-  - **Severe (-10):** Betrayal, attack. (Max drop per turn is -10).
+  - **Severe (-10 ~ -100):** Murder of loved ones, Catastrophic Betrayal. **(UNLIMITED NEGATIVE DROP)**.
+    - If the player kills a parent or commits an unforgivable sin, result can be -50 or even -100 instantly.
 - **Tier Gating:** 
   - Even if the vibe is 'Romantic', if the score is 0 (Stranger), only give +5 (Medium increase). Do not jump to 50.
   - Advance ONE tier at a time.
@@ -163,12 +165,14 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
   "summary_trigger": false,
   "goal_updates": [ { "id": "goal_1", "status": "COMPLETED" } ],
   "new_goals": [ { "description": "Survive the ambush", "type": "SUB" } ],
-  "tension_update": 10
+  "tension_update": 10,
+  "dead_character_ids": ["bandit_leader"]
 }
 [Critically Important]
 - **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'mechanics_log', 'character_memories') MUST be in KOREAN (한국어).
 - For 'activeCharacters', list EVERY character ID that speaks or performs an action in the text.
 - For 'character_memories', extract 1 key memory per active character if they had significant interaction with the player this turn.
+- For 'dead_character_ids', list IDs of ANY character who died or was permanently incapacitated/killed in this turn.
 - The 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.
 `;
 
@@ -308,10 +312,10 @@ Generate the JSON output.
             }
 
             // [Hard Clamp] Absolute Turn Limit
-            // Even a "World Saving" event shouldn't instantly jump +50.
-            // Max +10 / -10 per turn is the hard limit for pacing.
+            // Positive growth is CAPPED at +10 (Slow trust).
+            // Negative drop is UNLIMITED (Fast betrayal).
             if (val > 10) val = 10;
-            if (val < -10) val = -10;
+            // if (val < -10) val = -10; // REMOVED: Allow catastrophic drops
 
             json.relationship_updates[key] = val;
           }

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn, serverGenerateCharacterMemorySummary } from '@/app/actions/game';
@@ -449,6 +449,47 @@ export default function VisualNovelUI() {
     const [lastLogicResult, setLastLogicResult] = useState<any>(null);
     const [pendingLogic, setPendingLogic] = useState<any>(null);
     const [lastStoryOutput, setLastStoryOutput] = useState<string>(''); // [Logging] Store last story output
+
+
+
+    // [New] Effect State (Damage / Feedback)
+    const [damageEffect, setDamageEffect] = useState<{ intensity: number; duration: number } | null>(null);
+    const damageAudioRef = useRef<HTMLAudioElement | null>(null); // [New] Audio Ref
+
+    // [New] Shared Helper for Visual Damage
+    const handleVisualDamage = useCallback((changeAmount: number, currentHp: number, maxHp: number) => {
+        // Only trigger on DAMAGE (Negative Change)
+        if (changeAmount >= 0) return;
+
+        console.log(`[VisualEffects] Checking Damage. Amount: ${changeAmount}, Current: ${currentHp}, Max: ${maxHp}`);
+
+        const damage = Math.abs(changeAmount);
+        // Intensity Calculation: 5% HP = Low (0.2), 20% HP = Max (1.0)
+        const ratio = Math.min(1, Math.max(0.2, damage / (maxHp * 0.2)));
+
+        console.log(`[VisualEffects] TRIGGERED! Damage: ${damage}, Ratio: ${ratio}`);
+        setDamageEffect({
+            intensity: ratio,
+            duration: 400 // ms
+        });
+
+        // [New] Play Random Damage Audio
+        // Files: damage1.mp3 ~ damage7.mp3 in /assets/Common/fx/
+        const randomIdx = Math.floor(Math.random() * 7) + 1;
+        const audioPath = `/assets/Common/fx/damage${randomIdx}.mp3`;
+
+        try {
+            const audio = new Audio(audioPath);
+            audio.volume = 0.5; // Adjust volume as needed
+            audio.play().catch(e => console.warn(`[Audio] Failed to play damage fx: ${audioPath}`, e));
+            // No need to store in ref if we just fire and forget, but if we want to stop overlapping...
+            // For damage, overlapping is usually fine/better.
+        } catch (e) {
+            console.warn("[Audio] Error initializing audio", e);
+        }
+
+        setTimeout(() => setDamageEffect(null), 400);
+    }, []);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -937,6 +978,11 @@ export default function VisualNovelUI() {
                             if (!isNaN(val)) {
                                 newStats.hp = Math.min(Math.max(0, newStats.hp + val), newStats.maxHp);
                                 addToast(`HP ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
+
+                                // [Fix] Trigger Visual Damage for Inline Tag
+                                if (val < 0) {
+                                    handleVisualDamage(val, newStats.hp, newStats.maxHp);
+                                }
                             }
                         }
                         if (normalizedChanges.mp !== undefined) {
@@ -1866,7 +1912,7 @@ export default function VisualNovelUI() {
     };
 
     const applyGameLogic = (logicResult: any) => {
-        console.log('applyGameLogic called with:', logicResult);
+        console.log("▶ [applyGameLogic] Received:", JSON.stringify(logicResult, null, 2)); // [DEBUG] Raw payload
         if (!logicResult) {
             console.warn('applyGameLogic: logicResult is null or undefined');
             return;
@@ -1908,7 +1954,10 @@ export default function VisualNovelUI() {
         // Initialize if missing (Redundant but safe)
         if (!newStats.relationships) newStats.relationships = {};
 
-        if (logicResult.hpChange) newStats.hp = Math.min(Math.max(0, newStats.hp + logicResult.hpChange), newStats.maxHp);
+        if (logicResult.hpChange) {
+            newStats.hp = Math.min(Math.max(0, newStats.hp + logicResult.hpChange), newStats.maxHp);
+            handleVisualDamage(logicResult.hpChange, newStats.hp, newStats.maxHp);
+        }
         if (logicResult.mpChange) newStats.mp = Math.min(Math.max(0, newStats.mp + logicResult.mpChange), newStats.maxMp);
         if (logicResult.goldChange) newStats.gold = Math.max(0, newStats.gold + logicResult.goldChange);
 
@@ -2110,7 +2159,10 @@ export default function VisualNovelUI() {
 
             // 5. Stat Updates (Penalties/Injuries from Audit)
             if (ma.stat_updates) {
-                if (ma.stat_updates.hp) newStats.hp = Math.max(0, (newStats.hp || 0) + ma.stat_updates.hp);
+                if (ma.stat_updates.hp) {
+                    newStats.hp = Math.max(0, (newStats.hp || 0) + ma.stat_updates.hp);
+                    handleVisualDamage(ma.stat_updates.hp, newStats.hp, newStats.maxHp);
+                }
                 if (ma.stat_updates.mp) newStats.mp = Math.max(0, (newStats.mp || 0) + ma.stat_updates.mp);
                 // [Fix] Connect Neigong Update from Martial Arts Agent
                 if (ma.stat_updates.neigong) {
@@ -2416,6 +2468,24 @@ export default function VisualNovelUI() {
             console.log("Active Characters Updated:", uniqueChars);
         }
 
+        // [New] Dead Character Processing
+        if (logicResult.post_logic?.dead_character_ids) {
+            const deadList = logicResult.post_logic.dead_character_ids;
+            if (Array.isArray(deadList) && deadList.length > 0) {
+                const store = useGameStore.getState();
+                deadList.forEach((id: string) => {
+                    // Prevent duplicates in logic (Store handles it too but safe to check)
+                    if (!store.deadCharacters?.includes(id)) {
+                        if (store.addDeadCharacter) {
+                            store.addDeadCharacter(id);
+                            addToast(`Character Defeated: ${id}`, 'warning');
+                            console.log(`[Death] Character ${id} marked as dead.`);
+                        }
+                    }
+                });
+            }
+        }
+
         // [New] Character Memories Update
         // Fix: content is nested in post_logic
         const memorySource = logicResult.post_logic?.character_memories || logicResult.character_memories;
@@ -2615,7 +2685,7 @@ export default function VisualNovelUI() {
                 {/* Visual Area (Background + Character) */}
                 {/* Visual Area (Background + Character) */}
                 <div
-                    className="relative w-full bg-black shrink-0 mx-auto visual-container transition-all duration-500 ease-out"
+                    className="relative w-full bg-black shrink-0 mx-auto visual-container transition-all duration-500 ease-out overflow-hidden"
                     style={{
                         filter: choices.length > 0 ? 'blur(8px)' : 'none',
                         transform: choices.length > 0 ? 'scale(1.02)' : 'scale(1)' // Slight zoom for effect
@@ -2637,36 +2707,60 @@ export default function VisualNovelUI() {
                         }
                     `}</style>
 
-                    {/* Background Layer */}
-                    <div
-                        className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out"
-                        style={{
-                            backgroundImage: `url(${getBgUrl(currentBackground)})`,
-                            filter: 'brightness(0.6)'
-                        }}
-                    />
+                    {/* [Fixed] Inner Motion Wrapper for Shake Effect (Decoupled from Scale) */}
+                    <motion.div
+                        className="absolute inset-0 w-full h-full"
+                        animate={damageEffect ? {
+                            x: [0, -20 * damageEffect.intensity, 20 * damageEffect.intensity, -10 * damageEffect.intensity, 10 * damageEffect.intensity, 0],
+                            transition: { duration: damageEffect.duration / 1000 }
+                        } : { x: 0 }}
+                    >
 
-                    {/* Character Layer */}
+                        {/* Background Layer */}
+                        <div
+                            className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out"
+                            style={{
+                                backgroundImage: `url(${getBgUrl(currentBackground)})`,
+                                filter: 'brightness(0.6)'
+                            }}
+                        />
+
+                        {/* Character Layer */}
+                        <AnimatePresence>
+                            {characterExpression && (
+                                <motion.div
+                                    key={characterExpression}
+                                    initial={isSameCharacter ? { opacity: 0, scale: 1, y: 0, x: "-50%" } : { opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
+                                    animate={{ opacity: 1, y: 0, x: "-50%" }}
+                                    exit={{ opacity: 0, scale: 1, y: 0, x: "-50%" }}
+                                    transition={{ duration: 0.5 }}
+                                    className="absolute bottom-0 left-1/2 h-[90%] z-0 pointer-events-none"
+                                >
+                                    <img
+                                        src={getCharUrl(characterExpression)}
+                                        alt="Character"
+                                        className="h-full w-auto max-w-none object-contain drop-shadow-2xl"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            console.warn(`Failed to load character image: ${getCharUrl(characterExpression)}`);
+                                        }}
+                                    />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+
+
+                    {/* [New] Damage Flash Overlay (Outside shake, covers entire view) */}
                     <AnimatePresence>
-                        {characterExpression && (
+                        {damageEffect && (
                             <motion.div
-                                key={characterExpression}
-                                initial={isSameCharacter ? { opacity: 0, scale: 1, y: 0, x: "-50%" } : { opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
-                                animate={{ opacity: 1, y: 0, x: "-50%" }}
-                                exit={{ opacity: 0, scale: 1, y: 0, x: "-50%" }}
-                                transition={{ duration: 0.5 }}
-                                className="absolute bottom-0 left-1/2 h-[90%] z-0 pointer-events-none"
-                            >
-                                <img
-                                    src={getCharUrl(characterExpression)}
-                                    alt="Character"
-                                    className="h-full w-auto max-w-none object-contain drop-shadow-2xl"
-                                    onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                        console.warn(`Failed to load character image: ${getCharUrl(characterExpression)}`);
-                                    }}
-                                />
-                            </motion.div>
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 0.6 * damageEffect.intensity }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.1 }}
+                                className="absolute inset-0 bg-red-600 z-10 pointer-events-none mix-blend-overlay"
+                            />
                         )}
                     </AnimatePresence>
                 </div>
@@ -2873,12 +2967,26 @@ export default function VisualNovelUI() {
 
                             {/* Debug Button (Localhost Only) */}
                             {isLocalhost && (
-                                <button
-                                    onClick={() => setIsDebugOpen(true)}
-                                    className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-900/50 backdrop-blur-md flex items-center justify-center text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors shadow-lg"
-                                >
-                                    <Bolt className="w-4 h-4 md:w-5 md:h-5" />
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            console.log("[Debug] Manually triggering damage effect");
+                                            setDamageEffect({ intensity: 1.0, duration: 500 });
+                                            setTimeout(() => setDamageEffect(null), 500);
+                                            addToast("테스트 데미지 효과 발동", 'warning');
+                                        }}
+                                        className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-900/50 backdrop-blur-md flex items-center justify-center text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors shadow-lg"
+                                        title="Test Damage Effect"
+                                    >
+                                        ⚡
+                                    </button>
+                                    <button
+                                        onClick={() => setIsDebugOpen(true)}
+                                        className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-900/50 backdrop-blur-md flex items-center justify-center text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors shadow-lg"
+                                    >
+                                        <Bolt className="w-4 h-4 md:w-5 md:h-5" />
+                                    </button>
+                                </>
                             )}
                         </div>
 
@@ -3820,37 +3928,7 @@ Instructions:
                     )}
                 </AnimatePresence>
 
-                {/* Toasts Notification Layer */}
-                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4">
-                    <AnimatePresence>
-                        {toasts.map((toast) => (
-                            <motion.div
-                                key={toast.id}
-                                initial={{ opacity: 0, y: -20, scale: 0.9 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                                className={`
-                                    w-full px-4 py-3 rounded-lg shadow-2xl border backdrop-blur-md flex items-center gap-3 pointer-events-auto
-                                    ${toast.type === 'success' ? 'bg-green-900/90 border-green-500 text-green-100' : ''}
-                                    ${toast.type === 'warning' ? 'bg-yellow-900/90 border-yellow-500 text-yellow-100' : ''}
-                                    ${toast.type === 'info' ? 'bg-blue-900/90 border-blue-500 text-blue-100' : ''}
-                                `}
-                            >
-                                <div className={`
-                                    flex items-center justify-center w-6 h-6 rounded-full 
-                                    ${toast.type === 'success' ? 'bg-green-500/20 text-green-400' : ''}
-                                    ${toast.type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' : ''}
-                                    ${toast.type === 'info' ? 'bg-blue-500/20 text-blue-400' : ''}
-                                `}>
-                                    {toast.type === 'success' && '✓'}
-                                    {toast.type === 'warning' && '!'}
-                                    {toast.type === 'info' && 'i'}
-                                </div>
-                                <span className="font-medium text-sm">{toast.message}</span>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
+
 
                 {/* Recharge Popup */}
                 <AnimatePresence>
@@ -4516,12 +4594,14 @@ Instructions:
                 }
             </div >
             {/* Debug Popup */}
-            {isLocalhost && (
-                <DebugPopup
-                    isOpen={isDebugOpen}
-                    onClose={() => setIsDebugOpen(false)}
-                />
-            )}
+            {
+                isLocalhost && (
+                    <DebugPopup
+                        isOpen={isDebugOpen}
+                        onClose={() => setIsDebugOpen(false)}
+                    />
+                )
+            }
         </div >
     );
 }
