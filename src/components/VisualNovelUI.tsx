@@ -746,9 +746,11 @@ export default function VisualNovelUI() {
 
     const saveGame = (slotId: number) => {
         const state = useGameStore.getState();
+        const summary = `${state.playerName || 'Unknown'} / Turn: ${state.turnCount || 0} / ${state.playerStats?.realm || 'Unknown'}`;
+
         const saveData = {
             timestamp: Date.now(),
-            summary: state.scenarioSummary || `Chapter ${state.chatHistory.length}`,
+            summary: summary,
             state: state
         };
         localStorage.setItem(`vn_save_${slotId}`, JSON.stringify(saveData));
@@ -4431,7 +4433,7 @@ Instructions:
                                                 <div>
                                                     <div className="text-lg font-bold text-white mb-1">Slot {slot.id}</div>
                                                     <div className="text-sm text-gray-400">{slot.date === 'Empty' ? t.emptySlot : slot.date}</div>
-                                                    <div className="text-sm text-gray-500 italic">{slot.summary === 'No summary' ? t.noSummary : slot.summary}</div>
+                                                    <div className="text-sm text-gray-500 italic line-clamp-2">{slot.summary === 'No summary' ? t.noSummary : slot.summary}</div>
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <button
