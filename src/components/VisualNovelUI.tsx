@@ -64,9 +64,12 @@ const translations = {
         saveLoad: "Save / Load",
         save: "Save",
         load: "Load",
+        delete: "Delete",
         emptySlot: "Empty",
         noSummary: "No summary",
         confirmLoad: "Load Slot {0}? Current progress will be lost.",
+        confirmDelete: "Are you sure you want to delete Slot {0}?",
+        gameDeleted: "Slot {0} deleted.",
         confirmNewGame: "Are you sure you want to start a new game? Current progress will be lost.",
         gameStartMessage: "Game Start. Please introduce the world and the main character.",
         gameSaved: "Game saved to Slot {0}",
@@ -116,9 +119,12 @@ const translations = {
         saveLoad: "저장 / 불러오기",
         save: "저장",
         load: "로드",
+        delete: "삭제",
         emptySlot: "비어있음",
         noSummary: "요약 없음",
         confirmLoad: "슬롯 {0}을(를) 불러오시겠습니까? 현재 진행 상황은 저장되지 않습니다.",
+        confirmDelete: "정말로 슬롯 {0}을(를) 삭제하시겠습니까?",
+        gameDeleted: "슬롯 {0}이(가) 삭제되었습니다.",
         confirmNewGame: "새 게임을 시작하시겠습니까? 현재 진행 상황은 저장되지 않습니다.",
         gameStartMessage: "게임 시작. 세계관과 주인공을 소개해줘.",
         gameSaved: "슬롯 {0}에 게임 저장됨",
@@ -767,6 +773,14 @@ export default function VisualNovelUI() {
             useGameStore.setState(parsed.state);
             addToast(t.gameLoaded.replace('{0}', slotId.toString()), 'success');
             setShowSaveLoad(false);
+        }
+    };
+
+    const deleteGame = (slotId: number) => {
+        if (confirm(t.confirmDelete.replace('{0}', slotId.toString()))) {
+            localStorage.removeItem(`vn_save_${slotId}`);
+            setSaveSlots(prev => prev.map(s => s.id === slotId ? { ...s, date: 'Empty', summary: '-' } : s));
+            addToast(t.gameDeleted.replace('{0}', slotId.toString()), 'info');
         }
     };
 
@@ -4448,6 +4462,13 @@ Instructions:
                                                         className={`px-4 py-2 rounded font-bold text-white transition-colors ${slot.date === 'Empty' ? 'bg-gray-700 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                                                     >
                                                         {t.load}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteGame(slot.id)}
+                                                        disabled={slot.date === 'Empty'}
+                                                        className={`px-4 py-2 rounded font-bold text-white transition-colors ${slot.date === 'Empty' ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+                                                    >
+                                                        {t.delete}
                                                     </button>
                                                 </div>
                                             </div>
