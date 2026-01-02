@@ -134,6 +134,8 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 [Inline Event Triggers] (CRITICAL)
 You must identify the EXACT sentence segment (quote) where a change happens and generate a tag for it.
 - Usage: When the text describes an event that justifies a stat/relationship change.
+- Allowed Tags: ONLY <Stat> and <Rel>.
+- FORBIDDEN Tags: Do NOT generate tags for Location, Death, or Personality (e.g., <Location_Update>, <Dead>). These are handled by the JSON fields.
 - Format:
   - quote: The exact substring from the AI's response (unique enough to find).
   - tag: <Stat hp='-5'> or <Rel char='Name' val='5'>
