@@ -2626,151 +2626,162 @@ export default function VisualNovelUI() {
                 <div className="absolute top-0 left-0 w-full p-4 md:p-6 flex justify-between items-start pointer-events-none z-50 font-sans">
 
                     {/* LEFT: Player Status (Avatar, Rank, Info, Stats) */}
-                    <div className="pointer-events-auto flex gap-3 md:gap-5 items-start">
-
-                        {/* Column 1: Avatar & Rank */}
-                        <div className="flex flex-col items-center gap-[-10px]">
-                            {/* Avatar */}
-                            <div
-                                className="relative group cursor-pointer transition-transform hover:scale-105 z-20"
-                                onClick={() => setShowCharacterInfo(true)}
-                            >
-                                <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 border-zinc-500/30 overflow-hidden shadow-2xl relative bg-black">
-                                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-600">
-                                        {isMounted ? (
-                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-2xl">👤</span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Rank Box - Below Avatar */}
-                            <div className="relative z-30 -mt-6 md:-mt-8">
-                                <div className="relative flex items-center justify-center w-14 h-14 md:w-20 md:h-16">
-                                    <img
-                                        src="/assets/wuxia/interface/UI_RankBG.png"
-                                        alt="Rank BG"
-                                        className="absolute inset-0 w-full h-full object-contain drop-shadow-lg"
-                                        onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                            e.currentTarget.parentElement!.classList.add('bg-red-900/90', 'border-2', 'border-red-500', 'rounded', 'px-2');
-                                        }}
-                                    />
-                                    <span className="relative z-10 text-base md:text-2xl font-bold text-white drop-shadow-md whitespace-nowrap font-serif tracking-widest pt-1">
-                                        {(() => {
-                                            const rankKey = playerStats.playerRank || '삼류';
-                                            const hierarchy = martialArtsLevels as any;
-                                            const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
-                                            return (rankData?.name || rankKey).split('(')[0];
-                                        })()}
-                                    </span>
-                                </div>
-                            </div>
+                    <div className="relative pointer-events-auto z-50">
+                        {/* Profile Background Image */}
+                        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[350px] h-[270px] md:w-[520px] md:h-[390px] z-0 pointer-events-none -ml-16 md:-ml-24 -mt-4">
+                            <img
+                                src="/assets/wuxia/interface/UI_ProfileBG.png"
+                                alt="Profile BG"
+                                className="w-full h-full object-contain drop-shadow-2xl"
+                            />
                         </div>
 
-                        {/* Column 2: Name, Info, Bars */}
-                        <div className="flex flex-col justify-start pt-1 gap-1">
+                        <div className="flex gap-3 md:gap-5 items-start relative z-10">
 
-                            {/* Line 1: Name & Title */}
-                            <div className="flex items-baseline gap-2 md:gap-3">
-                                <span className="text-xl md:text-4xl font-bold text-white drop-shadow-lg font-serif tracking-widest leading-none">
-                                    {playerName || '이름 없음'}
-                                </span>
-
-                                {/* Fame Title */}
-                                {(() => {
-                                    const fame = playerStats.fame || 0;
-                                    let titleObj = FAME_TITLES[0];
-                                    for (let i = FAME_TITLES.length - 1; i >= 0; i--) {
-                                        if (fame >= FAME_TITLES[i].threshold) {
-                                            titleObj = FAME_TITLES[i];
-                                            break;
-                                        }
-                                    }
-                                    return (
-                                        <span className="text-sm md:text-xl text-zinc-500 font-serif font-bold tracking-wide">
-                                            {titleObj.title}
-                                        </span>
-                                    );
-                                })()}
-                            </div>
-
-                            {/* Line 2: Faction & Neigong */}
-                            <div className="flex items-center gap-2 text-xs md:text-base text-zinc-400 font-medium tracking-wide -mt-1">
-                                <span>소속: {(playerStats.faction || '무소속').split(' ')[0]}</span>
-                                <span className="text-zinc-600">|</span>
-                                <span>내공 {(playerStats.neigong || 0).toLocaleString()}년</span>
-                            </div>
-
-                            {/* Line 3: Stats Bars (HP & MP) */}
-                            <div className="flex flex-col gap-1 mt-1 md:mt-2">
-                                {/* HP Bar */}
-                                <div className="w-32 md:w-56 h-2 md:h-3 rounded-full overflow-hidden relative shadow-inner flex bg-black/50">
-                                    {/* Background */}
-                                    <div className="absolute inset-0 bg-red-900/20" />
-                                    {/* Fill */}
-                                    <div
-                                        className="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]"
-                                        style={{ width: `${Math.min(100, (playerStats.hp / playerStats.maxHp) * 100)}%` }}
-                                    />
-                                </div>
-
-                                {/* MP Beads */}
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-0.5 md:gap-1">
-                                        {Array.from({ length: 10 }).map((_, i) => {
-                                            const currentMpPerc = (playerStats.mp / playerStats.maxMp) * 100;
-                                            const beadThreshold = (i + 1) * 10;
-                                            // More lenient checking for full beads
-                                            const isActive = currentMpPerc >= beadThreshold - 5;
-                                            return (
-                                                <div
-                                                    key={i}
-                                                    className={`w-2.5 h-2.5 md:w-4 md:h-4 rounded-full transition-all duration-300
-                                                    ${isActive
-                                                            ? 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)] scale-100'
-                                                            : 'bg-zinc-800/80 border border-zinc-700/50 scale-90'
-                                                        }`}
-                                                    style={isActive ? {
-                                                        background: 'radial-gradient(circle at 30% 30%, #60a5fa 0%, #2563eb 60%, #1d4ed8 100%)'
-                                                    } : {}}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* Fatigue Icon (Small) */}
-                                    <div className="relative group cursor-help ml-1">
-                                        {(() => {
-                                            const fat = playerStats.fatigue || 0;
-                                            const level = FATIGUE_LEVELS.find(l => fat >= l.min && fat <= l.max) || FATIGUE_LEVELS[2];
-                                            return (
-                                                <span className="text-sm md:text-lg animate-pulse" title={`피로도: ${fat}%`}>
-                                                    {level.icon}
-                                                </span>
-                                            );
-                                        })()}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* [New] Active Injuries Row (Integrated below stats) */}
-                            {playerStats.active_injuries && playerStats.active_injuries.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1 max-w-[200px] md:max-w-xs">
-                                    {playerStats.active_injuries.map((injury, i) => (
-                                        <div
-                                            key={i}
-                                            className="flex items-center gap-1 px-1.5 py-0.5 bg-red-950/80 border border-red-500/50 rounded text-xs text-red-100"
-                                        >
-                                            <span>🩹</span>
-                                            <span>{injury}</span>
+                            {/* Column 1: Avatar & Rank */}
+                            <div className="flex flex-col items-center gap-[-10px]">
+                                {/* Avatar */}
+                                <div
+                                    className="relative group cursor-pointer transition-transform hover:scale-105 z-20"
+                                    onClick={() => setShowCharacterInfo(true)}
+                                >
+                                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 border-zinc-500/30 overflow-hidden shadow-2xl relative bg-black">
+                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-600">
+                                            {isMounted ? (
+                                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-2xl">👤</span>
+                                            )}
                                         </div>
-                                    ))}
+                                    </div>
                                 </div>
-                            )}
 
+                                {/* Rank Box - Below Avatar */}
+                                <div className="relative z-30 -mt-6 md:-mt-8">
+                                    <div className="relative flex items-center justify-center w-14 h-14 md:w-20 md:h-16">
+                                        <img
+                                            src="/assets/wuxia/interface/UI_RankBG.png"
+                                            alt="Rank BG"
+                                            className="absolute inset-0 w-full h-full object-contain drop-shadow-lg"
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                                e.currentTarget.parentElement!.classList.add('bg-red-900/90', 'border-2', 'border-red-500', 'rounded', 'px-2');
+                                            }}
+                                        />
+                                        <span className="relative z-10 text-base md:text-2xl font-bold text-white drop-shadow-md whitespace-nowrap font-serif tracking-widest pt-1">
+                                            {(() => {
+                                                const rankKey = playerStats.playerRank || '삼류';
+                                                const hierarchy = martialArtsLevels as any;
+                                                const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
+                                                return (rankData?.name || rankKey).split('(')[0];
+                                            })()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Column 2: Name, Info, Bars */}
+                            <div className="flex flex-col justify-start pt-1 gap-1">
+
+                                {/* Line 1: Name & Title */}
+                                <div className="flex items-baseline gap-2 md:gap-3">
+                                    <span className="text-xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-stone-200 via-amber-200 to-yellow-600 drop-shadow-sm font-serif tracking-widest leading-none pb-1">
+                                        {playerName || '이름 없음'}
+                                    </span>
+
+                                    {/* Fame Title */}
+                                    {(() => {
+                                        const fame = playerStats.fame || 0;
+                                        let titleObj = FAME_TITLES[0];
+                                        for (let i = FAME_TITLES.length - 1; i >= 0; i--) {
+                                            if (fame >= FAME_TITLES[i].threshold) {
+                                                titleObj = FAME_TITLES[i];
+                                                break;
+                                            }
+                                        }
+                                        return (
+                                            <span className="text-sm md:text-xl text-zinc-500 font-serif font-bold tracking-wide">
+                                                {titleObj.title}
+                                            </span>
+                                        );
+                                    })()}
+                                </div>
+
+                                {/* Line 2: Faction & Neigong */}
+                                <div className="flex items-center gap-2 text-xs md:text-base text-zinc-400 font-medium tracking-wide -mt-1">
+                                    <span>소속: {(playerStats.faction || '무소속').split(' ')[0]}</span>
+                                    <span className="text-zinc-600">|</span>
+                                    <span>내공 {(playerStats.neigong || 0).toLocaleString()}년</span>
+                                </div>
+
+                                {/* Line 3: Stats Bars (HP & MP) */}
+                                <div className="flex flex-col gap-1 mt-1 md:mt-2">
+                                    {/* HP Bar */}
+                                    <div className="w-32 md:w-56 h-2 md:h-3 rounded-full overflow-hidden relative shadow-inner flex bg-black/50">
+                                        {/* Background */}
+                                        <div className="absolute inset-0 bg-red-900/20" />
+                                        {/* Fill */}
+                                        <div
+                                            className="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+                                            style={{ width: `${Math.min(100, (playerStats.hp / playerStats.maxHp) * 100)}%` }}
+                                        />
+                                    </div>
+
+                                    {/* MP Beads */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-0.5 md:gap-1">
+                                            {Array.from({ length: 10 }).map((_, i) => {
+                                                const currentMpPerc = (playerStats.mp / playerStats.maxMp) * 100;
+                                                const beadThreshold = (i + 1) * 10;
+                                                // More lenient checking for full beads
+                                                const isActive = currentMpPerc >= beadThreshold - 5;
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={`w-2.5 h-2.5 md:w-4 md:h-4 rounded-full transition-all duration-300
+                                                    ${isActive
+                                                                ? 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)] scale-100'
+                                                                : 'bg-zinc-800/80 border border-zinc-700/50 scale-90'
+                                                            }`}
+                                                        style={isActive ? {
+                                                            background: 'radial-gradient(circle at 30% 30%, #60a5fa 0%, #2563eb 60%, #1d4ed8 100%)'
+                                                        } : {}}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Fatigue Icon (Small) */}
+                                        <div className="relative group cursor-help ml-1">
+                                            {(() => {
+                                                const fat = playerStats.fatigue || 0;
+                                                const level = FATIGUE_LEVELS.find(l => fat >= l.min && fat <= l.max) || FATIGUE_LEVELS[2];
+                                                return (
+                                                    <span className="text-sm md:text-lg animate-pulse" title={`피로도: ${fat}%`}>
+                                                        {level.icon}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* [New] Active Injuries Row (Integrated below stats) */}
+                                {playerStats.active_injuries && playerStats.active_injuries.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1 max-w-[200px] md:max-w-xs">
+                                        {playerStats.active_injuries.map((injury, i) => (
+                                            <div
+                                                key={i}
+                                                className="flex items-center gap-1 px-1.5 py-0.5 bg-red-950/80 border border-red-500/50 rounded text-xs text-red-100"
+                                            >
+                                                <span>🩹</span>
+                                                <span>{injury}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                            </div>
                         </div>
                     </div>
 
