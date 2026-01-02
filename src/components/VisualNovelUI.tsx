@@ -1573,38 +1573,81 @@ export default function VisualNovelUI() {
             // [Agent] Construct Logic Result for Application
             // Apply PreLogic (Stats) and PostLogic (Mood/Rel)
 
-            // 1. Extract HP/MP from PostLogic Stats
-            // [Fix] Disable block application for HP/MP because they are handled by Inline Tags now.
-            const plStats = postLogic.stat_updates || {};
-            const plHp = 0; // Handled by Inline Tags
-            const plMp = 0; // Handled by Inline Tags
+            // [Fix] Deduplication Logic: Calculate Deltas from Inline Tags
+            const inlineDeltas: Record<string, number> = {};
+            if (postLogic.inline_triggers && postLogic.inline_triggers.length > 0) {
+                postLogic.inline_triggers.forEach((trigger: any) => {
+                    // trigger.tag format examples: 
+                    // <Stat hp='-5'> 
+                    // <Rel char='Name' val='5'>
+                    // We need to parse this string to extract key/val.
+                    // Simple Regex Parser
+                    const statMatch = trigger.tag.match(/<Stat\s+([^=]+)=['"]?(-?\d+)['"]?.*?>/i);
+                    if (statMatch) {
+                        const key = statMatch[1].toLowerCase();
+                        const val = parseInt(statMatch[2], 10);
+                        if (!isNaN(val)) {
+                            inlineDeltas[key] = (inlineDeltas[key] || 0) + val;
+                        }
+                    }
+                });
+                console.log("[Deduplication] Detected Inline Deltas:", inlineDeltas);
+            }
 
-            // 2. Filter Personality Stats (Remove HP/MP)
-            // [Fix] Original declaration removed to prevent duplicate identifier error.
-            // const plPersonality = { ...plStats };
-            // delete plPersonality.hp;
-            // delete plPersonality.mp;
+            // 1. Deduct Inline HP/MP from PreLogic (Mechanic) + MartialArts (Combat) Totals
+
+            // Source HP = PreLogic + MartialArts
+            const maHp = result.martial_arts?.stat_updates?.hp || 0;
+            const sourceHp = (preLogic.state_changes?.hpChange || 0) + maHp;
+
+            const inlineHp = inlineDeltas['hp'] || 0;
+            const inlineMp = inlineDeltas['mp'] || 0;
+
+            let finalHpChange = sourceHp;
+            // Logic: If Source != 0, Block = Source - Inline. (Backend Authority - Deduct Visuals)
+            //        If Source == 0, Block = 0.
+            if (sourceHp !== 0) {
+                finalHpChange = sourceHp - inlineHp;
+            } else {
+                finalHpChange = 0;
+            }
+
+            const maMp = result.martial_arts?.stat_updates?.mp || 0;
+            const sourceMp = (preLogic.state_changes?.mpChange || 0) + maMp;
+            let finalMpChange = 0;
+            if (sourceMp !== 0) {
+                finalMpChange = sourceMp - inlineMp;
+            }
+
+            // 2. Filter Personality Stats (Remove HP/MP) and Deduct Inline
+            // Deduction for Personality (Source: PostLogic.stat_updates)
+            const plPersonality: Record<string, number> = {};
+            if (postLogic.stat_updates) {
+                Object.entries(postLogic.stat_updates).forEach(([k, v]) => {
+                    const key = k.toLowerCase();
+                    if (key === 'hp' || key === 'mp') return; // Handled above
+
+                    const totalVal = v as number;
+                    const inlineVal = inlineDeltas[key] || 0;
+
+                    // Deduct
+                    plPersonality[key] = totalVal - inlineVal;
+                });
+            }
 
             // 3. Transform Relationships (Record -> Array)
-            // [Fix] Disable block application for Relationships. Rely on Inline Tags.
-            const plRelationships = undefined;
-            /* const plRelationships = postLogic.relationship_updates
-                ? Object.entries(postLogic.relationship_updates).map(([id, val]) => ({ characterId: id, change: val }))
-                : undefined; */
-
-            // [Fix] Disable block application for Personality/Misc Stats. Rely on Inline Tags.
-            const plPersonality = undefined; // Was { ...plStats }
+            const plRelationships = undefined; // Relationships handled by Inline generally
 
             const combinedLogic = {
                 ...preLogic.state_changes,
 
-                // [Refined] Merge HP/MP Changes (PreLogic Rules + PostLogic Narrative)
-                hpChange: (preLogic.state_changes?.hpChange || 0) + plHp,
-                mpChange: (preLogic.state_changes?.mpChange || 0) + plMp,
+                // [Refined] Deduplicated HP/MP
+                hpChange: finalHpChange,
+                mpChange: finalMpChange,
 
-                // [Refined] Pass Transformed Relationships & Personality
-                relationshipChange: plRelationships,
+                // [Refined] Pass Transformed Personality (Deduplicated)
                 personalityChange: plPersonality,
+                relationshipChange: plRelationships,
 
 
                 mood: postLogic.mood_update,
@@ -1618,12 +1661,23 @@ export default function VisualNovelUI() {
                 goal_updates: postLogic.goal_updates,
                 new_goals: postLogic.new_goals,
 
-                // [Fix] Propagate full PostLogic object for applying Stats & Memories
-                post_logic: postLogic,
+                // [Fix] Propagate deduplicated stats for persistence
+                post_logic: {
+                    ...postLogic,
+                    stat_updates: plPersonality // Override with deduplicated (HP excluded from here anyway)
+                },
                 character_memories: postLogic.character_memories,
 
                 // [Wuxia] Martial Arts Logic
-                martial_arts: result.martial_arts,
+                // We must NULLIFY the stat_updates.hp in martial_arts to avoid ApplyGameLogic applying it again!
+                martial_arts: result.martial_arts ? {
+                    ...result.martial_arts,
+                    stat_updates: {
+                        ...(result.martial_arts.stat_updates || {}),
+                        hp: 0, // Handled by hpChange (Deduplicated)
+                        mp: 0  // Handled by mpChange (Deduplicated)
+                    }
+                } : result.martial_arts,
 
                 _debug_router: routerOut
             };
