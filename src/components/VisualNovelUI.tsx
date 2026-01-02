@@ -301,6 +301,30 @@ const formatText = (text: string) => {
     });
 };
 
+// [Localization]
+const TRAIT_KO_MAP: Record<string, string> = {
+    morality: '도덕성',
+    courage: '용기',
+    energy: '에너지',
+    decision: '의사결정',
+    lifestyle: '생활양식',
+    openness: '수용성',
+    warmth: '대인온도',
+    eloquence: '화술',
+    leadership: '통솔력',
+    humor: '유머',
+    lust: '색욕',
+    // Fallback for others if needed
+    hp: '체력',
+    mp: '정신력',
+    neigong: '내공',
+    str: '근력',
+    agi: '민첩',
+    int: '지력',
+    vit: '체격',
+    luk: '운'
+};
+
 export default function VisualNovelUI() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     // [New] Profile Tab State
@@ -2189,7 +2213,7 @@ export default function VisualNovelUI() {
             Object.entries(logicResult.personalityChange).forEach(([trait, value]: [string, any]) => {
                 if (value !== 0) {
                     // Try to map trait to Korean if possible, or capitalize
-                    const label = trait.charAt(0).toUpperCase() + trait.slice(1);
+                    const label = TRAIT_KO_MAP[trait] || trait.charAt(0).toUpperCase() + trait.slice(1);
                     addToast(`${label} ${value > 0 ? '+' : ''}${value}`, value > 0 ? 'success' : 'warning');
                 }
             });
@@ -2288,7 +2312,10 @@ export default function VisualNovelUI() {
                         const newValue = Math.max(-100, Math.min(100, (newPersonality as any)[key] + (val as number)));
                         (newPersonality as any)[key] = newValue;
                         hasChanges = true;
-                        if (Math.abs(val as number) >= 2) addToast(`${key} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
+                        if (Math.abs(val as number) >= 1) {
+                            const label = TRAIT_KO_MAP[key] || key;
+                            addToast(`${label} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
+                        }
                     }
                 });
 
@@ -3780,12 +3807,45 @@ Instructions:
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/80 border border-yellow-500 text-yellow-400 px-6 py-2 rounded-full shadow-lg z-50 pointer-events-none"
+                            className="fixed top-24 left-1/2 transform -translate-x-1/2 bg-black/90 border border-yellow-500 text-yellow-400 px-6 py-3 rounded-full shadow-[0_0_15px_rgba(234,179,8,0.5)] z-[9999] pointer-events-none flex items-center gap-2"
                         >
-                            {statusMessage}
+                            <span className="text-xl">🔔</span>
+                            <span className="font-bold">{statusMessage}</span>
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Toasts Notification Layer */}
+                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none w-full max-w-sm px-4">
+                    <AnimatePresence>
+                        {toasts.map((toast) => (
+                            <motion.div
+                                key={toast.id}
+                                initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                                className={`
+                                    w-full px-4 py-3 rounded-lg shadow-2xl border backdrop-blur-md flex items-center gap-3 pointer-events-auto
+                                    ${toast.type === 'success' ? 'bg-green-900/90 border-green-500 text-green-100' : ''}
+                                    ${toast.type === 'warning' ? 'bg-yellow-900/90 border-yellow-500 text-yellow-100' : ''}
+                                    ${toast.type === 'info' ? 'bg-blue-900/90 border-blue-500 text-blue-100' : ''}
+                                `}
+                            >
+                                <div className={`
+                                    flex items-center justify-center w-6 h-6 rounded-full 
+                                    ${toast.type === 'success' ? 'bg-green-500/20 text-green-400' : ''}
+                                    ${toast.type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' : ''}
+                                    ${toast.type === 'info' ? 'bg-blue-500/20 text-blue-400' : ''}
+                                `}>
+                                    {toast.type === 'success' && '✓'}
+                                    {toast.type === 'warning' && '!'}
+                                    {toast.type === 'info' && 'i'}
+                                </div>
+                                <span className="font-medium text-sm">{toast.message}</span>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
 
                 {/* Recharge Popup */}
                 <AnimatePresence>
