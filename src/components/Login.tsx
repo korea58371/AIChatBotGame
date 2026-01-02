@@ -18,6 +18,12 @@ export default function Login() {
         setLoading(true);
         setMessage(null);
 
+        if (!supabase) {
+            setMessage({ text: "Auth service not available.", type: 'error' });
+            setLoading(false);
+            return;
+        }
+
         const { error } = await supabase.auth.signInWithOtp({
             email,
             options: {
@@ -38,6 +44,12 @@ export default function Login() {
         setLoading(true);
         setMessage(null);
 
+        if (!supabase) {
+            setMessage({ text: "Auth service not available.", type: 'error' });
+            setLoading(false);
+            return;
+        }
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
@@ -57,6 +69,12 @@ export default function Login() {
     const handleGuestLogin = async () => {
         setLoading(true);
         setMessage(null);
+
+        if (!supabase) {
+            // Guest mode without backend (Pure Local)
+            window.location.href = '/game';
+            return;
+        }
 
         const { error } = await supabase.auth.signInAnonymously();
 

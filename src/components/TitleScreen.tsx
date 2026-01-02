@@ -41,6 +41,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 // 1. Race getSession against a 1s timeout
                 // 2. Also listen for onAuthStateChange (below)
 
+                if (!supabase) return;
+
                 const sessionPromise = supabase.auth.getSession();
                 const timeoutPromise = new Promise<{ data: { session: null }, error: any }>((resolve) => {
                     setTimeout(() => resolve({ data: { session: null }, error: 'timeout' }), 1000);
@@ -82,6 +84,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
         checkUser();
 
         // Listen for auth changes
+        if (!supabase) return; // Guard listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
             if (!mounted) return;
 
@@ -501,6 +504,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                                     <button
                                                         onClick={async () => {
                                                             if (confirm("정말 로그아웃 하시겠습니까?")) {
+                                                                if (!supabase) return;
                                                                 const { error } = await supabase.auth.signOut();
                                                                 if (error) {
                                                                     alert("로그아웃 중 오류가 발생했습니다: " + error.message);

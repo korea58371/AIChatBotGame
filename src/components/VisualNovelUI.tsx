@@ -1163,16 +1163,20 @@ export default function VisualNovelUI() {
             // Background DB Sync (Fire-and-forget)
             if (activeSession?.user) {
                 const userId = activeSession.user.id;
-                supabase.rpc('decrement_coin', { user_id: userId })
-                    .then(({ error }: { error: any }) => {
-                        if (error) {
-                            // Fallback to direct update if RPC fails
-                            supabase.from('profiles').update({ coins: newCoinCount }).eq('id', userId)
-                                .then(({ error: updateError }: { error: any }) => {
-                                    if (updateError) console.error("Coin update failed:", updateError);
-                                });
-                        }
-                    });
+                if (supabase) { // Guard supabase call
+                    supabase.rpc('decrement_coin', { user_id: userId })
+                        .then(({ error }: { error: any }) => {
+                            if (error) {
+                                // Fallback to direct update if RPC fails
+                                if (supabase) { // Guard supabase call
+                                    supabase.from('profiles').update({ coins: newCoinCount }).eq('id', userId)
+                                        .then(({ error: updateError }: { error: any }) => {
+                                            if (updateError) console.error("Coin update failed:", updateError);
+                                        });
+                                }
+                            }
+                        });
+                }
             }
 
             if (!isHidden) {
@@ -2599,7 +2603,7 @@ export default function VisualNovelUI() {
                             <motion.div
                                 key={characterExpression}
                                 initial={isSameCharacter ? { opacity: 0, scale: 1, y: 0, x: "-50%" } : { opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
-                                animate={{ opacity: 1, scale: 1, y: 0, x: "-50%" }}
+                                animate={{ opacity: 1, y: 0, x: "-50%" }}
                                 exit={{ opacity: 0, scale: 1, y: 0, x: "-50%" }}
                                 transition={{ duration: 0.5 }}
                                 className="absolute bottom-0 left-1/2 h-[90%] z-0 pointer-events-none"
@@ -3007,6 +3011,10 @@ export default function VisualNovelUI() {
                                                     <button
                                                         onClick={async () => {
                                                             if (confirm("정말 로그아웃 하시겠습니까?")) {
+                                                                if (!supabase) {
+                                                                    console.warn("Supabase client not available for logout.");
+                                                                    return;
+                                                                }
                                                                 const { error } = await supabase.auth.signOut();
                                                                 if (error) {
                                                                     alert("로그아웃 중 오류가 발생했습니다: " + error.message);
@@ -3483,7 +3491,9 @@ Instructions:
 
                                             // Update DB
                                             if (session?.user) {
-                                                supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id).then();
+                                                if (supabase && session?.user?.id) {
+                                                    supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id).then();
+                                                }
                                             }
                                             addToast("광고 보상: 50 골드 지급 완료!", "success");
                                         }}
