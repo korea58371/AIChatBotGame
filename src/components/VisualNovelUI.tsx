@@ -454,6 +454,21 @@ export default function VisualNovelUI() {
     const [creationStep, setCreationStep] = useState(0);
     const [creationData, setCreationData] = useState<Record<string, string>>({});
 
+    // [New] Recharge Popup State
+    const [showRechargePopup, setShowRechargePopup] = useState(false);
+
+    const handleRecharge = async () => {
+        const newCoins = userCoins + 50;
+        setUserCoins(newCoins);
+        setShowRechargePopup(false);
+        addToast("50 토큰이 충전되었습니다! (테스트)", "success");
+
+        if (session?.user && supabase) {
+            const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id);
+            if (error) console.error("Recharge Update Failed:", error);
+        }
+    };
+
     // Track Session & Fetch Coins on Mount
     useEffect(() => {
         let mounted = true;
@@ -1142,7 +1157,8 @@ export default function VisualNovelUI() {
             if (!activeSession?.user) {
                 console.warn("handleSend: No session found, but allowing guest/optimistic play if coins > 0");
                 if (currentCoins < 1) {
-                    addToast("Login required or not enough coins.", "warning");
+                    // addToast("Login required or not enough coins.", "warning");
+                    setShowRechargePopup(true); // Trigger Popup for Guests too
                     setIsProcessing(false);
                     return;
                 }
@@ -1151,7 +1167,8 @@ export default function VisualNovelUI() {
             // 2. Coin Check
             if (currentCoins < 1) {
                 console.warn("handleSend: Not enough coins");
-                addToast("Not enough coins! Please recharge.", "warning");
+                // addToast("Not enough coins! Please recharge.", "warning");
+                setShowRechargePopup(true); // Trigger Popup
                 setIsProcessing(false);
                 return;
             }
@@ -3303,7 +3320,7 @@ Instructions:
 
                                         return (
                                             <div className="bg-black/90 p-8 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center max-w-2xl w-full">
-                                                <h1 className="text-3xl font-bold text-yellow-400 mb-2">캐릭터 생성</h1>
+
 
                                                 {/* Progress */}
                                                 <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -3737,6 +3754,53 @@ Instructions:
                         >
                             {statusMessage}
                         </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Recharge Popup */}
+                <AnimatePresence>
+                    {showRechargePopup && (
+                        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                className="bg-gray-900 border-2 border-yellow-500 rounded-xl p-8 max-w-sm w-full shadow-[0_0_30px_rgba(234,179,8,0.3)] text-center relative overflow-hidden"
+                            >
+                                {/* Background Glow */}
+                                <div className="absolute inset-0 bg-yellow-500/5 pointer-events-none" />
+
+                                <div className="relative z-10 flex flex-col items-center gap-4">
+                                    <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mb-2 animate-pulse">
+                                        <span className="text-3xl">🪙</span>
+                                    </div>
+
+                                    <h3 className="text-xl font-bold text-yellow-400">토큰 부족 (Insufficient Tokens)</h3>
+                                    <p className="text-gray-300 text-sm leading-relaxed">
+                                        행동을 위한 토큰이 부족합니다.<br />
+                                        무료로 충전하시겠습니까?
+                                    </p>
+
+                                    <div className="w-full h-px bg-gray-700 my-2" />
+
+                                    <div className="flex gap-3 w-full">
+                                        <button
+                                            onClick={() => setShowRechargePopup(false)}
+                                            className="flex-1 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold transition-colors"
+                                        >
+                                            취소
+                                        </button>
+                                        <button
+                                            onClick={handleRecharge}
+                                            className="flex-1 py-3 rounded-lg bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-bold shadow-lg hover:shadow-yellow-500/20 transition-all active:scale-95"
+                                        >
+                                            충전하기 (+50)
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">* 현재 테스트 버전에서는 무료로 제공됩니다.</p>
+                                </div>
+                            </motion.div>
+                        </div>
                     )}
                 </AnimatePresence>
 
