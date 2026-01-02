@@ -1299,7 +1299,7 @@ export default function VisualNovelUI() {
                 text,
                 prunedStateForStory, // Send pruned state
                 language,
-                storyModel || 'gemini-3-pro-preview', // [FIX] 5th Arg: Model Name
+                storyModel || MODEL_CONFIG.STORY, // [FIX] 5th Arg: Model Name
                 isDirectInput // [FIX] 6th Arg: Direct Input Flag
             );
 

@@ -4,6 +4,7 @@ import { ScriptSegment } from '@/lib/script-parser';
 import { MoodType } from '@/data/prompts/moods';
 import { DataManager, GameData } from './data-manager';
 import { PromptManager } from './prompt-manager';
+import { MODEL_CONFIG } from './model-config';
 
 export interface Message {
   role: 'user' | 'model';
@@ -277,7 +278,7 @@ export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       activeGameId: 'wuxia', // Default
-      storyModel: 'gemini-3-pro-preview', // Default to Pro
+      storyModel: MODEL_CONFIG.STORY, // Default to Configured Model
       isDataLoaded: false,
 
       setStoryModel: (model) => set({ storyModel: model }),
