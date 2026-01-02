@@ -132,7 +132,9 @@ ${userInput}
             .replace(/\[Relationship[^\]]*\]/gi, '')
             .replace(/<Relationship[^>]*>/gi, '')
             .replace(/\[Tension[^\]]*\]/gi, '')
-            .replace(/<Tension[^>]*>/gi, '');
+            .replace(/<Tension[^>]*>/gi, '')
+            .replace(/<NewInjury[^>]*>/gi, '')
+            .replace(/<Injury[^>]*>/gi, '');
 
         console.log(`[AgentOrchestrator] Scrubbed Text Length: ${storyResult.text.length} -> ${cleanStoryText.length}`);
 

@@ -508,9 +508,9 @@ export default function VisualNovelUI() {
     }, []);
 
     // Toast State
-    const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'warning' }[]>([]);
+    const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'warning' | 'error' }[]>([]);
 
-    const addToast = (message: string, type: 'success' | 'info' | 'warning' = 'info') => {
+    const addToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'info') => {
         const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         setToasts(prev => [...prev, { id, message, type }]);
         setTimeout(() => {

@@ -36,7 +36,7 @@ export function parseScript(text: string): ScriptSegment[] {
     const knownTags = [
         '배경', 'BGM', '시간', '시스템팝업', '시스템', '나레이션',
         '선택지.*?', '대사', '문자', '답장', '전화', 'TV뉴스', '기사', '떠남',
-        'State', 'Stat', 'Relationship', 'Rel', 'Think', '/Think', 'Memory', 'Mem', 'Injury', 'Tension',
+        'State', 'Stat', 'Relationship', 'Rel', 'Think', '/Think', 'Memory', 'Mem', 'Injury', 'NewInjury', 'Tension',
         'Location_Update', 'Dead', 'Personality', 'Mechanics',
         'NewGoal', 'Goal', 'GoalUpdate', 'Quest'
     ].join('|');
@@ -482,7 +482,7 @@ export function parseScript(text: string): ScriptSegment[] {
             // [Ignore] Injury tags are for UI state updates, not narrative text.
             // We ignore them here to prevent them from being rendered as "[Injury] ...".
             continue;
-        } else if (['location_update', 'dead', 'personality', 'mechanics', 'newgoal', 'goal', 'goalupdate', 'quest'].includes(tagName.toLowerCase())) {
+        } else if (['location_update', 'dead', 'personality', 'mechanics', 'newgoal', 'goal', 'goalupdate', 'quest', 'newinjury'].includes(tagName.toLowerCase())) {
             // [Ignore] Legacy/Internal Metadata tags that shouldn't be valid in UI
             // These might leak from PostLogic if the prompt isn't strict enough
             continue;
