@@ -171,7 +171,7 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
   "dead_character_ids": ["bandit_leader"]
 }
 [Critically Important]
-- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'mechanics_log', 'character_memories') MUST be in KOREAN (한국어).
+- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'character_memories') MUST be in KOREAN (한국어).
 - For 'activeCharacters', list EVERY character ID that speaks or performs an action in the text.
 - For 'character_memories', extract 1 key memory per active character if they had significant interaction with the player this turn.
 - For 'dead_character_ids', list IDs of ANY character who died or was permanently incapacitated/killed in this turn.
