@@ -2383,8 +2383,7 @@ export default function VisualNovelUI() {
                     if (postLogic.resolved_injuries && postLogic.resolved_injuries.length > 0) {
                         postLogic.resolved_injuries.forEach((resolved: string) => {
                             // Fuzzy removal: remove if strictly equal or if string contains/is contained (simple fuzzy)
-                            // or we just trust the AI's exact string if it matches.
-                            // Better methodology: Filter out anything that vaguely matches to be generous to the player.
+                            const initialLength = updatedInjuries.length;
                             updatedInjuries = updatedInjuries.filter(injury => {
                                 const iNorm = injury.toLowerCase().replace(/\s+/g, '');
                                 const rNorm = resolved.toLowerCase().replace(/\s+/g, '');
@@ -2392,8 +2391,13 @@ export default function VisualNovelUI() {
                                 return !(iNorm.includes(rNorm) || rNorm.includes(iNorm));
                             });
 
-                            // UI Feedback
-                            addToast(`상태 회복: ${resolved}`, 'success');
+                            if (updatedInjuries.length < initialLength) {
+                                // Indeed removed
+                                addToast(`상태 회복: ${resolved}`, 'success');
+                            } else {
+                                // Match Failed - Warn User (Debug)
+                                addToast(`회복 실패(명칭 불일치): AI가 '${resolved}' 치유를 시도했으나, 목록에 없습니다.`, 'error');
+                            }
                         });
                     }
 

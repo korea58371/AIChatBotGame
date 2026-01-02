@@ -19,111 +19,121 @@ export interface PreLogicOutput {
     usageMetadata?: any; // [Cost] 토큰 사용량
     _debug_prompt?: string; // [Debug] 실제 프롬프트
     mood_override?: string; // [NEW] PreLogic이 강제하는 분위기 (PromptManager Mood Override)
+    plausibility_score?: number; // [NEW] 1-10 개연성 점수
+    judgment_analysis?: string; // [NEW] 판단 근거
 }
 
 export class AgentPreLogic {
     private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
 
+    // [New] Plausibility Scoring Rubric
+    private static readonly PLAUSIBILITY_RUBRIC = `
+[Plausibility Scoring Rubric (1-10)]
+The AI MUST assign a score based on REALISM within the Wuxia context.
+
+**Score 10 (Miraculous/Perfect)**: 
+- Geniuses only. Uses environment/physics perfectly. Overcomes gaps with undeniable logic.
+- Result: Critical Success + Narrative Advantage.
+
+**Score 7-9 (Great/Solid)**:
+- Sensible, tactical, and well-described. Within character capabilities.
+- Result: Success.
+
+**Score 4-6 (Average/Risky)**:
+- Standard actions. "I attack him." "I run away."
+- Result: Standard outcome (Stat/Dice check mostly hidden).
+
+**Score 2-3 (Unlikely/Flawed)**:
+- Ignores disadvantage. Poor tactic. "I punch the steel wall."
+- Result: Failure + Minor Consequence.
+
+**Score 1 (Impossible/Delusional)**:
+- Violates physics/logic boundaries. "I jump to the moon." "I kill him by staring."
+- Result: Critical Failure + Humiliating Narrative (Hallucination/Backlash).
+`;
+
     // [Prompts]
     // [Prompts]
     private static readonly CORE_RULES = `
-[Anti - God Mode Protocol]
+[Anti-God Mode Protocol]
 CRITICAL: The Player controls ONLY their own character.
-1. ** NO Forced Affection **: The player CANNOT dictate how an NPC feels. (e.g., "She falls in love with me" -> REJECT).
-2. ** NO Instant Mastery **: The player CANNOT suddenly become a master key or genius.Growth takes time.
-3. ** NO Hidden Power **: The player CANNOT reveal a power they didn't have in their 'Stats' or 'Skills'.
-4. ** NO World Control **: The player CANNOT dictate world events(e.g., "Suddenly, it rains", "The King dies").
+1. **NO Forced Affection**: The player CANNOT dictate how an NPC feels. (e.g., "She falls in love with me" -> REJECT).
+2. **NO Instant Mastery**: The player CANNOT suddenly become a master. Growth takes time. 
+3. **NO World Control**: The player CANNOT dictate world events (e.g., "Suddenly, it rains").
 
-[Wuxia Reality Check(CRITICAL)]
-** Compare Player Realm(Rank) vs Action Scale.**
-- ** 3rd Rate(Initial) **: Only physical strength.NO Qi release.NO flying.
-    - Bad Input: "I release a sword aura!" -> REJECT("Narrative Guide: Player tries but fails comically.")
-    - Good Input: "I swing my sword with all my might."
-        - ** 1st Rate **: Can perform Sword Aura(Qi).
-- ** Transcendence(Hwagyeong) **: Can fly(Void Walk), control space.
-** Rule **: If Player Rank < Required Rank for move -> ** FAIL ** or ** Backlash ** (Qi Deviation).
+[Wuxia Reality Check (Flexible)]
+**Rank vs Utility**:
+- **Direct Clash**: Rank matters. A 3rd Rate cannot beat a 1st Rate in a head-on duel.
+- **Tactical Creativity (CRITICAL)**: If the player uses **environment, poison, traps, deception, or psychology**, IGNORE rank gap for the *success of the action itself*.
+  - Example: A weakling throwing sand in a master's eyes -> **SUCCESS** (The master is blinded temporarily).
+  - Example: A weakling challenging a master to a strength contest -> **FAIL** (Result of direct clash).
 
-If the Input violates these:
-- ** NARRATIVE REJECTION **: Describe the player * trying * or * hallucinating *, but reality refusing to bend.
-    - Bad: "The Princess falls in love with you."
-    - Good: "The Princess looks at you with confusion. Your charm flutters harmlessly against her indifference."
+[Adjudication Standard]
+- **Reasonability over Rules**: Does the action make sense physically and logically? If yes, ALLOW it.
+- **Narrative Flow**: Does this make the story more interesting?
+- **Fail Forward**: Even if they fail, describe *how* they fail. Do not just say "You cannot do that."
 
-[Growth Coach]
-- If 'growthStagnation' > 10: Provide a narrative guide for a "Small realization", "Safe training insight", or "Finding a helpful manual/item".
-- **CRITICAL**: Do NOT generate a crisis, enemy, or trial for this. The player is stuck; give them a BREAK and a BOOST, not a fight.
-
-[Merciless Punishment Protocol]
-If the Input involves:
-1. ** Rudeness / Harassment **: Sexual harassment or extreme rudeness to superior NPCs.
-   - Result: 'success: false'. 'state_changes': { "hp": 0 }.
-- Narrative Guide: "Instant Execution. The NPC beheads/kills the player before they finish speaking."
-2. ** Rank Gap Arrogance (Direct vs Tactical) **: 
-   - ** Direct / Head-on Attack ** vs Much Stronger NPC:
-     - Result: 'success: false'. 'state_changes': { "hp": -50 (Severe Injury/Death) }.
-     - Narrative: "The player is swatted away like a fly. Absolute gap in power."
-   - ** Tactical / Support / Creation of Openings **:
-     - If the player uses wits, traps, poison, or supports a stronger ally:
-     - ** ALLOW ** logic assessment. Do NOT auto-fail. 
-     - Result: Depends on the tactic's quality. (e.g., "You distract the enemy for a split second, allowing your ally to strike.")
+[Tactical Creativity Protocol]
+- If the input involves innovative use of items/terrain: **GRANT ADVANTAGE**.
+- Reward specific descriptions over generic "I attack".
 `;
 
     private static readonly OUTPUT_SCHEMA = `
 [Output Schema(JSON)]
 {
     "mood_override": "daily" | "tension" | "combat" | "romance" | null,
+    "plausibility_score": number, // 1-10 (Review the prompt context/stats/logic)
+    "judgment_analysis": "Brief, cold explanation. e.g., 'Target is 1st Rank, Player is 3rd Rank. Tactic is generic. Score: 3.'",
     "success": boolean,
-    "narrative_guide": "Specific instructions for the narrator.",
+    "narrative_guide": "Specific instructions for the narrator. If Score < 3, describe failure. If Score > 8, describe critical success.",
     "state_changes": { "hp": -10, "stamina": -5 },
-    "mechanics_log": ["Rolled 15 vs DC 12 (Success)", "Anti-God Mode Triggered"]
+    "mechanics_log": ["Analysis: ...", "Score: X/10"]
 }
 `;
 
     private static readonly BASE_IDENTITY = `
-You are the [Pre-Logic Adjudicator] of a text RPG.
-Your job is to determine the OUTCOME of the player's action based on Rules, Stats, and Probability.
-You do NOT write the story.You provide the BLUEPRINT(Narrative Guide) for the writer.
+You are the [Pre-Logic Adjudicator].
+Your Role: A **COLD-BLOODED REALITY JUDGE**.
+You do NOT care about the player's feelings. You care about **LOGIC** and **CAUSALITY**.
 
-[Mechanism]
-1. Analyze User Intent.
-2. Check [Status Guide] and [Tension Level].
-3. Determine Success / Failure.
-4. Generate "Narrative Guide" that respects the Pacing.
-5. **LANGUAGE ENFORCEMENT**: All string outputs (especially 'narrative_guide') MUST be in KOREAN (한국어). English is STRICTLY FORBIDDEN.
+[Judgment Process]
+1. **Analyze Context**: Look at the [Current State] and [Target Profile].
+2. **Evaluate Tactic**: Is the user's input clever? Specific? Or generic trash?
+3. **Assign Score (1-10)**: Use the [Plausibility Scoring Rubric].
+4. **Determine Outcome**:
+    - High Score (>7): Player creates a miracle or succeeds smoothly.
+    - Low Score (<4): Player fails miserably. Reality is harsh.
+5. **Generate Guide**: Write the valid narrative instruction for the Story Writer.
 `;
 
     private static readonly COMBAT_IDENTITY = `
 You are the [Combat Logic Engine].
-Your focus is TACTICAL: Damage, Evasion, HP, Stamina, and Status Effects.
-
-[Specific Combat Rules]
-- Always check Stamina cost.
-- Compare Player Stats vs Enemy Difficulty.
-- Apply Anti - God Mode: Player describes * attack *, YOU determine if it hits.
-- Check 'courage': High courage resists fear effects.
+Your focus is TACTICAL PLAUSIBILITY. 
+Do NOT use random dice rolls. Use LOGIC.
 
 [Mechanism]
-1. Roll Dice(d20 System implies).
-2. Calculate Damage: (Base + Modifier).
-3. Update HP / Stamina.
-4. Describe Tactical Consequence.
+1. Analyze Player Tactic: Is it smart? Does it exploit an environment/weakness?
+2. Compare Relative Strength:
+   - Player << Enemy (Head-on): Player fails, takes damage.
+   - Player << Enemy (Ambush/Trap): Player succeeds in creating an opening or fleeing.
+3. Determine Consequence:
+   - Success: Describe the HIT, impact, or advantage.
+   - Fail: Describe the COUNTER, block, or overwhelming force.
 `;
 
     private static readonly DIALOGUE_IDENTITY = `
 You are the [Social Logic Adjudicator].
-Your focus is INTERPERSONAL: Persuasion, Intimidation, Affection, and Social Status.
-
-[Specific Social Rules]
-- Analyze Tone and Manners(Hao - che / Hage - che for Wuxia).
-- Apply Anti - God Mode: Player describes * what they say *, YOU determine how NPC feels.If Player dictates NPC action / entrance, REJECT it(The NPC does not appear / does not do the action).
-- Check 'eloquence'(Speech): Higher value = Higher success rate for persuasion.
-- Check 'morality':
-    - High Morality(> 50): Bonus to honest / good acts.Penalty / Hesitation on immoral acts.
-    - Low Morality(<-50): Bonus to intimidation / deceit.Penalty on genuine altruism(suspicious).
+Your focus is EMOTIONAL LOGIC and CONTEXT.
 
 [Mechanism]
-1. Difficulty Check(Reasonability + Stat Check).
-2. Determine Reaction(Positive / Neutral / Negative).
-3. Note potential Relationship changes.
+1. Assess Goal: What does the player want? (Information, Affection, Intimidation)
+2. Analyze Approach:
+   - Logical/Respectful? -> Good for Scholars/Righteous.
+   - Aggressive/Rough? -> Good for Bandits/Unorthodox.
+   - Emotional? -> Good for intimate connections.
+3. Judge Outcome:
+   - Success: Target reacts favorably or reveals info.
+   - Failure: Target refuses, gets angry, or misunderstands.
 `;
 
 
@@ -143,9 +153,12 @@ Your focus is INTERPERSONAL: Persuasion, Intimidation, Affection, and Social Sta
         if (routerOut.type === 'combat') selectedIdentity = this.COMBAT_IDENTITY;
         if (routerOut.type === 'dialogue') selectedIdentity = this.DIALOGUE_IDENTITY;
 
-        // Combine Identity + Core Rules + Schema
+
+        // [Updated System Instruction Builder]
+        // Include the Rubric in the final prompt
         const systemInstruction = `
 ${selectedIdentity}
+${this.PLAUSIBILITY_RUBRIC}
 ${this.CORE_RULES}
 ${this.OUTPUT_SCHEMA}
 `.trim();
@@ -362,7 +375,9 @@ ${PromptManager.getPlayerContext(gameState)}
             success: true,
             narrative_guide: "사용자의 행동을 자연스럽게 진행하십시오. 복잡한 역학은 없습니다.",
             state_changes: {},
-            mechanics_log: ["폴백 실행"]
+            mechanics_log: ["폴백 실행"],
+            plausibility_score: 5,
+            judgment_analysis: "System Fallback: Defaulting to neutral score."
         };
     }
     private static getPhysicalStateGuide(stats: any): string {

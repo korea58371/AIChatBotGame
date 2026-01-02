@@ -73,8 +73,12 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 - Detect implied HEALING or WORSENING of injuries.
 - **Healing**: If player visits a doctor, rests, or uses medicine, identify which 'Active Injuries' are cured.
   - **CRITICAL**: You MUST check [Context Data] -> [Current Stats] -> 'active_injuries' list.
-  - **CRITICAL**: You MUST use the **EXACT STRING** from that list. Do NOT invent synonyms (e.g., if list has "Broken Arm", do NOT output "Fracture").
-  - OUTPUT: "resolved_injuries": ["Broken Arm", "Internal Injury"]
+  - **CRITICAL**: You MUST use the **EXACT STRING** from that list. Do NOT invent synonyms.
+  - **Match Strategy**:
+    - [BAD]: List=["Broken Arm"], Output="Fracture" (FAIL: Mismatch)
+    - [BAD]: List=["Internal Injury"], Output="Pain" (FAIL: Mismatch)
+    - [GOOD]: List=["Broken Arm"], Output="Broken Arm" (SUCCESS)
+  - OUTPUT: "resolved_injuries": ["Broken Arm"]
 - **Worsening/Mutation**: If player ignores an injury and strains themselves, REMOVE the old injury and ADD a worse one.
   - Example (Fracture -> Disabled): 
     - "resolved_injuries": ["Right Arm Fracture"]
