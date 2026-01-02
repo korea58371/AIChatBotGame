@@ -20,7 +20,7 @@ import { FAME_TITLES, FATIGUE_LEVELS } from '@/data/games/wuxia/constants'; // [
 import { submitGameplayLog } from '@/app/actions/log';
 
 
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { EventManager } from '@/lib/event-manager';
@@ -2878,7 +2878,7 @@ export default function VisualNovelUI() {
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-50 pointer-events-none"
+                            className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-[80] pointer-events-none"
                         >
                             <div className="bg-black/80 backdrop-blur-md text-white border border-white/20 px-6 py-2 rounded-full shadow-2xl flex items-center gap-3">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -2933,7 +2933,7 @@ export default function VisualNovelUI() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="bg-white/95 border border-white/20 w-full max-w-lg p-6 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] flex flex-col gap-6 max-h-[90vh] overflow-y-auto backdrop-blur-xl">
@@ -3195,6 +3195,36 @@ export default function VisualNovelUI() {
                                         {t.directInput}
                                     </span>
                                 </motion.button>
+
+                                {/* [NEW] System Menu Bar (Profile, History, Wiki, Save, Settings) */}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.5 }}
+                                    className="flex w-[85vw] md:w-[min(50vw,1200px)] justify-center gap-3 md:gap-4 mt-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {[
+                                        { icon: <User size={20} />, label: "프로필", onClick: () => setShowCharacterInfo(true) },
+                                        { icon: <History size={20} />, label: "지난 대화", onClick: () => setShowHistory(true) },
+                                        { icon: <Book size={20} />, label: "위키", onClick: () => setShowWiki(true) },
+                                        { icon: <Save size={20} />, label: "저장/로드", onClick: () => setShowSaveLoad(true) },
+                                        { icon: <Settings size={20} />, label: "설정", onClick: () => setShowResetConfirm(true) },
+                                    ].map((btn, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
+                                            className="p-3 md:p-3 rounded-full bg-black/60 border border-white/20 text-white hover:bg-white/20 hover:scale-110 hover:border-white transition-all backdrop-blur-md shadow-lg group relative"
+                                            title={btn.label}
+                                        >
+                                            {btn.icon}
+                                            {/* Tooltip */}
+                                            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
+                                                {btn.label}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </motion.div>
                             </div>
                         </div>
                     )
@@ -3530,7 +3560,7 @@ Instructions:
                 {/* History Modal */}
                 <AnimatePresence>
                     {showHistory && (
-                        <div className="fixed inset-0 bg-black/90 z-50 flex items-start justify-center px-4 pb-4 pt-[140px] pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="fixed inset-0 bg-black/90 z-[70] flex items-start justify-center px-4 pb-4 pt-[140px] pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                             <div className="bg-gray-900 w-full max-w-3xl h-full rounded-xl flex flex-col border border-gray-700">
                                 <div className="p-4 border-b border-gray-700 flex justify-between items-center">
                                     <h2 className="text-xl font-bold text-white">{t.chatHistory}</h2>
@@ -3665,7 +3695,7 @@ Instructions:
                 {/* Inventory Modal */}
                 <AnimatePresence>
                     {showInventory && (
-                        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                             <div className="bg-gray-900 w-full max-w-2xl h-[60vh] rounded-xl flex flex-col border border-yellow-600">
                                 <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800 rounded-t-xl">
                                     <h2 className="text-xl font-bold text-yellow-400">{t.inventory}</h2>
@@ -3694,7 +3724,7 @@ Instructions:
                 {/* Input Modal */}
                 <AnimatePresence>
                     {isInputOpen && (
-                        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -3807,7 +3837,7 @@ Instructions:
                 {/* Character Info Modal */}
                 <AnimatePresence>
                     {showCharacterInfo && (
-                        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -4241,7 +4271,7 @@ Instructions:
                 <AnimatePresence>
                     {
                         showSaveLoad && (
-                            <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
