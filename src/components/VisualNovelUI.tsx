@@ -2373,6 +2373,49 @@ export default function VisualNovelUI() {
                 // TODO: Implement actual relationship update in store if needed
             }
 
+            // [NEW] Injury Management (Healing & Mutation)
+            if (postLogic.resolved_injuries || postLogic.new_injuries) {
+                useGameStore.setState(state => {
+                    const currentInjuries = state.playerStats.active_injuries || [];
+                    let updatedInjuries = [...currentInjuries];
+
+                    // 1. Resolve (Remove) Injuries
+                    if (postLogic.resolved_injuries && postLogic.resolved_injuries.length > 0) {
+                        postLogic.resolved_injuries.forEach((resolved: string) => {
+                            // Fuzzy removal: remove if strictly equal or if string contains/is contained (simple fuzzy)
+                            // or we just trust the AI's exact string if it matches.
+                            // Better methodology: Filter out anything that vaguely matches to be generous to the player.
+                            updatedInjuries = updatedInjuries.filter(injury => {
+                                const iNorm = injury.toLowerCase().replace(/\s+/g, '');
+                                const rNorm = resolved.toLowerCase().replace(/\s+/g, '');
+                                // If they match closely, REMOVE it (return false)
+                                return !(iNorm.includes(rNorm) || rNorm.includes(iNorm));
+                            });
+
+                            // UI Feedback
+                            addToast(`상태 회복: ${resolved}`, 'success');
+                        });
+                    }
+
+                    // 2. Add New Injuries (Mutation/New)
+                    if (postLogic.new_injuries && postLogic.new_injuries.length > 0) {
+                        postLogic.new_injuries.forEach((newInjury: string) => {
+                            if (!updatedInjuries.includes(newInjury)) {
+                                updatedInjuries.push(newInjury);
+                                addToast(`부상 발생/악화: ${newInjury}`, 'warning');
+                            }
+                        });
+                    }
+
+                    return {
+                        playerStats: {
+                            ...state.playerStats,
+                            active_injuries: updatedInjuries
+                        }
+                    };
+                });
+            }
+
             // [NEW] Persist Personality Stats
             if (postLogic.stat_updates) {
                 const currentStats = useGameStore.getState().playerStats;

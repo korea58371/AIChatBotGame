@@ -15,6 +15,10 @@ export interface PostLogicOutput {
   summary_trigger?: boolean;
   dead_character_ids?: string[]; // [NEW] Characters confirmed dead this turn
 
+  // [New] Injury Management
+  resolved_injuries?: string[]; // Injuries to remove (Healed or Mutated)
+  new_injuries?: string[];      // Injuries to add (New or Mutation Result)
+
   // [Narrative Systems]
   goal_updates?: { id: string, status: 'COMPLETED' | 'FAILED' | 'ACTIVE', updates?: string }[];
   new_goals?: { description: string, type: 'MAIN' | 'SUB' }[];
@@ -64,6 +68,16 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - **Natural Recovery:** +3 ~ +5 (Return to 0).
   - If Tension is Positive but Character is RESTING/SAFE (e.g. Inn, Home):
     - **Natural Decay:** -5 ~ -10 (Relaxation).
+
+[Health & Status Logic]
+- Detect implied HEALING or WORSENING of injuries.
+- **Healing**: If player visits a doctor, rests, or uses medicine, identify which 'Active Injuries' are cured.
+  - OUTPUT: "resolved_injuries": ["Broken Arm", "Internal Injury"]
+- **Worsening/Mutation**: If player ignores an injury and strains themselves, REMOVE the old injury and ADD a worse one.
+  - Example (Fracture -> Disabled): 
+    - "resolved_injuries": ["Right Arm Fracture"]
+    - "new_injuries": ["Right Arm Permanent Disability"]
+- **New Injury**: If a new injury occurs implicit in the narrative (not combat), add it to 'new_injuries'.
 
 [Rules]
 - Personality Stats: morality, courage, energy, decision, lifestyle, openness, warmth, eloquence, leadership, humor, lust.
@@ -161,6 +175,8 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
       { "quote": "She laughed at my joke.", "tag": "<Rel char='NamgungSeAh' val='5'>" }
   ],
   "tension_update": number, // Optional: Shift in tension (-100 to +100)
+  "resolved_injuries": ["Broken Arm"], // Optional
+  "new_injuries": ["Permanent Disability"], // Optional
   "new_goals": [{ "type": "MAIN" | "SUB", "description": "Goal description" }], // Optional
   "goal_updates": [{ "id": "goal_id", "status": "COMPLETED" | "FAILED" | "ACTIVE" }], // Optional
   "activeCharacters": ["soso", "chilsung"], 
