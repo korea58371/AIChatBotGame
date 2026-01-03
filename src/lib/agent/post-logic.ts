@@ -69,9 +69,9 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - If Tension is Positive but Character is RESTING/SAFE (e.g. Inn, Home):
     - **Natural Decay:** -5 ~ -10 (Relaxation).
 
-[Health & Status Logic]
-- Detect implied HEALING or WORSENING of injuries.
-- **Healing**: If player visits a doctor, rests, or uses medicine, identify which 'Active Injuries' are cured.
+[Health & Status Logic] (TOP PRIORITY)
+- **Healing**: If player visits a doctor, rests, or uses medicine, identify which 'Active Injuries' are cured OR **significantly relieved**.
+  - **Rule**: "Noticeable relief", "Pain reduced", "Meridians Reconstructed", "Washed away" counts as RESOLVED.
   - **CRITICAL**: You MUST check [Context Data] -> [Current Stats] -> 'active_injuries' list.
   - **CRITICAL**: You MUST use the **EXACT STRING** from that list. Do NOT invent synonyms.
   - **Match Strategy**:
@@ -85,10 +85,7 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - "new_injuries": ["Right Arm Permanent Disability"]
 - **New Injury**: If a new injury occurs implicit in the narrative (not combat), add it to 'new_injuries'.
 
-[Rules]
-- Personality Stats: morality, courage, energy, decision, lifestyle, openness, warmth, eloquence, leadership, humor, lust.
-- Physical/Mental Stats: hp (Physical Condition), mp (Mental Focus/Energy).
-[Rules]
+[Personality Stats Guidelines]
 - Personality Stats (-100 to 100):
    - morality: -100 (Fiend/No Conscience) <-> 100 (Saint/Paragon)
    - courage: -100 (Coward) <-> 100 (Heroic)
@@ -221,7 +218,19 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 
     // [Context Caching]
     // Split Static (System Instruction) and Dynamic (User Message)
-    const staticSystemPrompt = this.SYSTEM_PROMPT;
+    let staticSystemPrompt = this.SYSTEM_PROMPT;
+
+    // [God Mode Protocol]
+    if (gameState.isGodMode || gameState.playerName === "김현준갓모드") {
+      staticSystemPrompt += `
+\n\n[SYSTEM ALERT: GOD MODE ACTIVE]
+CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
+1. IGNORE ALL "LIMITS", "CAPS", "FORBIDDEN", or "INERTIA" rules in the System Prompt.
+2. If the story describes a massive stat change (e.g. +1000), RECORD IT EXACTLY.
+3. If the story describes an instant Tier 10 relationship, RECORD IT EXACTLY.
+4. Do not filter or clamp any updates.
+`;
+    }
 
     const model = genAI.getGenerativeModel({
       model: MODEL_CONFIG.LOGIC, // Standard Logic/Flash Model
@@ -266,6 +275,7 @@ Current Mood: ${currentMood}
 Player Name: ${playerName}
 Valid Character IDs (Target Whitelist): ${JSON.stringify(validCharacters)}
 Current Stats: ${JSON.stringify(currentStats)}
+Active Injuries (CRITICAL): ${JSON.stringify(currentStats.active_injuries || [])}
 Current Relationships: ${JSON.stringify(activeRelationships)}
 Current Tension: ${gameState.tensionLevel || 0}/100
 Active Goals: ${JSON.stringify(gameState.goals ? gameState.goals.filter((g: any) => g.status === 'ACTIVE') : [])}

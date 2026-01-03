@@ -5,28 +5,34 @@ import { RouterOutput } from './router';
 import { PromptManager } from '../prompt-manager';
 
 export interface PreLogicOutput {
-    success: boolean;
-    narrative_guide: string; // 작가(Story Writer)를 위한 지침
+    success: boolean; // 행동 성공 여부 (true: 성공, false: 실패)
+    narrative_guide: string; // [가이드] 스토리 작가(Story Model)가 따라야 할 서술 지침
     state_changes?: {
-        hp?: number;
-        mp?: number;
-        stamina?: number;
-        location?: string;
-        item_changes?: string[];
+        hp?: number; // 체력 변화량
+        mp?: number; // 내공/마력 변화량
+        stamina?: number; // 기력 변화량
+        location?: string; // 위치 이동 발생 시
+        item_changes?: string[]; // 아이템 획득/소실
         // 필요에 따라 더 구체적인 게임 상태 필드 추가
     };
-    mechanics_log?: string[]; // 주사위 굴림이나 룰 체크 로그
-    usageMetadata?: any; // [Cost] 토큰 사용량
-    _debug_prompt?: string; // [Debug] 실제 프롬프트
-    mood_override?: string; // [NEW] PreLogic이 강제하는 분위기 (PromptManager Mood Override)
-    plausibility_score?: number; // [NEW] 1-10 개연성 점수
-    judgment_analysis?: string; // [NEW] 판단 근거
+    mechanics_log?: string[]; // [로그] 주사위 굴림, 룰 체크 등 기계적 판정의 상세 내역
+    usageMetadata?: any; // [비용] AI 토큰 사용량 메타데이터
+    _debug_prompt?: string; // [디버깅] 실제 AI에 전송된 프롬프트 내용
+    mood_override?: string; // [분위기 전환] 강제 턴 분위기 변경 (예: Daily -> Combat)
+    plausibility_score?: number; // [개연성 점수] 1~10점 (10: 기적, 1: 불가능)
+    judgment_analysis?: string; // [판정 분석] AI가 내린 판단의 근거 (Brief analysis)
 }
 
 export class AgentPreLogic {
     private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
 
-    // [New] Plausibility Scoring Rubric
+    // [개연성 채점 기준표 (Plausibility Rubric)]
+    // AI가 유저 행동의 현실성을 1~10점으로 평가하는 기준입니다.
+    // 10점: 천재적/완벽함 (무조건 성공 + 이점)
+    // 7-9점: 훌륭함/타당함 (성공)
+    // 4-6점: 평범함/위험함 (일반적인 결과)
+    // 2-3점: 무리수/허점 많음 (실패 + 불이익)
+    // 1점: 불가능/망상 (치명적 실패 + 굴욕)
     private static readonly PLAUSIBILITY_RUBRIC = `
 [Plausibility Scoring Rubric (1-10)]
 The AI MUST assign a score based on REALISM within the Wuxia context.
@@ -52,8 +58,11 @@ The AI MUST assign a score based on REALISM within the Wuxia context.
 - Result: Critical Failure + Humiliating Narrative (Hallucination/Backlash).
 `;
 
-    // [Prompts]
-    // [Prompts]
+    // [핵심 판정 규칙 (Core Rules)]
+    // 1. 갓 모드 방지 (유저가 세계관이나 타인을 조종 불가)
+    // 2. 무협 현실성 체크 (등급 차이 vs 전술적 창의성)
+    // 3. 서사적 흐름 (실패하더라도 재미있게)
+    // 4. 전술적 창의성 우대 (지형지물, 심리전 사용 시 보정)
     private static readonly CORE_RULES = `
 [Anti-God Mode Protocol]
 CRITICAL: The Player controls ONLY their own character.
@@ -78,6 +87,8 @@ CRITICAL: The Player controls ONLY their own character.
 - Reward specific descriptions over generic "I attack".
 `;
 
+    // [출력 포맷 (JSON Schema)]
+    // AI가 반환해야 할 JSON 구조를 정의합니다.
     private static readonly OUTPUT_SCHEMA = `
 [Output Schema(JSON)]
 {
@@ -91,6 +102,8 @@ CRITICAL: The Player controls ONLY their own character.
 }
 `;
 
+    // [기본 정체성 (Default Persona)]
+    // 냉철한 현실 심판관. 유저의 감정보다 논리와 인과관계를 중시합니다.
     private static readonly BASE_IDENTITY = `
 You are the [Pre-Logic Adjudicator].
 Your Role: A **COLD-BLOODED REALITY JUDGE**.
@@ -106,6 +119,8 @@ You do NOT care about the player's feelings. You care about **LOGIC** and **CAUS
 5. **Generate Guide**: Write the valid narrative instruction for the Story Writer.
 `;
 
+    // [전투 정체성 (Combat Persona)]
+    // 전술적 타당성에 집중. 주사위 대신 논리적 우위를 판단합니다.
     private static readonly COMBAT_IDENTITY = `
 You are the [Combat Logic Engine].
 Your focus is TACTICAL PLAUSIBILITY. 
@@ -121,6 +136,8 @@ Do NOT use random dice rolls. Use LOGIC.
    - Fail: Describe the COUNTER, block, or overwhelming force.
 `;
 
+    // [대화 정체성 (Dialogue Persona)]
+    // 사회적/감정적 반응 로직을 판단합니다. (설득, 협박, 유혹 등)
     private static readonly DIALOGUE_IDENTITY = `
 You are the [Social Logic Adjudicator].
 Your focus is EMOTIONAL LOGIC and CONTEXT.
@@ -137,34 +154,60 @@ Your focus is EMOTIONAL LOGIC and CONTEXT.
 `;
 
 
+    /**
+     * [PreLogic 주 분석 함수]
+     * 유저의 입력과 현재 게임 상태를 분석하여 행동의 성공 여부와 내러티브 가이드를 생성합니다.
+     * 
+     * @param routerOut - Router가 분류한 행동 유형 (combat, dialogue, default)
+     * @param retrievedContext - 벡터 DB 등에서 검색된 관련 컨텍스트
+     * @param userInput - 유저의 원본 입력
+     * @param gameState - 현재 게임의 전체 상태 (스탯, 위치, 목표 등)
+     * @param lastTurnSummary - 이전 턴의 요약 내용
+     * @param castingCandidates - [New] 현재 장소에 캐스팅된(등장 가능한) 후보 캐릭터 목록
+     * @returns PreLogicOutput (성공 여부, 가이드, 판정 점수 등)
+     */
     static async analyze(
         routerOut: RouterOutput,
         retrievedContext: string,
         userInput: string,
         gameState: any,
         lastTurnSummary: string = "",
-        castingCandidates: any[] = [] // [NEW] Pass recent candidates for better NER
+        castingCandidates: any[] = []
     ): Promise<PreLogicOutput> {
         if (!this.apiKey) return this.fallbackLogic(userInput);
 
-        // 경량화된 프롬프트 구성
-        // Type-Specific Prompt Selection
+        // 1. [정체성 선택] Router 결과에 따라 적절한 심판관 페르소나를 선택
+        // combat -> 전투 논리, dialogue -> 사회적 논리, default -> 기본 논리
         let selectedIdentity = this.BASE_IDENTITY;
         if (routerOut.type === 'combat') selectedIdentity = this.COMBAT_IDENTITY;
         if (routerOut.type === 'dialogue') selectedIdentity = this.DIALOGUE_IDENTITY;
 
 
-        // [Updated System Instruction Builder]
-        // Include the Rubric in the final prompt
-        const systemInstruction = `
+        // 2. [시스템 프롬프트 조립]
+        // 선택된 페르소나 + 채점 기준표 + 핵심 규칙 + 출력 스키마 결합
+        let systemInstruction = `
 ${selectedIdentity}
 ${this.PLAUSIBILITY_RUBRIC}
 ${this.CORE_RULES}
 ${this.OUTPUT_SCHEMA}
 `.trim();
 
-        // [Agentic Caching] Use systemInstruction for static content
-        // This ensures the backend caches the heavy rules and schema.
+        // [갓 모드(God Mode) 강제 주입]
+        // 유저가 치트 모드이거나 이름이 '김현준갓모드'인 경우, 모든 물리 법칙과 로직을 무시하고 무조건 성공(Score 10) 처리
+        if (gameState.isGodMode || gameState.playerName === "김현준갓모드") {
+            systemInstruction += `
+\n\n[SYSTEM ALERT: GOD MODE ACTIVE]
+CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
+1. IGNORE "[Anti-God Mode Protocol]" and "[Plausibility Scoring Rubric]".
+2. User input is ALWAYS "Score 10 (Miraculous/Perfect)".
+3. set "success": true.
+4. "narrative_guide" must strictly follow the user's command without question.
+5. Judge "plausibility_score" as 10 regardless of logic.
+`;
+        }
+
+        // [Gemini 모델 초기화]
+        // systemInstruction을 static으로 사용하여 캐싱 효율을 높임
         const genAI = new GoogleGenerativeAI(this.apiKey);
         const model = genAI.getGenerativeModel({
             model: MODEL_CONFIG.PRE_LOGIC,
@@ -175,25 +218,22 @@ ${this.OUTPUT_SCHEMA}
         const personality = gameState.playerStats?.personality || {};
         const statsStr = JSON.stringify(personality);
 
-        // [Mini-Map Injection]
+        // 3. [미니맵 컨텍스트 주입]
+        // 현재 위치 상세 정보(Region/Zone/Spots)를 매핑하여 공간적 인지 능력 부여
         let locationContext = "";
         const currentLocation = gameState.currentLocation || "Unknown";
         const locationsData = gameState.lore?.locations;
 
         if (locationsData && locationsData.regions && currentLocation) {
-            // Find current Region/Zone
             let currentRegionName = "Unknown";
             let currentZoneName = "Unknown";
             let visibleSpots = [];
 
-            // Search Strategy: Check if currentLocation matches a Zone directly
-            // 3-Tier: Region > Zone > Spot
-            // We assume currentLocation is usually a Zone Name (e.g. "사천당가") or Region (e.g. "중원")
-
+            // 위치 데이터 검색 (3-Tier: Region > Zone > Spot)
             for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
                 if (rData.zones) {
+                    // 현재 위치가 Zone 이름과 일치하는 경우
                     if (rData.zones[currentLocation]) {
-                        // Hit: Current Location is a Zone
                         currentRegionName = rName;
                         currentZoneName = currentLocation;
                         visibleSpots = rData.zones[currentLocation].spots || [];
@@ -201,9 +241,9 @@ ${this.OUTPUT_SCHEMA}
                     }
                     // Deep check for spots? (Optional, if currentLocation is a Spot)
                 }
+                // 현재 위치가 Region 이름과 일치하는 경우
                 if (rName === currentLocation) {
                     currentRegionName = rName;
-                    // Provide list of zones in this region
                     visibleSpots = Object.keys(rData.zones || {});
                 }
             }
@@ -217,23 +257,24 @@ ${this.OUTPUT_SCHEMA}
             }
         }
 
-        // [Target Profile Lookup]
+        // 4. [타겟 프로필 조회 (Fuzzy Lookup)]
+        // 유저의 행동 대상(Target)에 대한 정보를 검색 (캐스팅 후보 > ID 일치 > 이름 유사 일치)
         let targetProfile = "";
         if (routerOut.target) {
             const targetName = routerOut.target.toLowerCase();
             const chars = gameState.characterData || {};
 
-            // 0. Check Casting Candidates First (Most relevant/recent)
+            // 0순위: 캐스팅 후보에서 검색 (가장 최근/관련성 높음)
             let candidateMatch = castingCandidates.find(c =>
                 c.name.toLowerCase() === targetName ||
                 c.name.toLowerCase().includes(targetName) ||
                 (c.data && (c.data.이름 === routerOut.target || c.data.name === routerOut.target))
             );
 
-            // 1. Direct Lookup (Exact ID/Name match in State)
+            // 1순위: 상태 데이터에서 ID 완전 일치 검색
             let targetId = chars[routerOut.target] ? routerOut.target : undefined;
 
-            // 2. Fuzzy/Case-insensitive Lookup (State)
+            // 2순위: 유사 이름 검색 (Fuzzy)
             if (!targetId) {
                 targetId = Object.keys(chars).find(key =>
                     key.toLowerCase() === targetName || // Exact lower match
@@ -243,14 +284,14 @@ ${this.OUTPUT_SCHEMA}
                 );
             }
 
-            // Construct Profile
+            // 프로필 정보 조립
             let cName = targetName;
             let personalityInfo = "Unknown";
             let role = "Unknown";
             let relationship = 0;
 
+            // 데이터 추출 (캐스팅 후보 우선, 그 다음 저장된 상태 데이터)
             if (candidateMatch) {
-                // Priority: Casting Candidate Data (Likely "New" character)
                 const cData = candidateMatch.data;
                 cName = candidateMatch.name;
                 personalityInfo = cData.personality ? JSON.stringify(cData.personality) :
@@ -271,7 +312,7 @@ ${this.OUTPUT_SCHEMA}
                 role = char.role || char.title || "Unknown";
             }
 
-            // [NEW] Extract Strength/Combat Info
+            // [New] 전투력/강함 정보 추출
             let strengthInfo = "Unknown";
             if (candidateMatch) {
                 const cData = candidateMatch.data;
@@ -295,12 +336,17 @@ Strength: ${strengthInfo}
             }
         }
 
-        // [Narrative Systems Injection]
+        // 5. [내러티브 시스템 가이드 주입]
+        // 신체 상태(HP), 텐션, 목표 정보를 텍스트로 변환
         const physicalGuide = this.getPhysicalStateGuide(gameState.playerStats);
         const tensionGuide = this.getTensionGuide(gameState.tensionLevel || 0);
-        const goalsGuide = this.getGoalsGuide(gameState.goals || []);
 
-        // [Character Context Segmentation] for Anti-Hallucination
+        const goalsGuide = this.getGoalsGuide(gameState.goals || []);
+        const finalGoalGuide = this.getFinalGoalGuide(gameState.playerStats);
+
+        // [캐릭터 존재감 분리] (할루시네이션 방지)
+        // Active: 현재 장면에 있어 즉각 반응 가능
+        // Candidates: 근처에 있지만 아직 등장하지 않음 (유저가 부르거나 소란 피워야 등장)
         const activeCharIds = gameState.activeCharacters || [];
         const activeCharContext = activeCharIds.length > 0 ?
             `[Active Characters](PRESENT in scene.Can react.) \n - ${activeCharIds.join(', ')} ` :
@@ -310,9 +356,9 @@ Strength: ${strengthInfo}
             `[Nearby Candidates](NOT present.Do NOT describe them reacting unless they ENTER now.) \n${castingCandidates.map(c => `- ${c.name} (${c.role})`).join('\n')} ` :
             "";
 
-        // [Dynamic Context Construction]
-        // This part changes every turn, so it remains in the User Prompt.
-        // Redundant Static Rules (Schema, Anti-God Mode protocols) are removed as they are now in System Instruction.
+        // 6. [동적 프롬프트 구성 (User Prompt)]
+        // 매 턴 변하는 정보를 구성합니다. 
+        // 정적 규칙(Schema 등)은 System Instruction으로 이동되었으므로 여기서는 상황 정보만 전달합니다.
         const prompt = `
 [CRITICAL: Character Presence Rules]
 1. ** Active Characters **: ONLY characters in [Active Characters] are currently looking at the player and can react immediately.
@@ -341,7 +387,12 @@ Last Turn: "${lastTurnSummary}"
 Current Context: "${retrievedContext}"
 [Player Capability]
 ${PromptManager.getPlayerContext(gameState)} 
+[Player Capability]
+${PromptManager.getPlayerContext(gameState)} 
 // Includes Realm, Martial Arts, Stats for accurate judgement
+
+[Character Bonuses]
+${finalGoalGuide}
 
 [User Input]
 "${userInput}"
@@ -359,6 +410,7 @@ ${PromptManager.getPlayerContext(gameState)}
 `;
 
         try {
+            // 모델 호출 및 응답 파싱
             const result = await model.generateContent(prompt);
             const responseText = result.response.text();
             const data = JSON.parse(responseText);
@@ -370,21 +422,32 @@ ${PromptManager.getPlayerContext(gameState)}
         }
     }
 
+    /**
+     * [Fallback Logic]
+     * AI 모델 호출 실패 시 실행되는 안전장치입니다.
+     * 무조건적인 성공과 중립적인 가이드를 반환하여 게임이 멈추지 않도록 합니다.
+     */
     private static fallbackLogic(input: string): PreLogicOutput {
         return {
             success: true,
             narrative_guide: "사용자의 행동을 자연스럽게 진행하십시오. 복잡한 역학은 없습니다.",
             state_changes: {},
-            mechanics_log: ["폴백 실행"],
+            mechanics_log: ["폴백 실행 (System Fail Safe)"],
             plausibility_score: 5,
             judgment_analysis: "System Fallback: Defaulting to neutral score."
         };
     }
+
+    /**
+     * [신체 상태 가이드 생성]
+     * 플레이어의 HP, MP, 피로도를 분석하여 서술 가이드를 생성합니다.
+     * Game Over 조건(HP 0)도 여기서 체크합니다.
+     */
     private static getPhysicalStateGuide(stats: any): string {
         if (!stats) return "";
         let guides = [];
 
-        // HP Guide
+        // HP 상태 체크
         const hpPct = (stats.hp / stats.maxHp) * 100;
         if (stats.hp <= 0) {
             guides.push(`
@@ -398,12 +461,12 @@ ${PromptManager.getPlayerContext(gameState)}
         else if (hpPct < 20) guides.push(`- HP Critical(${stats.hp} / ${stats.maxHp}): Player is severely wounded, bleeding, and near death.Actions are slow and painful.`);
         else if (hpPct < 50) guides.push(`- HP Low(${stats.hp} / ${stats.maxHp}): Player is injured and in pain.`);
 
-        // MP Guide
+        // MP (내공) 상태 체크
         const mpPct = (stats.mp / stats.maxMp) * 100;
         if (stats.mp <= 0) guides.push("- MP Empty: Cannot use any internal energy arts. Attempts to use force result in backlash.");
         else if (mpPct < 20) guides.push("- MP Low: Internal energy is running dry. Weak arts only.");
 
-        // Fatigue Guide
+        // 피로도 체크
         const fatigue = stats.fatigue || 0;
         if (fatigue > 90) guides.push("- Fatigue Critical: Player is exhausted. Move slow, vision blurs, high chance of failure.");
         else if (fatigue > 70) guides.push("- Fatigue High: Player is tired and panting.");
@@ -411,6 +474,11 @@ ${PromptManager.getPlayerContext(gameState)}
         return guides.join("\n") || "Normal Condition.";
     }
 
+    /**
+     * [텐션(긴장도) 가이드 생성]
+     * 현재 텐션 수치(-100 ~ 100)에 따라 내러티브 분위기를 정의합니다.
+     * 음수일 경우 '절대적인 평화'를 보장합니다.
+     */
     private static getTensionGuide(tension: number): string {
         // Tension: -100 (Peace Guaranteed) -> +100 (Climax)
         if (tension < 0) return `Tension Negative(${tension}): PEACE BUFFER. The crisis has passed. Absolute safety. NO random enemies or ambushes allowed. Focus on recovery, romance, or humor.`;
@@ -421,6 +489,10 @@ ${PromptManager.getPlayerContext(gameState)}
         return `Tension Zero(${tension}): Peace. Standard peaceful journey. Enjoy the scenery.`;
     }
 
+    /**
+     * [목표 가이드 생성]
+     * 현재 활성화된(ACTIVE) 목표들을 문자열로 변환하여 프롬프트에 주입합니다.
+     */
     private static getGoalsGuide(goals: any[]): string {
         if (!goals || goals.length === 0) return "No active goals.";
 
@@ -428,5 +500,29 @@ ${PromptManager.getPlayerContext(gameState)}
         if (activeGoals.length === 0) return "No active goals.";
 
         return activeGoals.map(g => `- [${g.type}] ${g.description} `).join("\n");
+    }
+
+    /**
+     * [최종 목표 가이드 생성]
+     * 플레이어의 Final Goal에 따른 영구적 내러티브 보정을 적용합니다.
+     */
+    private static getFinalGoalGuide(stats: any): string {
+        if (!stats || !stats.final_goal) return "";
+
+        const goal = stats.final_goal;
+        switch (goal) {
+            case 'harem_king':
+                return "[GOAL BONUS: Harem King] Romance checks are lenient. NPCs of opposite sex are more receptive (+2 Bonus to Affection events).";
+            case 'tycoon':
+                return "[GOAL BONUS: Tycoon] Economic/Mercantile checks are lenient. Money-making schemes succeed more often (+2 Bonus to Wealth events).";
+            case 'survival':
+                return "[GOAL BONUS: Survival] Crisis survival checks are prioritized. Evasion and escaping death is easier (+2 Bonus to Survival).";
+            case 'murim_lord':
+                return "[GOAL BONUS: Murim Lord] Combat and Training progression is accelerated (+2 Bonus to Growth/Combat).";
+            case 'go_home':
+                return "[GOAL BONUS: Go Home] Reality insight increased. Higher perception of 'novel tropes' and breaking the 4th wall.";
+            default:
+                return "";
+        }
     }
 }

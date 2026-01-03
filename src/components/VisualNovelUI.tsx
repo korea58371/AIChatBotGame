@@ -384,6 +384,8 @@ export default function VisualNovelUI() {
         characterData // [New] Get character data for UI
     } = useGameStore();
 
+    const creationQuestions = characterCreationQuestions; // Alias for UI Usage
+
     const supabase = createClient();
 
     // VN State
@@ -1445,9 +1447,13 @@ export default function VisualNovelUI() {
                 }
 
                 // 2. Pre-Logic Log
-                console.groupCollapsed(`%c[Step 2] Pre-Logic (${latencies.preLogic}ms) (${preLogicDebug.success ? 'Success' : 'Failure'})`, 'color: magenta; font-weight: bold;');
+                // [Modified] Show Score in Header
+                const scoreText = preLogicDebug.plausibility_score ? `Score: ${preLogicDebug.plausibility_score}/10` : (preLogicDebug.success ? 'Success' : 'Failure');
+                console.groupCollapsed(`%c[Step 2] Pre-Logic (${latencies.preLogic}ms) (${scoreText})`, 'color: magenta; font-weight: bold;');
                 console.log(`%c[Input]`, 'color: gray; font-weight: bold;', preLogicDebug._debug_prompt);
                 console.log(`%c[Output]`, 'color: magenta; font-weight: bold;', {
+                    Score: preLogicDebug.plausibility_score,
+                    Analysis: preLogicDebug.judgment_analysis,
                     Guide: preLogicDebug.narrative_guide,
                     Mechanics: preLogicDebug.mechanics_log,
                     Changes: preLogicDebug.state_changes
@@ -1465,7 +1471,9 @@ export default function VisualNovelUI() {
                 console.log(`%c[Output]`, 'color: green; font-weight: bold;', (result as any).raw_story || responseText);
                 console.groupEnd();
 
-                console.log(`%c[Final Script]`, 'color: cyan; font-weight: bold;', responseText || (result as any).raw_story);
+                console.groupCollapsed(`%c[Final Script]`, 'color: cyan; font-weight: bold;');
+                console.log(responseText || (result as any).raw_story);
+                console.groupEnd();
 
                 // 4. Post-Logic Log
                 console.groupCollapsed(`%c[Step 4] Post-Logic (${latencies.postLogic}ms)`, 'color: orange; font-weight: bold;');
@@ -2505,6 +2513,92 @@ export default function VisualNovelUI() {
 
             // [Deleted] Duplicate/Broken Memory Logic
             // The correct logic is implemented below (after activeCharacters)
+        }
+
+        // [NEW] Martial Arts & Realm Updates (Sync with Server)
+        if (logicResult.martial_arts) {
+            const ma = logicResult.martial_arts;
+            console.log("[MartialArts] Update Received:", ma);
+
+            useGameStore.setState(state => {
+                const currentStats = { ...state.playerStats };
+                let hasUpdates = false;
+
+                // 1. Realm Update
+                if (ma.realm_update) {
+                    // Update both specific Realm field and generic PlayerRank
+                    currentStats.realm = ma.realm_update;
+                    currentStats.playerRank = ma.realm_update.split('(')[0].trim(); // Normalize "이류 (2nd Rate)" -> "이류"
+                    currentStats.realmProgress = 0; // Reset progress on breakthrough
+                    hasUpdates = true;
+                    addToast(`경지 등극: ${ma.realm_update}`, 'success');
+                }
+
+                // 2. Realm Progress Delta
+                if (ma.realm_progress_delta !== undefined) {
+                    const currentProg = currentStats.realmProgress || 0;
+                    currentStats.realmProgress = Math.min(100, Math.max(0, currentProg + ma.realm_progress_delta));
+                    hasUpdates = true;
+                    // Only toast for significant gain
+                    if (ma.realm_progress_delta >= 5) {
+                        addToast(`깨달음: 경지 진행도 +${ma.realm_progress_delta}%`, 'info');
+                    }
+                }
+
+                // 3. Neigong (Internal Energy) Update
+                if (ma.stat_updates?.neigong) {
+                    const delta = ma.stat_updates.neigong;
+                    currentStats.neigong = (currentStats.neigong || 0) + delta;
+                    // Float correction (optional, but display usually handles it)
+                    currentStats.neigong = Math.round(currentStats.neigong * 100) / 100;
+                    hasUpdates = true;
+                }
+
+                // 4. Martial Arts List Update
+                // Add New Arts
+                if (ma.new_arts && ma.new_arts.length > 0) {
+                    const currentArts = currentStats.martialArts || [];
+                    const newArts = ma.new_arts.filter((n: any) => !currentArts.find((e: any) => e.name === n.name));
+                    if (newArts.length > 0) {
+                        currentStats.martialArts = [...currentArts, ...newArts];
+                        // Also update string list of skills for easy access
+                        currentStats.skills = [...(currentStats.skills || []), ...newArts.map((a: any) => a.name)];
+                        hasUpdates = true;
+                        newArts.forEach((art: any) => addToast(`신규 무공 습득: ${art.name}`, 'success'));
+                    }
+                }
+
+                // Update Existing Arts (Proficiency)
+                if (ma.updated_arts && ma.updated_arts.length > 0) {
+                    const currentArts = currentStats.martialArts || [];
+                    let artUpdated = false;
+                    const updatedList = currentArts.map((art: any) => {
+                        const update = ma.updated_arts.find((u: any) => u.id === art.id || u.name === art.name); // Support Name or ID
+                        if (update) {
+                            artUpdated = true;
+                            // Update Proficiency
+                            const newProf = Math.min(100, (art.proficiency || 0) + update.proficiency_delta);
+                            return { ...art, proficiency: newProf };
+                        }
+                        return art;
+                    });
+
+                    if (artUpdated) {
+                        currentStats.martialArts = updatedList;
+                        hasUpdates = true;
+                    }
+                }
+
+                if (hasUpdates) {
+                    console.log("[MartialArts] State Updated:", currentStats);
+                    // Also update top-level playerRealm if a realm update occurred
+                    if (ma.realm_update) {
+                        return { playerStats: currentStats, playerRealm: ma.realm_update };
+                    }
+                    return { playerStats: currentStats };
+                }
+                return {};
+            });
         }
 
 
@@ -3580,15 +3674,82 @@ Instructions:
                                                     exp: 0,            // Reset EXP
                                                     hp: useGameStore.getState().playerStats.maxHp, // Full HP
                                                     mp: useGameStore.getState().playerStats.maxMp, // Full MP
+                                                    martialArts: [] as any[],   // Clear Martial Arts (Fix Type)
+                                                    neigong: 0,        // Reset Neigong
+                                                    gold: 0,           // Reset Gold
                                                 };
+
+                                                // [보너스 적용] 욕망 (4번째 질문)
+                                                const desire = updatedData['desire_type'];
+                                                if (desire === 'money') {
+                                                    newStats.gold = (newStats.gold || 0) + 500;
+                                                    addToast("보너스: 초기 자금 500냥 획득!", "success");
+                                                } else if (desire === 'neigong') {
+                                                    newStats.neigong = (newStats.neigong || 0) + 10;
+                                                    addToast("보너스: 초기 내공 10년 획득!", "success");
+                                                } else if (desire === 'martial_arts') {
+                                                    const basicSword = {
+                                                        id: 'basic_sword',
+                                                        name: '삼재검법',
+                                                        rank: '삼류',
+                                                        type: '검법',
+                                                        description: '기초적인 검법. 찌르기, 베기, 막기의 기본이 담겨있다.',
+                                                        proficiency: 50,
+                                                        effects: ['기본 공격력 상승'],
+                                                        createdTurn: 0
+                                                    };
+                                                    newStats.martialArts = [...(newStats.martialArts || []), basicSword];
+                                                    // Also add to skills string list
+                                                    newStats.skills = [...(newStats.skills || []), '삼재검법'];
+                                                    addToast("보너스: 삼재검법 습득!", "success");
+                                                } else if (desire === 'love') {
+                                                    // [Randomize Heroine]
+                                                    const HEROINE_CANDIDATES = [
+                                                        '연화린', '백소유', '화영', '남궁세아', '모용예린',
+                                                        '당소율', '제갈연주', '주예서', '천예령', '한설희'
+                                                    ];
+                                                    const randomHeroine = HEROINE_CANDIDATES[Math.floor(Math.random() * HEROINE_CANDIDATES.length)];
+
+                                                    newStats.relationships = { [randomHeroine]: 30 };
+                                                    addToast(`보너스: ${randomHeroine}와의 소꿉친구 인연 형성!`, "success");
+                                                } else if (desire === 'fame') {
+                                                    newStats.fame = (newStats.fame || 0) + 500;
+                                                    addToast("보너스: 초기 명성 500 획득!", "success");
+                                                }
+
+                                                // [Bonus Application] Personality (1문)
+                                                const pLink = newStats.personality || {};
+                                                const pTone = updatedData['personality_tone'];
+                                                if (pTone === 'humorous') {
+                                                    pLink.warmth = (pLink.warmth || 0) + 10;
+                                                    pLink.energy = (pLink.energy || 0) + 10;
+                                                    pLink.humor = (pLink.humor || 0) + 20; // Explicitly humorous
+                                                } else if (pTone === 'serious') {
+                                                    pLink.decision = (pLink.decision || 0) + 10;
+                                                    pLink.lifestyle = (pLink.lifestyle || 0) + 5;
+                                                } else if (pTone === 'cynical') {
+                                                    pLink.decision = (pLink.decision || 0) + 5;
+                                                    pLink.morality = (pLink.morality || 0) - 5;
+                                                } else if (pTone === 'timid') {
+                                                    pLink.lifestyle = (pLink.lifestyle || 0) + 10;
+                                                    pLink.courage = (pLink.courage || 0) - 5;
+                                                } else if (pTone === 'domineering') {
+                                                    pLink.leadership = (pLink.leadership || 0) + 10;
+                                                    pLink.warmth = (pLink.warmth || 0) - 5;
+                                                }
+                                                newStats.personality = pLink;
+
+                                                // [Bonus Application] Final Goal (5문)
+                                                // Stored for Narrative Guidance in PreLogic
+                                                if (updatedData['final_goal']) {
+                                                    newStats.final_goal = updatedData['final_goal'];
+                                                }
 
                                                 // Map creation keys to stats if needed
                                                 // creationData keys: 'identity', 'goal', 'specialty', 'personality', 'story_perspective'
                                                 if (updatedData['narrative_perspective']) {
                                                     newStats.narrative_perspective = updatedData['narrative_perspective'];
                                                 }
-                                                // Update Name (Handled via useGameStore.getState().setPlayerName below)
-                                                // newStats.name is invalid as per lint. playerName is separate state.
 
                                                 // Commit to Store
                                                 useGameStore.getState().setPlayerStats(newStats);
@@ -4165,6 +4326,13 @@ Instructions:
                                                             <span className="text-gray-300">{t.luk}</span>
                                                             <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.luk || 10}</span>
                                                         </div>
+                                                        {/* [Wuxia] Neigong Display */}
+                                                        <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-700">
+                                                            <span className="text-yellow-400 font-bold">내공 (Neigong)</span>
+                                                            <span className="text-yellow-200 font-mono bg-yellow-900/30 px-2 py-1 rounded border border-yellow-700/50">
+                                                                {playerStats.neigong || 0}년 (Years)
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -4272,17 +4440,30 @@ Instructions:
                                             {/* Always show if manually selected, or show empty state */}
                                             <div className="bg-gray-800 p-6 rounded-lg border border-yellow-600/50">
                                                 <div className="flex justify-between items-center mb-4 border-b border-yellow-600/30 pb-2">
-                                                    <h3 className="text-xl font-bold text-yellow-400">
-                                                        무공 (Martial Arts)
-                                                    </h3>
-                                                    <div className="px-3 py-1 bg-yellow-900/40 rounded border border-yellow-600/50">
-                                                        <span className="text-yellow-200 font-bold font-mono">
+                                                    <div className="flex flex-col">
+                                                        <h3 className="text-xl font-bold text-yellow-400">
+                                                            무공 (Martial Arts)
+                                                        </h3>
+                                                        <span className="text-xs text-yellow-500/80 mt-1">
+                                                            누적 내공: <strong className="text-yellow-300 text-sm">{playerStats.neigong || 0}년 (Years)</strong>
+                                                        </span>
+                                                    </div>
+                                                    <div className="px-3 py-1 bg-yellow-900/40 rounded border border-yellow-600/50 flex flex-col items-end">
+                                                        <span className="text-yellow-200 font-bold font-mono text-sm md:text-base">
                                                             {playerStats.realm || '삼류(3rd Rate)'}
                                                         </span>
                                                         {playerStats.realmProgress !== undefined && (
-                                                            <span className="text-xs text-yellow-500 ml-2">
-                                                                ({playerStats.realmProgress}%)
-                                                            </span>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className="h-full bg-yellow-500"
+                                                                        style={{ width: `${playerStats.realmProgress}%` }}
+                                                                    />
+                                                                </div>
+                                                                <span className="text-[10px] text-yellow-500">
+                                                                    {playerStats.realmProgress}%
+                                                                </span>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>

@@ -197,6 +197,7 @@ export interface PlayerStats {
   fate: number;
   playerRank: string;
   neigong: number; // [Wuxia] Internal Energy (Years)
+  final_goal?: string; // [Wuxia] Character's ultimate objective
   faction: string;
   personalitySummary: string;
   str: number; agi: number; int: number; vit: number; luk: number;

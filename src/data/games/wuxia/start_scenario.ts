@@ -36,11 +36,11 @@ export const CHARACTER_CREATION_QUESTIONS = [
         id: 'desire_type',
         question: "4문) [욕망] 이 세계에서 가장 먼저 얻고 싶은 것은 무엇인가?",
         options: [
-            { value: 'money', label: "현대 지식으로 떼돈을 벌고 싶다." },
-            { value: 'attention', label: "사람들의 관심을 받고 유명해지고 싶다." },
-            { value: 'safety', label: "튼튼한 호위무사나 안전한 은신처가 절실하다." },
-            { value: 'pleasure', label: "맛집 탐방이나 유흥을 즐기고 싶다." },
-            { value: 'growth', label: "절세신공을 익혀 무림의 고수가 되고 싶다." }
+            { value: 'money', label: "돈! (초기 자금 +500)" },
+            { value: 'neigong', label: "내공! (초기 내공 10년)" },
+            { value: 'martial_arts', label: "무공! (초기 기초무공 획득)" },
+            { value: 'love', label: "연인! (히로인 중 한명이 소꿉친구로 설정)" },
+            { value: 'fame', label: "명성! (초기 명성 +500)" }
         ]
     },
     {
