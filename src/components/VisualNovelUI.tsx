@@ -1532,10 +1532,21 @@ export default function VisualNovelUI() {
                     martial_arts: PRICING_RATES[MODEL_CONFIG.LOGIC] // Uses same model as Logic usually
                 };
 
+                // Model Name Mappings for Logging
+                const modelNameMap: Record<string, string> = {
+                    router: MODEL_CONFIG.ROUTER,
+                    preLogic: MODEL_CONFIG.PRE_LOGIC,
+                    postLogic: MODEL_CONFIG.LOGIC,
+                    story: result.usedModel || MODEL_CONFIG.STORY,
+                    summary: MODEL_CONFIG.SUMMARY || 'gemini-2.5-flash',
+                    martial_arts: MODEL_CONFIG.LOGIC
+                };
+
                 Object.entries(allUsage).forEach(([step, usage]: [string, any]) => {
                     if (!usage) return;
 
                     const rate = pricingMap[step] || PRICING_RATES[MODEL_CONFIG.LOGIC];
+                    const modelName = modelNameMap[step] || 'unknown';
 
                     const cached = (usage as any).cachedContentTokenCount || 0;
                     const input = usage.promptTokenCount - cached;
@@ -1550,7 +1561,7 @@ export default function VisualNovelUI() {
                     grandTotalCost += stepCost;
                     if (cached > 0) cacheHitCount++;
 
-                    console.log(`[Cost] ${step}: Input ${input}, Cached ${cached}, Output ${output}, Cost $${stepCost.toFixed(6)}`);
+                    console.log(`[Cost] ${step} (${modelName}): Input ${input}, Cached ${cached}, Output ${output}, Cost $${stepCost.toFixed(6)}`);
                 });
 
                 storyCost = grandTotalCost; // Update Main Cost Variable
@@ -3665,7 +3676,7 @@ Instructions:
                                                 // [CRITICAL] RESET ALL PERSISTENT DATA FOR NEW GAME
                                                 const newStats = {
                                                     ...useGameStore.getState().playerStats,
-                                                    skills: [],        // Clear Skills
+                                                    skills: [] as string[],        // Clear Skills
                                                     inventory: [],     // Clear Inventory
                                                     relationships: {}, // Clear Relationships
                                                     fame: 0,           // Reset Fame
