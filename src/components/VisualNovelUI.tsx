@@ -1718,6 +1718,12 @@ export default function VisualNovelUI() {
                     mp: useGameStore.getState().playerStats.mp,
                     neigong: useGameStore.getState().playerStats.neigong,
                     agent_router: routerOut.intent, // [Log] Agent Intent
+
+                    // [Log] PreLogic Judgment
+                    pre_logic_score: preLogic?.plausibility_score,
+                    pre_logic_analysis: preLogic?.judgment_analysis,
+                    pre_logic_guide: preLogic?.narrative_guide,
+
                     scenario_summary: useGameStore.getState().scenarioSummary,
                     memories: useGameStore.getState().activeCharacters.reduce((acc: any, charName: string) => {
                         const cData = useGameStore.getState().characterData[charName] as any;
@@ -4000,10 +4006,61 @@ Instructions:
                                         let segments = parseScript(msg.text);
                                         // Filter future segments if this is the active message
                                         if (idx === arr.length - 1 && msg.role === 'model') {
-                                            const queueLength = useGameStore.getState().scriptQueue.length;
-                                            if (queueLength > 0) {
-                                                const visibleCount = Math.max(0, segments.length - queueLength);
-                                                segments = segments.slice(0, visibleCount);
+                                            const queue = useGameStore.getState().scriptQueue;
+
+                                            // [Fix 4.0] Symmetric Character-based Synchronization
+                                            // We must apply the EXACT SAME filtering to both Queue and History
+                                            // to ensure we compare apples to apples (Visible Text vs Visible Text).
+                                            // Non-displayed types (background, bgm, command, choice) must be ignored in counts.
+
+                                            const isVisibleType = (type: string) =>
+                                                ['dialogue', 'narration', 'system_popup'].includes(type);
+
+                                            // 1. Calculate text length remaining in Queue (Visible Only)
+                                            const queueTextLen = queue
+                                                .filter(s => isVisibleType(s.type))
+                                                .reduce((sum, s) => sum + s.content.length, 0);
+
+                                            if (queueTextLen > 0) {
+                                                const newSegments = [];
+
+                                                // 2. Calculate Total Visible History Length
+                                                const totalHistLen = segments
+                                                    .filter(s => isVisibleType(s.type))
+                                                    .reduce((sum, s) => sum + (s.content?.length || 0), 0);
+
+                                                const targetVisibleLen = Math.max(0, totalHistLen - queueTextLen);
+
+                                                let currentVisible = 0;
+                                                for (const seg of segments) {
+                                                    // If non-visible type, keep it (it's hidden by renderer anyway, or manages state)
+                                                    // but DO NOT increment visible count.
+                                                    if (!isVisibleType(seg.type)) {
+                                                        newSegments.push(seg);
+                                                        continue;
+                                                    }
+
+                                                    const segLen = seg.content?.length || 0;
+
+                                                    if (currentVisible + segLen <= targetVisibleLen) {
+                                                        // Fully visible
+                                                        newSegments.push(seg);
+                                                        currentVisible += segLen;
+                                                    } else {
+                                                        // Partial or Hidden
+                                                        const remainingAllowed = targetVisibleLen - currentVisible;
+                                                        if (remainingAllowed > 0 && seg.content) {
+                                                            newSegments.push({
+                                                                ...seg,
+                                                                content: seg.content.slice(0, remainingAllowed)
+                                                            });
+                                                            currentVisible += remainingAllowed;
+                                                        }
+                                                        // Stop processing further segments (they are hidden)
+                                                        break;
+                                                    }
+                                                }
+                                                segments = newSegments;
                                             }
                                         }
                                         // [Rewind Logic]

@@ -30,7 +30,8 @@ export class AgentCasting {
     static async analyze(
         gameState: GameState,
         summary: string,
-        userInput: string = ""
+        userInput: string = "",
+        playerRealm: string = "삼류" // [NEW] Player Realm for Gating
     ): Promise<CastingCandidate[]> {
         const currentPhase = gameState.phase || 1;
         // Clean location: remove specific details if needed, but for now use raw string matching
@@ -49,14 +50,29 @@ export class AgentCasting {
         const allCharacters = { ...characters_main_typed, ...characters_supporting_typed };
         const candidates: CastingCandidate[] = [];
 
+        // [Helper] Rank Value Mapper
+        const getRankValue = (rankStr: string): number => {
+            if (!rankStr) return 0;
+            if (rankStr.includes('현경') || rankStr.includes('신화')) return 7;
+            if (rankStr.includes('화경') || rankStr.includes('탈각')) return 6;
+            if (rankStr.includes('초절정')) return 5;
+            if (rankStr.includes('절정')) return 4;
+            if (rankStr.includes('일류')) return 3;
+            if (rankStr.includes('이류')) return 2;
+            if (rankStr.includes('삼류')) return 1;
+            return 0; // Unranked/Civilian
+        };
+
+        const playerRankVal = getRankValue(playerRealm);
+
         console.log(`[AgentCasting] Analyzing for Phase: ${currentPhase}, Location: ${specificLocation}`);
-        console.log(`[AgentCasting] User Input: "${userInput}"`);
+        console.log(`[AgentCasting] User Input: "${userInput}", Player Realm: ${playerRealm}(${playerRankVal})`);
         console.log(`[AgentCasting] Active Characters: ${Array.from(activeIds).join(', ')}`);
 
         let countSkippedActive = 0;
         let countSkippedLifecycle = 0;
         let countSkippedRegion = 0;
-        // let countPassed = 0; // Not strictly needed, use candidates.length
+        let countPenalizedRank = 0;
 
         for (const [id, char] of Object.entries(allCharacters)) {
             // 1. Filter: Already Active
@@ -167,6 +183,41 @@ export class AgentCasting {
                 score *= this.LIFECYCLE_PENALTY;
             }
 
+            // [NEW] 등급 기반 필터링 (Rank Gating - Soft Filter)
+            // 목적: 플레이어보다 압도적으로 강한 적(고수)이 초반에 무분별하게 등장하는 것을 방지합니다.
+
+            // [Fix] 아군/지인 면제 (만약 관계가 있거나 아군이라면 등급에 상관없이 등장 허용)
+            // 관계가 '존재'하기만 하면(적대 관계라도 스토리에 중요할 수 있으므로) 우선 허용합니다. (단, 랜덤 인카운터 제외는 별도 고려 가능하나 현재는 관계 우선)
+            const hasRelationship = char.인간관계 && Object.keys(char.인간관계).some(relId => activeIds.has(relId) || relId === 'player');
+
+            if (!isUserMentioned && !isContextMentioned && !hasRelationship) {
+                // 유저 언급이나 맥락상 등장이 아니고, 관계도 없는 '완전 무작위' 등장일 때만 필터링합니다.
+
+                // 등급 추출 (Extract Rank)
+                const charRankStr = cAny.강함?.['등급'] || cAny.profile?.['등급'] || "Unknown";
+                const charRankVal = getRankValue(charRankStr);
+
+                // 등급 차이 계산 (상대 - 플레이어)
+                // 예: 상대가 1류(3)이고 플레이어가 3류(1)이면 차이는 2
+                const rankDiff = charRankVal - playerRankVal;
+
+                if (rankDiff >= 2) {
+                    // 격차 심각 (예: 상급자/절정 고수가 하수에게 등장)
+                    // 초보자 학살(Bullying)을 방지하기 위해 출현 점수에 0.1배 패널티
+                    score *= 0.1;
+                    reasons.push(`Rank Gap[${charRankStr}] (x0.1)`);
+                    countPenalizedRank++;
+                } else if (rankDiff === 1) {
+                    // 격차 보통 (예: 2류 고수가 3류에게 등장)
+                    // 도전적인 난이도이나 억까는 아니므로 0.5배 패널티 (적당히 덜 나오게)
+                    score *= 0.5;
+                    reasons.push(`High Rank[${charRankStr}] (x0.5)`);
+                    countPenalizedRank++;
+                }
+                // 동급이거나 유저보다 약하면 패널티 없음
+            }
+
+
             // Tag Matching
             if (char.system_logic?.tags) {
                 const summaryLower = summary.toLowerCase();
@@ -203,7 +254,7 @@ export class AgentCasting {
 
         // Log Stats when no candidates found (or even when found for debug)
         if (candidates.length === 0) {
-            console.log(`[Casting(Debug)] Skipped - Active: ${countSkippedActive}, Lifecycle: ${countSkippedLifecycle}, Region: ${countSkippedRegion}`);
+            console.log(`[Casting(Debug)] Skipped - Active: ${countSkippedActive}, Lifecycle: ${countSkippedLifecycle}, Region: ${countSkippedRegion}, Rank: ${countPenalizedRank}`);
         }
 
         // Sort by score descending

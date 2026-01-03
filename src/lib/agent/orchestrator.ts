@@ -56,9 +56,10 @@ export class AgentOrchestrator {
         const lastTurnSummary = gameState.lastTurnSummary || ""; // [NEW] Context
 
         // [Step 1] Router & Casting (Parallel Execution)
+        const playerRealm = gameState.playerStats?.realm || gameState.playerRealm || "삼류";
         const [routerOut, allCastingCandidates] = await Promise.all([
             AgentRouter.analyze(history, lastContext, activeCharacterNames, lastTurnSummary),
-            AgentCasting.analyze(gameState, lastTurnSummary, userInput)
+            AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerRealm)
         ]);
 
         // Filter valid suggestions for Retriever (Score >= 1.0 is already filtered in Casting, but we take top 10)

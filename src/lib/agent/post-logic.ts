@@ -84,6 +84,11 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - "resolved_injuries": ["Right Arm Fracture"]
     - "new_injuries": ["Right Arm Permanent Disability"]
 - **New Injury**: If a new injury occurs implicit in the narrative (not combat), add it to 'new_injuries'.
+- **Natural Recovery (Time/Rest)**:
+  - If the narrative implies **Time Passing** (Sleep, Travel, Meditation) or **Resting** in a safe place:
+  - CHECK for "Minor Injuries" in 'active_injuries' (e.g., "Bruise", "Scratch", "Muscle Pain", "Minor Cut", "타박상", "찰과상", "근육통").
+  - **ACTION**: Add them to 'resolved_injuries' AUTOMATICALLY.
+  - **Constraint**: Do NOT naturally heal severe injuries (Fractures, Internal Injuries, Poison) without explicit medical treatment or items.
 
 [Personality Stats Guidelines]
 - Personality Stats (-100 to 100):

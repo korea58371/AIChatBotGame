@@ -202,6 +202,10 @@ export class LoreConverter {
                     str += `- **Key Figures**: ${figures}\n`;
                 }
 
+                if (f.등장히로인 && Array.isArray(f.등장히로인) && f.등장히로인.length > 0) {
+                    str += `- **Heroines**: ${f.등장히로인.join(', ')}\n`;
+                }
+
                 if (f.주요무공) str += `- **Arts**: ${f.주요무공}\n`;
                 str += "\n";
             });

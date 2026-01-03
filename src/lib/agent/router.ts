@@ -64,17 +64,13 @@ Output: {"type": "system", "intent": "Check Status", "keywords": ["Status Window
         }
 
         const genAI = new GoogleGenerativeAI(this.apiKey);
-        const model = genAI.getGenerativeModel({
-            model: MODEL_CONFIG.ROUTER,
-            generationConfig: { responseMimeType: "application/json" }
-        });
-
         const userMessage = messages[messages.length - 1]?.text || "";
 
-        // 경량화된 프롬프트 구성
-        const prompt = `
-${this.ROUTER_PROMPT}
+        // [OPTIMIZATION] System Instruction for Caching
+        const systemInstruction = this.ROUTER_PROMPT;
 
+        // 경량화된 동적 프롬프트 구성 (User Prompt)
+        const prompt = `
 [Current Context]
 Active Characters (Visible): ${activeCharacterNames.join(', ') || "None"}
 Last Turn Summary: "${lastTurnSummary || "None (Infer from history)"}"
@@ -83,6 +79,12 @@ User Input: "${userMessage}"
 
 Analyze the User Input:
 `;
+
+        const model = genAI.getGenerativeModel({
+            model: MODEL_CONFIG.ROUTER,
+            generationConfig: { responseMimeType: "application/json" },
+            systemInstruction: systemInstruction // [NEW] Use Static System Instruction
+        });
 
         try {
             const result = await model.generateContent(prompt);

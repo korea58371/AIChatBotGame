@@ -115,7 +115,10 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
             return `${charBasePath}/${charId}/${targetFilename}.png`;
         }
 
-        return '';
+        // [Hotfix] Aggressive Fallback
+        // If CheolU exists in Character Map but 'CheolU_Default' is not in availableImages (Sync lag),
+        // we should still try to return the path rather than failing silently.
+        return `${charBasePath}/${charId}/${defaultFilename}.png`;
     }
 
     // C. 엑스트라 캐릭터 확인

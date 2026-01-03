@@ -339,8 +339,7 @@ Strength: ${strengthInfo}
         // 5. [내러티브 시스템 가이드 주입]
         // 신체 상태(HP), 텐션, 목표 정보를 텍스트로 변환
         const physicalGuide = this.getPhysicalStateGuide(gameState.playerStats);
-        const tensionGuide = this.getTensionGuide(gameState.tensionLevel || 0);
-
+        const tensionGuide = this.getTensionGuide(gameState.tensionLevel || 0, gameState.playerStats);
         const goalsGuide = this.getGoalsGuide(gameState.goals || []);
         const finalGoalGuide = this.getFinalGoalGuide(gameState.playerStats);
 
@@ -387,8 +386,6 @@ Last Turn: "${lastTurnSummary}"
 Current Context: "${retrievedContext}"
 [Player Capability]
 ${PromptManager.getPlayerContext(gameState)} 
-[Player Capability]
-${PromptManager.getPlayerContext(gameState)} 
 // Includes Realm, Martial Arts, Stats for accurate judgement
 
 [Character Bonuses]
@@ -397,16 +394,22 @@ ${finalGoalGuide}
 [User Input]
 "${userInput}"
 
-[Execution Order]
+[Execution Order] (판정 실행 순서)
 1. Analyze User Input against [System Rules] (Anti-God Mode, Wuxia Reality Check).
+   (유저 입력을 시스템 규칙/현실성 체크와 대조하여 분석하십시오.)
 2. Check [Current State] and [Player Capability].
+   (현재 상태와 플레이어의 능력치를 확인하십시오.)
 3. Determine Outcome (Success/Failure) and Generate "Narrative Guide".
+   (성공/실패 여부를 결정하고, 스토리 및 서술 가이드를 생성하십시오.)
 4. Set "mood_override" if the atmosphere changes heavily.
+   (분위기가 급격히 변하는 경우 무드 오버라이드를 설정하십시오.)
 
-[Mood Override Guide]
+[Mood Override Guide] (분위기 전환 가이드)
 - If your Narrative Guide shifts the atmosphere (e.g. Fight ends -> Peace, or Surprise Attack -> Crisis), you MUST set "mood_override".
+  (만약 당신의 가이드가 분위기를 바꾼다면(예: 전투 종료->평화, 기습->위기), 반드시 "mood_override"를 설정해야 합니다.)
 - Options: 'daily' (Peaceful), 'tension' (Suspense/Danger), 'combat' (Active Fight), 'romance' (Intimate).
 - Example: If outputting a "Peaceful" guide, set "mood_override": "daily". This prevents the Story Model from hallucinating enemies due to previous tension.
+  (예시: "평화로운" 가이드를 낼 때는 "daily"로 설정하십시오. 이는 스토리 모델이 이전의 긴장감 때문에 적을 계속 등장시키는 환각(Hallucination)을 방지합니다.)
 `;
 
         try {
@@ -471,6 +474,23 @@ ${finalGoalGuide}
         if (fatigue > 90) guides.push("- Fatigue Critical: Player is exhausted. Move slow, vision blurs, high chance of failure.");
         else if (fatigue > 70) guides.push("- Fatigue High: Player is tired and panting.");
 
+
+        // [New] Injury Guidance (부상 가이드)
+        const activeInjuries = stats.active_injuries || [];
+        if (activeInjuries.length > 0) {
+            guides.push(`\n[INJURY STATUS]: Player has active injuries: ${JSON.stringify(activeInjuries)}`);
+            guides.push("- REQUIREMENT: If the user rests, sleeps, or seeks treatment, explicitly describe the healing process and relief.");
+            guides.push("- REQUIREMENT: If the user ignores pain and exerts force, describe the worsening condition.");
+
+            // Minor injury passive healing hint
+            const hasMinor = activeInjuries.some((inj: string) =>
+                inj.includes("타박상") || inj.includes("찰과상") || inj.includes("근육통") || inj.includes("Bruise") || inj.includes("Scratch")
+            );
+            if (hasMinor) {
+                guides.push("- HINT: Minor injuries (Bruises/Scratches) can heal naturally with 'Time Passing' or 'Rest'.");
+            }
+        }
+
         return guides.join("\n") || "Normal Condition.";
     }
 
@@ -479,13 +499,39 @@ ${finalGoalGuide}
      * 현재 텐션 수치(-100 ~ 100)에 따라 내러티브 분위기를 정의합니다.
      * 음수일 경우 '절대적인 평화'를 보장합니다.
      */
-    private static getTensionGuide(tension: number): string {
-        // Tension: -100 (Peace Guaranteed) -> +100 (Climax)
-        if (tension < 0) return `Tension Negative(${tension}): PEACE BUFFER. The crisis has passed. Absolute safety. NO random enemies or ambushes allowed. Focus on recovery, romance, or humor.`;
-        if (tension >= 100) return `Tension MAX(${tension}): CLIMAX. A boss fight or life-or-death crisis is imminent/active. No casual banter.`;
-        if (tension >= 80) return `Tension High(${tension}): Serious Danger. Enemies are abundant. Atmosphere is heavy.`;
-        if (tension >= 50) return `Tension Moderate(${tension}): Alert. Passive danger increases. Suspicion rises.`;
-        if (tension >= 20) return `Tension Low(${tension}): Minor signs of trouble, but mostly calm.`;
+    private static getTensionGuide(tension: number, stats: any = null): string {
+        // [난이도 밸런싱] 저레벨 플레이어를 위한 긴장도 상한선(Cap) 적용
+        // 플레이어가 '삼류' 등급(약함)일 때, 긴장도 제한을 걸어 스토리 모델이 '세계를 멸망시킬 위기'를 환각하지 않도록 방지합니다.
+        let tensionCap = 100;
+        let rankLabel = "Unknown";
+
+        if (stats) {
+            const rankStr = stats.realm || "삼류";
+            rankLabel = rankStr;
+            if (rankStr.includes("삼류")) tensionCap = 50; // 최대 '경계' 수준 (Max Moderate)
+            else if (rankStr.includes("이류")) tensionCap = 80; // 최대 '높음' 수준 (Max High)
+        }
+
+        // 제한 적용 (Cap Application)
+        let effectiveTension = tension;
+        if (tension > tensionCap) {
+            effectiveTension = tensionCap;
+            // 실제 게임 상태(gameState)의 수치는 변경하지 않고, AI에게 전달하는 내러티브 해석만 제한합니다.
+        }
+
+        // Tension Guide: -100 (평화 보장) -> +100 (절정/위기)
+        if (effectiveTension < 0) return `Tension Negative(${tension}): PEACE BUFFER. The crisis has passed. Absolute safety. NO random enemies or ambushes allowed. Focus on recovery, romance, or humor.`;
+
+        if (effectiveTension >= 100) return `Tension MAX(${tension}): CLIMAX. A boss fight or life-or-death crisis is imminent/active. No casual banter.`;
+        if (effectiveTension >= 80) return `Tension High(${tension}): Serious Danger. Enemies are abundant. Atmosphere is heavy.`;
+
+        // 제한된 상태에 대한 맞춤형 메시지 (Custom message for capped state)
+        if (stats && tension > tensionCap) {
+            return `Tension Moderate(${tension} -> Capped at ${tensionCap} for ${rankLabel}): Alert. Danger is present, but manageable for a novice. Local thugs or minor beasts only. NO ASSASSINS/MASTERS.`;
+        }
+
+        if (effectiveTension >= 50) return `Tension Moderate(${tension}): Alert. Passive danger increases. Suspicion rises.`;
+        if (effectiveTension >= 20) return `Tension Low(${tension}): Minor signs of trouble, but mostly calm.`;
         return `Tension Zero(${tension}): Peace. Standard peaceful journey. Enjoy the scenery.`;
     }
 

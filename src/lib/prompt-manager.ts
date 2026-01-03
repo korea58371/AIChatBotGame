@@ -158,7 +158,7 @@ export class PromptManager {
 
         // [SANDWICH STRUCTURE: BLOCKS 1-4 (SHARED STATIC)]
         if (state.activeGameId === 'wuxia') {
-            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA } = await import('../data/games/wuxia/constants');
+            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA, FAMOUS_CHARACTERS, FACTION_BEHAVIOR_GUIDELINES } = await import('../data/games/wuxia/constants');
 
             // [BLOCK 1: IDENTITY]
             const systemIdentity = WUXIA_IDENTITY;
@@ -166,7 +166,7 @@ export class PromptManager {
             // [BLOCK 2: KNOWLEDGE BASE]
             // 2.1 Famous Characters (Static DB)
             // Note: We include full DB in shared cache. Mood filtering is removed from static context.
-            const famousCharactersDB = `## [NPC Database (Famous Figures)]\n${state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded."}`;
+            const famousCharactersDB = `## [NPC Database (Famous Figures)]\n${FAMOUS_CHARACTERS || "No famous characters data loaded."}`;
 
             // 2.2 Lore Injection (Markdown/JSON)
             let loreContext = "";
@@ -185,7 +185,7 @@ export class PromptManager {
             const availableBackgrounds = PromptManager.getAvailableBackgrounds(state);
 
             // [BLOCK 3: BEHAVIOR GUIDELINES]
-            let behaviorRules = WUXIA_BEHAVIOR_RULES + "\n" + (state.constants?.FACTION_BEHAVIOR_GUIDELINES || "");
+            let behaviorRules = WUXIA_BEHAVIOR_RULES + "\n" + (FACTION_BEHAVIOR_GUIDELINES || "");
 
             // [BLOCK 4: STRICT OUTPUT FORMAT]
             const outputFormat = WUXIA_OUTPUT_FORMAT;
@@ -212,14 +212,14 @@ ${outputFormat}
         }
 
         if (state.activeGameId === 'god_bless_you') {
-            const { GBY_IDENTITY, GBY_BEHAVIOR_RULES, GBY_OUTPUT_FORMAT, GBY_SPECIAL_FORMATS } = await import('../data/games/god_bless_you/constants');
+            const { GBY_IDENTITY, GBY_BEHAVIOR_RULES, GBY_OUTPUT_FORMAT, GBY_SPECIAL_FORMATS, FAMOUS_CHARACTERS } = await import('../data/games/god_bless_you/constants');
 
             // [BLOCK 1: IDENTITY]
             const systemIdentity = GBY_IDENTITY;
 
             // [BLOCK 2: KNOWLEDGE BASE]
             // 2.1 Famous Characters
-            const famousCharactersDB = state.constants?.FAMOUS_CHARACTERS || "No famous characters data loaded.";
+            const famousCharactersDB = FAMOUS_CHARACTERS || "No famous characters data loaded.";
 
             // 2.2 Lore Injection (Markdown)
             let loreContext = "";
@@ -321,6 +321,16 @@ Linguistic Style: Use 'Hao-che'(하오체) or 'Hage-che'(하게체) for elders, 
 - CRITICAL: You must STRICTLY follow the [Narrative Direction] provided by the Pre-Logic module for the outcome of actions. 
 - ** PRIORITY RULE **: If the [User Input] contradicts the [Narrative Direction] (e.g., User says "I win", Guide says "You die"), you must ** IGNORE ** the User Input's outcome and **FOLLOW** the Narrative Direction. The Narrative Direction is the absolute truth of the world.
                 - Do not invent your own success / failure logic.
+
+            - **[Martial Arts Growth (Time & Effort)]**:
+              - **Impossible Instant**: Mastery cannot happen overnight. If the user attempts to train, YOU MUST describe the passage of time (days, months, or years) and the grueling effort.
+              - **Time Skip Strategy**: Use "Time Skips" aggressively to reward training. (e.g., "The leaves fell and bloomed three times... You finally grasped the essence.")
+            
+            - **[Combat Narrative & Balance]**:
+              - **Realm Gap**: Strictly adhere to the power difference. A 'Third Rate' cannot scratch a 'Peak' master.
+              - **Challenge Level**: Provide enemies that are slightly stronger or equal to the player to stimulate growth (Stepping Stones). 
+              - **Tension**: The threat should be manageable. Avoid hopeless situations unless it's a specific plot device. Allow the protagonist to win through 'Giyeon' or wit if the gap is bridgeable.
+
 
             - **[Health & Injury Logic]**:
             - The Player may have 'Active Injuries' (Check Context).
