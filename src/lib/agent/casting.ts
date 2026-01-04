@@ -65,7 +65,18 @@ export class AgentCasting {
 
         const playerRankVal = getRankValue(playerRealm);
 
-        console.log(`[AgentCasting] Analyzing for Phase: ${currentPhase}, Location: ${specificLocation}`);
+        // [Phase Synchronization]
+        // 시스템 프롬프트(system.ts)와 동일하게, 플레이어 경지에 따라 Phase를 보정합니다.
+        // 일류(3) 이상 -> Phase 2 (강호 출두)
+        // 화경(6) 이상 -> Phase 3 (정점)
+        let effectivePhase = currentPhase;
+        if (playerRankVal >= 6) {
+            effectivePhase = Math.max(effectivePhase, 3);
+        } else if (playerRankVal >= 3) {
+            effectivePhase = Math.max(effectivePhase, 2);
+        }
+
+        console.log(`[AgentCasting] Analyzing for Phase: ${effectivePhase} (Base: ${currentPhase}, Rank: ${playerRealm}), Location: ${specificLocation}`);
         console.log(`[AgentCasting] User Input: "${userInput}", Player Realm: ${playerRealm}(${playerRankVal})`);
         console.log(`[AgentCasting] Active Characters: ${Array.from(activeIds).join(', ')}`);
 
@@ -115,10 +126,10 @@ export class AgentCasting {
             let isLifecycleMatch = true;
             if (char.system_logic) {
                 const { start, end } = char.system_logic.lifecycle;
-                if (currentPhase < start || currentPhase > end) {
+                if (effectivePhase < start || effectivePhase > end) {
                     isLifecycleMatch = false;
                 }
-            } else if (char.appearance_phase && currentPhase < char.appearance_phase) {
+            } else if (char.appearance_phase && effectivePhase < char.appearance_phase) {
                 isLifecycleMatch = false;
             }
 

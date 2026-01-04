@@ -33,8 +33,35 @@ export async function serverAgentTurn(
             if (data.lore) gameState.lore = data.lore;
             if (data.backgroundMappings) gameState.backgroundMappings = data.backgroundMappings;
             if (data.extraMap) gameState.extraMap = data.extraMap;
-            // [Fix] Rehydrate Character Data for PromptManager
-            if (data.characters) gameState.characterData = data.characters;
+            if (data.characters) {
+                // [Fix] Smart Merge: Don't overwrite dynamic memories with static data
+                if (!gameState.characterData || Object.keys(gameState.characterData).length === 0) {
+                    gameState.characterData = data.characters;
+                } else {
+                    // Merge static definition with dynamic state
+                    Object.keys(data.characters).forEach(key => {
+                        const staticChar = data.characters[key];
+                        const dynamicChar = gameState.characterData[key];
+
+                        if (dynamicChar) {
+                            gameState.characterData[key] = {
+                                ...staticChar, // Base: Static Data
+                                ...dynamicChar, // Overlay: Dynamic State
+                                // Explicitly ensure arrays are preserved from Dynamic
+                                memories: dynamicChar.memories || staticChar.memories || [],
+                                discoveredSecrets: dynamicChar.discoveredSecrets || staticChar.discoveredSecrets || [],
+                                // Merge relationships? Dynamic > Static
+                                relationships: { ...staticChar.relationships, ...dynamicChar.relationships },
+                                // Preserve ID
+                                id: dynamicChar.id || staticChar.id || key
+                            };
+                        } else {
+                            // Missing in client (New update?), add it
+                            gameState.characterData[key] = staticChar;
+                        }
+                    });
+                }
+            }
         } catch (e) {
             console.error(`[ServerAction] 재수화 실패:`, e);
         }
