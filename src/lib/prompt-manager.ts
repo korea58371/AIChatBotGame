@@ -2,6 +2,9 @@ import { getMoodPrompts, MoodType } from '../data/prompts/moods';
 import { RelationshipManager } from './relationship-manager';
 import { LoreConverter } from './lore-converter';
 import { GameState } from './store';
+import { LEVEL_TO_REALM_MAP, FAME_TITLES } from '../data/games/wuxia/constants';
+import { LEVEL_TO_RANK_MAP } from '../data/games/god_bless_you/constants';
+import { translations } from '../data/translations';
 
 interface SpawnRules {
     locations?: string[];
@@ -158,17 +161,13 @@ export class PromptManager {
 
         // [SANDWICH STRUCTURE: BLOCKS 1-4 (SHARED STATIC)]
         if (state.activeGameId === 'wuxia') {
-            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA, FAMOUS_CHARACTERS, FACTION_BEHAVIOR_GUIDELINES } = await import('../data/games/wuxia/constants');
+            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA } = await import('../data/games/wuxia/constants');
 
             // [BLOCK 1: IDENTITY]
             const systemIdentity = WUXIA_IDENTITY;
 
             // [BLOCK 2: KNOWLEDGE BASE]
-            // 2.1 Famous Characters (Static DB)
-            // Note: We include full DB in shared cache. Mood filtering is removed from static context.
-            const famousCharactersDB = `## [NPC Database (Famous Figures)]\n${FAMOUS_CHARACTERS || "No famous characters data loaded."}`;
-
-            // 2.2 Lore Injection (Markdown/JSON)
+            // 2.1 Lore Injection (Markdown/JSON) - Now includes Factions via LoreConverter
             let loreContext = "";
             if (state.lore) {
                 try {
@@ -181,11 +180,11 @@ export class PromptManager {
                 }
             }
 
-            // 2.3 Available Backgrounds (Reference)
+            // 2.2 Available Backgrounds (Reference)
             const availableBackgrounds = PromptManager.getAvailableBackgrounds(state);
 
             // [BLOCK 3: BEHAVIOR GUIDELINES]
-            let behaviorRules = WUXIA_BEHAVIOR_RULES + "\n" + (FACTION_BEHAVIOR_GUIDELINES || "");
+            let behaviorRules = WUXIA_BEHAVIOR_RULES;
 
             // [BLOCK 4: STRICT OUTPUT FORMAT]
             const outputFormat = WUXIA_OUTPUT_FORMAT;
@@ -195,8 +194,6 @@ export class PromptManager {
 ${systemIdentity}
 
 ${loreContext}
-
-${famousCharactersDB}
 
 ## [Available Backgrounds]
 ${availableBackgrounds}
@@ -294,10 +291,22 @@ ${outputFormat}
         // [DYNAMIC BLOCK 5 GENERATION]
         let prompt = "";
 
-        // [FIX] Server-Side Template Selection (No Function Passing)
-        if (state.activeGameId === 'god_bless_you') {
-            // [GBY Template Stub - Replace with actual import if needed or simple logic]
-            prompt = `
+        // [PRIORITY] Use rehydrated/injected template function if available
+        if (state.getSystemPromptTemplate && typeof state.getSystemPromptTemplate === 'function') {
+            console.log(`[PromptManager] Using Dynamic System Prompt Template for ${state.activeGameId}`);
+            try {
+                prompt = state.getSystemPromptTemplate(state, language);
+            } catch (e) {
+                console.error(`[PromptManager] Failed to execute getSystemPromptTemplate:`, e);
+                // Fallback will occur below
+            }
+        }
+
+        // Fallback Logic
+        if (!prompt) {
+            if (state.activeGameId === 'god_bless_you') {
+                // [GBY Template Stub - Replace with actual import if needed or simple logic]
+                prompt = `
 You are the AI Game Master for the 'God Bless You'(Modern Fantasy) universe.
 Core Identity: Semi - Dystopian Modern Korea with Hunters and Gates.
                 Tone: Cynical, Realistic, Urban Noir.
@@ -306,9 +315,9 @@ Core Identity: Semi - Dystopian Modern Korea with Hunters and Gates.
 - Gates appear randomly.
 - Use explicit visual descriptions.
 `;
-        } else {
-            // [Default/Wuxia Template]
-            prompt = `
+            } else {
+                // [Default/Wuxia Template]
+                prompt = `
 You are the AI Game Master for the 'Cheonha Jeil'(Wuxia) universe.
 Core Identity: Authentic Orthodox Wuxia (Jeongtong Murim) & Heroic Growth Saga.
                 Tone: Chivalrous, Witty, and Heroic (Korean Wuxia Novel Style).
@@ -320,7 +329,10 @@ Linguistic Style: Use 'Hao-che'(하오체) or 'Hage-che'(하게체) for elders, 
 - **[PROTAGONIST CORRECTION]**: The Player is the Main Character (Protagonist). Generally favor the protagonist. Provide 'Giyeon'(Miraculous Encounters) or lucky breaks in desperate situations. Avoid meaningless deaths. Support their path to becoming the "World's Best".
 - CRITICAL: You must STRICTLY follow the [Narrative Direction] provided by the Pre-Logic module for the outcome of actions. 
 - ** PRIORITY RULE **: If the [User Input] contradicts the [Narrative Direction] (e.g., User says "I win", Guide says "You die"), you must ** IGNORE ** the User Input's outcome and **FOLLOW** the Narrative Direction. The Narrative Direction is the absolute truth of the world.
-                - Do not invent your own success / failure logic.
+- **[ANTI-RETCON]**: If the Narrative Direction says actions FAIL or are DENIED, describe the **ATTEMPT FAILING IMMEDIATELY**.
+  - **CORRECT**: "You try to attack, but he blocks it."
+  - **BANNED**: "You attacked him and won... but then you woke up. It was a dream." (NEVER do this).
+  - Do not invent your own success / failure logic.
 
             - **[Martial Arts Growth (Time & Effort)]**:
               - **Impossible Instant**: Mastery cannot happen overnight. If the user attempts to train, YOU MUST describe the passage of time (days, months, or years) and the grueling effort.
@@ -337,73 +349,73 @@ Linguistic Style: Use 'Hao-che'(하오체) or 'Hage-che'(하게체) for elders, 
             - **HEALING**: If the player visits a doctor, rests effectively, or uses a healing item, **YOU MUST DESCRIBE THE RELIEF AND RECOVERY PROCESS** (e.g., "The bone knits together," "The pain fades").
             - **WORSENING**: If the player acts recklessly with injuries, describe the pain and potential worsening.
 `;
-        }
-
-        // [Character Info Injection]
-        // [Optimized] Rely on state.activeCharacters only. 
-        // AgentRetriever provides the "Context" for new/nearby characters.
-        // This section defines WHO IS PHYSICALLY PRESENT in the scene right now.
-
-        const activeCharIds = new Set((state.activeCharacters || []).filter((id: any) => typeof id === 'string').map((id: string) => id.toLowerCase()));
-
-        // Use the centralized method with ID resolution
-        const activeCharInfo = PromptManager.getActiveCharacterProps(state, Array.from(activeCharIds).sort());
-        prompt = prompt.replace('{{CHARACTER_INFO}}', activeCharInfo);
-
-        // [LOCATION CONTEXT INJECTION] - Antigravity Update (Phase 83)
-        // Prevent generic hallucinations for significant locations (e.g. Medicine King Valley Owner)
-        if (state.worldData?.locations && state.currentLocation) {
-            const currentLocData = state.worldData.locations[state.currentLocation];
-            // Check if it's an object with metadata
-            if (typeof currentLocData === 'object' && (currentLocData as any).metadata) {
-                const meta = (currentLocData as any).metadata;
-                let locContext = `\n\n[Current Location Context] \nLocation: ${state.currentLocation}`;
-
-                if (meta.owner) {
-                    // Try to resolve owner name from character data if available
-                    // We reuse the resolveChar logic inside getActiveCharacterProps, but duplicated here for simplicity or refactor
-                    // For now, simpler fallback:
-                    const ownerKey = meta.owner;
-                    const valMatch = Object.values(state.characterData || {}).find((c: any) => c.id === ownerKey || c.name === ownerKey);
-                    const ownerName = valMatch ? (valMatch as any).name : ownerKey;
-
-                    locContext += `\n- Owner/Ruler: ${ownerName}`;
-                }
-                if (meta.ruler_title) locContext += ` (Title: ${meta.ruler_title})`;
-                if (meta.faction) locContext += `\n- Controlling Faction: ${meta.faction}`;
-
-                // Add explicit instruction
-                locContext += `\n**CRITICAL**: You MUST recognize the Owner/Faction of this location. Do not invent a new leader.`;
-
-                prompt += locContext;
             }
-        }
 
-        // [Mood Injection - DYNAMIC PART ONLY]
-        // Static Mood Guidelines are now in SharedStaticContext (Cached) - MOVED TO HERE
-        // We inject the Mood Guideline DYNAMICALLY here to allow cheap switching.
-        const currentMood = state.currentMood || 'daily';
+            // [Character Info Injection]
+            // [Optimized] Rely on state.activeCharacters only. 
+            // AgentRetriever provides the "Context" for new/nearby characters.
+            // This section defines WHO IS PHYSICALLY PRESENT in the scene right now.
 
-        // [BLOCK 5: DYNAMIC MOOD GUIDELINES]
-        const moodPrompts = getMoodPrompts(state.activeGameId);
-        const moodGuideline = moodPrompts[currentMood] || moodPrompts['daily'];
+            const activeCharIds = new Set((state.activeCharacters || []).filter((id: any) => typeof id === 'string').map((id: string) => id.toLowerCase()));
 
-        // Insert Mood Guideline into the prompt (Replacing placeholder or appending)
-        // Since we removed it from static context, we prepend it to the dynamic part or specific section.
-        // Strategy: We'll prepend it to the [Dynamic Context] section for high visibility.
+            // Use the centralized method with ID resolution
+            const activeCharInfo = PromptManager.getActiveCharacterProps(state, Array.from(activeCharIds).sort(), language);
+            prompt = prompt.replace('{{CHARACTER_INFO}}', activeCharInfo);
 
-        // [Goals Injection]
-        const activeGoals = (state.goals || []).filter((g: any) => g.status === 'ACTIVE');
-        let goalsContext = "";
-        if (activeGoals.length > 0) {
-            goalsContext = `
+            // [LOCATION CONTEXT INJECTION] - Antigravity Update (Phase 83)
+            // Prevent generic hallucinations for significant locations (e.g. Medicine King Valley Owner)
+            if (state.worldData?.locations && state.currentLocation) {
+                const currentLocData = state.worldData.locations[state.currentLocation];
+                // Check if it's an object with metadata
+                if (typeof currentLocData === 'object' && (currentLocData as any).metadata) {
+                    const meta = (currentLocData as any).metadata;
+                    let locContext = `\n\n[Current Location Context] \nLocation: ${state.currentLocation}`;
+
+                    if (meta.owner) {
+                        // Try to resolve owner name from character data if available
+                        // We reuse the resolveChar logic inside getActiveCharacterProps, but duplicated here for simplicity or refactor
+                        // For now, simpler fallback:
+                        const ownerKey = meta.owner;
+                        const valMatch = Object.values(state.characterData || {}).find((c: any) => c.id === ownerKey || c.name === ownerKey);
+                        const ownerName = valMatch ? (valMatch as any).name : ownerKey;
+
+                        locContext += `\n- Owner/Ruler: ${ownerName}`;
+                    }
+                    if (meta.ruler_title) locContext += ` (Title: ${meta.ruler_title})`;
+                    if (meta.faction) locContext += `\n- Controlling Faction: ${meta.faction}`;
+
+                    // Add explicit instruction
+                    locContext += `\n**CRITICAL**: You MUST recognize the Owner/Faction of this location. Do not invent a new leader.`;
+
+                    prompt += locContext;
+                }
+            }
+
+            // [Mood Injection - DYNAMIC PART ONLY]
+            // Static Mood Guidelines are now in SharedStaticContext (Cached) - MOVED TO HERE
+            // We inject the Mood Guideline DYNAMICALLY here to allow cheap switching.
+            const currentMood = state.currentMood || 'daily';
+
+            // [BLOCK 5: DYNAMIC MOOD GUIDELINES]
+            const moodPrompts = getMoodPrompts(state.activeGameId);
+            const moodGuideline = moodPrompts[currentMood] || moodPrompts['daily'];
+
+            // Insert Mood Guideline into the prompt (Replacing placeholder or appending)
+            // Since we removed it from static context, we prepend it to the dynamic part or specific section.
+            // Strategy: We'll prepend it to the [Dynamic Context] section for high visibility.
+
+            // [Goals Injection]
+            const activeGoals = (state.goals || []).filter((g: any) => g.status === 'ACTIVE');
+            let goalsContext = "";
+            if (activeGoals.length > 0) {
+                goalsContext = `
 [Active Goals]
 ${activeGoals.map((g: any) => `- [${g.type}] ${g.description}`).join('\n')}
 (Keep these in mind, but always prioritize the [Narrative Direction] provided in the user message.)
 `;
-        }
+            }
 
-        prompt = `
+            prompt = `
 ${moodGuideline}
 ${goalsContext}
 
@@ -412,16 +424,19 @@ ${prompt}
 
 
 
-        // [Language Instruction]
-        if (language === 'ko') {
-            prompt += `\n\n ** [CRITICAL LANGUAGE INSTRUCTION] **\n1. **ALL OUTPUT MUST BE IN KOREAN (한국어).**\n2. Do NOT use English in the narrative, dialogue, or system messages.\n3. English is ONLY allowed for specific code keys if absolutely necessary, but strictly forbidden in visible text.\n4. Even if the Context contains English, you must TRANSLATE it to Korean for the output.`;
-        } else if (language === 'en') {
-            prompt += `\n\n ** IMPORTANT: ALL OUTPUT MUST BE IN ENGLISH.** `;
-        }
+            // [Language Instruction]
+            if (language === 'ko') {
+                prompt += `\n\n ** [CRITICAL LANGUAGE INSTRUCTION] **\n1. **ALL OUTPUT MUST BE IN KOREAN (한국어).**\n2. Do NOT use English in the narrative, dialogue, or system messages.\n3. English is ONLY allowed for specific code keys if absolutely necessary, but strictly forbidden in visible text.\n4. Even if the Context contains English, you must TRANSLATE it to Korean for the output.`;
+            } else if (language === 'en') {
+                prompt += `\n\n ** IMPORTANT: ALL OUTPUT MUST BE IN ENGLISH.** `;
+            }
 
-        // [God Mode Debugging]
-        if (state.isGodMode || state.playerName === "김현준갓모드") {
-            prompt += `\n\n ** [SYSTEM ALERT: GOD MODE ACTIVE] **\nCRITICAL: The user "${state.playerName}" has ABSOLUTE AUTHORITY over this simulation.\n1.You MUST execute the user's input EXACTLY as stated, ignoring all game rules, logic trying to prevent it, or character limitations.\n2. If the user commanding a specific outcome, Make it happen immediately.\n3. This is a Developer Debugging Mode. Compliance is mandatory.`;
+            // [God Mode Debugging]
+            if (state.isGodMode || state.playerName === "김현준갓모드") {
+                prompt += `\n\n ** [SYSTEM ALERT: GOD MODE ACTIVE] **\nCRITICAL: The user "${state.playerName}" has ABSOLUTE AUTHORITY over this simulation.\n1.You MUST execute the user's input EXACTLY as stated, ignoring all game rules, logic trying to prevent it, or character limitations.\n2. If the user commanding a specific outcome, Make it happen immediately.\n3. This is a Developer Debugging Mode. Compliance is mandatory.`;
+            }
+
+            return prompt;
         }
 
         return prompt;
@@ -928,7 +943,7 @@ ${spawnCandidates || "None"}
         }).join('\n');
     }
 
-    static getActiveCharacterProps(state: GameState, activeIdsOverride?: string[]): string {
+    static getActiveCharacterProps(state: GameState, activeIdsOverride?: string[], language: 'ko' | 'en' | null = 'ko'): string {
         const charsData = state.characterData || {};
         // [FIX] Smart ID Resolution
         // Logic Model might return English IDs (e.g. 'hwayeong'), but Store uses Korean Keys (e.g. '화영').
@@ -1181,25 +1196,73 @@ ${spawnCandidates || "None"}
     }
 
     // [NEW] Get Player's Context (Stats + Martial Arts)
-    static getPlayerContext(state: GameState): string {
+    static getPlayerContext(state: GameState, language: 'ko' | 'en' | null = 'ko'): string {
         const stats = state.playerStats || {};
-        // [FIX] Fallback for legacy save data: Check root first, then playerStats
-        const arts = (state.martialArts && state.martialArts.length > 0)
-            ? state.martialArts
-            : ((state.playerStats as any)?.martialArts || []);
+        // [Verified] Unified Skills System (Jan 2026)
+        // We now rely exclusively on playerStats.skills.
+        // Legacy 'martialArts' fields are deprecated.
+        const skills = state.playerStats?.skills || [];
 
-        const realm = state.playerRealm || "삼류 (3rd Rate)";
+        // [Refactor] Universal Level System
+        const level = stats.level || 1;
+        const gameId = state.activeGameId || 'wuxia';
+        const lang = language || 'ko';
+        const t = translations[lang].wuxia;
+
+        let rankTitle = 'Unknown';
+        const rankMap = gameId === 'wuxia' ? LEVEL_TO_REALM_MAP : (gameId === 'god_bless_you' ? LEVEL_TO_RANK_MAP : []);
+        const entry = rankMap.find((m: any) => level >= m.min && level <= m.max);
+
+        if (entry) {
+            const category = gameId === 'god_bless_you' ? 'ranks' : 'realms';
+            // @ts-ignore
+            const dict = translations[lang][gameId];
+            if ((entry as any).id && dict && dict[category] && dict[category][(entry as any).id]) {
+                // @ts-ignore
+                rankTitle = dict[category][(entry as any).id];
+            } else {
+                rankTitle = (entry as any).title || "Unknown";
+            }
+        } else {
+            // Fallback
+            rankTitle = `Level ${level}`;
+        }
+
+        // Legacy Fallback (Optimization)
+        // If Logic hasn't updated level yet but we have old Legacy Rank, prefer Level but acknowledge mismatch?
+        // Actually, just trust Level.
 
         let context = `### [PLAYER] ${state.playerName || 'Player'}\n`;
-        context += `- Realm: ${realm}\n`;
+        context += `- Level: ${level} (${rankTitle})\n`;
 
         // 1. Stats Summary & Reputation
         if (stats) {
-            // Use destructuring to exclude relationships cleanly
-            const { relationships, fame, fate, ...relevantStats } = stats;
-            context += `- Stats: ${JSON.stringify(relevantStats)}\n`;
-            if (fame !== undefined) context += `- Fame: ${fame} (Titles: ${state.constants?.FAME_TITLES?.[state.playerStats?.fameTitleIndex || 0] || 'Unknown'})\n`;
+            // Use destructuring to exclude relationships and redundant/derived stats
+            const {
+                relationships, fame, fate,
+                level, exp, playerRank, realm, realmProgress, growthStagnation,
+                fameTitleIndex, final_goal, narrative_perspective
+            } = stats as any;
+
+            // [OPTIMIZATION] Raw stats JSON removed to prevent 'meta-gaming' and redundancy.
+            // context += `- Stats: ${JSON.stringify(relevantStats)}\n`;
+
+            let fameTitle = 'Unknown';
+            const fameIdx = state.playerStats?.fameTitleIndex || 0;
+            const titleObj = FAME_TITLES[fameIdx];
+
+            if (titleObj && titleObj.id && t && t.fame && t.fame[titleObj.id as keyof typeof t.fame]) {
+                fameTitle = t.fame[titleObj.id as keyof typeof t.fame];
+            }
+
+            if (fame !== undefined) context += `- Fame: ${fame} (Titles: ${fameTitle})\n`;
             if (fate !== undefined) context += `- Fate: ${fate}\n`;
+
+            // [RESTORED] Personality for PreLogic/Story Consistency
+            if (stats.personality) {
+                context += `- Personality: ${JSON.stringify(stats.personality)}\n`;
+                if (stats.personalitySummary) context += `- Personality Summary: ${stats.personalitySummary}\n`;
+            }
 
             // Current Conditions (Active Injuries/Buffs)
             if (stats.active_injuries && stats.active_injuries.length > 0) {
@@ -1208,11 +1271,12 @@ ${spawnCandidates || "None"}
         }
 
         // 2. Martial Arts (CRITICAL)
-        if (arts.length > 0) {
-            context += `- Martial Arts:\n`;
-            arts.forEach((art: any) => {
-                const proficiency = art.proficiency || 0;
-                context += `  - [${art.name}] (${art.rank || 'Unranked'}) ${proficiency}%: ${art.description || ''}\n`;
+        // 2. Skills / Martial Arts (CRITICAL)
+        if (skills.length > 0) {
+            context += `- Skills / Martial Arts:\n`;
+            skills.forEach((skill: any) => {
+                const proficiency = skill.proficiency || 0;
+                context += `  - [${skill.name}] (${skill.rank || 'Unranked'}) ${proficiency}%: ${skill.description || ''}\n`;
             });
         } else {
             context += `- Martial Arts: No specific arts learned yet.\n`;

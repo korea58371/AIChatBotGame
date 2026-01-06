@@ -255,3 +255,14 @@ export const GBY_SPECIAL_FORMATS = `
 `;
 
 export const GBY_SYSTEM_GUIDE = GBY_OUTPUT_FORMAT;
+
+export const LEVEL_TO_RANK_MAP = [
+   { id: 'rank_f', min: 1, max: 9, title: "F-Rank" },
+   { id: 'rank_e', min: 10, max: 19, title: "E-Rank" },
+   { id: 'rank_d', min: 20, max: 29, title: "D-Rank" },
+   { id: 'rank_c', min: 30, max: 39, title: "C-Rank" },
+   { id: 'rank_b', min: 40, max: 59, title: "B-Rank" },
+   { id: 'rank_a', min: 60, max: 79, title: "A-Rank" },
+   { id: 'rank_s', min: 80, max: 99, title: "S-Rank" },
+   { id: 'rank_ss', min: 100, max: 999, title: "SS-Rank" },
+];

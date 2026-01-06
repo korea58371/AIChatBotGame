@@ -146,10 +146,7 @@ ${perspectiveRule}
 **[진행 단계: 등장인물 출현 규칙]**
 - **현재 단계**: ${phase}단계 (${phaseName})
 - **제약 사항**: ${phaseDescription}
-- **규칙**: 현재 주인공의 단계에 맞지 않는 상위 경지의 인물들은 주로 소문이나 전설, 또는 먼발치에서 관찰하는 형태로만 등장해야 합니다. 타당한 명분(예: 스크립트 된 이벤트) 없이는 그들과 직접적인 상호작용을 하지 마십시오.
-
-# [ACTIVE CHARACTERS]
-{{CHARACTER_INFO}}
+- **규칙**: 현재 주인공의 단계에 맞지 않는 상위 경지의 인물들은 주로 소문이나 전설, 또는 먼발치에서 관찰하는 형태로만 등장해야 합니다. 단, **[Narrative Direction]의 지시나 [Casting Suggestions]에 포함된 인물**이라면 자연스럽게 등장시킬 수 있습니다.
 
 ${directInputConstraints}
 
@@ -170,12 +167,12 @@ ${directInputConstraints}
 
 **[전투 가이드라인]**:
 주인공은 현재 **'${playerRank}'** 경지이다. 
-- **${rankData.name}**의 한계: ${rankData.capability}
+- **${playerRank}**의 한계: ${rankData.capability}
 - 상위 경지와의 싸움은 자살행위이며, 동급이라도 방심하면 즉사한다.
 
-# [SCENARIO & EVENTS]
+# [SCENARIO & SUMMARY]
 - **활성 이벤트**: ${state.currentEvent || "없음"}
-- **현재 시나리오**: ${state.scenarioSummary || "이야기가 계속됩니다."}
+- **전체 줄거리 요약**: ${state.scenarioSummary || "아직 요약된 정보가 없습니다."}
 
 ### [⚡ 중요: 이벤트 - 최우선 실행]
 **위 '활성 이벤트'가 비어있지 않다면, 다른 어떤 맥락보다 최우선으로 해당 내용을 실행하라.**

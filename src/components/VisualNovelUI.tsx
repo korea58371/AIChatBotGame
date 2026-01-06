@@ -3,24 +3,38 @@
 import { useRouter } from 'next/navigation';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useGameStore } from '@/lib/store';
+import { useGameStore, GameState, Skill } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
-import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn, serverGenerateCharacterMemorySummary } from '@/app/actions/game';
+import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn, serverAgentTurnPhase1, serverAgentTurnPhase2, serverGenerateCharacterMemorySummary } from '@/app/actions/game';
 import { getCharacterImage } from '@/lib/image-mapper';
 import { resolveBackground } from '@/lib/background-manager';
 import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
-import { MODEL_CONFIG, PRICING_RATES } from '@/lib/model-config';
+import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/model-config';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { findBestMatch } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping';
-import { FAME_TITLES, FATIGUE_LEVELS } from '@/data/games/wuxia/constants'; // [New] UI Constants
+import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP } from '@/data/games/wuxia/constants'; // [New] UI Constants
+import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants'; // [New] UI Constants
+import wikiData from '@/data/games/wuxia/wiki_data.json'; // [NEW] Wiki Data Import
 
 
 import { submitGameplayLog } from '@/app/actions/log';
+import { deleteAccount } from '@/app/actions/auth';
+import { translations } from '@/data/translations';
+
+// [Refactoring] New Components & Hooks
+import SaveLoadModal from './visual_novel/ui/SaveLoadModal';
+import InventoryModal from './visual_novel/ui/InventoryModal';
+import HistoryModal from './visual_novel/ui/HistoryModal';
+import SystemPopup from './visual_novel/ui/SystemPopup';
+import { useGameInitialization } from './visual_novel/hooks/useGameInitialization';
+import { useSaveLoad } from './visual_novel/hooks/useSaveLoad';
 
 
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User } from 'lucide-react';
+
+
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { EventManager } from '@/lib/event-manager';
@@ -31,269 +45,29 @@ import TVNews from './features/TVNews';
 import SmartphoneApp from './features/SmartphoneApp';
 import Article from './features/Article';
 import DebugPopup from './features/DebugPopup';
+import Link from 'next/link';
 
-const translations = {
-    en: {
-        chatHistory: "Chat History",
-        close: "Close",
-        you: "You",
-        system: "System",
-        inventory: "Inventory",
-        empty: "Empty...",
-        yourAction: "Your Action",
-        placeholderAction: "What do you want to do?",
-        cancel: "Cancel",
-        action: "Action",
-        charInfo: "Character Information",
-        wiki: "Wiki",
-        heroism: "Heroism",
-        morality: "Morality",
-        selfishness: "Selfishness",
-        relationships: "Relationships",
-        noRelationships: "No relationships yet.",
-        skills: "Skills",
-        noSkills: "No skills learned.",
-        scenePaused: "Scene Paused / Lost",
-        noActiveDialogue: "No active dialogue. What would you like to do?",
-        resetGame: "Reset Game",
-        continueInput: "Continue (Input)",
-        thinking: "Thinking...",
-        directInput: "⌨️ Direct Input...",
-        inputBtn: "INPUT",
-        debugBtn: "DEBUG",
-        saveLoad: "Save / Load",
-        save: "Save",
-        load: "Load",
-        delete: "Delete",
-        emptySlot: "Empty",
-        noSummary: "No summary",
-        confirmLoad: "Load Slot {0}? Current progress will be lost.",
-        confirmDelete: "Are you sure you want to delete Slot {0}?",
-        gameDeleted: "Slot {0} deleted.",
-        confirmNewGame: "Are you sure you want to start a new game? Current progress will be lost.",
-        gameStartMessage: "Game Start. Please introduce the world and the main character.",
-        gameSaved: "Game saved to Slot {0}",
-        gameLoaded: "Game loaded from Slot {0}",
-        errorGenerating: "Error generating response",
-        acquired: "Acquired: {0}",
-        usedLost: "Used/Lost: Item {0}",
-        hp: "HP",
-        mp: "MP",
-        gold: "Gold",
-        exp: "EXP",
-        baseStats: "Base Stats",
-        str: "STR (Strength)",
-        agi: "AGI (Agility)",
-        int: "INT (Intelligence)",
-        vit: "VIT (Vitality)",
-        luk: "LUK (Luck)"
-    },
-    ko: {
-        chatHistory: "대화 기록",
-        close: "닫기",
-        you: "당신",
-        system: "시스템",
-        inventory: "인벤토리",
-        empty: "비어있음...",
-        yourAction: "행동하기",
-        placeholderAction: "무엇을 하시겠습니까?",
-        cancel: "취소",
-        action: "실행",
-        charInfo: "캐릭터 정보",
-        wiki: "위키",
-        heroism: "영웅심",
-        morality: "도덕성",
-        selfishness: "이기심",
-        relationships: "관계도",
-        noRelationships: "아직 관계가 없습니다.",
-        skills: "보유 스킬",
-        noSkills: "배운 스킬이 없습니다.",
-        scenePaused: "장면 일시정지 / 길을 잃음",
-        noActiveDialogue: "진행 중인 대화가 없습니다. 무엇을 하시겠습니까?",
-        resetGame: "게임 초기화",
-        continueInput: "계속하기 (입력)",
-        thinking: "생각 중...",
-        directInput: "⌨️ 직접 입력...",
-        inputBtn: "입력",
-        debugBtn: "디버그",
-        saveLoad: "저장 / 불러오기",
-        save: "저장",
-        load: "로드",
-        delete: "삭제",
-        emptySlot: "비어있음",
-        noSummary: "요약 없음",
-        confirmLoad: "슬롯 {0}을(를) 불러오시겠습니까? 현재 진행 상황은 저장되지 않습니다.",
-        confirmDelete: "정말로 슬롯 {0}을(를) 삭제하시겠습니까?",
-        gameDeleted: "슬롯 {0}이(가) 삭제되었습니다.",
-        confirmNewGame: "새 게임을 시작하시겠습니까? 현재 진행 상황은 저장되지 않습니다.",
-        gameStartMessage: "게임 시작. 세계관과 주인공을 소개해줘.",
-        gameSaved: "슬롯 {0}에 게임 저장됨",
-        gameLoaded: "슬롯 {0}에서 게임 불러옴",
-        errorGenerating: "응답 생성 중 오류 발생",
-        acquired: "획득: {0}",
-        usedLost: "사용/분실: 아이템 {0}",
-        hp: "체력",
-        mp: "마나",
-        gold: "골드",
-        exp: "경험치",
-        baseStats: "기본 스탯",
-        str: "STR (힘)",
-        agi: "AGI (민첩)",
-        int: "INT (지능)",
-        vit: "VIT (체력)",
-        luk: "LUK (운)"
-    }
-};
+// [Refactoring] New Components & Hooks
+import { useVNState } from './visual_novel/hooks/useVNState';
+import { useVNAudio } from './visual_novel/hooks/useVNAudio';
+import ModernHUD from './visual_novel/ui/ModernHUD';
+import WuxiaHUD from './visual_novel/ui/WuxiaHUD';
+import CharacterProfile from './visual_novel/ui/CharacterProfile';
+import SettingsModal from './visual_novel/ui/SettingsModal';
+import ResponseTimer from './visual_novel/ui/common/ResponseTimer';
+import AdButton from './visual_novel/ui/common/AdButton';
+
+
 
 // getKoreanExpression removed in favor of getCharacterImage utility
 
 // Game Tips Library
-const LOADING_TIPS = [
-    "운(LUK) 스탯이 높으면 길가에서 돈을 줍거나, 위기 상황에서 기적적으로 탈출할 수 있습니다.",
-    "지능(INT)이 높으면 상대방의 거짓말을 간파하거나, 마법적인 현상을 이해할 수 있습니다.",
-    "도덕성(Morality)이 낮으면 범죄 조직과 협력하기 쉬워지지만, 시민들의 신뢰를 얻기 힘듭니다.",
-    "체력(VIT)은 전투 시 버틸 수 있는 맷집뿐만 아니라, 질병이나 독에 대한 저항력도 의미합니다.",
-    "민첩(AGI)이 높으면 은신, 소매치기, 도주 확률이 대폭 상승합니다.",
-    "매력(Speech/Eloquence)이 높으면 말싸움으로 적을 제압하거나, 물건을 싸게 살 수 있습니다.",
-    "명성(Fame)이 오르면 유명인사가 되어 팬이 생기지만, 동시에 적들의 표적이 될 수도 있습니다.",
-    "NPC와의 '호감도'는 단순한 숫자가 아닙니다. 위급할 때 그들이 당신을 위해 목숨을 걸 수도 있습니다.",
-    "특정 장소에는 밤에만 나타나는 비밀 상점이나 인물이 존재합니다.",
-    "아이템 '스마트폰'을 통해 정보를 수집하거나 다른 인물에게 연락할 수 있습니다.",
-    "음식을 먹으면 체력이 소량 회복되며, 기분이 전환되어 '무드'가 바뀔 수 있습니다.",
-    "정신력(MP)이 0이 되면 캐릭터가 미쳐버리거나, 자살 충동을 느끼는 등 '배드 엔딩' 직행입니다.",
-    "영웅심(Heroism)이 높으면 시민들이 당신을 추앙하지만, 악당들은 당신을 눈엣가시로 여깁니다.",
-    "이기심(Selfishness)이 높으면 자신의 이익을 위해 동료를 배신하는 선택지가 해금될 수 있습니다.",
-    "전투 중 '도주'는 비겁한 것이 아닙니다. 살아남는 것이 강한 것입니다.",
-    "돈(Gold)으로 대부분의 문제를 해결할 수 있습니다. 심지어 사람의 마음까지도요.",
-    "비 오는 날에는 은신 확률이 올라가지만, 체온 저하로 체력이 조금씩 깎일 수 있습니다.",
-    "어떤 선택지는 되돌릴 수 없습니다. 신중하게 선택하세요.",
-    "세이브 슬롯은 3개입니다. 중요한 분기점 앞에서는 반드시 저장하세요.",
-    "개발자 팁: 사실 운 스탯만 믿고 막 나가도 꽤 재미있는 상황이 벌어집니다."
-];
+import { LOADING_TIPS } from '@/data/loading_tips';
 
-// Internal Component for Response Timer
-function ResponseTimer({ avgTime }: { avgTime: number }) {
-    const [progress, setProgress] = useState(0);
-    const [elapsed, setElapsed] = useState(0);
-
-    useEffect(() => {
-        // Reset whenever avgTime changes or mount
-        setProgress(0);
-        setElapsed(0);
-
-        const interval = setInterval(() => {
-            setElapsed(prev => {
-                const newElapsed = prev + 100;
-                // Calculate percentage: (elapsed / avgTime) * 100
-                // Cap at 95% to allow for "finishing" jump
-                // If elapsed > avgTime, we slow down the increment drastically or just cap at 98%
-                let newProgress = (newElapsed / avgTime) * 100;
-                if (newProgress > 95) newProgress = 95 + ((newElapsed - avgTime) / 10000); // Very slow creep after 95%
-                if (newProgress > 99) newProgress = 99;
-
-                setProgress(newProgress);
-                return newElapsed;
-            });
-        }, 100);
-
-        return () => clearInterval(interval);
-    }, [avgTime]);
-
-    // Format time MM:SS
-    const formatTime = (ms: number) => {
-        const totalSeconds = Math.floor(ms / 1000);
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = totalSeconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    return (
-        <div className="w-full mt-4 flex flex-col gap-2 min-w-[300px]">
-            <div className="flex justify-between text-xs text-yellow-500 font-mono">
-                <span className="animate-pulse">WARPING REALITY...</span>
-                <span>{formatTime(elapsed)} / {formatTime(avgTime)} EST</span>
-            </div>
-            <div className="w-full h-3 bg-gray-900 rounded-full overflow-hidden border border-yellow-900/50 shadow-inner relative">
-                {/* Grid Background Effect */}
-                <div className="absolute inset-0 bg-black opacity-20 pointer-events-none"></div>
-
-                <motion.div
-                    className="h-full bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ type: "tween", ease: "linear", duration: 0.1 }}
-                />
-            </div>
-
-        </div>
-    );
-}
+// ResponseTimer moved to common/ResponseTimer.tsx
 
 // Internal Component for Ad Simulation
-function AdButton({ onReward }: { onReward: () => void }) {
-    const [status, setStatus] = useState<'idle' | 'playing' | 'rewarded'>('idle');
-    const [progress, setProgress] = useState(0);
-
-    useEffect(() => {
-        let interval: any;
-        if (status === 'playing') {
-            interval = setInterval(() => {
-                setProgress(prev => {
-                    const next = prev + 10;
-                    return next > 100 ? 100 : next;
-                });
-            }, 500);
-        }
-        return () => clearInterval(interval);
-    }, [status]);
-
-    useEffect(() => {
-        if (status === 'playing' && progress >= 100) {
-            setStatus('rewarded');
-            onReward();
-        }
-    }, [progress, status, onReward]);
-
-    if (status === 'rewarded') {
-        return (
-            <button disabled className="w-full py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-gray-400 font-bold cursor-not-allowed flex items-center justify-center gap-2">
-                <span className="text-green-500">✓</span> 보상 지급 완료
-            </button>
-        );
-    }
-
-    if (status === 'playing') {
-        return (
-            <div className="w-full bg-gray-800 rounded-xl border border-yellow-500/50 p-4 relative overflow-hidden">
-                <div className="flex justify-between items-center mb-2 z-10 relative">
-                    <span className="text-yellow-500 font-bold text-sm animate-pulse">광고 시청 중...</span>
-                    <span className="text-white text-xs">{Math.floor(progress)}%</span>
-                </div>
-                {/* Progress Bar Background */}
-                <div className="w-full bg-gray-700 h-2 rounded-full overflow-hidden z-10 relative">
-                    <motion.div
-                        className="h-full bg-yellow-500"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress}%` }}
-                    />
-                </div>
-                {/* Fake Ad Content (Overlay) */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                    <span className="text-4xl">📺</span>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <button
-            onClick={() => setStatus('playing')}
-            className="w-full py-3 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 rounded-xl border border-yellow-400 text-white font-bold shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
-        >
-            <span>📺</span> 광고 보고 50 골드 받기
-        </button>
-    );
-}
+// AdButton moved to common/AdButton.tsx
 
 // Helper to format text (Bold support)
 const formatText = (text: string) => {
@@ -307,36 +81,32 @@ const formatText = (text: string) => {
     });
 };
 
-// [Localization]
-const TRAIT_KO_MAP: Record<string, string> = {
-    morality: '도덕성',
-    courage: '용기',
-    energy: '에너지',
-    decision: '의사결정',
-    lifestyle: '생활양식',
-    openness: '수용성',
-    warmth: '대인온도',
-    eloquence: '화술',
-    leadership: '통솔력',
-    humor: '유머',
-    lust: '색욕',
-    // Fallback for others if needed
-    hp: '체력',
-    mp: '정신력',
-    neigong: '내공',
-    str: '근력',
-    agi: '민첩',
-    int: '지력',
-    vit: '체격',
-    luk: '운'
-};
-
 export default function VisualNovelUI() {
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    // [New] Profile Tab State
-    const [activeProfileTab, setActiveProfileTab] = useState<'basic' | 'martial_arts' | 'relationships'>('basic');
+    // [Refactor] UI State Hook
+    const {
+        showHistory, setShowHistory,
+        showInventory, setShowInventory,
+        showCharacterInfo, setShowCharacterInfo,
+        showWiki, setShowWiki,
+        isPhoneOpen, setIsPhoneOpen,
+        showSaveLoad, setShowSaveLoad,
+        showResetConfirm, setShowResetConfirm,
+        statusMessage, setStatusMessage,
+        wikiTargetCharacter, setWikiTargetCharacter,
+        isFullscreen, setIsFullscreen,
+        activeProfileTab, setActiveProfileTab,
+        isInputOpen, setIsInputOpen,
+        userInput, setUserInput,
+        debugInput, setDebugInput,
+        isDebugOpen, setIsDebugOpen,
+        isMounted, setIsMounted
+    } = useVNState();
+    // [리팩토링 메모] UI 상태 관리 로직(모달, 입력, 디버그 등)은 `hooks/useVNState.ts`로 이동되었습니다.
+
+    const [fateUsage, setFateUsage] = useState<number>(0);
     const router = useRouter();
-    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const wikiKeys = useMemo(() => Object.keys(wikiData), []); // [Performance] Memoize keys
+
 
     // Core Game Store
     useEffect(() => {
@@ -351,6 +121,7 @@ export default function VisualNovelUI() {
     const {
         chatHistory,
         addMessage,
+        addChoiceToHistory,
         currentBackground,
         setBackground,
         characterExpression,
@@ -381,8 +152,16 @@ export default function VisualNovelUI() {
         characterCreationQuestions, // Added
         day,
         time,
-        characterData // [New] Get character data for UI
+        characterData, // [New] Get character data for UI
+        lastTurnSummary,
+        setLastTurnSummary,
+        activeGameId, // [Refactor] Add activeGameId
+        currentLocation, // [Fix] Add currentLocation for HUD updates
     } = useGameStore();
+
+    // [Localization]
+    const t = translations[language as keyof typeof translations] || translations.en;
+
 
     const creationQuestions = characterCreationQuestions; // Alias for UI Usage
 
@@ -390,28 +169,15 @@ export default function VisualNovelUI() {
 
     // VN State
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isTyping, setIsTyping] = useState(false); // [Fix] Missing State
     const [isLogicPending, setIsLogicPending] = useState(false); // [Logic Lock] Track background logic
-    const [showHistory, setShowHistory] = useState(false);
-    const [showInventory, setShowInventory] = useState(false);
-    const [showCharacterInfo, setShowCharacterInfo] = useState(false);
-    const [showWiki, setShowWiki] = useState(false);
-    const [isPhoneOpen, setIsPhoneOpen] = useState(false); // [New] Phone App State
-    const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-    // [New] BGM State
-    const [currentBgm, setCurrentBgm] = useState<string | null>(null);
-    const bgmRef = useRef<HTMLAudioElement | null>(null);
-
-    // [New] Cleanup BGM on unmount
-    useEffect(() => {
-        return () => {
-            if (bgmRef.current) {
-                bgmRef.current.pause();
-                bgmRef.current.src = "";
-                bgmRef.current = null;
-            }
-        };
-    }, []);
+    const [showHistory_OLD, setShowHistory_OLD] = useState(false); // Placeholder to ensure clean delete if lines shift, but strictly 291-311 should be targeted.
+    // [New] BGM State (Moved to Store)
+    // const [currentBgm, setCurrentBgm] = useState<string | null>(null);
+    const { currentBgm, setBgm } = useGameStore();
+    // [Hook] Audio
+    const { playSfx } = useVNAudio(currentBgm);
+    // [리팩토링 메모] 오디오 및 BGM 로직은 `hooks/useVNAudio.ts`로 이동되었습니다.
 
     // [Transition Logic] Track previous character name to determine animation type
     // If name matches last ref => dissolve only (expression change).
@@ -447,13 +213,7 @@ export default function VisualNovelUI() {
     }, [isProcessing]);
 
     // Input State
-    const [isInputOpen, setIsInputOpen] = useState(false);
-    const [userInput, setUserInput] = useState('');
-
-    // Debug State
-    const [isDebugOpen, setIsDebugOpen] = useState(false);
     const [isLocalhost, setIsLocalhost] = useState(false);
-    const [debugInput, setDebugInput] = useState('');
     const [lastLogicResult, setLastLogicResult] = useState<any>(null);
     const [pendingLogic, setPendingLogic] = useState<any>(null);
     const [lastStoryOutput, setLastStoryOutput] = useState<string>(''); // [Logging] Store last story output
@@ -463,6 +223,16 @@ export default function VisualNovelUI() {
     // [New] Effect State (Damage / Feedback)
     const [damageEffect, setDamageEffect] = useState<{ intensity: number; duration: number } | null>(null);
     const damageAudioRef = useRef<HTMLAudioElement | null>(null); // [New] Audio Ref
+
+    // [Refactor] Inline Stat Accumulator (Shared across Turn)
+    // Tracks stats applied via <Stat> tags during playback to prevent double-counting in Post-Logic
+    const inlineAccumulatorRef = useRef<{
+        hp: number;
+        mp: number;
+        relationships: Record<string, number>;
+        personality: Record<string, number>;
+    }>({ hp: 0, mp: 0, relationships: {}, personality: {} });
+
 
     // [New] Shared Helper for Visual Damage
     const handleVisualDamage = useCallback((changeAmount: number, currentHp: number, maxHp: number) => {
@@ -523,8 +293,11 @@ export default function VisualNovelUI() {
     // Auth State (Event-Based)
     const [session, setSession] = useState<any>(null);
 
+
     // Character Creation State
     const [creationStep, setCreationStep] = useState(0);
+    // [리팩토링 메모] 세션 관리 로직 중 일부는 Store로 통합되었으나, 호환성을 위해 로컬 session 상태도 유지됩니다.
+    // [리팩토링 메모] 모달/팝업 관련 상태(`showSaveLoad` 등)는 `useVNState`로 통합되어 제거되었습니다.
     const [creationData, setCreationData] = useState<Record<string, string>>({});
 
     // [New] Recharge Popup State
@@ -618,8 +391,9 @@ export default function VisualNovelUI() {
 
 
     // Hydration Fix & Asset Loading
+    // Hydration Fix & Asset Loading
     const [sessionId, setSessionId] = useState<string>('');
-    const [isMounted, setIsMounted] = useState(false);
+    // const [isMounted, setIsMounted] = useState(false); // Moved to useVNState
     const [turnSummary, setTurnSummary] = useState<string | null>(null); // [NEW] Summary State
 
     // Initialize Session ID
@@ -664,133 +438,33 @@ export default function VisualNovelUI() {
             setSessionId(generateUUID());
         }
     }, []);
-    // Prevent double-firing in Strict Mode
-    const isWarmupTriggered = useRef(false);
+    // Initialization Hook
+    useGameInitialization({ setIsMounted });
 
-    useEffect(() => {
-        setIsMounted(true);
-        // Load Assets
-        const loadAssets = async () => {
-            console.log("Loading Assets...");
-            try {
-                const gameId = useGameStore.getState().activeGameId; // Get current game ID
-                const extraChars = await getExtraCharacterImages(gameId);
-                console.log("Loaded Extra Characters:", extraChars);
-                useGameStore.getState().setAvailableExtraImages(extraChars);
-            } catch (e) {
-                console.error("Failed to load extra assets:", e);
-                useGameStore.getState().setAvailableExtraImages([]);
-            }
-
-            // [Startup Warmup] Preload Cache in Background - DISABLED (Cost Saving)
-            // if (isWarmupTriggered.current) return;
-            // isWarmupTriggered.current = true;
-
-            // try {
-            //     console.log("[System] Triggering Cache Warmup...");
-            //     // Pass current state (Initial)
-            //     serverPreloadCache(useGameStore.getState()).then((usageMetadata) => {
-            //         if (usageMetadata) {
-            //             const cachedTokens = (usageMetadata as any).cachedContentTokenCount || 0;
-            //             const inputTokens = usageMetadata.promptTokenCount - cachedTokens;
-            //             const outputTokens = usageMetadata.candidatesTokenCount;
-
-            //             // [DYNAMIC PRICING] Use Shared Config
-            //             const modelName = MODEL_CONFIG.STORY;
-            //             const rate = PRICING_RATES[modelName] || PRICING_RATES['gemini-2.5-flash'];
-
-            //             const costPer1M_Input = rate.input;
-            //             const costPer1M_Output = rate.output;
-            //             // Cache hit pricing is typically cheaper or same inputs. 
-            //             // For Pro it is $0.3125 (Input is $1.25). 
-            //             // For Flash it is $0.01875 (Input is $0.075).
-            //             // Since we don't have this in PRICING_RATES fully, we can approximate or add it there.
-            //             // Assuming 25% of input cost for cached input (Standard Google Ratio).
-            //             const costPer1M_Cached = rate.input * 0.25;
-
-            //             const costInput = (inputTokens / 1_000_000) * costPer1M_Input;
-            //             const costCached = (cachedTokens / 1_000_000) * costPer1M_Cached;
-            //             const costOutput = (outputTokens / 1_000_000) * costPer1M_Output;
-            //             const totalCost = costInput + costCached + costOutput;
-            //             const totalCostKRW = totalCost * 1480;
-
-            //             console.log(`Token Usage (Cache Warmup - ${modelName}):`);
-            //             console.log(`- New Input: ${inputTokens} ($${costInput.toFixed(6)})`);
-            //             console.log(`- Cached:    ${cachedTokens} ($${costCached.toFixed(6)})`);
-            //             console.log(`- Output:    ${outputTokens} ($${costOutput.toFixed(6)})`);
-            //             console.log(`- Total:     $${totalCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`);
-
-            //             const cacheMsg = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
-            //             addToast(`Warmup Tokens: ${usageMetadata.promptTokenCount}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
-            //         }
-            //     });
-            // } catch (e) {
-            //     console.error("Warmup Failed:", e);
-            // }
-        };
-        loadAssets();
-    }, []);
+    // Save/Load Hook
+    const { saveSlots, saveGame, loadGame, deleteGame } = useSaveLoad({
+        showSaveLoad,
+        setShowSaveLoad,
+        t,
+        resetGame,
+        addToast
+    });
 
 
 
-    // Save/Load State
-    const [showSaveLoad, setShowSaveLoad] = useState(false);
-    const [saveSlots, setSaveSlots] = useState<{ id: number; date: string; summary: string }[]>([]);
 
-    // Load slots on mount
-    useEffect(() => {
-        const slots = [];
-        for (let i = 1; i <= 3; i++) {
-            const data = localStorage.getItem(`vn_save_${i}`);
-            if (data) {
-                const parsed = JSON.parse(data);
-                slots.push({ id: i, date: new Date(parsed.timestamp).toLocaleString(), summary: parsed.summary || 'No summary' });
-            } else {
-                slots.push({ id: i, date: 'Empty', summary: '-' });
-            }
-        }
-        setSaveSlots(slots);
-    }, [showSaveLoad]);
-
-    const saveGame = (slotId: number) => {
-        const state = useGameStore.getState();
-        const summary = `${state.playerName || 'Unknown'} / Turn: ${state.turnCount || 0} / ${state.playerStats?.realm || 'Unknown'}`;
-
-        const saveData = {
-            timestamp: Date.now(),
-            summary: summary,
-            state: state
-        };
-        localStorage.setItem(`vn_save_${slotId}`, JSON.stringify(saveData));
-        addToast(t.gameSaved.replace('{0}', slotId.toString()), 'success');
-        setShowSaveLoad(false);
-    };
-
-    const loadGame = (slotId: number) => {
-        const data = localStorage.getItem(`vn_save_${slotId}`);
-        if (!data) return;
-
-        if (confirm(t.confirmLoad.replace('{0}', slotId.toString()))) {
-            const parsed = JSON.parse(data);
-            useGameStore.setState(parsed.state);
-            addToast(t.gameLoaded.replace('{0}', slotId.toString()), 'success');
-            setShowSaveLoad(false);
-        }
-    };
-
-    const deleteGame = (slotId: number) => {
-        if (confirm(t.confirmDelete.replace('{0}', slotId.toString()))) {
-            localStorage.removeItem(`vn_save_${slotId}`);
-            setSaveSlots(prev => prev.map(s => s.id === slotId ? { ...s, date: 'Empty', summary: '-' } : s));
-            addToast(t.gameDeleted.replace('{0}', slotId.toString()), 'info');
-        }
-    };
 
     const handleNewGame = () => {
         if (confirm(t.confirmNewGame)) {
             resetGame();
             // Explicitly clear storage using Zustand's API
             useGameStore.persist.clearStorage();
+
+            // [Fix] Clear Session ID to ensure fresh telemetry/log session
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.removeItem('vn_session_id');
+            }
+
             // Force reload to ensure fresh data (JSONs) are loaded if they were changed
             setTimeout(() => {
                 window.location.reload();
@@ -798,7 +472,7 @@ export default function VisualNovelUI() {
         }
     };
 
-    const t = translations[language || 'en'];
+
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -866,68 +540,26 @@ export default function VisualNovelUI() {
         return charExpression;
     };
 
-    // [New] BGM Playback Helper
+    // [리팩토링] BGM 재생 헬퍼 함수
     const playBgm = (moodKey: string) => {
         if (!moodKey) return;
         let validKey = moodKey.trim();
-        // Check Alias (if partial key used)
+        // 별칭 확인 (부분 키가 사용된 경우)
         if (WUXIA_BGM_ALIASES[validKey]) validKey = WUXIA_BGM_ALIASES[validKey];
 
         const candidates = WUXIA_BGM_MAP[validKey];
         if (!candidates || candidates.length === 0) {
-            console.warn(`[BGM] No BGM found for key: ${moodKey}`);
+            console.warn(`[BGM] 해당 분위기 키에 대한 BGM을 찾을 수 없음: ${moodKey}`);
             return;
         }
 
         const filename = candidates[Math.floor(Math.random() * candidates.length)];
+        // 참고: useVNAudio는 경로가 '/'로 시작하면 그대로 사용하고, 그렇지 않으면 /bgm/을 접두어로 붙임
         const bgmPath = `/assets/wuxia/BGM/${filename}.mp3`;
 
-        console.log(`[BGM] Switching to: ${bgmPath} (Mood: ${moodKey})`);
+        console.log(`[BGM] 재생 전환: ${filename} (무드: ${moodKey})`);
 
-        // If same file is playing, do nothing (prevent restart)
-        if (bgmRef.current && bgmRef.current.src.includes(encodeURIComponent(filename))) {
-            return;
-        }
-
-        // Crossfade Logic
-        const newAudio = new Audio(bgmPath);
-        newAudio.loop = true;
-        newAudio.volume = 0;
-
-        const playPromise = newAudio.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(e => console.error("[BGM] Audio Play Failed (Simulated in specific env?):", e));
-        }
-
-        const fadeDuration = 2000; // 2s Fade
-        const interval = 50;
-        const volumeStep = interval / fadeDuration;
-
-        // Fade In
-        let vol = 0;
-        const fadeIn = setInterval(() => {
-            vol = Math.min(1, vol + volumeStep);
-            newAudio.volume = vol;
-            if (vol >= 1) clearInterval(fadeIn);
-        }, interval);
-
-        // Fade Out Old
-        if (bgmRef.current) {
-            const oldAudio = bgmRef.current;
-            let oldVol = oldAudio.volume || 1;
-            const fadeOut = setInterval(() => {
-                oldVol = Math.max(0, oldVol - volumeStep);
-                oldAudio.volume = oldVol;
-                if (oldVol <= 0) {
-                    clearInterval(fadeOut);
-                    oldAudio.pause();
-                    oldAudio.src = "";
-                }
-            }, interval);
-        }
-
-        bgmRef.current = newAudio;
-        setCurrentBgm(moodKey);
+        setBgm(bgmPath);
     };
 
     const advanceScript = () => {
@@ -1228,7 +860,7 @@ export default function VisualNovelUI() {
     }
 
     // Response Time Tracking
-    const [avgResponseTime, setAvgResponseTime] = useState(60000); // Default 1 minute as per request
+    const [avgResponseTime, setAvgResponseTime] = useState(30000); // Default 30 seconds as per request
 
     const handleSend = async (text: string, isDirectInput: boolean = false, isHidden: boolean = false) => {
         if (!text.trim()) return;
@@ -1285,7 +917,12 @@ export default function VisualNovelUI() {
             }
 
             if (!isHidden) {
-                addMessage({ role: 'user', text });
+                // [Agentic] 1. Add User Message to History
+                addMessage({ role: 'user', text: text });
+                addChoiceToHistory({ text: text, type: 'input', timestamp: Date.now() });
+
+                // [Typing Indicator]
+                setIsTyping(true);
             }
             setChoices([]);
 
@@ -1300,51 +937,21 @@ export default function VisualNovelUI() {
             console.log(`[VisualNovelUI] Turn: ${nextTurnCount}`);
 
             // 5. [Core] Memory Summarization Logic (Turn-Based)
-            if (nextTurnCount > 0 && nextTurnCount % SUMMARY_THRESHOLD === 0) {
-                console.log(`Triggering Memory Summarization (Turn ${nextTurnCount})...`);
-                addToast(`Summarizing memories (Turn ${nextTurnCount})...`, "info");
-
-                // Summarize recent dialogue (Last 20 messages approx for 10 turns)
-                // We keep the history buffer intact for display, but summarize for 'scenarioSummary'.
-                // If history is very long, we might truncate it here too.
-
-                // Assuming history has user+model pairs, 10 turns = 20 messages.
-                // We want to summarize the *latest* chunk or the *accumulated* history?
-                // The prompt says "Current Summary + Recent Dialogue".
-                // So we take the recent dialogue.
-
-                const messagesToSummarize = currentHistory.slice(-SUMMARY_THRESHOLD * 2);
-
-                const newSummary = await serverGenerateSummary(
-                    currentState.scenarioSummary,
-                    messagesToSummarize
-                );
-
-                useGameStore.getState().setScenarioSummary(newSummary);
-                console.log("%c[Scenario Summary Updated]", "color: orange; font-weight: bold;");
-                console.log(newSummary);
-
-                // Optional: Truncate history for optimization if it gets too long
-                // But generally users like to scroll back. 
-                // We can keep displayHistory, but truncate chatHistory (for API context) if we want.
-                // For now, let's keep the user's snippet logic: "Trigger on Turn Count".
-
-                // If we want to save tokens, we should truncate chatHistory.
-                if (currentHistory.length > 30) {
-                    useGameStore.getState().truncateHistory(20);
-                }
-
-                // Update local reference for this turn
-                currentHistory = useGameStore.getState().chatHistory;
-                addToast("Memory updated!", "success");
-            }
+            // 5. [Core] Memory Summarization Logic MOVED to Phase 2 (Background) to prevent blocking.
+            // Check approx line 1200+ inside the async block.
 
             // 1. Generate Narrative
             console.log(`[VisualNovelUI] Sending state to server.`);
 
             // Sanitize state to remove functions and circular references
+            // [OPTIMIZATION] Strip 'snapshot' (Client-Only) to strictly enforce <4MB Limit
+            // Snapshots contain full state copies (100KB+ each), so 30 snapshots = ~3MB unnecessary data.
+            const historyPayload = (currentState.chatHistory.length > 30
+                ? currentState.chatHistory.slice(-30)
+                : currentState.chatHistory).map(({ snapshot, ...rest }) => rest);
+
             const sanitizedState = JSON.parse(JSON.stringify({
-                chatHistory: currentState.chatHistory,
+                chatHistory: historyPayload,
                 playerStats: currentState.playerStats,
                 inventory: currentState.inventory,
                 currentLocation: currentState.currentLocation,
@@ -1355,16 +962,28 @@ export default function VisualNovelUI() {
                 activeCharacters: currentState.activeCharacters,
                 characterData: currentState.characterData,
                 worldData: currentState.worldData,
-                availableBackgrounds: currentState.availableBackgrounds,
-                availableCharacterImages: currentState.availableCharacterImages,
-                availableExtraImages: currentState.availableExtraImages,
+                // [OPTIMIZATION] Static Asset Lists are Hydrated on Server
+                // availableBackgrounds: currentState.availableBackgrounds,
+                // availableCharacterImages: currentState.availableCharacterImages,
+                // availableExtraImages: currentState.availableExtraImages,
                 activeGameId: currentState.activeGameId, // [FIX] Pass GameID for Server Re-hydration
-                constants: currentState.constants, // [CRITICAL] Helper constants (Rules/Famous Chars)
-                lore: currentState.lore, // [CRITICAL] Full Lore Data
+                // [OPTIMIZATION] Static data removed for payload size reduction (Hydrated on Server)
+                // constants: currentState.constants, 
+                // lore: currentState.lore, 
+                // worldData: currentState.worldData, 
                 isDirectInput: isDirectInput, // Inject Flag
                 isGodMode: currentState.isGodMode, // Pass God Mode Flag to Server
-                lastTurnSummary: turnSummary // [NEW] Pass Last Turn Summary
+                lastTurnSummary: lastTurnSummary, // [NEW] Pass Last Turn Summary
+                fateUsage: fateUsage, // [Fate System] Pass requested fate points
+                tensionLevel: (() => {
+                    const t = currentState.tensionLevel || 0;
+                    console.log(`[VisualNovelUI] CAPTURED TENSION: ${t}`);
+                    return t;
+                })(), // [FIX] Explicitly pass Tension Level with Log
+                turnCount: nextTurnCount, // [FIX] Pass updated Turn Count for System Prompt Logic
             }));
+
+            console.log(`[VisualNovelUI] Sending Tension (Post-Sanitize): ${sanitizedState.tensionLevel}`);
 
             // Race Condition for Timeout
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 300000));
@@ -1382,370 +1001,599 @@ export default function VisualNovelUI() {
             const storyModel = useGameStore.getState().storyModel;
             console.log(`[VisualNovelUI] Using Story Model: ${storyModel}`);
 
-            const responsePromise = serverAgentTurn(
-                currentHistory,
-                text,
-                prunedStateForStory, // Send pruned state
-                language,
-                storyModel || MODEL_CONFIG.STORY, // [FIX] 5th Arg: Model Name
-                isDirectInput // [FIX] 6th Arg: Direct Input Flag
-            );
+            // 2. [Split Execution] Phase 1 - Story Generation (Immediate)
+            const p1Start = Date.now();
+            // Call Phase 1
+            const p1Result: any = await Promise.race([
+                serverAgentTurnPhase1(
+                    currentHistory,
+                    text,
+                    sanitizedState, // [FIX] Use sanitizedState (with tension) instead of prunedState
+                    language,
+                    storyModel || MODEL_CONFIG.STORY,
+                    isDirectInput
+                ),
+                timeoutPromise
+            ]);
+            const p1Duration = Date.now() - p1Start;
 
-            const result: any = await Promise.race([responsePromise, timeoutPromise]);
+            // [Phase 1 Output]
+            const cleanStoryText = p1Result.cleanStoryText;
+            const routerOut = p1Result.routerOut; // [Fix] router -> routerOut
+            const preLogicDebug = p1Result.preLogicOut; // [Fix] logic -> preLogicOut
+            const usageMetadataP1 = p1Result.usageMetadata; // Note: Orchestrator returns usage object, might need shallow merge if structured differently
+            const effectiveGameState = p1Result.effectiveGameState;
 
-            // [Agent] Destructure Output
-            const responseText = result.reply;
-            const usageMetadata = result.usageMetadata;
-            const routerOut = result.router;
-            const preLogic = result.logic;
-            const postLogic = result.post_logic;
-
-            // [Summary Agent] Update UI
-            if (result.summary) {
-                setTurnSummary(result.summary);
-            } else {
-                setTurnSummary(null);
+            // [Debug] Check PreLogic Out for Fate
+            console.log("[VisualNovelUI] PreLogic Out:", preLogicDebug);
+            if (preLogicDebug?.state_changes?.fate) {
+                console.log("[VisualNovelUI] Fate Change detected in PreLogic:", preLogicDebug.state_changes.fate);
             }
 
-            if (usageMetadata || (result as any).allUsage) {
-                // [Detailed Agent Logging]
-                const routerDebug = (result as any).router;
-                const preLogicDebug = (result as any).logic;
-                const postLogicDebug = (result as any).post_logic;
-
-                // 0. Latency & Cost Log (New)
-                const latencies = (result as any).latencies || {};
-                console.log(`%c[Telemetry] Total: ${latencies.total}ms | Cost: $${(result as any).cost?.toFixed(6)}`, 'color: gray;');
-
-                // 1. Router Log
-                console.groupCollapsed(`%c[Step 1] Router (${latencies.router}ms) (${routerDebug.type})`, 'color: cyan; font-weight: bold;');
-                console.log(`%c[Input]`, 'color: gray; font-weight: bold;', routerDebug._debug_prompt);
-                console.log(`%c[Output]`, 'color: cyan; font-weight: bold;', {
-                    Intent: routerDebug.intent,
-                    Target: routerDebug.target || "None",
-                    Keywords: routerDebug.keywords.join(', ')
-                });
-                console.groupEnd();
-
-                // 1.5 Casting Log (New)
-                const castingDebug = (result as any).casting;
-                if (castingDebug) {
-                    const candidateCount = castingDebug.length;
-                    console.groupCollapsed(`%c[Step 1.5] Casting Director (${candidateCount} candidates scanned)`, candidateCount > 0 ? 'color: purple; font-weight: bold;' : 'color: gray;');
-
-                    if (candidateCount === 0) {
-                        console.log("No candidates found (All filtered by Phase/Region/Active). check AgentCasting logic.");
-                    } else {
-                        // Display Top 15
-                        console.log(`%c[Leaderboard (Top 15)]`, 'color: purple; font-weight: bold;', castingDebug.slice(0, 15).map((c: any) => ({
-                            Name: c.name,
-                            Score: c.score.toFixed(2),
-                            Reasons: c.reasons.join(', ')
-                        })));
-                    }
-                    console.groupEnd();
-                }
-
-                // 2. Pre-Logic Log
-                // [Modified] Show Score in Header
-                const scoreText = preLogicDebug.plausibility_score ? `Score: ${preLogicDebug.plausibility_score}/10` : (preLogicDebug.success ? 'Success' : 'Failure');
-                console.groupCollapsed(`%c[Step 2] Pre-Logic (${latencies.preLogic}ms) (${scoreText})`, 'color: magenta; font-weight: bold;');
-                console.log(`%c[Input]`, 'color: gray; font-weight: bold;', preLogicDebug._debug_prompt);
-                console.log(`%c[Output]`, 'color: magenta; font-weight: bold;', {
-                    Score: preLogicDebug.plausibility_score,
-                    Analysis: preLogicDebug.judgment_analysis,
-                    Guide: preLogicDebug.narrative_guide,
-                    Mechanics: preLogicDebug.mechanics_log,
-                    Changes: preLogicDebug.state_changes
-                });
-                console.groupEnd();
-
-                // 3. Story Log
-                console.groupCollapsed(`%c[Step 3] Story Writer (${latencies.story}ms)`, 'color: green; font-weight: bold;');
-                if ((result as any).systemPrompt) {
-                    console.log(`%c[Input - Static (Cached)]`, 'color: gray; font-weight: bold;', (result as any).systemPrompt);
-                }
-                if ((result as any).finalUserMessage) {
-                    console.log(`%c[Input - Dynamic (Logic + User)]`, 'color: blue; font-weight: bold;', (result as any).finalUserMessage);
-                }
-                console.log(`%c[Output]`, 'color: green; font-weight: bold;', (result as any).raw_story || responseText);
-                console.groupEnd();
-
-                console.groupCollapsed(`%c[Final Script]`, 'color: cyan; font-weight: bold;');
-                console.log(responseText || (result as any).raw_story);
-                console.groupEnd();
-
-                // 4. Post-Logic Log
-                console.groupCollapsed(`%c[Step 4] Post-Logic (${latencies.postLogic}ms)`, 'color: orange; font-weight: bold;');
-                console.log(`%c[Input]`, 'color: gray; font-weight: bold;', postLogicDebug._debug_prompt);
-                console.log(`%c[Output]`, 'color: orange; font-weight: bold;', {
-                    Mood: postLogicDebug.mood_update,
-                    Relations: postLogicDebug.relationship_updates,
-                    Stats: postLogicDebug.stat_updates,
-                    Tension: postLogicDebug.tension_update, // [NEW]
-                    NewGoals: postLogicDebug.new_goals, // [NEW]
-                    GoalUpdates: postLogicDebug.goal_updates, // [NEW]
-                    Memories: postLogicDebug.new_memories
-                });
-                console.groupEnd();
-
-                // 5. Martial Arts (New)
-                const maDebug = (result as any).martial_arts_debug;
-                if (maDebug) {
-                    // Check logic result for actual changes
-                    const maResult = (result as any).martial_arts;
-                    console.groupCollapsed(`%c[Step 4.5] Martial Arts (${latencies.martial_arts}ms)`, 'color: red; font-weight: bold;');
-                    console.log(`%c[Input]`, 'color: gray; font-weight: bold;', maDebug._debug_prompt);
-                    console.log(`%c[Output]`, 'color: red; font-weight: bold;', {
-                        Realm: maResult?.realm_update,
-                        Progress: maResult?.realm_progress_delta,
-                        NewArgs: maResult?.new_arts,
-                        UpdatedArts: maResult?.updated_arts,
-                        Stagnation: maResult?.growthStagnation,
-                        Audit: maResult?.stat_updates
-                    });
-                    console.groupEnd();
-                }
-
-                // 4.5. Summary Log
-                if ((result as any).summaryDebug) {
-                    console.groupCollapsed(`%c[Step 5.5] Turn Summarizer`, 'color: yellow; font-weight: bold;');
-                    console.log(`%c[Input]`, 'color: gray; font-weight: bold;', (result as any).summaryDebug._debug_prompt);
-                    console.log(`%c[Output]`, 'color: yellow; font-weight: bold;', result.summary);
-                    console.groupEnd();
-                }
-
-                // [Cost Aggregation] Sum up all 5 Steps
-                const allUsage = (result as any).allUsage || { story: usageMetadata };
-
-                let grandTotalTokens = 0;
-                let grandTotalCost = 0;
-                let cacheHitCount = 0;
-
-                // Model Pricing Mappings
-                const pricingMap: Record<string, any> = {
-                    router: PRICING_RATES[MODEL_CONFIG.ROUTER],
-                    preLogic: PRICING_RATES[MODEL_CONFIG.PRE_LOGIC],
-                    postLogic: PRICING_RATES[MODEL_CONFIG.LOGIC], // Use LOGIC config for PostLogic
-                    story: PRICING_RATES[result.usedModel || MODEL_CONFIG.STORY] || PRICING_RATES[MODEL_CONFIG.STORY],
-                    summary: PRICING_RATES[MODEL_CONFIG.SUMMARY || 'gemini-2.5-flash'] || PRICING_RATES['gemini-2.5-flash'],
-                    martial_arts: PRICING_RATES[MODEL_CONFIG.LOGIC] // Uses same model as Logic usually
-                };
-
-                // Model Name Mappings for Logging
-                const modelNameMap: Record<string, string> = {
-                    router: MODEL_CONFIG.ROUTER,
-                    preLogic: MODEL_CONFIG.PRE_LOGIC,
-                    postLogic: MODEL_CONFIG.LOGIC,
-                    story: result.usedModel || MODEL_CONFIG.STORY,
-                    summary: MODEL_CONFIG.SUMMARY || 'gemini-2.5-flash',
-                    martial_arts: MODEL_CONFIG.LOGIC
-                };
-
-                Object.entries(allUsage).forEach(([step, usage]: [string, any]) => {
-                    if (!usage) return;
-
-                    const rate = pricingMap[step] || PRICING_RATES[MODEL_CONFIG.LOGIC];
-                    const modelName = modelNameMap[step] || 'unknown';
-
-                    const cached = (usage as any).cachedContentTokenCount || 0;
-                    const input = usage.promptTokenCount - cached;
-                    const output = usage.candidatesTokenCount;
-
-                    const stepCost =
-                        ((input / 1_000_000) * rate.input) +
-                        ((cached / 1_000_000) * (rate.input * 0.25)) +
-                        ((output / 1_000_000) * rate.output);
-
-                    grandTotalTokens += usage.promptTokenCount;
-                    grandTotalCost += stepCost;
-                    if (cached > 0) cacheHitCount++;
-
-                    console.log(`[Cost] ${step} (${modelName}): Input ${input}, Cached ${cached}, Output ${output}, Cost $${stepCost.toFixed(6)}`);
-                });
-
-                storyCost = grandTotalCost; // Update Main Cost Variable
-                const totalCostKRW = grandTotalCost * 1480;
-
-                // [Verification Log]
-                console.log(`%c[TOTAL COST] $${grandTotalCost.toFixed(6)} (₩${Math.round(totalCostKRW)})`, 'color: yellow; font-weight: bold;');
-
-                const cacheMsg = cacheHitCount > 0 ? ` (Cache HIT x${cacheHitCount})` : '';
-                addToast(`Total Tokens: ${grandTotalTokens}${cacheMsg} / Cost: ₩${Math.round(totalCostKRW)}`, 'info');
-            }
+            // [Summary Agent] Update UI (Phase 1 might not have summary, usually Phase 2)
+            // Check if Phase 1 returned summary? (Likely not, Logic phase does summary)
 
             // [UX Improvement] Clear Character Image
-            setCharacterExpression('');
+            setCharacterExpression(''); // Clear before new story
 
-            // [Fix] Data Flow Consistency
-            // We fixed the parser to handle tags + text correctly (no clumping).
-            // Now we MUST usage responseText (which has tags) to ensure Stat Notifications work.
-            // result.raw_story has NO tags, so playing it effectively disables inline events live.
-            const textToParse = responseText || result.raw_story;
+            // 3. Render Story Immediately
+            // [Fix] Data Flow Consistency: Use clean text for immediate display
+
+            // [Fate System] Reset Usage after successful send
+            setFateUsage(0);
+            const textToParse = cleanStoryText;
             const segments = parseScript(textToParse);
-
-            // Keep responseText for lastStoryOutput? Or use textToParse?
-            // Usually lastStoryOutput is for display if segments fail?
-            // Let's use clean text for safety.
+            setScriptQueue(segments); // Start playing story
             setLastStoryOutput(textToParse);
 
-            // [Agent] Construct Logic Result for Application
-            // Apply PreLogic (Stats) and PostLogic (Mood/Rel)
+            // Update History Immediately with Clean Text
+            // We assume user wants to see the story log immediately.
 
-            // [Fix] Deduplication Logic: Calculate Deltas from Inline Tags
-            const inlineDeltas: Record<string, number> = {};
-            if (postLogic.inline_triggers && postLogic.inline_triggers.length > 0) {
-                postLogic.inline_triggers.forEach((trigger: any) => {
-                    // trigger.tag format examples: 
-                    // <Stat hp='-5'> 
-                    // <Rel char='Name' val='5'>
-                    // We need to parse this string to extract key/val.
-                    // Simple Regex Parser
-                    const statMatch = trigger.tag.match(/<Stat\s+([^=]+)=['"]?(-?\d+)['"]?.*?>/i);
-                    if (statMatch) {
-                        const key = statMatch[1].toLowerCase();
-                        const val = parseInt(statMatch[2], 10);
-                        if (!isNaN(val)) {
-                            inlineDeltas[key] = (inlineDeltas[key] || 0) + val;
-                        }
-                    }
-                });
-                console.log("[Deduplication] Detected Inline Deltas:", inlineDeltas);
-            }
+            // [Fix] Capture Snapshot for Rewind
+            // We capture the state BEFORE the new text is processed/stats applied?
+            // Wait, the "Rewind" goes back to the START of this turn. 
+            // So we need the state AS IT WAS before this turn's logic ran.
+            // However, we are in `handleSend`. Logic runs in background (Phase 2), but Phase 1 might resolve some logic?
+            // Actually, `addMessage` is called here.
+            // If we restore this snapshot, we want to be in the state exactly as it is NOW (before Phase 2 logic applies).
+            // But wait, Phase 1 logic (`applyGameLogic` call below) might have already run if `p1Result.logic` exists.
+            // `p1Result.logic` is applied at line 1050. `addMessage` is at 1041.
+            // So this is the perfect place. We capture state BEFORE Phase 1 Logic applies to the store (if any).
+            // Actually line 1050 is *after* this.
 
-            // 1. Deduct Inline HP/MP from PreLogic (Mechanic) + MartialArts (Combat) Totals
+            // What about `useGameStore.getState()`? It gets current state.
+            const snapshotState = useGameStore.getState();
+            const snapshot: Partial<typeof snapshotState> = {
+                playerStats: JSON.parse(JSON.stringify(snapshotState.playerStats)),
+                characterData: JSON.parse(JSON.stringify(snapshotState.characterData)),
+                inventory: JSON.parse(JSON.stringify(snapshotState.inventory)),
+                worldData: JSON.parse(JSON.stringify(snapshotState.worldData)),
+                tensionLevel: snapshotState.tensionLevel,
+                goals: JSON.parse(JSON.stringify(snapshotState.goals)),
+                skills: JSON.parse(JSON.stringify(snapshotState.skills || [])), // [Fix] Capture Skills for Rewind
+                activeCharacters: JSON.parse(JSON.stringify(snapshotState.activeCharacters || [])),
+                deadCharacters: JSON.parse(JSON.stringify(snapshotState.deadCharacters || [])),
 
-            // Source HP = PreLogic + MartialArts
-            const maHp = result.martial_arts?.stat_updates?.hp || 0;
-            const sourceHp = (preLogic.state_changes?.hpChange || 0) + maHp;
+                // [Fix] Meta State & Descriptions
+                currentMood: snapshotState.currentMood,
+                triggeredEvents: JSON.parse(JSON.stringify(snapshotState.triggeredEvents || [])),
+                activeEvent: snapshotState.activeEvent ? JSON.parse(JSON.stringify(snapshotState.activeEvent)) : null,
+                lastTurnSummary: snapshotState.lastTurnSummary,
+                userCoins: snapshotState.userCoins,
+                statusDescription: snapshotState.statusDescription,
+                personalityDescription: snapshotState.personalityDescription,
+                currentBgm: snapshotState.currentBgm, // [Fix] Capture BGM
 
-            const inlineHp = inlineDeltas['hp'] || 0;
-            const inlineMp = inlineDeltas['mp'] || 0;
-
-            let finalHpChange = sourceHp;
-            // Logic: If Source != 0, Block = Source - Inline. (Backend Authority - Deduct Visuals)
-            //        If Source == 0, Block = 0.
-            if (sourceHp !== 0) {
-                finalHpChange = sourceHp - inlineHp;
-            } else {
-                finalHpChange = 0;
-            }
-
-            const maMp = result.martial_arts?.stat_updates?.mp || 0;
-            const sourceMp = (preLogic.state_changes?.mpChange || 0) + maMp;
-            let finalMpChange = 0;
-            if (sourceMp !== 0) {
-                finalMpChange = sourceMp - inlineMp;
-            }
-
-            // 2. Filter Personality Stats (Remove HP/MP) and Deduct Inline
-            // Deduction for Personality (Source: PostLogic.stat_updates)
-            const plPersonality: Record<string, number> = {};
-            if (postLogic.stat_updates) {
-                Object.entries(postLogic.stat_updates).forEach(([k, v]) => {
-                    const key = k.toLowerCase();
-                    if (key === 'hp' || key === 'mp') return; // Handled above
-
-                    const totalVal = v as number;
-                    const inlineVal = inlineDeltas[key] || 0;
-
-                    // Deduct
-                    plPersonality[key] = totalVal - inlineVal;
-                });
-            }
-
-            // 3. Transform Relationships (Record -> Array)
-            const plRelationships = undefined; // Relationships handled by Inline generally
-
-            const combinedLogic = {
-                ...preLogic.state_changes,
-
-                // [Refined] Deduplicated HP/MP
-                hpChange: finalHpChange,
-                mpChange: finalMpChange,
-
-                // [Refined] Pass Transformed Personality (Deduplicated)
-                personalityChange: plPersonality,
-                relationshipChange: plRelationships,
-
-
-                mood: postLogic.mood_update,
-                location: postLogic.location_update, // [NEW]
-                new_memories: postLogic.new_memories,
-                // [Fix] Propagate Active Characters
-                activeCharacters: postLogic.activeCharacters,
-
-                // [Narrative Systems]
-                tension_update: postLogic.tension_update,
-                goal_updates: postLogic.goal_updates,
-                new_goals: postLogic.new_goals,
-
-                // [Fix] Propagate deduplicated stats for persistence
-                post_logic: {
-                    ...postLogic,
-                    stat_updates: plPersonality // Override with deduplicated (HP excluded from here anyway)
-                },
-                character_memories: postLogic.character_memories,
-
-                // [Wuxia] Martial Arts Logic
-                // We must NULLIFY the stat_updates.hp in martial_arts to avoid ApplyGameLogic applying it again!
-                martial_arts: result.martial_arts ? {
-                    ...result.martial_arts,
-                    stat_updates: {
-                        ...(result.martial_arts.stat_updates || {}),
-                        hp: 0, // Handled by hpChange (Deduplicated)
-                        mp: 0  // Handled by mpChange (Deduplicated)
-                    }
-                } : result.martial_arts,
-
-                _debug_router: routerOut
+                day: snapshotState.day,
+                time: snapshotState.time,
+                turnCount: snapshotState.turnCount,
+                scenarioSummary: snapshotState.scenarioSummary,
+                currentLocation: snapshotState.currentLocation,
+                currentBackground: snapshotState.currentBackground,
             };
 
-            // [Logging] Submit Global Log
-            submitGameplayLog({
-                session_id: sessionId || '00000000-0000-0000-0000-000000000000',
-                game_mode: useGameStore.getState().activeGameId,
-                turn_count: turnCount,
-                choice_selected: text,
-                player_rank: useGameStore.getState().playerStats.playerRank,
-                location: useGameStore.getState().currentLocation,
-                timestamp: new Date().toISOString(),
-                player_name: useGameStore.getState().playerName,
-                cost: storyCost,
-                input_type: isDirectInput ? 'direct' : 'choice',
-                meta: {
-                    hp: useGameStore.getState().playerStats.hp,
-                    mp: useGameStore.getState().playerStats.mp,
-                    neigong: useGameStore.getState().playerStats.neigong,
-                    agent_router: routerOut.intent, // [Log] Agent Intent
+            addMessage({ role: 'model', text: cleanStoryText, snapshot });
 
-                    // [Log] PreLogic Judgment
-                    pre_logic_score: preLogic?.plausibility_score,
-                    pre_logic_analysis: preLogic?.judgment_analysis,
-                    pre_logic_guide: preLogic?.narrative_guide,
-
-                    scenario_summary: useGameStore.getState().scenarioSummary,
-                    memories: useGameStore.getState().activeCharacters.reduce((acc: any, charName: string) => {
-                        const cData = useGameStore.getState().characterData[charName] as any;
-                        if (cData && cData.memories) acc[charName] = cData.memories;
-                        return acc;
-                    }, {})
-                },
-                story_output: responseText
-            }).then(() => console.log(`📝 [Log Sent] Total Cost: $${storyCost.toFixed(6)}`));
-
-            if (segments.length === 0) {
-                applyGameLogic(combinedLogic);
-            } else {
-                setPendingLogic(combinedLogic);
+            // Apply PreLogic State Changes (Immediate)
+            if (p1Result.logic) {
+                // Note: We used `applyGameLogic` before for `combinedLogic`.
+                // Here we only have PreLogic.
+                // We should apply it to reflect "Cost" or "Instant Effects".
+                // However, `applyGameLogic` expects a fuller object? 
+                // It handles partials fine usually.
+                applyGameLogic({ logic: p1Result.preLogicOut });
             }
 
-            setIsLogicPending(false); // [Logic Lock] Unlock input explicitly just in case
+            // [UX] Unlock UI (Partially)
+            // setIsProcessing(false) happens in finally block.
+            // We set logic pending state.
+            setIsLogicPending(true);
 
-            // 3. Update State
-            // [Context Separation] Use raw_story (clean) for history if available, fall back to responseText
-            const historyText = result.raw_story || responseText;
-            addMessage({ role: 'model', text: historyText });
+            // [Refactor] Reset Inline Accumulator for New Turn
+            inlineAccumulatorRef.current = {
+                hp: 0,
+                mp: 0,
+                relationships: {},
+                personality: {}
+            };
+
+
+
+            // 4. [Split Execution] Phase 2 - Backend Logic (Background)
+            (async () => {
+                try {
+
+                    // [Summary Agent] Background Execution (Phase 2)
+                    // Moved from Phase 1 to prevent blocking story generation.
+                    // [Parallelization] Now runs concurrently with serverAgentTurnPhase2
+                    // We define the promise here but await it later or let it run detached?
+                    // The user wants it parallel.
+                    // But we are inside an async IIFE that IS background.
+                    // Wait, if we await Phase 2 Logic first, THEN do summary, it is sequential within the background thread.
+                    // This delays the "Total Turn Completion" if we were waiting for it.
+                    // But we aren't waiting for the background thread to finish to show text.
+                    // However, if the user wants "Story -> (Logic + Summary)", we should start both promises at the top.
+
+                    const currentTurnCount = useGameStore.getState().turnCount;
+                    const BG_SUMMARY_THRESHOLD = 10;
+                    let summaryPromise: Promise<string | null> = Promise.resolve(null);
+
+                    if (currentTurnCount > 0 && currentTurnCount % BG_SUMMARY_THRESHOLD === 0) {
+                        const latestHistory = useGameStore.getState().chatHistory;
+                        const messagesToSummarize = latestHistory.slice(-BG_SUMMARY_THRESHOLD * 2);
+                        console.log(`[Background] Triggering Memory Summarization (Turn ${currentTurnCount})...`);
+
+                        addToast(`Summarizing memories (Turn ${currentTurnCount})...`, "info");
+                        const prevSummary = useGameStore.getState().scenarioSummary;
+
+                        summaryPromise = serverGenerateSummary(prevSummary, messagesToSummarize)
+                            .then(newSummary => {
+                                useGameStore.getState().setScenarioSummary(newSummary);
+                                console.log("%c[Scenario Summary Updated]", "color: orange; font-weight: bold;", newSummary);
+                                addToast("Memory updated!", "success");
+                                return newSummary;
+                            })
+                            .catch(err => {
+                                console.error("Summary Generation Failed:", err);
+                                return null;
+                            });
+                    }
+
+                    // Start Phase 2 Logic & Summary concurrently
+                    const p2Start = Date.now();
+                    const [p2Result, _summaryResult] = await Promise.all([
+                        serverAgentTurnPhase2(
+                            currentHistory,
+                            text,
+                            effectiveGameState, // Pass state with Mood Override
+                            cleanStoryText,
+                            language
+                        ),
+                        summaryPromise
+                    ]);
+                    const p2Duration = Date.now() - p2Start;
+
+                    const postLogicOut = p2Result.postLogicOut; // [Fix] Restore definition
+                    const finalStoryText = p2Result.finalStoryText; // [Fix] Restore definition
+
+                    // Construct Combined Logic for Application & Logging
+                    // (Reusing logic from original code, adapted for split sources)
+
+                    // Deduplication Logic
+                    const inlineDeltas: Record<string, number> = {};
+                    if (postLogicOut && postLogicOut.inline_triggers && postLogicOut.inline_triggers.length > 0) {
+                        postLogicOut.inline_triggers.forEach((trigger: any) => {
+                            const statMatch = trigger.tag.match(/<Stat\s+([^=]+)=['"]?(-?\d+)['"]?.*?>/i);
+                            if (statMatch) {
+                                const key = statMatch[1].toLowerCase();
+                                const val = parseInt(statMatch[2], 10);
+                                if (!isNaN(val)) inlineDeltas[key] = (inlineDeltas[key] || 0) + val;
+                            }
+                        });
+                    }
+
+                    // Source HP
+                    // Source HP
+                    const maHp = p2Result.martialArtsOut?.stat_updates?.hp || 0;
+                    const sourceHp = (preLogicDebug?.state_changes?.hpChange || 0) + maHp;
+                    const inlineHp = inlineDeltas['hp'] || 0;
+                    let finalHpChange = (sourceHp !== 0) ? sourceHp - inlineHp : 0;
+
+                    const maMp = p2Result.martialArtsOut?.stat_updates?.mp || 0;
+                    const sourceMp = (preLogicDebug?.state_changes?.mpChange || 0) + maMp;
+                    const inlineMp = inlineDeltas['mp'] || 0;
+                    let finalMpChange = (sourceMp !== 0) ? sourceMp - inlineMp : 0;
+
+                    const plPersonality: Record<string, number> = {};
+                    if (postLogicOut && postLogicOut.stat_updates) {
+                        Object.entries(postLogicOut.stat_updates).forEach(([k, v]) => {
+                            const key = k.toLowerCase();
+                            if (key === 'hp' || key === 'mp') return;
+                            plPersonality[key] = (v as number) - (inlineDeltas[key] || 0);
+                        });
+                    }
+
+                    const combinedLogic = {
+                        ...(preLogicDebug?.state_changes || {}),
+                        hpChange: finalHpChange,
+
+                        // [Debug] Ensure Fate is preserved
+                        fate: preLogicDebug?.state_changes?.fate,
+
+                        mpChange: finalMpChange,
+                        personalityChange: plPersonality,
+                        mood: postLogicOut?.mood_update,
+                        location: postLogicOut?.location_update,
+                        new_memories: postLogicOut?.new_memories,
+                        activeCharacters: postLogicOut?.activeCharacters,
+                        tension_update: postLogicOut?.tension_update,
+                        goal_updates: postLogicOut?.goal_updates,
+                        new_goals: postLogicOut?.new_goals,
+                        post_logic: {
+                            ...(postLogicOut || {}),
+                            stat_updates: plPersonality
+                        },
+                        character_memories: postLogicOut?.character_memories,
+                        martial_arts: p2Result.martialArtsOut ? {
+                            ...p2Result.martialArtsOut,
+                            stat_updates: {
+                                ...(p2Result.martialArtsOut.stat_updates || {}),
+                                hp: 0, mp: 0
+                            }
+                        } : p2Result.martialArtsOut,
+                        _debug_router: routerOut
+                    };
+
+                    // [Fix] Defer Logic Application to End of Script
+                    // Instead of applying immediately, we set it as pending.
+                    // This ensures the stats update after the text has finished reading.
+                    // IMPORTANT: We must NOT re-apply PreLogic changes (costs) if they ran at Phase 1.
+
+                    const deferredLogic = { ...combinedLogic };
+
+                    // If PreLogic successfully ran in Phase 1, remove its changes from the deferred object
+                    // to prevent double-application (e.g. paying mana twice).
+                    if (preLogicDebug?.state_changes && preLogicDebug.success) {
+                        delete deferredLogic.hpChange; // Handled in P1 or calculated in finalHpChange?
+                        delete deferredLogic.mpChange;
+                        // Actually, finalHpChange = sourceHp - inlineHp.
+                        // sourceHp = preLogic + postLogic.
+                        // If PreLogic was applied, we only want to apply (PostLogic - Inline).
+                        // So we need to subtract PreLogic from finalHpChange.
+
+                        const preHp = preLogicDebug.state_changes.hpChange || 0;
+                        const preMp = preLogicDebug.state_changes.mpChange || 0;
+
+                        if (deferredLogic.hpChange !== undefined) deferredLogic.hpChange -= preHp;
+                        if (deferredLogic.mpChange !== undefined) deferredLogic.mpChange -= preMp;
+
+                        // Remove other explicit state changes from PreLogic if they exist
+                        // (Currently PreLogic mostly does HP/MP cost).
+                    }
+
+                    // applyGameLogic(combinedLogic); // <-- OLD IMMEDIATE CALL
+
+                    // New Deferred Call (via State)
+                    // [Fix] Subtract Inline Applied values (from Client Loop)
+                    // We trust the Client Loop (inlineApplied) more than server inline_triggers.
+                    // Note: If 'finalHpChange' already subtracted 'inlineDeltas' (Server Tags),
+                    // and 'inlineApplied' matches 'inlineDeltas', we might double-subtract.
+                    // However, we assume user added the manual loop because Server Tags were unreliable.
+                    // To be safe, we subtract what we ACTUALLY applied.
+
+                    const finalDeferred = { ...deferredLogic };
+
+                    // [Refactor] Script Replacement & Tag Deduction Strategy
+                    // We need to switch the active script to `finalStoryText` (which contains tags)
+                    // AND ensure we don't double-count stats (Tags + PendingLogic).
+
+                    const finalSegments = parseScript(finalStoryText);
+                    const currentScriptQueue = useGameStore.getState().scriptQueue;
+                    const currentSeg = useGameStore.getState().currentSegment;
+
+                    // 1. Find Cut Point (Where are we?)
+                    let matchIndex = -1;
+
+                    // Strategy: Look for the *next* segment in our queue within the new segments.
+                    const nextQueueSeg = currentScriptQueue.length > 0 ? currentScriptQueue[0] : null;
+
+                    if (nextQueueSeg) {
+                        // Scan finalSegments for a matching content
+                        // We filter for content-bearing types (dialogue, narration) to match
+                        matchIndex = finalSegments.findIndex(s =>
+                            (s.type === nextQueueSeg.type) &&
+                            // Lenient match (trim/contains) in case tags altered whitespace
+                            (s.content?.trim() === nextQueueSeg.content?.trim())
+                        );
+                    } else if (currentSeg) {
+                        // If queue is empty (user reading last line), match current segment
+                        // And resume from AFTER it.
+                        const currentMatch = finalSegments.findIndex(s =>
+                            (s.type === currentSeg.type) &&
+                            (s.content?.trim() === currentSeg.content?.trim())
+                        );
+                        if (currentMatch !== -1) {
+                            matchIndex = currentMatch + 1; // Start from next
+                        }
+                    } else {
+                        // Script finished? or not started?
+                        matchIndex = 0; // Replace all if nothing playing?
+                        // If nothing playing, queue is empty.
+                    }
+
+                    // 2. Calculate Future Tags (What will run if we replace queue)
+                    const futureTagSum = {
+                        hp: 0, mp: 0, relationships: {} as Record<string, number>, personality: {} as Record<string, number>
+                    };
+
+                    let newQueue: ScriptSegment[] = [];
+
+                    if (matchIndex !== -1 && matchIndex < finalSegments.length) {
+                        newQueue = finalSegments.slice(matchIndex);
+
+                        // Sum tags in the new queue
+                        newQueue.forEach(seg => {
+                            if (seg.type === 'command') {
+                                if (seg.commandType === 'update_stat') {
+                                    try {
+                                        const stats = JSON.parse(seg.content || '{}');
+                                        Object.entries(stats).forEach(([k, v]) => {
+                                            const key = k.toLowerCase();
+                                            const val = Number(v);
+                                            if (!isNaN(val)) {
+                                                if (key === 'hp') futureTagSum.hp += val;
+                                                else if (key === 'mp') futureTagSum.mp += val;
+                                                else if (key !== 'hp' && key !== 'mp') {
+                                                    futureTagSum.personality[key] = (futureTagSum.personality[key] || 0) + val;
+                                                }
+                                            }
+                                        });
+                                    } catch (e) { }
+                                } else if (seg.commandType === 'update_relationship') {
+                                    try {
+                                        const d = JSON.parse(seg.content || '{}');
+                                        if (d.charId && d.value) {
+                                            const val = Number(d.value);
+                                            futureTagSum.relationships[d.charId] = (futureTagSum.relationships[d.charId] || 0) + val;
+                                        }
+                                    } catch (e) { }
+                                }
+                            }
+                        });
+
+                        console.log(`[Script Replacement] Seamless Switch! resuming from index ${matchIndex}. Future Tags:`, futureTagSum);
+
+                        // Apply Replacement
+                        setScriptQueue(newQueue);
+
+                        // [UX Check] If current segment matches exactly, do we need to refresh it?
+                        // No, let user finish reading current line. ScriptQueue handles the NEXT.
+
+                    } else {
+                        console.warn("[Script Replacement] Could not match stream position. Fallback: dump all logic at end, do not replace script visual.");
+                        // Fallback: We don't replace queue (user reads Clean Text).
+                        // Future Tags = 0 (since we don't add tags to queue).
+                        // Logic runs as pending at end.
+                    }
+
+                    // 3. Deduct Future Tags from Deferred Logic
+                    // deferredLogic = Total - (InlineAppliedSoFar + FutureTags)
+                    // Note: PreLogic was already subtracted from deferredLogic above if applicable.
+                    // inlineAccumulatorRef tracks what user ALREADY saw/clicked (if any tags existed).
+
+                    const acc = inlineAccumulatorRef.current; // What ran so far
+
+                    if (finalDeferred.hpChange !== undefined) {
+                        finalDeferred.hpChange -= (acc.hp + futureTagSum.hp);
+                    }
+                    if (finalDeferred.mpChange !== undefined) {
+                        finalDeferred.mpChange -= (acc.mp + futureTagSum.mp);
+                    }
+
+                    if (finalDeferred.personalityChange) {
+                        // Deduct Accumulator
+                        Object.entries(acc.personality).forEach(([k, v]) => {
+                            if (finalDeferred.personalityChange && finalDeferred.personalityChange[k] !== undefined) {
+                                finalDeferred.personalityChange[k] -= v;
+                            }
+                        });
+                        // Deduct Future Tags
+                        Object.entries(futureTagSum.personality).forEach(([k, v]) => {
+                            if (finalDeferred.personalityChange && finalDeferred.personalityChange[k] !== undefined) {
+                                finalDeferred.personalityChange[k] -= (v as number);
+                            }
+                        });
+                    }
+
+                    if (finalDeferred.post_logic?.relationship_updates) {
+                        const rels = finalDeferred.post_logic.relationship_updates;
+                        // Deduct Accumulator
+                        Object.entries(acc.relationships).forEach(([char, val]) => {
+                            if (rels[char] !== undefined) rels[char] -= val;
+                        });
+                        // Deduct Future Tags
+                        Object.entries(futureTagSum.relationships).forEach(([char, val]) => {
+                            if (rels[char] !== undefined) rels[char] -= val;
+                        });
+                    }
+
+                    setPendingLogic(finalDeferred);
+
+
+
+                    // [Logging] Reconstruct & Log
+                    const mergedResult = {
+                        reply: finalStoryText,
+                        raw_story: cleanStoryText,
+                        router: routerOut,
+                        logic: preLogicDebug,
+                        post_logic: postLogicOut,
+                        martial_arts: p2Result.martialArtsOut,
+
+                        allUsage: { ...p1Result.usage, ...p2Result.usage }, // [Fix] Merge usage objects manually
+                        latencies: { ...p1Result.latencies, ...p2Result.latencies, total: p1Duration + p2Duration },
+                        cost: (p1Result.costs?.total || 0) + (p2Result.costs?.total || 0),
+                        usedModel: p1Result.usedModel
+                    };
+
+                    // [Telemetry & Debug Logging]
+                    // Consolidated Log for Split Agent Execution (Phase 1 + Phase 2)
+
+                    // 0. Prepare Debug Objects
+
+                    // preLogicDebug is already defined in outer scope
+                    const postLogicDebug = (p2Result as any).postLogicOut;
+                    const castingDebug = (p1Result as any).suggestions; // [Fix] executeStoryPhase returns 'suggestions'
+                    const maDebug = (p2Result as any).martialArtsOut;
+
+
+                    // Latencies & Cost
+                    const totalCost = (mergedResult.cost || 0);
+                    const totalWon = Math.round(totalCost * KRW_PER_USD);
+
+                    // Estimate latencies based on available data or reconstruction
+                    // P1 has discrete latencies in result? p1Result usually has them attached if server returns them.
+                    // If not, we use the client-side delta.
+                    const p1Latencies = (p1Result as any).latencies || {};
+                    const p2Latencies = (p2Result as any).latencies || {};
+
+                    console.log(`%c[Telemetry] Async Phase 2 Done. Total Latency: ${mergedResult.latencies.total}ms | Cost: $${totalCost.toFixed(6)} (₩${totalWon.toLocaleString()})`, 'color: gray;');
+
+                    // [New] Detailed Token Usage Log
+                    if (mergedResult.allUsage) {
+                        const usageTable = Object.entries(mergedResult.allUsage).map(([model, usage]: [string, any]) => ({
+                            Model: model,
+                            'In Tokens': usage.promptTokens,
+                            'Out Tokens': usage.completionTokens,
+                            'Total Tokens': usage.totalTokens,
+                            'Cost ($)': `$${(usage.cost || 0).toFixed(6)}`
+                        }));
+                        console.table(usageTable);
+                    }
+
+
+
+                    // 1.5 Casting Log
+                    if (castingDebug) {
+                        const candidateCount = castingDebug.length;
+                        console.groupCollapsed(`%c[Step 1.5] Casting Director (${candidateCount} candidates scanned)`, candidateCount > 0 ? 'color: purple; font-weight: bold;' : 'color: gray;');
+
+                        if (candidateCount === 0) {
+                            console.log("No candidates found (All filtered by Phase/Region/Active). check AgentCasting logic.");
+                        } else {
+                            // Display Top 15
+                            console.log(`%c[Leaderboard (Top 15)]`, 'color: purple; font-weight: bold;', castingDebug.slice(0, 15).map((c: any) => ({
+                                Name: c.name,
+                                Score: c.score.toFixed(2),
+                                Reasons: c.reasons.join(', ')
+                            })));
+                        }
+                        console.groupEnd();
+                    }
+
+                    // 2. Pre-Logic Log
+                    if (preLogicDebug) {
+                        const scoreText = preLogicDebug.plausibility_score ? `Score: ${preLogicDebug.plausibility_score}/10` : (preLogicDebug.success ? 'Success' : 'Failure');
+                        // [Debug] Force Expand if Fate changed (or just exist)
+                        const fateChangeValue = preLogicDebug.state_changes?.fate;
+                        if (fateChangeValue !== undefined) {
+                            console.log(`%c[Fate System] PreLogic returned Fate Change: ${fateChangeValue} (Score: ${preLogicDebug.plausibility_score})`, 'color: gold; font-size: 14px; font-weight: bold;');
+                        }
+
+                        console.groupCollapsed(`%c[Step 2] Pre-Logic (${p1Latencies.preLogic || '?'}ms) (${scoreText})`, 'color: magenta; font-weight: bold;');
+                        console.log(`%c[Input]`, 'color: gray; font-weight: bold;', preLogicDebug._debug_prompt);
+                        console.log(`%c[Output]`, 'color: magenta; font-weight: bold;', {
+                            Score: preLogicDebug.plausibility_score,
+                            Analysis: preLogicDebug.judgment_analysis,
+                            Guide: preLogicDebug.narrative_guide,
+                            Mechanics: preLogicDebug.mechanics_log,
+                            Changes: preLogicDebug.state_changes
+                        });
+                        console.groupEnd();
+                    }
+
+                    // 3. Story Log
+                    console.groupCollapsed(`%c[Step 3] Story Writer (${p1Latencies.story || '?'}ms)`, 'color: green; font-weight: bold;');
+                    if ((p1Result as any).systemPrompt) {
+                        console.log(`%c[Input - Static (Cached)]`, 'color: gray; font-weight: bold;', (p1Result as any).systemPrompt);
+                    }
+                    if ((p1Result as any).finalUserMessage) {
+                        console.log(`%c[Input - Dynamic (Logic + User)]`, 'color: blue; font-weight: bold;', (p1Result as any).finalUserMessage);
+                    }
+                    // Use clean text for log readability, or raw if preferred
+                    console.log(`%c[Output]`, 'color: green; font-weight: bold;', finalStoryText);
+                    console.groupEnd();
+
+                    // 4. Post-Logic Log
+                    if (postLogicDebug) {
+                        console.groupCollapsed(`%c[Step 4] Post-Logic (${p2Latencies.postLogic || '?'}ms)`, 'color: orange; font-weight: bold;');
+                        console.log(`%c[Input]`, 'color: gray; font-weight: bold;', postLogicDebug._debug_prompt);
+                        console.log(`%c[Output]`, 'color: orange; font-weight: bold;', {
+                            Mood: postLogicDebug.mood_update,
+                            Relations: postLogicDebug.relationship_updates,
+                            Stats: postLogicDebug.stat_updates,
+                            Tension: postLogicDebug.tension_update,
+                            NewGoals: postLogicDebug.new_goals,
+                            GoalUpdates: postLogicDebug.goal_updates,
+                            Memories: postLogicDebug.new_memories
+                        });
+                        console.groupEnd();
+                    }
+
+                    // 4.6. Choices Log (Post-Logic Parallel)
+                    if (p2Result.choicesOut) {
+                        console.groupCollapsed(`%c[Step 4.6] Choice Generation`, 'color: cyan; font-weight: bold;');
+                        console.log(`%c[Input]`, 'color: gray; font-weight: bold;', p2Result.choicesOut._debug_prompt);
+                        console.log(`%c[Output]`, 'color: cyan; font-weight: bold;', p2Result.choicesOut.text);
+                        console.groupEnd();
+                    }
+
+                    // 4.5. Martial Arts Log
+                    if (maDebug) {
+                        const maResult = p2Result.martialArtsOut;
+                        console.groupCollapsed(`%c[Step 4.5] Martial Arts (${p2Latencies.martial_arts || '?'}ms)`, 'color: red; font-weight: bold;');
+                        console.log(`%c[Input]`, 'color: gray; font-weight: bold;', maDebug._debug_prompt);
+                        console.log(`%c[Output]`, 'color: red; font-weight: bold;', {
+                            LevelDelta: maResult?.level_delta,
+                            NewSkills: maResult?.new_skills,
+                            UpdatedSkills: maResult?.updated_skills,
+                            Audit: maResult?.audit_log,
+                            Stats: maResult?.stat_updates
+                        });
+                        console.groupEnd();
+                    }
+
+
+                    // (Full logging omitted to save space, but critical data is captured in submitGameplayLog)
+
+                    // Submit Log
+                    submitGameplayLog({
+                        session_id: activeSession?.user?.id || '00000000-0000-0000-0000-000000000000',
+                        game_mode: useGameStore.getState().activeGameId,
+                        turn_count: useGameStore.getState().turnCount,
+                        choice_selected: text,
+                        player_rank: useGameStore.getState().playerStats.playerRank,
+                        location: useGameStore.getState().currentLocation,
+                        timestamp: new Date().toISOString(),
+                        player_name: useGameStore.getState().playerName,
+                        cost: mergedResult.cost,
+                        input_type: isDirectInput ? 'direct' : 'choice',
+                        meta: {
+                            hp: useGameStore.getState().playerStats.hp,
+                            agent_router: routerOut?.intent,
+                            pre_logic_score: preLogicDebug?.plausibility_score,
+                            scenario_summary: useGameStore.getState().scenarioSummary
+                        },
+                        story_output: finalStoryText
+                    });
+
+                } catch (e) {
+                    console.error("[VisualNovelUI] Phase 2 Error:", e);
+                    addToast("Logic Sync Failed (Background)", "error");
+                } finally {
+                    setIsLogicPending(false);
+                }
+            })();
 
             // Update Average Response Time (Weighted: 70% history, 30% recent)
             const duration = Date.now() - startTime;
@@ -1756,7 +1604,11 @@ export default function VisualNovelUI() {
                 console.log(`[VisualNovelUI] Setting Script Queue (Size: ${segments.length})`);
                 // Skip initial background, command, AND BGM segments
                 let startIndex = 0;
-                while (startIndex < segments.length && (segments[startIndex].type === 'background' || segments[startIndex].type === 'command' || segments[startIndex].type === 'bgm')) {
+                while (startIndex < segments.length && (
+                    segments[startIndex].type === 'background' ||
+                    segments[startIndex].type === 'command' ||
+                    segments[startIndex].type === 'bgm'
+                )) {
                     const seg = segments[startIndex];
                     if (seg.type === 'background') {
                         // [Fix] Resolve background properly before setting
@@ -1777,6 +1629,54 @@ export default function VisualNovelUI() {
                                     console.log(`[Time] Auto-update Day: ${newDay}`);
                                 }
                             }
+                        } else if (seg.commandType === 'update_stat') {
+                            // [Fix] Handle Stat Update (Parsed as Command)
+                            try {
+                                const stats = JSON.parse(seg.content || '{}');
+                                Object.entries(stats).forEach(([k, v]) => {
+                                    const key = k.toLowerCase();
+                                    const val = Number(v);
+                                    if (isNaN(val)) return;
+
+                                    // 1. Apply Immediate
+                                    applyGameLogic({
+                                        hpChange: key === 'hp' ? val : 0,
+                                        mpChange: key === 'mp' ? val : 0,
+                                        personalityChange: (key !== 'hp' && key !== 'mp') ? { [key]: val } : {}
+                                    });
+
+                                    // 2. Visual Feedback
+                                    if (key === 'hp') addToast(`체력 ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'error');
+                                    else if (key === 'mp') addToast(`내공 ${val > 0 ? '+' : ''}${val}`, 'info');
+                                    else addToast(`${key} ${val > 0 ? '+' : ''}${val}`, 'info');
+
+                                    // 3. Track for Pending Deduction (using Ref)
+                                    if (key === 'hp') inlineAccumulatorRef.current.hp += val;
+                                    else if (key === 'mp') inlineAccumulatorRef.current.mp += val;
+                                    else if (key) {
+                                        inlineAccumulatorRef.current.personality[key] = (inlineAccumulatorRef.current.personality[key] || 0) + val;
+                                    }
+                                });
+                            } catch (e) {
+                                console.warn("[VisualNovelUI] Failed to parse stat update command", e);
+                            }
+                        } else if (seg.commandType === 'update_relationship') {
+                            // [Fix] Handle Relationship Update (Parsed as Command)
+                            try {
+                                const relData = JSON.parse(seg.content || '{}');
+                                const charName = relData.charId || relData.character;
+                                const val = Number(relData.value);
+
+                                if (charName && !isNaN(val)) {
+                                    useGameStore.getState().updateCharacterRelationship(charName, val);
+                                    addToast(`${charName} 호감도 ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'info');
+
+                                    // Track for Pending Deduction (using Ref)
+                                    inlineAccumulatorRef.current.relationships[charName] = (inlineAccumulatorRef.current.relationships[charName] || 0) + val;
+                                }
+                            } catch (e) {
+                                console.warn("[VisualNovelUI] Failed to parse relationship update command", e);
+                            }
                         }
                     } else if (seg.type === 'bgm') {
                         // [Fix] Play BGM immediately if it's at the start
@@ -1785,6 +1685,7 @@ export default function VisualNovelUI() {
 
                     startIndex++;
                 }
+
 
                 if (startIndex < segments.length) {
                     // Check if the restart point is a CHOICE
@@ -1851,6 +1752,9 @@ export default function VisualNovelUI() {
 
         // [Logging] Handled in handleSend to capture costs and results
         console.log("📝 Sending Direct Input:", inputToLog);
+
+        // [Adaptive Agent] Track User Input Style
+        addChoiceToHistory({ text: inputToLog, type: 'input', timestamp: Date.now() });
 
         handleSend(inputToLog, true);
         setUserInput('');
@@ -2038,8 +1942,9 @@ export default function VisualNovelUI() {
         const isGrowthEvent =
             (logicResult.neigongChange && logicResult.neigongChange > 0) ||
             logicResult.realmChange || // Hypothetical field, but let's assume specific realm update logic down below covers it
-            logicResult.new_martial_art || // Check if logic returns this
-            (logicResult.expChange && logicResult.expChange > 10); // Major EXP gain
+            (logicResult.expChange && logicResult.expChange > 10) || // Major EXP gain
+            // [NEW] Check for new skills (unified)
+            (logicResult.new_skills && logicResult.new_skills.length > 0);
 
         if (isGrowthEvent) {
             newStats.growthStagnation = 0;
@@ -2058,7 +1963,17 @@ export default function VisualNovelUI() {
 
         if (logicResult.expChange) newStats.exp += logicResult.expChange;
         if (logicResult.fameChange) newStats.fame = Math.max(0, (newStats.fame || 0) + logicResult.fameChange);
-        if (logicResult.fateChange) newStats.fate = Math.max(0, (newStats.fate || 0) + logicResult.fateChange); // Handle Fate Change
+        // [Fate System] Update Fate (Generic 'fate' or legacy 'fateChange')
+        if (logicResult.fate !== undefined) {
+            console.log(`[applyGameLogic] Applying Fate Change: ${logicResult.fate}`);
+            // [Toast] Visual Feedback
+            if (logicResult.fate !== 0) addToast(`운명 포인트 ${logicResult.fate > 0 ? '+' : ''}${logicResult.fate}`, 'info');
+            newStats.fate = Math.max(0, (newStats.fate || 0) + logicResult.fate);
+        }
+        else if (logicResult.fateChange !== undefined) {
+            console.log(`[applyGameLogic] Applying Fate Change (Legacy): ${logicResult.fateChange}`);
+            newStats.fate = Math.max(0, (newStats.fate || 0) + logicResult.fateChange);
+        }
 
         // Base Stats
         if (logicResult.statChange) {
@@ -2157,9 +2072,34 @@ export default function VisualNovelUI() {
         }
 
         // Skills
-        if (logicResult.newSkills) {
-            logicResult.newSkills.forEach((skill: string) => {
-                if (!newStats.skills.includes(skill)) newStats.skills.push(skill);
+        // Skills (Unified System)
+        // logicResult.new_skills is Array of Skill Objects
+        if (logicResult.new_skills) {
+            logicResult.new_skills.forEach((skill: Skill) => {
+                // Check duplicate by ID
+                if (!newStats.skills.find(s => s.id === skill.id)) {
+                    newStats.skills.push(skill);
+                    addToast(`신규 스킬 획득: ${skill.name}`, 'success');
+                }
+            });
+        }
+
+        // [Unified] Skill Proficiency Updates
+        if (logicResult.updated_skills) {
+            logicResult.updated_skills.forEach((update: { id: string, proficiency_delta: number }) => {
+                const skillIndex = newStats.skills.findIndex(s => s.id === update.id);
+                if (skillIndex > -1) {
+                    const skill = newStats.skills[skillIndex];
+                    const oldProf = skill.proficiency || 0;
+                    const newProf = Math.min(100, Math.max(0, oldProf + update.proficiency_delta));
+
+                    // Direct mutation of the clones array object
+                    newStats.skills[skillIndex] = { ...skill, proficiency: newProf };
+
+                    if (newProf !== oldProf) {
+                        addToast(`${skill.name} 숙련도: ${oldProf}% -> ${newProf}% (${update.proficiency_delta > 0 ? '+' : ''}${update.proficiency_delta})`, 'info');
+                    }
+                }
             });
         }
 
@@ -2204,93 +2144,56 @@ export default function VisualNovelUI() {
             }
         }
 
-        // [Wuxia] Martial Arts Processing (Realm, Skills, Stagnation)
-        if (logicResult.martial_arts) {
-            const ma = logicResult.martial_arts;
-            let hasGrowth = false;
+        // [Universal] Level & Rank Progression
+        const maResult = logicResult.martial_arts;
+        if (maResult && maResult.level_delta) {
+            const delta = maResult.level_delta;
+            const oldLevel = newStats.level || 1;
+            newStats.level = oldLevel + delta;
+            addToast(`성장 (Growth): +${delta.toFixed(2)} Level`, 'success');
 
-            // 1. Realm Update
-            if (ma.realm_update) {
-                newStats.realm = ma.realm_update; // e.g., '일류'
-                addToast(`경지 돌파! [${ma.realm_update}]에 도달했습니다.`, 'success');
-                hasGrowth = true;
-            }
+            // Check for Rank Up (Title Change)
+            const gameId = useGameStore.getState().activeGameId || 'wuxia';
+            let newTitle = '';
+            let map = null;
 
-            // 2. Realm Progress
-            if (ma.realm_progress_delta) {
-                const currentProg = newStats.realmProgress || 0;
-                newStats.realmProgress = Math.min(100, Math.max(0, currentProg + ma.realm_progress_delta));
-                // Wait, if progress reaches 100, logic should probably flag it? 
-                // Currently usually handled by Agent deciding "Realm Update".
-                if (ma.realm_progress_delta > 0) hasGrowth = true;
-                console.log(`[MartialArts] Progress: ${currentProg} -> ${newStats.realmProgress} (+${ma.realm_progress_delta})`);
-            }
+            if (gameId === 'wuxia') map = LEVEL_TO_REALM_MAP;
+            else if (gameId === 'god_bless_you') map = LEVEL_TO_RANK_MAP;
 
-            // 3. New Arts
-            if (ma.new_arts && ma.new_arts.length > 0) {
-                if (!newStats.martialArts) newStats.martialArts = [];
-                ma.new_arts.forEach((art: any) => {
-                    // Check duplicate ID
-                    if (!newStats.martialArts.find((a: any) => a.id === art.id)) {
-                        newStats.martialArts.push(art);
-                        addToast(`새로운 무공 습득: ${art.name}`, 'success');
-                        hasGrowth = true;
+            if (map) {
+                const entry = map.find(m => newStats.level >= m.min && newStats.level <= m.max);
+                if (entry) {
+                    if ((entry as any).id) {
+                        // [Localization Fix] Unified Title Resolution
+                        const lang = useGameStore.getState().language || 'ko';
+                        const category = gameId === 'wuxia' ? 'realms' : 'ranks';
+                        // @ts-ignore
+                        const t = translations[lang]?.[gameId]?.[category];
+                        newTitle = (t && t[(entry as any).id]) ? t[(entry as any).id] : (entry as any).title || "Unknown";
+                    } else {
+                        newTitle = (entry as any).title || "Unknown";
                     }
-                });
-            }
-
-            // 4. Updated Arts
-            if (ma.updated_arts && ma.updated_arts.length > 0) {
-                if (!newStats.martialArts) newStats.martialArts = [];
-                ma.updated_arts.forEach((update: any) => {
-                    const idx = newStats.martialArts.findIndex((a: any) => a.id === update.id);
-                    if (idx !== -1) {
-                        const art = newStats.martialArts[idx];
-                        art.proficiency = Math.min(100, Math.max(0, (art.proficiency || 0) + update.proficiency_delta));
-                        if (update.proficiency_delta > 0) hasGrowth = true;
-                    }
-                });
-            }
-
-            // 5. Stat Updates (Penalties/Injuries from Audit)
-            if (ma.stat_updates) {
-                if (ma.stat_updates.hp) {
-                    newStats.hp = Math.max(0, (newStats.hp || 0) + ma.stat_updates.hp);
-                    handleVisualDamage(ma.stat_updates.hp, newStats.hp, newStats.maxHp);
-                }
-                if (ma.stat_updates.mp) newStats.mp = Math.max(0, (newStats.mp || 0) + ma.stat_updates.mp);
-                // [Fix] Connect Neigong Update from Martial Arts Agent
-                if (ma.stat_updates.neigong) {
-                    newStats.neigong = Math.max(0, (newStats.neigong || 0) + ma.stat_updates.neigong);
-                    addToast(`내공(Internal Energy) ${ma.stat_updates.neigong > 0 ? '+' : ''}${ma.stat_updates.neigong}년`, 'success');
-                }
-
-                // Merge Injuries
-                if (ma.stat_updates.active_injuries) {
-                    const currentInj = newStats.active_injuries || [];
-                    ma.stat_updates.active_injuries.forEach((inj: string) => {
-                        if (!currentInj.includes(inj)) {
-                            currentInj.push(inj);
-                            addToast(`내상(Internal Injury): ${inj}`, 'warning');
-                        }
-                    });
-                    newStats.active_injuries = currentInj;
                 }
             }
 
-            // 6. Growth Stagnation Logic
-            if (hasGrowth) {
-                newStats.growthStagnation = 0;
-            } else {
-                newStats.growthStagnation = (newStats.growthStagnation || 0) + 1;
+            if (newTitle && newTitle !== newStats.playerRank) {
+                newStats.playerRank = newTitle;
+                // useGameStore.getState().setPlayerRealm(newTitle); // [Removed] Legacy State
+                addToast(`Rank Up! [${newTitle}]`, 'success');
+                console.log(`[Progression] Level ${oldLevel.toFixed(2)} -> ${newStats.level.toFixed(2)} | Rank: ${newTitle}`);
             }
-            console.log(`[MartialArts] Stagnation: ${newStats.growthStagnation}`);
-        } else {
-            // No MA output (non-combat turn?), increment stagnation if it's Wuxia mode?
-            // Actually, keep it safe. Only increment if explicit logic ran.
-            // If explicit logic ran (martial_arts exists) but empty, it hits the else above? 
-            // AgentMartialArts always returns empty object {} if no change?
-            // If empty object, hasGrowth = false -> Stagnation +1. Correct.
+        }
+
+        // [New Wuxia] New Skills Logic
+        if (maResult && maResult.new_skills && maResult.new_skills.length > 0) {
+            const currentSkills = useGameStore.getState().playerStats.skills || [];
+            maResult.new_skills.forEach((skill: any) => {
+                // Check duplicate ID
+                if (!currentSkills.find((s: any) => s.id === skill.id)) {
+                    // Logic to add skill is handled in setState below, but we can do a toast here
+                    addToast(`New Skill: ${skill.name}`, 'success');
+                }
+            });
         }
 
 
@@ -2364,19 +2267,25 @@ export default function VisualNovelUI() {
         if (logicResult.personalityChange) {
             Object.entries(logicResult.personalityChange).forEach(([trait, value]: [string, any]) => {
                 if (value !== 0) {
-                    // Try to map trait to Korean if possible, or capitalize
-                    const label = TRAIT_KO_MAP[trait] || trait.charAt(0).toUpperCase() + trait.slice(1);
+                    // [Fix] Access flattened keys directly
+                    const label = (t as any)[trait] || trait.charAt(0).toUpperCase() + trait.slice(1);
                     addToast(`${label} ${value > 0 ? '+' : ''}${value}`, value > 0 ? 'success' : 'warning');
                 }
             });
         }
 
-        // [New] Player Rank Update
+        // [New] Player Rank Update (Sync mechanism if Logic returns direct rank)
         if (logicResult.playerRank) {
             const currentRank = useGameStore.getState().playerStats.playerRank;
             if (currentRank !== logicResult.playerRank) {
-                // Update Rank
-                setPlayerStats({ ...newStats, playerRank: logicResult.playerRank });
+                // Update Rank AND Realm to remain consistent
+                newStats.playerRank = logicResult.playerRank;
+                // We don't call setPlayerStats here directly anymore, as newStats is committed at the end
+                // setPlayerStats({ ...newStats, playerRank: logicResult.playerRank }); <-- Removed direct set
+
+                // Also update top-level playerRealm State immediately for safety
+                // useGameStore.getState().setPlayerRealm(logicResult.playerRank); // [Removed] Legacy
+
                 addToast(`Rank Up: ${logicResult.playerRank}`, 'success');
                 console.log(`Rank updated from ${currentRank} to ${logicResult.playerRank}`);
             }
@@ -2430,7 +2339,7 @@ export default function VisualNovelUI() {
                 if (loc.description) updateData.description = loc.description;
                 if (loc.secrets) {
                     updateData.secrets = loc.secrets;
-                    addToast(`Secrets Updated: ${loc.id}`, 'info');
+                    addToast(t.systemMessages?.secretsUpdated?.replace('{0}', loc.id) || `Secrets Updated: ${loc.id}`, 'info');
                 }
 
                 if (Object.keys(updateData).length > 0) {
@@ -2472,10 +2381,10 @@ export default function VisualNovelUI() {
 
                             if (updatedInjuries.length < initialLength) {
                                 // Indeed removed
-                                addToast(`상태 회복: ${resolved}`, 'success');
+                                addToast(t.systemMessages?.statusRecovered?.replace('{0}', resolved) || `상태 회복: ${resolved}`, 'success');
                             } else {
                                 // Match Failed - Warn User (Debug)
-                                addToast(`회복 실패(명칭 불일치): AI가 '${resolved}' 치유를 시도했으나, 목록에 없습니다.`, 'error');
+                                addToast(t.systemMessages?.recoveryFailed?.replace('{0}', resolved) || `회복 실패(명칭 불일치): AI가 '${resolved}' 치유를 시도했으나, 목록에 없습니다.`, 'error');
                             }
                         });
                     }
@@ -2485,7 +2394,7 @@ export default function VisualNovelUI() {
                         postLogic.new_injuries.forEach((newInjury: string) => {
                             if (!updatedInjuries.includes(newInjury)) {
                                 updatedInjuries.push(newInjury);
-                                addToast(`부상 발생/악화: ${newInjury}`, 'warning');
+                                addToast(t.systemMessages?.injuryOccurred?.replace('{0}', newInjury) || `부상 발생/악화: ${newInjury}`, 'warning');
                             }
                         });
                     }
@@ -2512,7 +2421,8 @@ export default function VisualNovelUI() {
                         (newPersonality as any)[key] = newValue;
                         hasChanges = true;
                         if (Math.abs(val as number) >= 1) {
-                            const label = TRAIT_KO_MAP[key] || key;
+                            // [Localization] Use flattened keys from translations
+                            const label = (t as any)[key] || key;
                             addToast(`${label} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
                         }
                     }
@@ -2533,6 +2443,7 @@ export default function VisualNovelUI() {
         }
 
         // [NEW] Martial Arts & Realm Updates (Sync with Server)
+        // This is the SINGLE SOURCE OF TRUTH for Martial Arts updates.
         if (logicResult.martial_arts) {
             const ma = logicResult.martial_arts;
             console.log("[MartialArts] Update Received:", ma);
@@ -2543,22 +2454,27 @@ export default function VisualNovelUI() {
 
                 // 1. Realm Update
                 if (ma.realm_update) {
-                    // Update both specific Realm field and generic PlayerRank
-                    currentStats.realm = ma.realm_update;
-                    currentStats.playerRank = ma.realm_update.split('(')[0].trim(); // Normalize "이류 (2nd Rate)" -> "이류"
-                    currentStats.realmProgress = 0; // Reset progress on breakthrough
-                    hasUpdates = true;
-                    addToast(`경지 등극: ${ma.realm_update}`, 'success');
+                    // Update generic PlayerRank (Unified Skill System)
+                    const normalizedRealm = ma.realm_update.split('(')[0].trim(); // Normalize "이류 (2nd Rate)" -> "이류"
+
+                    if (currentStats.playerRank !== normalizedRealm) {
+                        currentStats.playerRank = normalizedRealm;
+                        // currentStats.realm = ma.realm_update; // [Removed] Legacy
+                        // currentStats.realmProgress = 0; // [Removed] Legacy
+                        hasUpdates = true;
+                        addToast(t.systemMessages?.realmAscension?.replace('{0}', ma.realm_update) || `경지 등극: ${ma.realm_update}`, 'success');
+                    }
                 }
 
-                // 2. Realm Progress Delta
+                // 2. Realm Progress Delta -> Map to EXP
                 if (ma.realm_progress_delta !== undefined) {
-                    const currentProg = currentStats.realmProgress || 0;
-                    currentStats.realmProgress = Math.min(100, Math.max(0, currentProg + ma.realm_progress_delta));
+                    // Treat progress delta as EXP gain for now
+                    const currentExp = currentStats.exp || 0;
+                    currentStats.exp = currentExp + ma.realm_progress_delta;
                     hasUpdates = true;
                     // Only toast for significant gain
                     if (ma.realm_progress_delta >= 5) {
-                        addToast(`깨달음: 경지 진행도 +${ma.realm_progress_delta}%`, 'info');
+                        addToast(t.systemMessages?.realmProgress?.replace('{0}', ma.realm_progress_delta) || `깨달음: 경험치 +${ma.realm_progress_delta}`, 'info');
                     }
                 }
 
@@ -2569,41 +2485,73 @@ export default function VisualNovelUI() {
                     // Float correction (optional, but display usually handles it)
                     currentStats.neigong = Math.round(currentStats.neigong * 100) / 100;
                     hasUpdates = true;
+                    const sign = delta > 0 ? '+' : '';
+                    addToast(t.systemMessages?.neigongGain?.replace('{0}', `${sign}${delta}`) || `내공 ${sign}${delta}년`, 'success');
                 }
 
-                // 4. Martial Arts List Update
-                // Add New Arts
-                if (ma.new_arts && ma.new_arts.length > 0) {
-                    const currentArts = currentStats.martialArts || [];
-                    const newArts = ma.new_arts.filter((n: any) => !currentArts.find((e: any) => e.name === n.name));
-                    if (newArts.length > 0) {
-                        currentStats.martialArts = [...currentArts, ...newArts];
-                        // Also update string list of skills for easy access
-                        currentStats.skills = [...(currentStats.skills || []), ...newArts.map((a: any) => a.name)];
+                // 3.5. HP/MP Logic from Martial Arts (Penalty/Growth)
+                if (ma.stat_updates?.hp) {
+                    currentStats.hp = Math.max(0, (currentStats.hp || 0) + ma.stat_updates.hp);
+                    hasUpdates = true;
+                }
+                if (ma.stat_updates?.mp) {
+                    currentStats.mp = Math.max(0, (currentStats.mp || 0) + ma.stat_updates.mp);
+                    hasUpdates = true;
+                }
+
+                // 3.6 Merge Injuries from Martial Arts
+                if (ma.stat_updates?.active_injuries) {
+                    const currentInj = currentStats.active_injuries || [];
+                    ma.stat_updates.active_injuries.forEach((inj: string) => {
+                        if (!currentInj.includes(inj)) {
+                            currentInj.push(inj);
+                            addToast(t.systemMessages?.internalInjury?.replace('{0}', inj) || `내상(Internal Injury): ${inj}`, 'warning');
+                            hasUpdates = true;
+                        }
+                    });
+                    currentStats.active_injuries = currentInj;
+                }
+
+
+                // 4. Skills Update
+                // Add New Skills
+                if (ma.new_skills && ma.new_skills.length > 0) {
+                    const currentSkills = currentStats.skills || [];
+                    const newSkills = ma.new_skills.filter((n: any) => !currentSkills.find((e: any) => e.name === n.name));
+                    if (newSkills.length > 0) {
+                        currentStats.skills = [...currentSkills, ...newSkills];
                         hasUpdates = true;
-                        newArts.forEach((art: any) => addToast(`신규 무공 습득: ${art.name}`, 'success'));
+                        newSkills.forEach((skill: any) => addToast(t.systemMessages?.newArt?.replace('{0}', skill.name) || `신규 스킬 습득: ${skill.name}`, 'success'));
                     }
                 }
 
-                // Update Existing Arts (Proficiency)
-                if (ma.updated_arts && ma.updated_arts.length > 0) {
-                    const currentArts = currentStats.martialArts || [];
-                    let artUpdated = false;
-                    const updatedList = currentArts.map((art: any) => {
-                        const update = ma.updated_arts.find((u: any) => u.id === art.id || u.name === art.name); // Support Name or ID
+                // Update Existing Skills (Proficiency)
+                if (ma.updated_skills && ma.updated_skills.length > 0) {
+                    const currentSkills = currentStats.skills || [];
+                    let skillUpdated = false;
+                    const updatedList = currentSkills.map((skill: any) => {
+                        const update = ma.updated_skills.find((u: any) => u.id === skill.id || u.name === skill.name); // Support Name or ID
                         if (update) {
-                            artUpdated = true;
+                            skillUpdated = true;
                             // Update Proficiency
-                            const newProf = Math.min(100, (art.proficiency || 0) + update.proficiency_delta);
-                            return { ...art, proficiency: newProf };
+                            const newProf = Math.min(100, Math.max(0, (skill.proficiency || 0) + update.proficiency_delta));
+                            return { ...skill, proficiency: newProf };
                         }
-                        return art;
+                        return skill;
                     });
 
-                    if (artUpdated) {
-                        currentStats.martialArts = updatedList;
+                    if (skillUpdated) {
+                        currentStats.skills = updatedList;
                         hasUpdates = true;
                     }
+                }
+
+                // 5. Growth Stagnation - Calculated from update existence
+                if (hasUpdates) {
+                    currentStats.growthStagnation = 0;
+                } else {
+                    // Only increment if we actually ran MA logic but got no growth?
+                    // Rely on external cycle for general stagnation, but here we reset it on growth.
                 }
 
                 if (hasUpdates) {
@@ -2625,7 +2573,7 @@ export default function VisualNovelUI() {
             const currentMood = useGameStore.getState().currentMood;
             if (currentMood !== logicResult.newMood) {
                 useGameStore.getState().setMood(logicResult.newMood);
-                addToast(`Mood Changed: ${logicResult.newMood.toUpperCase()}`, 'info');
+                addToast(t.systemMessages?.moodChanged?.replace('{0}', logicResult.newMood.toUpperCase()) || `Mood Changed: ${logicResult.newMood.toUpperCase()}`, 'info');
                 console.log(`Mood changed from ${currentMood} to ${logicResult.newMood}`);
             }
         }
@@ -2706,7 +2654,7 @@ export default function VisualNovelUI() {
                     if (!store.deadCharacters?.includes(id)) {
                         if (store.addDeadCharacter) {
                             store.addDeadCharacter(id);
-                            addToast(`Character Defeated: ${id}`, 'warning');
+                            addToast(t.systemMessages?.characterDefeated?.replace('{0}', id) || `Character Defeated: ${id}`, 'warning');
                             console.log(`[Death] Character ${id} marked as dead.`);
                         }
                     }
@@ -2778,21 +2726,8 @@ export default function VisualNovelUI() {
                     }
                 }
 
-                // [Optimization] Check & Summarize Memory if > 10
-                // We use fire-and-forget async call
-                const freshState = useGameStore.getState();
-                const currentMemories = freshState.characterData[targetId]?.memories || [];
-                if (currentMemories.length > 10) {
-                    serverGenerateCharacterMemorySummary(targetId, currentMemories)
-                        .then((summaryList) => {
-                            if (Array.isArray(summaryList)) {
-                                useGameStore.getState().updateCharacterData(targetId, { memories: summaryList });
-                                console.log(`[Memory] Summarized ${targetId}: ${currentMemories.length} -> ${summaryList.length}`);
-                                // Optional: addToast(`Memories Consolidated: ${targetId}`, 'info');
-                            }
-                        })
-                        .catch(err => console.warn(`[Memory] Summary Failed for ${targetId}:`, err));
-                }
+                // [Optimization] Memory Summarization moved to Background Phase 2 (handleSend)
+                // to prevent UI blocking during logic application.
             });
         }
 
@@ -2835,7 +2770,7 @@ export default function VisualNovelUI() {
                 activeEventPrompt = matchedEvent.prompt;
                 hasActiveEvent = matchedEvent.id; // Store ID as truthy value
 
-                addToast(`Event Triggered: ${matchedEvent.id}`, 'info');
+                addToast(t.systemMessages?.eventTriggered?.replace('{0}', matchedEvent.id) || `Event Triggered: ${matchedEvent.id}`, 'info');
                 console.log(`[Event Found] Prompt Length: ${matchedEvent.prompt.length}`);
             } else {
                 console.warn(`[Logic Error] Triggered ID '${logicResult.triggerEventId}' not found in Event Registry.`);
@@ -2860,7 +2795,7 @@ export default function VisualNovelUI() {
             });
 
             if (!logicResult.triggerEventId) {
-                addToast(`${triggeredEvents.length} Event(s) Triggered`, 'info');
+                addToast(t.systemMessages?.eventsTriggered?.replace('{0}', triggeredEvents.length.toString()) || `${triggeredEvents.length} Event(s) Triggered`, 'info');
             }
         }
 
@@ -2993,251 +2928,67 @@ export default function VisualNovelUI() {
                     </AnimatePresence>
                 </div>
 
-                {/* [WUXIA UI OVERHAUL] Top Layer */}
-                <div className="absolute top-0 left-0 w-full p-4 md:p-6 flex justify-between items-start pointer-events-none z-50 font-sans">
-
-                    {/* LEFT: Player Status (Avatar, Rank, Info, Stats) */}
-                    <div className="relative pointer-events-auto z-50">
-                        {/* Profile Background Image */}
-                        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-[350px] h-[270px] md:w-[520px] md:h-[390px] z-0 pointer-events-none -ml-16 md:-ml-24 -mt-4">
-                            <img
-                                src="/assets/wuxia/interface/UI_ProfileBG.png"
-                                alt="Profile BG"
-                                className="w-full h-full object-contain drop-shadow-2xl"
-                            />
-                        </div>
-
-                        <div className="flex gap-3 md:gap-5 items-start relative z-10">
-
-                            {/* Column 1: Avatar & Rank */}
-                            <div className="flex flex-col items-center gap-[-10px]">
-                                {/* Avatar */}
-                                <div
-                                    className="relative group cursor-pointer transition-transform hover:scale-105 z-20"
-                                    onClick={() => setShowCharacterInfo(true)}
-                                >
-                                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 border-zinc-500/30 overflow-hidden shadow-2xl relative bg-black">
-                                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-600">
-                                            {isMounted ? (
-                                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${playerName}`} alt="Avatar" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="text-2xl">👤</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Rank Box - Below Avatar */}
-                                <div className="relative z-30 -mt-6 md:-mt-8">
-                                    <div className="relative flex items-center justify-center w-14 h-14 md:w-20 md:h-16">
-                                        <img
-                                            src="/assets/wuxia/interface/UI_RankBG.png"
-                                            alt="Rank BG"
-                                            className="absolute inset-0 w-full h-full object-contain drop-shadow-lg"
-                                            onError={(e) => {
-                                                e.currentTarget.style.display = 'none';
-                                                e.currentTarget.parentElement!.classList.add('bg-red-900/90', 'border-2', 'border-red-500', 'rounded', 'px-2');
-                                            }}
-                                        />
-                                        <span className="relative z-10 text-base md:text-2xl font-bold text-white drop-shadow-md whitespace-nowrap font-serif tracking-widest pt-1">
-                                            {(() => {
-                                                const rankKey = playerStats.playerRank || '삼류';
-                                                const hierarchy = martialArtsLevels as any;
-                                                const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
-                                                return (rankData?.name || rankKey).split('(')[0];
-                                            })()}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Column 2: Name, Info, Bars */}
-                            <div className="flex flex-col justify-start pt-1 gap-1">
-
-                                {/* Line 1: Name & Title */}
-                                <div className="flex items-baseline gap-2 md:gap-3">
-                                    <span className="text-xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-stone-200 via-amber-200 to-yellow-600 drop-shadow-sm font-serif tracking-widest leading-none pb-1">
-                                        {playerName || '이름 없음'}
-                                    </span>
-
-                                    {/* Fame Title */}
-                                    {(() => {
-                                        const fame = playerStats.fame || 0;
-                                        let titleObj = FAME_TITLES[0];
-                                        for (let i = FAME_TITLES.length - 1; i >= 0; i--) {
-                                            if (fame >= FAME_TITLES[i].threshold) {
-                                                titleObj = FAME_TITLES[i];
-                                                break;
-                                            }
-                                        }
-                                        return (
-                                            <span className="text-sm md:text-xl text-zinc-500 font-serif font-bold tracking-wide">
-                                                {titleObj.title}
-                                            </span>
-                                        );
-                                    })()}
-                                </div>
-
-                                {/* Line 2: Faction & Neigong */}
-                                <div className="flex items-center gap-2 text-xs md:text-base text-zinc-400 font-medium tracking-wide -mt-1">
-                                    <span>소속: {(playerStats.faction || '무소속').split(' ')[0]}</span>
-                                    <span className="text-zinc-600">|</span>
-                                    <span>내공 {(playerStats.neigong || 0).toLocaleString()}년</span>
-                                </div>
-
-                                {/* Line 3: Stats Bars (HP & MP) */}
-                                <div className="flex flex-col gap-1 mt-1 md:mt-2">
-                                    {/* HP Bar */}
-                                    <div className="w-32 md:w-56 h-2 md:h-3 rounded-full overflow-hidden relative shadow-inner flex bg-black/50">
-                                        {/* Background */}
-                                        <div className="absolute inset-0 bg-red-900/20" />
-                                        {/* Fill */}
-                                        <div
-                                            className="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]"
-                                            style={{ width: `${Math.min(100, (playerStats.hp / playerStats.maxHp) * 100)}%` }}
-                                        />
-                                    </div>
-
-                                    {/* MP Beads */}
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex items-center gap-0.5 md:gap-1">
-                                            {Array.from({ length: 10 }).map((_, i) => {
-                                                const currentMpPerc = (playerStats.mp / playerStats.maxMp) * 100;
-                                                const beadThreshold = (i + 1) * 10;
-                                                // More lenient checking for full beads
-                                                const isActive = currentMpPerc >= beadThreshold - 5;
-                                                return (
-                                                    <div
-                                                        key={i}
-                                                        className={`w-2.5 h-2.5 md:w-4 md:h-4 rounded-full transition-all duration-300
-                                                    ${isActive
-                                                                ? 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.8)] scale-100'
-                                                                : 'bg-zinc-800/80 border border-zinc-700/50 scale-90'
-                                                            }`}
-                                                        style={isActive ? {
-                                                            background: 'radial-gradient(circle at 30% 30%, #60a5fa 0%, #2563eb 60%, #1d4ed8 100%)'
-                                                        } : {}}
-                                                    />
-                                                );
-                                            })}
-                                        </div>
-
-                                        {/* Fatigue Icon (Small) */}
-                                        <div className="relative group cursor-help ml-1">
-                                            {(() => {
-                                                const fat = playerStats.fatigue || 0;
-                                                const level = FATIGUE_LEVELS.find(l => fat >= l.min && fat <= l.max) || FATIGUE_LEVELS[2];
-                                                return (
-                                                    <span className="text-sm md:text-lg animate-pulse" title={`피로도: ${fat}%`}>
-                                                        {level.icon}
-                                                    </span>
-                                                );
-                                            })()}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* [New] Active Injuries Row (Integrated below stats) */}
-                                {playerStats.active_injuries && playerStats.active_injuries.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-1 max-w-[200px] md:max-w-xs">
-                                        {playerStats.active_injuries.map((injury, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex items-center gap-1 px-1.5 py-0.5 bg-red-950/80 border border-red-500/50 rounded text-xs text-red-100"
-                                            >
-                                                <span>🩹</span>
-                                                <span>{injury}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                            </div>
-                        </div>
+                {/* [무협 UI 개선] HUD 레이어 */}
+                {activeGameId === 'wuxia' ? (
+                    <WuxiaHUD
+                        playerName={playerName}
+                        playerStats={playerStats}
+                        onOpenProfile={() => setShowCharacterInfo(true)}
+                        onOpenWiki={() => setShowWiki(true)}
+                        language={language || 'ko'}
+                        day={day}
+                        time={time}
+                        location={currentLocation || 'Unknown'}
+                    />
+                ) : (
+                    <ModernHUD
+                        playerName={playerName}
+                        playerStats={playerStats}
+                        onOpenPhone={() => setIsPhoneOpen(true)}
+                        onOpenProfile={() => setShowCharacterInfo(true)}
+                        day={day}
+                        time={time}
+                        location={currentLocation || 'Unknown'}
+                    />
+                )}
+                {/* [Common UI] Top-Right Controls (Tokens, Settings, Debug) */}
+                <div className="absolute top-4 right-4 z-[60] flex items-center gap-3 pointer-events-auto">
+                    {/* Token Display */}
+                    <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 shadow-lg">
+                        <span className="text-lg">🪙</span>
+                        <span className="text-yellow-400 font-bold font-mono text-sm md:text-base">
+                            {userCoins?.toLocaleString() || 0}
+                        </span>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setShowRechargePopup(true); }}
+                            className="bg-yellow-600 hover:bg-yellow-500 text-black text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1 transition-colors"
+                        >
+                            +
+                        </button>
                     </div>
 
-                    {/* RIGHT: Resources & Time */}
-                    <div className="pointer-events-auto flex flex-col items-end gap-1 md:gap-2">
+                    {/* Settings Button */}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setShowResetConfirm(true); }}
+                        className="p-2 bg-black/60 hover:bg-gray-800/80 rounded-full border border-gray-600 text-gray-300 hover:text-white transition-all shadow-lg"
+                        title={(t as any).settings || "Settings"}
+                    >
+                        <Settings className="w-5 h-5 md:w-6 md:h-6" />
+                    </button>
 
-                        {/* Row 1: Resources & Settings */}
-                        <div className="flex items-center gap-2 md:gap-3">
-                            {/* Gold (Yeopjeon) */}
-                            <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full border border-yellow-900/30">
-                                <span className="text-sm md:text-lg">💰</span>
-                                <span className="text-yellow-100 font-mono font-bold text-xs md:text-sm">
-                                    {(playerStats.gold || 0).toLocaleString()}
-                                </span>
-                            </div>
-
-                            {/* Cash (Wonbo/Spirit Stone) */}
-                            <div className="flex items-center gap-1.5 px-2 md:px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full border border-blue-900/30 cursor-pointer hover:bg-black/60"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const newCoins = userCoins + 50;
-                                    setUserCoins(newCoins);
-                                    addToast("영석 50개 충전 (테스트)", 'success');
-                                }}
-                            >
-                                <span className="text-sm md:text-lg">💎</span>
-                                <span className="text-blue-200 font-mono font-bold text-xs md:text-sm">
-                                    {userCoins.toLocaleString()}
-                                </span>
-                            </div>
-
-                            {/* Settings Button */}
-                            <button
-                                aria-label="Settings"
-                                onClick={() => setShowResetConfirm(true)}
-                                className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-colors shadow-lg"
-                            >
-                                <Settings className="w-4 h-4 md:w-5 md:h-5" />
-                            </button>
-
-                            {/* Debug Button (Localhost Only) */}
-                            {isLocalhost && (
-                                <>
-                                    <button
-                                        onClick={() => {
-                                            console.log("[Debug] Manually triggering damage effect");
-                                            setDamageEffect({ intensity: 1.0, duration: 500 });
-                                            setTimeout(() => setDamageEffect(null), 500);
-                                            addToast("테스트 데미지 효과 발동", 'warning');
-                                        }}
-                                        className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-900/50 backdrop-blur-md flex items-center justify-center text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors shadow-lg"
-                                        title="Test Damage Effect"
-                                    >
-                                        ⚡
-                                    </button>
-                                    <button
-                                        onClick={() => setIsDebugOpen(true)}
-                                        className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-900/50 backdrop-blur-md flex items-center justify-center text-red-500 border border-red-500/30 hover:bg-red-500/20 transition-colors shadow-lg"
-                                    >
-                                        <Bolt className="w-4 h-4 md:w-5 md:h-5" />
-                                    </button>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Row 2: Date & Time */}
-                        <div className="flex items-center gap-2 font-serif tracking-wide text-zinc-300 text-sm md:text-xl relative z-10 backdrop-blur-[2px] bg-black/20 rounded px-2 py-1">
-                            <span className="text-emerald-400 font-bold drop-shadow-sm">{day || 1}일차</span>
-                            <span className="w-px h-3 bg-zinc-600/60" />
-                            <span className="drop-shadow-sm">
-                                {(() => {
-                                    const wuxiaTime: Record<string, { name: string, time: string }> = {
-                                        morning: { name: '진시(辰)', time: '09:00' },
-                                        afternoon: { name: '미시(未)', time: '14:00' },
-                                        evening: { name: '술시(戌)', time: '20:00' },
-                                        night: { name: '자시(子)', time: '00:00' },
-                                        dawn: { name: '인시(寅)', time: '04:00' }
-                                    };
-                                    const t = wuxiaTime[(time || 'morning').toLowerCase()];
-                                    return t ? `${t.name} ${t.time}` : (time || '').replace(/^\d+일차\s*/, '');
-                                })()}
-                            </span>
-                        </div>
-                    </div>
+                    {/* Debug Button (Conditional) */}
+                    {(isLocalhost || isDebugOpen) && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
+                            className="p-2 bg-purple-900/60 hover:bg-purple-800/80 rounded-full border border-purple-500/50 text-purple-300 hover:text-white transition-all shadow-lg"
+                            title="Debug Menu"
+                        >
+                            <Bolt className="w-5 h-5 md:w-6 md:h-6" />
+                        </button>
+                    )}
                 </div>
+
+                {/* [리팩토링 메모] HUD 렌더링 로직은 `ui/ModernHUD.tsx` 및 `ui/WuxiaHUD.tsx`로 분리되었습니다. */}
 
                 {/* Status Message (Center Toast) */}
                 <AnimatePresence>
@@ -3284,8 +3035,11 @@ export default function VisualNovelUI() {
                 {/* Wiki Modal */}
                 <WikiSystem
                     isOpen={showWiki}
-                    onClose={() => setShowWiki(false)}
-                    initialCharacter={useGameStore.getState().activeGameId === 'wuxia' ? "연화린" : "고하늘"}
+                    onClose={() => {
+                        setShowWiki(false);
+                        setWikiTargetCharacter(null);
+                    }}
+                    initialCharacter={wikiTargetCharacter || (useGameStore.getState().activeGameId === 'wuxia' ? "연화린" : "고하늘")}
                 />
 
                 {/* Smartphone App */}
@@ -3379,14 +3133,14 @@ export default function VisualNovelUI() {
                                                 <div className="flex gap-3">
                                                     <button
                                                         onClick={async () => {
-                                                            if (confirm("정말 로그아웃 하시겠습니까?")) {
+                                                            if (confirm(t.confirmLogout)) {
                                                                 if (!supabase) {
                                                                     console.warn("Supabase client not available for logout.");
                                                                     return;
                                                                 }
                                                                 const { error } = await supabase.auth.signOut();
                                                                 if (error) {
-                                                                    alert("로그아웃 중 오류가 발생했습니다: " + error.message);
+                                                                    alert(t.logoutError?.replace('{0}', error.message));
                                                                     console.error("Logout error:", error);
                                                                 } else {
                                                                     setSession(null);
@@ -3396,27 +3150,27 @@ export default function VisualNovelUI() {
                                                         }}
                                                         className="flex-1 py-2.5 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 rounded-lg text-sm font-bold transition-all border border-gray-200 shadow-sm hover:shadow-md"
                                                     >
-                                                        로그아웃
+                                                        {t.logout}
                                                     </button>
                                                     <button
                                                         onClick={async () => {
-                                                            const confirmMsg = "⚠ 정말 계정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 모든 진행 데이터와 구매 내역이 영구적으로 삭제됩니다.";
+                                                            const confirmMsg = `⚠ ${t.confirmWithdrawal}`;
                                                             if (confirm(confirmMsg)) {
-                                                                if (prompt("삭제를 원하시면 '삭제'라고 입력해주세요.") === '삭제') {
+                                                                if (prompt(t.deleteInputPrompt) === '삭제') {
                                                                     setIsProcessing(true);
                                                                     try {
                                                                         const { deleteAccount } = await import('@/app/actions/auth');
                                                                         const result = await deleteAccount();
                                                                         if (result.success) {
                                                                             localStorage.clear(); // [CLEANUP] Clear all local data to prevent ghost state
-                                                                            alert("탈퇴가 완료되었습니다. 모든 데이터가 삭제되었습니다.");
+                                                                            alert(t.withdrawalComplete);
                                                                             window.location.href = '/';
                                                                         } else {
-                                                                            alert("오류가 발생했습니다: " + result.error);
+                                                                            alert(`${t.withdrawalError}: ${result.error}`);
                                                                         }
                                                                     } catch (e) {
                                                                         console.error("Delete failed:", e);
-                                                                        alert("처리 중 알 수 없는 오류가 발생했습니다.");
+                                                                        alert(t.errorGenerating);
                                                                     } finally {
                                                                         setIsProcessing(false);
                                                                     }
@@ -3425,7 +3179,7 @@ export default function VisualNovelUI() {
                                                         }}
                                                         className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
                                                     >
-                                                        회원 탈퇴
+                                                        {t.withdrawal}
                                                     </button>
                                                 </div>
                                             </div>
@@ -3440,22 +3194,22 @@ export default function VisualNovelUI() {
                                 {/* Danger Zone */}
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-bold text-red-500 uppercase tracking-widest flex items-center gap-2 ml-1">
-                                        <span>⚠</span> Danger Zone
+                                        <span>⚠</span> {t.dangerZone || "Danger Zone"}
                                     </h4>
                                     <div className="bg-red-50 p-5 rounded-xl border border-red-100 shadow-inner">
                                         <p className="text-gray-500 text-sm mb-4">
-                                            현재 진행 상황을 모두 잃고 메인 화면으로 돌아갑니다.
+                                            {t.resetDescription}
                                         </p>
                                         <button
                                             onClick={() => {
-                                                if (confirm("정말 게임을 초기화하시겠습니까? 저장되지 않은 진행 상황은 잃게 됩니다.")) {
+                                                if (confirm(t.resetConfirm)) {
                                                     useGameStore.getState().resetGame();
                                                     router.push('/');
                                                 }
                                             }}
                                             className="w-full py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
                                         >
-                                            게임 초기화 (Reset Game)
+                                            {t.resetGameLabel}
                                         </button>
                                     </div>
                                 </div>
@@ -3531,6 +3285,9 @@ export default function VisualNovelUI() {
                                             // [LOGGING] Handled in handleSend
 
 
+                                            // [Adaptive Agent] Track Selected Choice
+                                            addChoiceToHistory({ text: choice.content, type: 'selected', timestamp: Date.now() });
+
                                             handleSend(choice.content);
                                         }}
                                     >
@@ -3572,26 +3329,49 @@ export default function VisualNovelUI() {
                                     className="flex w-[85vw] md:w-[min(50vw,1200px)] justify-center gap-3 md:gap-4 mt-2"
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    {[
-                                        { icon: <User size={20} />, label: "프로필", onClick: () => setShowCharacterInfo(true) },
-                                        { icon: <History size={20} />, label: "지난 대화", onClick: () => setShowHistory(true) },
-                                        { icon: <Book size={20} />, label: "위키", onClick: () => setShowWiki(true) },
-                                        { icon: <Save size={20} />, label: "저장/로드", onClick: () => setShowSaveLoad(true) },
-                                        { icon: <Settings size={20} />, label: "설정", onClick: () => setShowResetConfirm(true) },
-                                    ].map((btn, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
-                                            className="p-3 md:p-3 rounded-full bg-black/60 border border-white/20 text-white hover:bg-white/20 hover:scale-110 hover:border-white transition-all backdrop-blur-md shadow-lg group relative"
-                                            title={btn.label}
-                                        >
-                                            {btn.icon}
-                                            {/* Tooltip */}
-                                            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
-                                                {btn.label}
-                                            </span>
-                                        </button>
-                                    ))}
+                                    {(() => {
+                                        const currentWikiTarget = (() => {
+                                            if (currentSegment?.character) {
+                                                const charName = currentSegment.character.split('(')[0].trim();
+                                                return findBestMatch(charName, wikiKeys);
+                                            }
+                                            return null;
+                                        })();
+
+                                        return [
+                                            { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => setShowCharacterInfo(true) },
+                                            { icon: <History size={20} />, label: t.chatHistory, onClick: () => setShowHistory(true) },
+                                            {
+                                                icon: <Book size={20} />,
+                                                label: t.wiki,
+                                                onClick: () => {
+                                                    if (currentWikiTarget) setWikiTargetCharacter(currentWikiTarget);
+                                                    setShowWiki(true);
+                                                },
+                                                isActive: !!currentWikiTarget,
+                                                activeColor: "bg-gradient-to-r from-yellow-600 to-yellow-500 border-yellow-400 text-black shadow-yellow-500/50 animate-pulse"
+                                            },
+                                            { icon: <Save size={20} />, label: t.saveLoad, onClick: () => setShowSaveLoad(true) },
+                                            { icon: <Settings size={20} />, label: t.settings, onClick: () => setShowResetConfirm(true) },
+                                        ].map((btn, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
+                                                className={`p-3 md:p-3 rounded-full border transition-all backdrop-blur-md shadow-lg group relative
+                                                    ${(btn as any).isActive
+                                                        ? (btn as any).activeColor
+                                                        : 'bg-black/60 border-white/20 text-white hover:bg-white/20 hover:border-white'
+                                                    } hover:scale-110`}
+                                                title={btn.label}
+                                            >
+                                                {btn.icon}
+                                                {/* Tooltip */}
+                                                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
+                                                    {btn.label}
+                                                </span>
+                                            </button>
+                                        ));
+                                    })()}
                                 </motion.div>
                             </div>
                         </div>
@@ -3682,16 +3462,7 @@ Instructions:
                                                 // [CRITICAL] RESET ALL PERSISTENT DATA FOR NEW GAME
                                                 const newStats = {
                                                     ...useGameStore.getState().playerStats,
-                                                    skills: [] as string[],        // Clear Skills
-                                                    inventory: [],     // Clear Inventory
-                                                    relationships: {}, // Clear Relationships
-                                                    fame: 0,           // Reset Fame
-                                                    fate: 0,           // Reset Fate
-                                                    level: 1,          // Reset Level
-                                                    exp: 0,            // Reset EXP
-                                                    hp: useGameStore.getState().playerStats.maxHp, // Full HP
-                                                    mp: useGameStore.getState().playerStats.maxMp, // Full MP
-                                                    martialArts: [] as any[],   // Clear Martial Arts (Fix Type)
+                                                    skills: [] as Skill[],   // [Fixed] Unified Skills Type
                                                     neigong: 0,        // Reset Neigong
                                                     gold: 0,           // Reset Gold
                                                 };
@@ -3715,9 +3486,7 @@ Instructions:
                                                         effects: ['기본 공격력 상승'],
                                                         createdTurn: 0
                                                     };
-                                                    newStats.martialArts = [...(newStats.martialArts || []), basicSword];
-                                                    // Also add to skills string list
-                                                    newStats.skills = [...(newStats.skills || []), '삼재검법'];
+                                                    newStats.skills = [...(newStats.skills || []), basicSword];
                                                     addToast("보너스: 삼재검법 습득!", "success");
                                                 } else if (desire === 'love') {
                                                     // [Randomize Heroine]
@@ -3893,6 +3662,12 @@ Instructions:
                                         </div>
                                     );
                                 })()
+                            ) : isLogicPending ? (
+                                // [Fix] Show simplified pending state instead of Error if waiting for AI
+                                <div className="bg-black/80 p-6 rounded-xl border border-yellow-500 text-center shadow-2xl backdrop-blur-md animate-pulse">
+                                    <h2 className="text-xl font-bold text-yellow-500 mb-2">{t.fateIsWeaving}</h2>
+                                    <p className="text-gray-300 text-sm">{t.generatingChoices}</p>
+                                </div>
                             ) : (
                                 // Error/Paused Screen
                                 <div className="bg-black/80 p-8 rounded-xl border border-red-500 text-center shadow-2xl backdrop-blur-md">
@@ -3922,7 +3697,7 @@ Instructions:
 
                 {/* Interactive Loading Indicator (Ad/Tip Overlay) */}
                 <AnimatePresence>
-                    {isProcessing && (
+                    {(isProcessing || (isLogicPending && !currentSegment && scriptQueue.length === 0)) && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -3937,11 +3712,11 @@ Instructions:
                                 <div className="flex flex-col items-center gap-2 z-10">
                                     <div className="w-full flex flex-col items-center">
                                         <h3 className="text-2xl font-bold text-yellow-400 animate-pulse mb-4 tracking-widest uppercase text-center">
-                                            FATE IS WEAVING
+                                            {t.fateIsWeaving}
                                         </h3>
                                         <ResponseTimer avgTime={avgResponseTime} />
                                         <p className="text-xs text-gray-500 mt-4 font-mono">
-                                            Average Response Time: {Math.round(avgResponseTime / 1000)}s
+                                            {t.avgResponseTime.replace('{0}', Math.round(avgResponseTime / 1000).toString())}
                                         </p>
                                     </div>
                                 </div>
@@ -3950,7 +3725,7 @@ Instructions:
 
                                 {/* Dynamic Tips (Simple Random Implementation) */}
                                 <div className="bg-black/50 p-4 rounded-lg border border-gray-700 w-full text-center z-10 transition-all duration-500">
-                                    <span className="text-gray-400 text-xs uppercase tracking-widest block mb-1">TIP</span>
+                                    <span className="text-gray-400 text-xs uppercase tracking-widest block mb-1">{t.tipLabel}</span>
                                     <p key={currentTipIndex} className="text-gray-200 text-sm italic animate-in fade-in slide-in-from-bottom-2 duration-700">
                                         "{LOADING_TIPS[currentTipIndex]}"
                                     </p>
@@ -3993,224 +3768,28 @@ Instructions:
                 </AnimatePresence>
 
                 {/* History Modal */}
-                <AnimatePresence>
-                    {showHistory && (
-                        <div className="fixed inset-0 bg-black/90 z-[70] flex items-start justify-center px-4 pb-4 pt-[140px] pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                            <div className="bg-gray-900 w-full max-w-3xl h-full rounded-xl flex flex-col border border-gray-700">
-                                <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                                    <h2 className="text-xl font-bold text-white">{t.chatHistory}</h2>
-                                    <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white">{t.close}</button>
-                                </div>
-                                <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
-                                    {(useGameStore.getState().displayHistory || chatHistory).map((msg, idx, arr) => {
-                                        let segments = parseScript(msg.text);
-                                        // Filter future segments if this is the active message
-                                        if (idx === arr.length - 1 && msg.role === 'model') {
-                                            const queue = useGameStore.getState().scriptQueue;
-
-                                            // [Fix 4.0] Symmetric Character-based Synchronization
-                                            // We must apply the EXACT SAME filtering to both Queue and History
-                                            // to ensure we compare apples to apples (Visible Text vs Visible Text).
-                                            // Non-displayed types (background, bgm, command, choice) must be ignored in counts.
-
-                                            const isVisibleType = (type: string) =>
-                                                ['dialogue', 'narration', 'system_popup'].includes(type);
-
-                                            // 1. Calculate text length remaining in Queue (Visible Only)
-                                            const queueTextLen = queue
-                                                .filter(s => isVisibleType(s.type))
-                                                .reduce((sum, s) => sum + s.content.length, 0);
-
-                                            if (queueTextLen > 0) {
-                                                const newSegments = [];
-
-                                                // 2. Calculate Total Visible History Length
-                                                const totalHistLen = segments
-                                                    .filter(s => isVisibleType(s.type))
-                                                    .reduce((sum, s) => sum + (s.content?.length || 0), 0);
-
-                                                const targetVisibleLen = Math.max(0, totalHistLen - queueTextLen);
-
-                                                let currentVisible = 0;
-                                                for (const seg of segments) {
-                                                    // If non-visible type, keep it (it's hidden by renderer anyway, or manages state)
-                                                    // but DO NOT increment visible count.
-                                                    if (!isVisibleType(seg.type)) {
-                                                        newSegments.push(seg);
-                                                        continue;
-                                                    }
-
-                                                    const segLen = seg.content?.length || 0;
-
-                                                    if (currentVisible + segLen <= targetVisibleLen) {
-                                                        // Fully visible
-                                                        newSegments.push(seg);
-                                                        currentVisible += segLen;
-                                                    } else {
-                                                        // Partial or Hidden
-                                                        const remainingAllowed = targetVisibleLen - currentVisible;
-                                                        if (remainingAllowed > 0 && seg.content) {
-                                                            newSegments.push({
-                                                                ...seg,
-                                                                content: seg.content.slice(0, remainingAllowed)
-                                                            });
-                                                            currentVisible += remainingAllowed;
-                                                        }
-                                                        // Stop processing further segments (they are hidden)
-                                                        break;
-                                                    }
-                                                }
-                                                segments = newSegments;
-                                            }
-                                        }
-                                        // [Rewind Logic]
-                                        // Only allow rewind on the LATEST model message (Current Turn)
-                                        // to prevent state inconsistencies (Cannot go back past choices).
-                                        const canRewind = idx === arr.length - 1 && msg.role === 'model';
-
-                                        return (
-                                            <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                                <span className="text-sm text-gray-500 mb-2 font-bold">{msg.role === 'user' ? t.you : t.system}</span>
-                                                <div className={`rounded-xl max-w-[95%] overflow-hidden ${msg.role === 'user' ? 'bg-blue-900/30 border border-blue-500/50' : 'bg-gray-800/50 border border-gray-700'}`}>
-                                                    {msg.role === 'user' ? (
-                                                        <div className="p-4 text-blue-100 text-lg">{msg.text}</div>
-                                                    ) : (
-                                                        <div className="flex flex-col divide-y divide-gray-700/50">
-                                                            {segments.map((seg, sIdx) => {
-                                                                if (['background', 'bgm', 'command', 'system_popup', 'choice'].includes(seg.type) && seg.type !== 'system_popup' && seg.type !== 'choice') return null;
-                                                                // Allow system_popup? Existing code handles it.
-                                                                // Allow choice? Maybe not in history text flow.
-
-                                                                // Refined Logic:
-                                                                if (seg.type === 'background' || seg.type === 'bgm' || seg.type === 'command') return null;
-
-                                                                return (
-                                                                    <div key={sIdx} className="p-4 relative group">
-                                                                        {canRewind && (
-                                                                            <button
-                                                                                onClick={() => {
-                                                                                    if (confirm("이 시점으로 되돌아가시겠습니까?")) {
-                                                                                        // 1. Re-parse full text
-                                                                                        const allSegments = parseScript(msg.text);
-
-                                                                                        // 2. Restore State Snapshot (Best Effort)
-                                                                                        // Find last background/char up to this point
-                                                                                        let bestBg = currentBackground;
-                                                                                        let bestChar = characterExpression;
-
-                                                                                        // Scan from 0 to sIdx to find visual state
-                                                                                        for (let i = 0; i <= sIdx; i++) {
-                                                                                            if (allSegments[i].type === 'background') bestBg = resolveBackground(allSegments[i].content);
-                                                                                            // For char, it's harder as we need to map name_expr -> path
-                                                                                            // but we can try basic check if segment has char info
-                                                                                            if (allSegments[i].type === 'dialogue' && allSegments[i].character && allSegments[i].expression) {
-                                                                                                // Approx: usage of general logic or just clear it?
-                                                                                                // Let's rely on the script playing to set it, 
-                                                                                                // BUT if we jump to middle, we might miss the 'set'
-                                                                                                // Actually, if we jump to sIdx, the NEXT update happens when we play sIdx.
-                                                                                                // So we just need to set the state PREVIOUS to sIdx?
-                                                                                                // No, we are STARTING at sIdx.
-                                                                                                // The VisualNovelUI renders based on `currentSegment`.
-                                                                                                // So effectively, we just setQueue and let it play.
-                                                                                                // Ideally we set BG if a specific BG tag was skipped?
-                                                                                                // Let's just set Queue and Current.
-                                                                                            }
-                                                                                        }
-
-                                                                                        // 3. Reset Queue
-                                                                                        setCurrentSegment(allSegments[sIdx]);
-                                                                                        setScriptQueue(allSegments.slice(sIdx + 1));
-                                                                                        useGameStore.getState().setChoices([]); // Clear any active choices
-
-                                                                                        // 4. Restore Background if found in previous segments of THIS turn
-                                                                                        // (If we crossed a BG tag in this turn, we should ensure it's applied)
-                                                                                        // Iterate 0 to sIdx and apply last found BG
-                                                                                        for (let i = 0; i <= sIdx; i++) {
-                                                                                            if (allSegments[i].type === 'background') {
-                                                                                                setBackground(resolveBackground(allSegments[i].content));
-                                                                                            }
-                                                                                        }
-
-                                                                                        setShowHistory(false);
-                                                                                        addToast("이전 시점으로 되돌아갔습니다.", "success");
-                                                                                    }
-                                                                                }}
-                                                                                className="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-yellow-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-all shadow-lg z-10"
-                                                                                title="이 대사부터 다시 보기 (Rewind)"
-                                                                            >
-                                                                                <RotateCcw size={14} />
-                                                                            </button>
-                                                                        )}
-
-                                                                        {seg.type === 'dialogue' && (
-                                                                            <div className="mb-1">
-                                                                                <span className="text-yellow-500 font-bold text-lg">
-                                                                                    {(seg.character || 'Unknown').split('(')[0].trim()}
-                                                                                </span>
-                                                                            </div>
-                                                                        )}
-                                                                        {seg.type === 'system_popup' && (
-                                                                            <div className="text-purple-400 font-bold text-center border border-purple-500/30 bg-purple-900/20 p-2 rounded">
-                                                                                [SYSTEM] {seg.content}
-                                                                            </div>
-                                                                        )}
-                                                                        <div className={`text-lg leading-relaxed ${seg.type === 'narration' ? 'text-gray-400 italic' : 'text-gray-200'}`}>
-                                                                            {seg.content}
-                                                                        </div>
-                                                                    </div>
-
-                                                                );
-                                                            })}
-                                                            {segments.length === 0 && (
-                                                                <div className="p-4 text-gray-400 italic">
-                                                                    {msg.text}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                <HistoryModal
+                    isOpen={showHistory}
+                    onClose={() => setShowHistory(false)}
+                    chatHistory={chatHistory}
+                    t={t}
+                    setCurrentSegment={setCurrentSegment}
+                    setScriptQueue={setScriptQueue}
+                    setBackground={setBackground}
+                />
 
                 {/* Inventory Modal */}
-                <AnimatePresence>
-                    {showInventory && (
-                        <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                            <div className="bg-gray-900 w-full max-w-2xl h-[60vh] rounded-xl flex flex-col border border-yellow-600">
-                                <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800 rounded-t-xl">
-                                    <h2 className="text-xl font-bold text-yellow-400">{t.inventory}</h2>
-                                    <button onClick={() => setShowInventory(false)} className="text-gray-400 hover:text-white">{t.close}</button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 gap-4">
-                                    {inventory.length === 0 ? (
-                                        <div className="col-span-2 text-center text-gray-500 italic mt-10">{t.empty}</div>
-                                    ) : (
-                                        inventory.map((item, idx) => (
-                                            <div key={idx} className="bg-gray-800 p-4 rounded border border-gray-600 flex flex-col">
-                                                <div className="flex justify-between mb-2">
-                                                    <span className="font-bold text-white">{item.name}</span>
-                                                    <span className="text-yellow-500">x{item.quantity}</span>
-                                                </div>
-                                                <p className="text-sm text-gray-400">{item.description}</p>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                <InventoryModal
+                    isOpen={showInventory}
+                    onClose={() => setShowInventory(false)}
+                    inventory={inventory}
+                    t={t}
+                />
 
                 {/* Input Modal */}
                 <AnimatePresence>
                     {isInputOpen && (
-                        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -4218,6 +3797,35 @@ Instructions:
                                 className="bg-gray-900 p-6 rounded-xl w-full max-w-lg border border-green-500 shadow-2xl"
                             >
                                 <h2 className="text-xl font-bold text-green-400 mb-4">{t.yourAction}</h2>
+
+                                {/* [Fate Intervention UI] */}
+                                <div className="flex items-center gap-4 mb-4 bg-black/40 p-3 rounded-lg border border-yellow-500/30">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-yellow-400 font-bold text-sm">운명 개입 (Fate)</span>
+                                            <span className="text-xs bg-yellow-900/50 text-yellow-200 px-2 py-0.5 rounded-full border border-yellow-500/30">
+                                                보유: {playerStats.fate || 0}
+                                            </span>
+                                        </div>
+                                        <span className="text-gray-400 text-xs block mt-1">불가능을 가능으로 바꿉니다. (소모값 선택)</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {[0, 1, 2, 3].map(val => (
+                                            <button
+                                                key={val}
+                                                onClick={() => setFateUsage(val)}
+                                                disabled={(playerStats.fate || 0) < val}
+                                                className={`w-8 h-8 rounded-lg font-bold border transition-all ${fateUsage === val
+                                                    ? 'bg-yellow-500 text-black border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)] scale-110'
+                                                    : 'bg-gray-800 text-gray-400 border-gray-600 hover:border-yellow-500/50 hover:text-white'
+                                                    } ${(playerStats.fate || 0) < val ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                            >
+                                                {val}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <textarea
                                     value={userInput}
                                     onChange={(e) => setUserInput(e.target.value.slice(0, 256))}
@@ -4326,334 +3934,19 @@ Instructions:
                 {/* Character Info Modal */}
                 <AnimatePresence>
                     {showCharacterInfo && (
-                        <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                className="bg-gray-900 w-full max-w-4xl h-[80vh] rounded-xl flex flex-col border border-yellow-600 shadow-2xl overflow-hidden"
-                            >
-                                <div className="p-4 md:p-6 border-b border-gray-700 flex justify-between items-center bg-gray-800">
-                                    <div className="flex items-center gap-4">
-                                        <h2 className="text-2xl font-bold text-yellow-400">{t.charInfo}</h2>
-                                        <div className="px-3 py-1 bg-gray-700 rounded-full border border-gray-600">
-                                            <span className="text-gray-300 text-sm font-mono">Turn: {turnCount}</span>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => setShowCharacterInfo(false)} className="text-gray-400 hover:text-white text-xl">×</button>
-                                </div>
-                                {/* Tab Navigation */}
-                                <div className="flex border-b border-gray-700 bg-black/40">
-                                    <button
-                                        onClick={() => setActiveProfileTab('basic')}
-                                        className={`flex-1 py-3 text-center font-bold transition-colors ${activeProfileTab === 'basic' ? 'bg-yellow-600/20 text-yellow-400 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                                    >
-                                        기본 정보 (Basic)
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveProfileTab('martial_arts')}
-                                        className={`flex-1 py-3 text-center font-bold transition-colors ${activeProfileTab === 'martial_arts' ? 'bg-yellow-600/20 text-yellow-400 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                                    >
-                                        무공 정보 (Martial Arts)
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveProfileTab('relationships')}
-                                        className={`flex-1 py-3 text-center font-bold transition-colors ${activeProfileTab === 'relationships' ? 'bg-yellow-600/20 text-yellow-400 border-b-2 border-yellow-500' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                                    >
-                                        호감도 (Affinity)
-                                    </button>
-                                </div>
+                        <CharacterProfile
+                            isOpen={showCharacterInfo}
+                            onClose={() => setShowCharacterInfo(false)}
+                            playerStats={playerStats}
+                            characterData={useGameStore.getState().characterData}
+                            activeCharacters={useGameStore.getState().activeCharacters}
+                            turnCount={turnCount}
+                            language={language || 'ko'}
+                            activeTab={activeProfileTab}
+                            onTabChange={setActiveProfileTab}
+                        />
+                        /* [리팩토링 메모] 캐릭터 정보 모달 로직은 `ui/CharacterProfile.tsx`로 이동되었습니다. */
 
-                                <div className="flex-1 overflow-y-auto p-4 md:p-8">
-                                    {/* Tab Content: Basic Info */}
-                                    {activeProfileTab === 'basic' && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                                            {/* Left Column: Stats & Personality */}
-                                            <div className="space-y-8">
-                                                {/* Base Stats Section */}
-                                                <div className="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                                                    <h3 className="text-blue-400 font-bold mb-4 border-b border-gray-600 pb-2">{t.baseStats}</h3>
-                                                    <div className="space-y-2 text-sm">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-gray-300">{t.str}</span>
-                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.str || 10}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-gray-300">{t.agi}</span>
-                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.agi || 10}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-gray-300">{t.int}</span>
-                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.int || 10}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-gray-300">{t.vit}</span>
-                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.vit || 10}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-gray-300">{t.luk}</span>
-                                                            <span className="text-white font-mono bg-black/30 px-2 py-1 rounded">{playerStats.luk || 10}</span>
-                                                        </div>
-                                                        {/* [Wuxia] Neigong Display */}
-                                                        <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-700">
-                                                            <span className="text-yellow-400 font-bold">내공 (Neigong)</span>
-                                                            <span className="text-yellow-200 font-mono bg-yellow-900/30 px-2 py-1 rounded border border-yellow-700/50">
-                                                                {playerStats.neigong || 0}년 (Years)
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Personality Section */}
-                                                <div className="space-y-2">
-                                                    {[
-                                                        { key: 'morality', label: '도덕성', color: 'text-green-400', bar: 'bg-green-600' },
-                                                        { key: 'courage', label: '용기', color: 'text-red-400', bar: 'bg-red-600' },
-                                                        { key: 'energy', label: '에너지', color: 'text-yellow-400', bar: 'bg-yellow-600' },
-                                                        { key: 'decision', label: '의사결정', color: 'text-blue-400', bar: 'bg-blue-600' },
-                                                        { key: 'lifestyle', label: '생활양식', color: 'text-purple-400', bar: 'bg-purple-600' },
-                                                        { key: 'openness', label: '수용성', color: 'text-indigo-400', bar: 'bg-indigo-600' },
-                                                        { key: 'warmth', label: '대인온도', color: 'text-pink-400', bar: 'bg-pink-600' },
-                                                        { key: 'eloquence', label: '화술', color: 'text-teal-400', bar: 'bg-teal-600' },
-                                                        { key: 'leadership', label: '통솔력', color: 'text-orange-400', bar: 'bg-orange-600' },
-                                                    ].map((trait) => (
-                                                        <div key={trait.key}>
-                                                            <div className="flex justify-between mb-1">
-                                                                <span className="text-gray-300 text-xs">{trait.label}</span>
-                                                                <span className={`text-xs ${trait.color}`}>
-                                                                    {/* @ts-ignore */}
-                                                                    {playerStats.personality?.[trait.key] || 0}
-                                                                </span>
-                                                            </div>
-                                                            <div className="w-full bg-gray-700 rounded-full h-1.5 relative">
-                                                                {/* Center line */}
-                                                                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-500"></div>
-                                                                <div
-                                                                    className={`${trait.bar} h-1.5 rounded-full absolute top-0 bottom-0 transition-all duration-500`}
-                                                                    style={{
-                                                                        /* @ts-ignore */
-                                                                        left: (playerStats.personality?.[trait.key] || 0) < 0 ? `${50 + (playerStats.personality?.[trait.key] || 0) / 2}%` : '50%',
-                                                                        /* @ts-ignore */
-                                                                        width: `${Math.abs((playerStats.personality?.[trait.key] || 0)) / 2}%`
-                                                                    }}
-                                                                ></div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Right Column (Basic): Active Chars & Skills */}
-                                            <div className="space-y-8">
-                                                {/* Active Characters Section */}
-                                                <div className="bg-gray-800 p-6 rounded-lg border border-green-500/50">
-                                                    <h3 className="text-xl font-bold text-green-400 mb-4 border-b border-green-500/30 pb-2">
-                                                        현장 인물 (Active Characters)
-                                                    </h3>
-                                                    {useGameStore.getState().activeCharacters.length === 0 ? (
-                                                        <p className="text-gray-500 italic">현재 장면에 다른 인물이 없습니다.</p>
-                                                    ) : (
-                                                        <div className="space-y-3">
-                                                            {useGameStore.getState().activeCharacters.map((charId: string) => {
-                                                                const charInfo = useGameStore.getState().characterData[charId];
-                                                                return (
-                                                                    <div key={charId} className="flex items-center justify-between bg-black/40 p-3 rounded-lg border border-green-900/50">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden border border-gray-600">
-                                                                                {/* Placeholder or actual image if we had access easy */}
-                                                                                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-400">
-                                                                                    {charInfo?.name?.[0] || charId[0]}
-                                                                                </div>
-                                                                            </div>
-                                                                            <div>
-                                                                                <div className="font-bold text-green-300">{charInfo?.name || charId}</div>
-                                                                                <div className="text-xs text-green-500/70">
-                                                                                    {charInfo?.memories?.length || 0} memories recorded
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        {/* Status Tag (Optional) */}
-                                                                        <div className="px-2 py-1 bg-green-900/30 rounded text-xs text-green-400">
-                                                                            Present
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="bg-black/40 p-6 rounded-lg border border-gray-700">
-                                                    <h3 className="text-xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{t.skills}</h3>
-                                                    {(playerStats.skills || []).length === 0 ? (
-                                                        <p className="text-gray-500 italic">{t.noSkills}</p>
-                                                    ) : (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {playerStats.skills.map((skill, idx) => (
-                                                                <span key={idx} className="px-3 py-1 bg-blue-900/50 border border-blue-500 rounded-full text-blue-200 text-sm">
-                                                                    {skill}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Tab Content: Martial Arts */}
-                                    {activeProfileTab === 'martial_arts' && (
-                                        <div className="space-y-8">
-                                            {/* Martial Arts Section (Wuxia Mode) */}
-                                            {/* Always show if manually selected, or show empty state */}
-                                            <div className="bg-gray-800 p-6 rounded-lg border border-yellow-600/50">
-                                                <div className="flex justify-between items-center mb-4 border-b border-yellow-600/30 pb-2">
-                                                    <div className="flex flex-col">
-                                                        <h3 className="text-xl font-bold text-yellow-400">
-                                                            무공 (Martial Arts)
-                                                        </h3>
-                                                        <span className="text-xs text-yellow-500/80 mt-1">
-                                                            누적 내공: <strong className="text-yellow-300 text-sm">{playerStats.neigong || 0}년 (Years)</strong>
-                                                        </span>
-                                                    </div>
-                                                    <div className="px-3 py-1 bg-yellow-900/40 rounded border border-yellow-600/50 flex flex-col items-end">
-                                                        <span className="text-yellow-200 font-bold font-mono text-sm md:text-base">
-                                                            {playerStats.realm || '삼류(3rd Rate)'}
-                                                        </span>
-                                                        {playerStats.realmProgress !== undefined && (
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
-                                                                    <div
-                                                                        className="h-full bg-yellow-500"
-                                                                        style={{ width: `${playerStats.realmProgress}%` }}
-                                                                    />
-                                                                </div>
-                                                                <span className="text-[10px] text-yellow-500">
-                                                                    {playerStats.realmProgress}%
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {(!playerStats.martialArts || playerStats.martialArts.length === 0) ? (
-                                                    <div className="text-center py-6 border border-dashed border-gray-700 rounded-lg">
-                                                        <p className="text-gray-500 italic mb-2">익힌 무공이 없습니다.</p>
-                                                        <p className="text-xs text-gray-600">수련이나 깨달음을 통해 무공을 습득하세요.</p>
-                                                    </div>
-                                                ) : (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {playerStats.martialArts.map((art: any, idx: number) => (
-                                                            <div key={idx} className="bg-black/30 p-4 rounded border border-gray-700 hover:border-yellow-500/50 transition-colors">
-                                                                <div className="flex justify-between items-start mb-2">
-                                                                    <div>
-                                                                        <span className="font-bold text-gray-200 text-lg">{art.name}</span>
-                                                                        <span className="text-xs text-gray-500 ml-2">[{art.rank || 'Unknown'}]</span>
-                                                                    </div>
-                                                                    <span className="text-xs font-mono text-yellow-500 border border-yellow-500/30 px-2 py-0.5 rounded">
-                                                                        {art.type}
-                                                                    </span>
-                                                                </div>
-
-                                                                {/* Proficiency Bar */}
-                                                                <div className="flex items-center gap-2 mb-3">
-                                                                    <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                                                        <div
-                                                                            className="h-full bg-gradient-to-r from-yellow-700 to-yellow-500"
-                                                                            style={{ width: `${art.proficiency || 0}%` }}
-                                                                        />
-                                                                    </div>
-                                                                    <span className="text-xs text-gray-400 font-mono w-10 text-right">
-                                                                        {art.proficiency || 0}%
-                                                                    </span>
-                                                                </div>
-
-                                                                {/* Description & Effects */}
-                                                                <p className="text-sm text-gray-400 line-clamp-2 mb-2 min-h-[2.5em]">{art.description}</p>
-                                                                {art.effects && art.effects.length > 0 && (
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {art.effects.map((eff: string, i: number) => (
-                                                                            <span key={i} className="text-xs px-2 py-1 bg-gray-800 text-gray-300 rounded border border-gray-700">
-                                                                                {eff}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Tab Content: Relationships */}
-                                    {activeProfileTab === 'relationships' && (
-                                        <div className="space-y-8">
-                                            <div className="bg-black/40 p-6 rounded-lg border border-gray-700">
-                                                <h3 className="text-xl font-bold text-white mb-4 border-b border-gray-600 pb-2">{t.relationships}</h3>
-                                                {Object.keys(playerStats.relationships || {}).length === 0 ? (
-                                                    <p className="text-gray-500 italic text-center py-8">{t.noRelationships}</p>
-                                                ) : (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                        {Object.entries(playerStats.relationships || {}).map(([charId, affinity]) => {
-                                                            const charMemories = characterData?.[charId]?.memories || [];
-                                                            const tierInfo = RelationshipManager.getTier(affinity);
-
-                                                            return (
-                                                                <div key={charId} className="flex flex-col bg-gray-800/50 p-4 rounded-lg border border-gray-700/50 hover:bg-gray-800 transition-colors">
-                                                                    <div className="flex flex-col gap-2 mb-3">
-                                                                        <div className="flex items-center justify-between">
-                                                                            <span className="font-bold text-gray-200 text-lg">{charId}</span>
-                                                                            <span className={`text-xl font-bold ${affinity > 0 ? 'text-pink-400' : 'text-gray-400'}`}>{affinity}</span>
-                                                                        </div>
-
-                                                                        {/* Tier Badge & Progress */}
-                                                                        <div className="flex flex-col gap-1">
-                                                                            <div className="flex justify-between items-end">
-                                                                                <span className="text-xs text-yellow-500 font-mono font-bold uppercase tracking-wider">
-                                                                                    {tierInfo.tier}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                                                                                <div
-                                                                                    className={`h-full rounded-full transition-all duration-500 ${affinity > 0 ? 'bg-gradient-to-r from-pink-600 to-pink-400' : 'bg-gray-500'}`}
-                                                                                    style={{ width: `${Math.min(100, Math.abs(affinity))}%` }}
-                                                                                />
-                                                                            </div>
-                                                                            <p className="text-xs text-gray-400 mt-1 italic leading-relaxed">
-                                                                                "{tierInfo.description}"
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Memories Display */}
-                                                                    {charMemories.length > 0 && (
-                                                                        <div className="mt-auto pl-2 border-l-2 border-yellow-700/50 pt-2">
-                                                                            <p className="text-xs text-yellow-500 font-bold mb-1">기억 (Read-Only):</p>
-                                                                            <ul className="list-disc list-inside space-y-0.5">
-                                                                                {charMemories.slice(-3).map((mem, i) => (
-                                                                                    <li key={i} className="text-xs text-gray-400 line-clamp-1" title={mem}>
-                                                                                        {mem}
-                                                                                    </li>
-                                                                                ))}
-                                                                                {charMemories.length > 3 && (
-                                                                                    <li className="text-xs text-gray-500 italic">...외 {charMemories.length - 3}개</li>
-                                                                                )}
-                                                                            </ul>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
-                        </div>
                     )}
                 </AnimatePresence>
 
@@ -4777,92 +4070,31 @@ Instructions:
                 </AnimatePresence >
 
                 {/* Save/Load Modal */}
-                <AnimatePresence>
-                    {
-                        showSaveLoad && (
-                            <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    className="bg-gray-900 w-full max-w-2xl rounded-xl flex flex-col border border-blue-500 shadow-2xl overflow-hidden"
-                                >
-                                    <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-800">
-                                        <h2 className="text-2xl font-bold text-blue-400">{t.saveLoad}</h2>
-                                        <button onClick={() => setShowSaveLoad(false)} className="text-gray-400 hover:text-white text-xl">×</button>
-                                    </div>
-                                    <div className="p-8 grid gap-4">
-                                        {saveSlots.map((slot) => (
-                                            <div key={slot.id} className="bg-black/40 p-4 rounded-lg border border-gray-700 flex justify-between items-center">
-                                                <div>
-                                                    <div className="text-lg font-bold text-white mb-1">Slot {slot.id}</div>
-                                                    <div className="text-sm text-gray-400">{slot.date === 'Empty' ? t.emptySlot : slot.date}</div>
-                                                    <div className="text-sm text-gray-500 italic line-clamp-2">{slot.summary === 'No summary' ? t.noSummary : slot.summary}</div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => saveGame(slot.id)}
-                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-bold text-white transition-colors"
-                                                    >
-                                                        {t.save}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => loadGame(slot.id)}
-                                                        disabled={slot.date === 'Empty'}
-                                                        className={`px-4 py-2 rounded font-bold text-white transition-colors ${slot.date === 'Empty' ? 'bg-gray-700 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
-                                                    >
-                                                        {t.load}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteGame(slot.id)}
-                                                        disabled={slot.date === 'Empty'}
-                                                        className={`px-4 py-2 rounded font-bold text-white transition-colors ${slot.date === 'Empty' ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
-                                                    >
-                                                        {t.delete}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            </div>
-                        )
-                    }
-                </AnimatePresence >
+                <SaveLoadModal
+                    isOpen={showSaveLoad}
+                    onClose={() => setShowSaveLoad(false)}
+                    saveSlots={saveSlots}
+                    onSave={saveGame}
+                    onLoad={loadGame}
+                    onDelete={deleteGame}
+                    t={t}
+                />
+
+                {/* Settings / Reset Modal (Refactored) */}
+                <SettingsModal
+                    isOpen={showResetConfirm}
+                    onClose={() => setShowResetConfirm(false)}
+                    t={t}
+                    session={session}
+                    onResetGame={handleNewGame}
+                />
 
                 {/* System Popup Layer */}
-                <AnimatePresence>
-                    {currentSegment?.type === 'system_popup' && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            className="absolute inset-0 flex items-center justify-center z-[70] bg-black/60 backdrop-blur-sm"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                advanceScript();
-                            }}
-                        >
-                            <div className="bg-gradient-to-b from-gray-900 to-black border-2 border-yellow-500 rounded-lg p-8 max-w-4xl w-full shadow-[0_0_50px_rgba(234,179,8,0.3)] text-center relative overflow-hidden">
-                                {/* Decorative Elements */}
-                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent" />
-                                <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent" />
-
-                                <h2 className="text-2xl font-bold text-yellow-400 mb-6 tracking-widest uppercase border-b border-gray-700 pb-4">
-                                    SYSTEM NOTIFICATION
-                                </h2>
-
-                                <div className="text-xl text-white leading-relaxed font-medium whitespace-pre-wrap">
-                                    {formatText(currentSegment.content)}
-                                </div>
-
-                                <div className="mt-8 text-sm text-gray-500 animate-pulse">
-                                    Click to continue
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <SystemPopup
+                    isOpen={currentSegment?.type === 'system_popup'}
+                    content={currentSegment?.type === 'system_popup' ? currentSegment.content : ''}
+                    onAdvance={() => advanceScript()}
+                />
 
                 {/* New Feature Operations Layers */}
                 <AnimatePresence>

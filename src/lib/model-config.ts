@@ -3,8 +3,11 @@ export const MODEL_CONFIG = {
     LOGIC: 'gemini-2.5-flash',       // Game Logic (Fast, JSON)
     SUMMARY: 'gemini-2.5-flash',      // Summarization (Cheap)
     ROUTER: 'gemini-2.5-flash-lite',       // [NEW] Intent Classification
-    PRE_LOGIC: 'gemini-2.5-flash'     // [NEW] Adjudication & Dice Rolls
+    PRE_LOGIC: 'gemini-2.5-flash',     // [NEW] Adjudication & Dice Rolls
+    CHOICES: 'gemini-2.5-flash-lite'   // [NEW] Choice Generation (Parallel)
 };
+
+export const KRW_PER_USD = 1450; // Exchange Rate
 
 // Pricing Rates (Per 1M Tokens)
 // Pricing Rates (Per 1M Tokens)

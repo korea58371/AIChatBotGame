@@ -1,16 +1,12 @@
 
 // import { GameState } from '../prompt-manager'; 
 // import { PromptManager } from '../prompt-manager';
-import { RouterOutput } from './router';
+// import { RouterOutput } from './router'; // [REMOVED]
 
 export class AgentRetriever {
 
     // "Lorebook" 정규식 데이터베이스 (코드 기반 필터링)
-    // Key: 정규식 패턴, Value: 데이터 키 경로 또는 JSON 객체
     private static readonly LORE_PATTERNS: Record<string, string> = {
-        // 예시: '린이'가 앞에 한글이 없을 때만 매칭 (어린이, 기린이 등 오탐 방지)
-        // RegEx: /(?<![가-힣])린이/
-        // 참고: JS RegExp lookbehind는 최신 환경에서 잘 지원됨.
         "연화린|(?<![가-힣])린이": "Yeon Hwarin",
         "팽소소": "Pang Soso",
         "한가을|가을이": "Han Ga-Eul", // [GBY] 히로인
@@ -20,20 +16,20 @@ export class AgentRetriever {
     };
 
     /**
-     * 라우터 출력에 기반하여 관련 컨텍스트를 검색합니다.
+     * 유저 입력 및 후보군에 기반하여 관련 컨텍스트를 검색합니다.
      */
     static async retrieveContext(
-        routerOut: RouterOutput,
-        state: any, // 지금은 강결합을 피하기 위해 any 사용
-        suggestedCharacters: any[] = [] // [NEW] Casting Candidates
+        userInput: string, // [CHANGED] RouterOut -> userInput
+        state: any,
+        suggestedCharacters: any[] = []
     ): Promise<string> {
 
-        console.log(`[Retriever] 컨텍스트 검색 중... 타입: ${routerOut.type}`);
+        console.log(`[Retriever] 컨텍스트 검색 중... Input Length: ${userInput.length}`);
         let context = "";
 
         // 1. Casting/Encounter Suggestions (Priority)
         if (suggestedCharacters.length > 0) {
-            context += `[Casting Suggestions]\n`;
+            context += `[Casting Suggestions] (Available for Narrative - You may introduce these characters if relevant)\n`;
             suggestedCharacters.forEach(candidate => {
                 const charData = candidate.data;
                 const desc = charData.profile?.신분 || charData.title || "Unknown";
@@ -42,76 +38,83 @@ export class AgentRetriever {
                 // [NEW] Faction Info
                 const faction = charData.faction || charData.profile?.소속 || "Unknown";
 
-                // Tiered Information based on Score/Reasons
-                const isMentioned = candidate.reasons.some((r: string) => r.includes('Mentioned'));
-                const isActiveRegion = candidate.reasons.some((r: string) => r.includes('Active Zone') || r.includes('Home Region'));
-
-                let tag = "[Potential]";
-                if (isMentioned) tag = "[Mentioned/Relevant]";
-                else if (isActiveRegion) tag = "[Nearby]";
-
                 // [EXPANDED] Always include Personality/Speech for consistency
                 const pVal = charData.personality ? JSON.stringify(charData.personality) : "Unknown";
+
+                // [NEW] Rank Info (Strength)
+                // Wuxia & GBY shared path: charData.강함?.등급 or charData.profile?.등급
+                const rank = charData.강함?.등급 || charData.profile?.등급 || "Unknown";
 
                 // Inference Speech Style (Reuse logic if possible, or simple check)
                 let speechStyle = "Unknown";
                 if (charData.relationshipInfo?.speechStyle) speechStyle = charData.relationshipInfo.speechStyle;
                 else if (JSON.stringify(charData).includes("존댓말")) speechStyle = "Polite/Honorific";
 
-                context += `- ${tag} Name: ${candidate.name} (${charData.title})\n  Identity: ${desc} | Faction: ${faction}\n  Appearance: ${appearance}\n  Personality: ${pVal}\n  Speech: ${speechStyle}\n`;
+                context += `- ${candidate.name} (${charData.title})\n  Identity: ${desc} | Faction: ${faction} | Rank: ${rank}\n  Appearance: ${appearance}\n  Personality: ${pVal}\n  Speech: ${speechStyle}\n`;
             });
             context += "\n";
         }
 
         // 2. 동적 Lore 검색 (정규식 매칭)
-        // 라우터 키워드 + 원본 입력 vs Lore 패턴 대조
-        const keywords = routerOut.keywords || [];
+        // 원본 입력 대조
         const retrievedKeys = new Set<string>();
 
-        // 키워드 확인
-        keywords.forEach(kw => {
-            for (const [pattern, key] of Object.entries(this.LORE_PATTERNS)) {
-                if (new RegExp(pattern).test(kw)) {
-                    retrievedKeys.add(key);
-                }
+        for (const [pattern, key] of Object.entries(this.LORE_PATTERNS)) {
+            if (new RegExp(pattern).test(userInput)) {
+                retrievedKeys.add(key);
             }
-        });
+        }
 
         if (retrievedKeys.size > 0) {
             context += `[Retrieved Lore]\n- Related Topics: ${Array.from(retrievedKeys).join(', ')}\n`;
-            // 실제 구현에서는 여기서 "Yeon Hwarin"에 대한 JSON 데이터를 가져와야 함.
-            // 지금은 스텁(Stub) 처리하거나 상태(State)에서 룩업.
             context += this.fetchLoreData(state, Array.from(retrievedKeys));
         }
 
-        // 3. 모드별 검색 (Mode-Specific Retrieval)
-        if (routerOut.type === 'combat') {
+        // 3. 모드별 검색 (Mode-Specific Retrieval) - Heuristic Inference
+        // 라우터가 없으므로 간단한 키워드 매칭으로 대체하거나 항상 포함
+        // combat -> always include stats if 'attack', 'kill', 'skill' in input
+        const lowerInput = userInput.toLowerCase();
+        const isCombat = lowerInput.includes("attack") || lowerInput.includes("kill") || lowerInput.includes("hit") || lowerInput.includes("skill") || lowerInput.includes("공격") || lowerInput.includes("죽이");
+
+        if (isCombat) {
             // 플레이어 전투 스탯 및 스킬 가져오기
             const stats = state.playerStats;
-            context += `\n[Combat Stats]\nHP: ${stats.hp}/${stats.maxHp}\nATK: ${stats.str}\nSkills: ${stats.skills?.join(', ') || "None"}\n`;
+            if (stats) {
+                context += `\n[Combat Stats]\nHP: ${stats.hp}/${stats.maxHp}\nATK: ${stats.str}\nSkills: ${stats.skills?.join(', ') || "None"}\n`;
+            }
         }
-        else if (routerOut.type === 'dialogue') {
-            // [Optimized Retrieval]
-            // 1. Explicit Target found by Router?
-            // 2. If Target is ACTIVE, rely on PromptManager for Profile. Only fetch Memories.
-            // 3. If Target is NOT ACTIVE (e.g. Reminiscing), fetch Profile + Memories.
-            // 4. If No Target, assume General Address -> Rely on PromptManager (No generic memory dump).
 
-            if (routerOut.target && routerOut.target !== 'None') {
-                const targetObj = this.findCharacter(state, routerOut.target);
+        // Dialogue Profile Injection
+        // 단순화: 입력에 이름이 언급된 캐릭터의 프로필과 기억(Memories)을 주입
+        if (state.characterData) {
+            for (const [id, char] of Object.entries(state.characterData)) {
+                const c = char as any;
+                const name = c.name?.trim();
+                const koreanName = c.이름?.trim();
 
-                if (targetObj) {
-                    const { id, data: targetData } = targetObj;
-                    const activeCharIds = new Set((state.activeCharacters || []).map((c: any) => String(c).toLowerCase()));
+                let isMentioned = false;
+
+                // [Bug Fix] 빈 문자열("") 체크가 되어 모든 캐릭터가 잡히던 문제 수정
+                if (name && lowerInput.includes(name.toLowerCase())) {
+                    isMentioned = true;
+                } else if (koreanName && lowerInput.includes(koreanName)) {
+                    isMentioned = true;
+                }
+
+                if (isMentioned) {
+                    const activeCharIds = new Set((state.activeCharacters || []).map((ac: any) => String(ac).toLowerCase()));
                     const isActive = activeCharIds.has(id.toLowerCase());
 
+                    // 현재 장면에 없는 경우에만 프로필 추가 (장면에 있으면 Orchestrator가 이미 추가함)
                     if (!isActive) {
-                        context += `\n[Target Profile: ${targetData.name}]\nPersonality: ${JSON.stringify(targetData.personality)}\nRelationship: ${targetData.relationship || "Neutral"}\n`;
+                        const displayName = name || koreanName || "Unknown";
+                        context += `\n[Target Profile: ${displayName}]\nPersonality: ${JSON.stringify(c.personality)}\nRelationship: ${c.relationship || "Neutral"}\n`;
                     }
 
-                    // Always inject memories if they exist
-                    if (targetData.memories && targetData.memories.length > 0) {
-                        context += `[Memories with Player]\n- ${targetData.memories.join('\n- ')}\n`;
+                    // 기억(Memories)은 항상 중요하므로 추가
+                    const memName = name || koreanName;
+                    if (c.memories && c.memories.length > 0 && memName) {
+                        context += `[Memories with ${memName}]\n- ${c.memories.join('\n- ')}\n`;
                     }
                 }
             }
@@ -136,22 +139,5 @@ export class AgentRetriever {
             }
         });
         return data;
-    }
-
-    private static findCharacter(state: any, targetName: string): { id: string, data: any } | null {
-        // state.characterData 내에서 단순 퍼지(Fuzzy) 검색
-        if (!state.characterData) return null;
-
-        const lowerTarget = targetName.toLowerCase();
-        for (const [id, char] of Object.entries(state.characterData)) {
-            const c = char as any;
-            // Check ID, Name, EnglishName
-            if (id.toLowerCase() === lowerTarget ||
-                c.name?.toLowerCase().includes(lowerTarget) ||
-                c.englishName?.toLowerCase().includes(lowerTarget)) {
-                return { id, data: c };
-            }
-        }
-        return null;
     }
 }

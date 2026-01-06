@@ -19,6 +19,7 @@ interface GameState {
 export class AgentCasting {
     private static readonly REGION_HOME_MULTIPLIER = 2.0;
     private static readonly REGION_ACTIVE_MULTIPLIER = 1.0;
+    private static readonly REGION_WILDCARD_MULTIPLIER = 0.5; // [NEW] Lower priority for "Anywhere" matches
     private static readonly REGION_MISMATCH_PENALTY = 0.2; // [NEW] Soft Filter
     private static readonly LIFECYCLE_PENALTY = 0.1; // [NEW] Soft Filter for Phase
     private static readonly TAG_BONUS = 0.5;
@@ -31,7 +32,7 @@ export class AgentCasting {
         gameState: GameState,
         summary: string,
         userInput: string = "",
-        playerRealm: string = "삼류" // [NEW] Player Realm for Gating
+        playerLevel: number = 1 // [Modified] Use Level instead of Realm string
     ): Promise<CastingCandidate[]> {
         const currentPhase = gameState.phase || 1;
         // Clean location: remove specific details if needed, but for now use raw string matching
@@ -50,20 +51,32 @@ export class AgentCasting {
         const allCharacters = { ...characters_main_typed, ...characters_supporting_typed };
         const candidates: CastingCandidate[] = [];
 
-        // [Helper] Rank Value Mapper
-        const getRankValue = (rankStr: string): number => {
-            if (!rankStr) return 0;
-            if (rankStr.includes('현경') || rankStr.includes('신화')) return 7;
-            if (rankStr.includes('화경') || rankStr.includes('탈각')) return 6;
-            if (rankStr.includes('초절정')) return 5;
-            if (rankStr.includes('절정')) return 4;
-            if (rankStr.includes('일류')) return 3;
-            if (rankStr.includes('이류')) return 2;
-            if (rankStr.includes('삼류')) return 1;
-            return 0; // Unranked/Civilian
+        // [Helper] Rank Value Mapper (Based on Wuxia Constants)
+        const getRankFromLevel = (level: number): number => {
+            if (level >= 80) return 7; // Mystic (현경)
+            if (level >= 60) return 6; // Harmony (화경)
+            if (level >= 40) return 5; // Transcendent (초절정)
+            if (level >= 30) return 4; // Peak (절정)
+            if (level >= 20) return 3; // 1st Rate (일류)
+            if (level >= 10) return 2; // 2nd Rate (이류)
+            if (level >= 1) return 1;  // 3rd Rate (삼류)
+            return 0;
         };
 
-        const playerRankVal = getRankValue(playerRealm);
+        // [Helper] String Rank Mapper (For NPCs who still use string ranks in JSON)
+        const getRankFromString = (rankStr: string): number => {
+            if (!rankStr) return 0;
+            if (rankStr.includes('현경') || rankStr.includes('신화') || rankStr.includes('SS')) return 7;
+            if (rankStr.includes('화경') || rankStr.includes('탈각') || rankStr.includes('S')) return 6;
+            if (rankStr.includes('초절정') || rankStr.includes('A')) return 5;
+            if (rankStr.includes('절정') || rankStr.includes('B')) return 4;
+            if (rankStr.includes('일류') || rankStr.includes('C')) return 3;
+            if (rankStr.includes('이류') || rankStr.includes('D')) return 2;
+            if (rankStr.includes('삼류') || rankStr.includes('E') || rankStr.includes('F')) return 1;
+            return 0;
+        };
+
+        const playerRankVal = getRankFromLevel(playerLevel);
 
         // [Phase Synchronization]
         // 시스템 프롬프트(system.ts)와 동일하게, 플레이어 경지에 따라 Phase를 보정합니다.
@@ -76,8 +89,8 @@ export class AgentCasting {
             effectivePhase = Math.max(effectivePhase, 2);
         }
 
-        console.log(`[AgentCasting] Analyzing for Phase: ${effectivePhase} (Base: ${currentPhase}, Rank: ${playerRealm}), Location: ${specificLocation}`);
-        console.log(`[AgentCasting] User Input: "${userInput}", Player Realm: ${playerRealm}(${playerRankVal})`);
+        console.log(`[AgentCasting] Analyzing for Phase: ${effectivePhase} (Base: ${currentPhase}, Level: ${playerLevel}), Location: ${specificLocation}`);
+        console.log(`[AgentCasting] User Input: "${userInput}", Player Level: ${playerLevel}(RankVal:${playerRankVal})`);
         console.log(`[AgentCasting] Active Characters: ${Array.from(activeIds).join(', ')}`);
 
         let countSkippedActive = 0;
@@ -147,9 +160,25 @@ export class AgentCasting {
                 if (specificLocation.includes(home) || regionPrefix === home) {
                     isRegionMatch = true;
                     regionMultiplier = this.REGION_HOME_MULTIPLIER;
-                } else if (active_zones.some(zone => specificLocation.includes(zone) || zone === "중원_전역")) {
+                } else if (active_zones.some(zone => zone !== "중원_전역" && (specificLocation.includes(zone) || zone === "중원_전역" && false))) {
+                    // [Fix] Check specific zones first (Exclude wildcard for now)
+                    // Logic Correction: We need to check if specificLocation includes any NON-WILDCARD zone
                     isRegionMatch = true;
                     regionMultiplier = this.REGION_ACTIVE_MULTIPLIER;
+                }
+
+                // Re-evaluating logic for cleanliness:
+                const isSpecificActive = active_zones.some(zone => zone !== "중원_전역" && specificLocation.includes(zone));
+                const isWildcard = active_zones.includes("중원_전역");
+
+                if (isRegionMatch && regionMultiplier === this.REGION_HOME_MULTIPLIER) {
+                    // Already set
+                } else if (isSpecificActive) {
+                    isRegionMatch = true;
+                    regionMultiplier = this.REGION_ACTIVE_MULTIPLIER;
+                } else if (isWildcard) {
+                    isRegionMatch = true;
+                    regionMultiplier = this.REGION_WILDCARD_MULTIPLIER;
                 }
             } else {
                 if (char.활동지역 && specificLocation.includes(char.활동지역)) {
@@ -182,6 +211,9 @@ export class AgentCasting {
             } else if (regionMultiplier === this.REGION_ACTIVE_MULTIPLIER) {
                 reasons.push(`Active Zone (x${this.REGION_ACTIVE_MULTIPLIER})`);
                 score *= regionMultiplier;
+            } else if (regionMultiplier === this.REGION_WILDCARD_MULTIPLIER) {
+                reasons.push(`Wildcard Zone (x${this.REGION_WILDCARD_MULTIPLIER})`);
+                score *= regionMultiplier;
             } else {
                 reasons.push(`Region Mismatch (x${this.REGION_MISMATCH_PENALTY})`);
                 score *= regionMultiplier;
@@ -206,7 +238,7 @@ export class AgentCasting {
 
                 // 등급 추출 (Extract Rank)
                 const charRankStr = cAny.강함?.['등급'] || cAny.profile?.['등급'] || "Unknown";
-                const charRankVal = getRankValue(charRankStr);
+                const charRankVal = getRankFromString(charRankStr);
 
                 // 등급 차이 계산 (상대 - 플레이어)
                 // 예: 상대가 1류(3)이고 플레이어가 3류(1)이면 차이는 2

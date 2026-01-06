@@ -19,53 +19,13 @@ export async function serverAgentTurn(
     userMessage: string,
     gameState: any,
     language: 'ko' | 'en' | null,
-    modelName: string = MODEL_CONFIG.STORY, // [NEW] Default to Config
+    modelName: string = MODEL_CONFIG.STORY,
     isDirectInput: boolean = false
 ) {
     console.log(`[ServerAction] 에이전트 턴 시작. Luk: ${gameState.playerStats?.luk}`);
     if (!API_KEY) throw new Error("서버 API 키가 누락되었습니다");
 
-    // [서버 사이드 재수화 (RE-HYDRATION)]
-    if (gameState.activeGameId) {
-        try {
-            const { DataManager } = await import('@/lib/data-manager');
-            const data = await DataManager.loadGameData(gameState.activeGameId);
-            if (data.lore) gameState.lore = data.lore;
-            if (data.backgroundMappings) gameState.backgroundMappings = data.backgroundMappings;
-            if (data.extraMap) gameState.extraMap = data.extraMap;
-            if (data.characters) {
-                // [Fix] Smart Merge: Don't overwrite dynamic memories with static data
-                if (!gameState.characterData || Object.keys(gameState.characterData).length === 0) {
-                    gameState.characterData = data.characters;
-                } else {
-                    // Merge static definition with dynamic state
-                    Object.keys(data.characters).forEach(key => {
-                        const staticChar = data.characters[key];
-                        const dynamicChar = gameState.characterData[key];
-
-                        if (dynamicChar) {
-                            gameState.characterData[key] = {
-                                ...staticChar, // Base: Static Data
-                                ...dynamicChar, // Overlay: Dynamic State
-                                // Explicitly ensure arrays are preserved from Dynamic
-                                memories: dynamicChar.memories || staticChar.memories || [],
-                                discoveredSecrets: dynamicChar.discoveredSecrets || staticChar.discoveredSecrets || [],
-                                // Merge relationships? Dynamic > Static
-                                relationships: { ...staticChar.relationships, ...dynamicChar.relationships },
-                                // Preserve ID
-                                id: dynamicChar.id || staticChar.id || key
-                            };
-                        } else {
-                            // Missing in client (New update?), add it
-                            gameState.characterData[key] = staticChar;
-                        }
-                    });
-                }
-            }
-        } catch (e) {
-            console.error(`[ServerAction] 재수화 실패:`, e);
-        }
-    }
+    await hydrateGameState(gameState);
 
     gameState.isDirectInput = isDirectInput || gameState.isDirectInput || false;
 
@@ -76,8 +36,153 @@ export async function serverAgentTurn(
         history,
         userMessage,
         language,
-        modelName // [NEW] Pass model name
+        modelName
     );
+}
+
+// [New] Phase 1 Action
+export async function serverAgentTurnPhase1(
+    history: Message[],
+    userMessage: string,
+    gameState: any,
+    language: 'ko' | 'en' | null,
+    modelName: string = MODEL_CONFIG.STORY,
+    isDirectInput: boolean = false
+) {
+    console.log(`[ServerAction] Phase 1 Start. Luk: ${gameState.playerStats?.luk}`);
+    if (!API_KEY) throw new Error("Server API Key Missing");
+
+    await hydrateGameState(gameState);
+    gameState.isDirectInput = isDirectInput || gameState.isDirectInput || false;
+
+    const result = await AgentOrchestrator.executeStoryPhase(
+        API_KEY,
+        gameState,
+        history,
+        userMessage,
+        language,
+        modelName
+    );
+
+    // [Fix] Sanitize effectiveGameState and Strip Heavy Static Data
+    if (result.effectiveGameState) {
+        const state = JSON.parse(JSON.stringify(result.effectiveGameState));
+
+        // [OPTIMIZATION] Strip Static Data (Re-hydrated in Phase 2)
+        delete state.availableBackgrounds;
+        delete state.availableCharacterImages;
+        delete state.availableExtraImages;
+        delete state.backgroundMappings;
+        delete state.extraMap;
+        delete state.lore;
+        delete state.constants;
+
+        // We keep worldData/characterData as they may contain dynamic unlocks/relationships
+        // that are not yet persisted or need to be passed to Phase 2.
+
+        result.effectiveGameState = state;
+    }
+
+    return result;
+}
+
+// [New] Phase 2 Action
+export async function serverAgentTurnPhase2(
+    history: Message[],
+    userMessage: string,
+    gameState: any,
+    storyText: string,
+    language: 'ko' | 'en' | null
+) {
+    console.log(`[ServerAction] Phase 2 Start.`);
+    if (!API_KEY) throw new Error("Server API Key Missing");
+
+    // Hydration might be redundant if gameState is passed from Phase 1, but safer.
+    await hydrateGameState(gameState);
+
+    return await AgentOrchestrator.executeLogicPhase(
+        API_KEY,
+        gameState,
+        history,
+        userMessage,
+        storyText,
+        language
+    );
+}
+
+// Helper for Rehydration
+async function hydrateGameState(gameState: any) {
+    if (gameState.activeGameId) {
+        try {
+            const { DataManager } = await import('@/lib/data-manager');
+            const data = await DataManager.loadGameData(gameState.activeGameId);
+
+            if (data.lore) gameState.lore = data.lore;
+            if (data.backgroundMappings) gameState.backgroundMappings = data.backgroundMappings;
+            if (data.extraMap) gameState.extraMap = data.extraMap;
+            // [Fix] Hydrate constants
+            if (data.constants) gameState.constants = data.constants;
+
+            // [Fix] Hydrate System Prompt Logic
+            if (data.getSystemPromptTemplate) gameState.getSystemPromptTemplate = data.getSystemPromptTemplate;
+            if (data.getRankInfo) gameState.getRankInfo = data.getRankInfo;
+
+            // [Optimization] Hydrate Asset Lists & World Data on Server
+            if (data.backgroundList) gameState.availableBackgrounds = data.backgroundList;
+            if (data.characterImageList) gameState.availableCharacterImages = data.characterImageList;
+            if (data.extraCharacterList) gameState.availableExtraImages = data.extraCharacterList;
+
+            // [Optimization] Hydrate World Data if missing or partial (Reference-Only Strategy)
+            if (data.world) {
+                // If client sends NO worldData, use server data.
+                if (!gameState.worldData || Object.keys(gameState.worldData.locations).length === 0) {
+                    gameState.worldData = data.world;
+                } else {
+                    // If mixed (dynamic updates), we might need merge. 
+                    // But for now, assuming worldData is mostly static descriptions -> Use Server Reference?
+                    // Dynamic changes (secrets unlocked) are usually small.
+                    // IMPORTANT: Client logic updates `worldData` state for unlocks.
+                    // If we overwrite with static server data, we lose unlocks.
+                    // So we should MERGE.
+                    // However, deep merge object is expensive.
+                    // Strategy: The Client Payload should ONLY contain the *Dynamic Deltas* if possible?
+                    // Too complex for now.
+                    // Let's just hydrate `worldData` IF the client explicitly omitted it (sanitized).
+                    // In VisualNovelUI, I will omit `worldData` completely?
+                    // No, "Unlocked Secrets" needed.
+                    // For 4MB limit, `worldData` text is big.
+                    // But `playerStats` and `history` are bigger?
+                    // Let's start with Asset Lists. Be conservative with World Data.
+                }
+            }
+
+            if (data.characters) {
+                if (!gameState.characterData || Object.keys(gameState.characterData).length === 0) {
+                    gameState.characterData = data.characters;
+                } else {
+                    Object.keys(data.characters).forEach(key => {
+                        const staticChar = data.characters[key];
+                        const dynamicChar = gameState.characterData[key];
+
+                        if (dynamicChar) {
+                            gameState.characterData[key] = {
+                                ...staticChar,
+                                ...dynamicChar,
+                                memories: dynamicChar.memories || staticChar.memories || [],
+                                discoveredSecrets: dynamicChar.discoveredSecrets || staticChar.discoveredSecrets || [],
+                                relationships: { ...staticChar.relationships, ...dynamicChar.relationships },
+                                id: dynamicChar.id || staticChar.id || key
+                            };
+                        } else {
+                            gameState.characterData[key] = staticChar;
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error(`[ServerAction] Rehydration Failed:`, e);
+        }
+    }
 }
 
 // [LEGACY] 폴백 또는 부분 업데이트를 위해 유지
@@ -91,29 +196,9 @@ export async function serverGenerateResponse(
     console.log(`[ServerAction] gameState 수신됨. Luk: ${gameState.playerStats?.luk} (${typeof gameState.playerStats?.luk})`);
     if (!API_KEY) throw new Error("서버 API 키가 누락되었습니다");
 
-    // [서버 사이드 재수화 (RE-HYDRATION)]
-    // 클라이언트는 대역폭 절약을 위해 'lore'를 보내지 않습니다. 여기서 로드해야 합니다.
-    if (gameState.activeGameId) {
-        try {
-            const { DataManager } = await import('@/lib/data-manager');
-            const data = await DataManager.loadGameData(gameState.activeGameId);
-            if (data.lore) {
-                console.log(`[ServerAction] ${gameState.activeGameId}에 대한 Lore 재수화. 키 개수: ${Object.keys(data.lore).length}`);
-                gameState.lore = data.lore;
-            }
-            if (data.backgroundMappings) {
-                gameState.backgroundMappings = data.backgroundMappings;
-            }
-            if (data.extraMap) {
-                gameState.extraMap = data.extraMap;
-            }
-        } catch (e) {
-            console.error(`[ServerAction] ${gameState.activeGameId}에 대한 lore/maps 재수화 실패:`, e);
-        }
-    }
+    await hydrateGameState(gameState);
 
     // 프롬프트 로직을 위해 gameState에 isDirectInput 전달
-    // [FIX] 우선순위: 인자 > 기존 상태 > 기본값 False
     gameState.isDirectInput = isDirectInput || gameState.isDirectInput || false;
 
     return generateResponse(API_KEY, history, userMessage, gameState, language);
@@ -204,3 +289,4 @@ export async function serverPreloadCache(gameState: any) {
         console.error("서버 프리로드 오류:", e);
     }
 }
+

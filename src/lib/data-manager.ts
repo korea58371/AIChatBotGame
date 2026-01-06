@@ -143,16 +143,15 @@ export class DataManager {
                     try {
                         try {
                             worldModule = await import('../data/games/wuxia/world.json');
-                            // Handle ESM default export behavior for JSON
                             if ((worldModule as any).default) worldModule = (worldModule as any).default;
                         } catch (e) {
                             console.warn('[DataManager] world.json not found for wuxia, using empty default.');
                             worldModule = { locations: {}, items: {} };
                         }
-                        try {
-                            charactersModule = await import('../data/games/wuxia/characters.json');
-                            if ((charactersModule as any).default) charactersModule = (charactersModule as any).default;
-                        } catch (e) { console.error("[DataManager] Failed characters.json", e); }
+
+                        // [REFACTOR] Legacy characters.json import REMOVED
+                        // charactersModule is now derived solely from Lore Data below.
+                        charactersModule = null;
 
                         // bgListModule loaded above
 
@@ -193,60 +192,38 @@ export class DataManager {
                             wikiDataModule = {};
                         }
 
-                        // [데이터 강화] 상세 설정(Lore) 데이터를 캐릭터 상태에 병합
-                        // 기본 'characters.json'에는 이름과 기본 정보만 있고, 외모 묘사나 성격, 관계도 등 자세한 정보가 부족할 수 있습니다.
-                        // 이를 'loreModule.WuxiaLore.charactersDetail'에서 가져와서 채워 넣습니다.
+                        // [REFACTOR] New Character Loading Logic
+                        // Load solely from loreModule.WuxiaLore.charactersDetail
+                        if (loreModule?.WuxiaLore?.charactersDetail) {
+                            const details = loreModule.WuxiaLore.charactersDetail;
+                            const charDict: Record<string, any> = {};
 
-                        if (charactersModule && loreModule?.WuxiaLore?.charactersDetail) {
-                            // [Fix] Use Object.entries to preserve keys (names) as fallback
-                            const mainCharsEntries = Object.entries(loreModule.WuxiaLore.charactersDetail.characters_main || {});
-                            const suppCharsEntries = Object.entries(loreModule.WuxiaLore.charactersDetail.characters_supporting || {});
-                            const detailedEntries = [...mainCharsEntries, ...suppCharsEntries];
+                            // Helper to merge dicts
+                            const mergeChars = (source: any) => {
+                                if (!source) return;
+                                Object.entries(source).forEach(([key, val]: [string, any]) => {
+                                    // Inject Key as Name if missing
+                                    const charData = { ...val };
+                                    if (!charData.name) charData.name = key;
 
-                            const detailedMap = new Map();
-                            detailedEntries.forEach(([key, val]: [string, any]) => {
-                                // Priority: 1. profile name, 2. basic_profile name, 3. Dictionary Key
-                                const rawName = val.profile?.이름 || val.basic_profile?.이름 || key;
-                                // Extract "연화린" from "연화린 (延花凛)"
-                                const cleanName = rawName.split('(')[0].trim();
-                                if (cleanName) {
-                                    detailedMap.set(cleanName, val);
-                                }
-                            });
-
-                            // Helper to access default export if it exists
-                            const simpleList = (charactersModule as any).default || charactersModule;
-
-                            if (Array.isArray(simpleList)) {
-                                const enriched = simpleList.map((simple: any) => {
-                                    const detail = detailedMap.get(simple.name);
-                                    if (detail) {
-                                        return {
-                                            ...simple,
-                                            // Merge Key Fields for PromptManager
-                                            // Merge Key Fields for PromptManager
-                                            description: detail.profile?.['강함']?.description,
-                                            // [상세 데이터 병합] 아래 필드들은 기본 데이터에 없던 상세 정보입니다.
-                                            외형: detail['외형'],
-                                            personality: detail.personality,
-                                            인간관계: detail['인간관계'], // [중요] 관계도 데이터 병합
-                                            profile: detail.profile,
-                                            social: detail.social,
-                                            preferences: detail.preferences,
-                                            secret: detail.secret,
-                                            // [NEW] Inject detailed Secret Data and MA Realm for PromptManager
-                                            secret_data: detail.secret_data || detail.secret, // Legacy Support
-                                            // Hoist '강함' (Strength/Combat) to root
-                                            강함: detail.profile?.['강함'],
-                                            job: detail.job
-                                            // I will delete the 'social' line I added here.
-                                        };
+                                    // Handle "Name (Chinese)" format if present in key or name
+                                    if (charData.name.includes('(')) {
+                                        charData.name = charData.name.split('(')[0].trim();
                                     }
-                                    return simple;
+
+                                    charDict[charData.name] = charData;
                                 });
-                                // 캐릭터 모듈을 강화된 리스트로 교체합니다.
-                                charactersModule = enriched;
-                            }
+                            };
+
+                            // Merge Order: Extra -> Supporting -> Main (Main overrides)
+                            mergeChars(details.characters_extra); // Dictionary
+                            mergeChars(details.characters_supporting); // Dictionary (via index export)
+                            mergeChars(details.characters_main); // Dictionary (via index export)
+
+                            charactersModule = charDict;
+                        } else {
+                            console.error("[DataManager] CRITICAL: WuxiaLore.charactersDetail missing!");
+                            charactersModule = {};
                         }
 
                         // [데이터 강화] Locations.json을 worldModule.locations로 평탄화 (Flatten)
@@ -340,20 +317,21 @@ export class DataManager {
             // [Shared Hydration] Ensure all characters have a valid 'name' property
             let finalCharacters = (charactersModule as any).default || charactersModule;
 
-            // [Fix] Handle Dictionary-based Character Data (GBY)
+            // [Fix] Handle Dictionary-based Character Data (GBY & Wuxia Refactored)
             // If it's a plain object (Dictionary), we must inject the Key as 'name' 
             // because Object.values() in PromptManager strips the keys.
             if (!Array.isArray(finalCharacters) && typeof finalCharacters === 'object') {
                 const hydratedDict: Record<string, any> = {};
                 Object.entries(finalCharacters).forEach(([key, val]: [string, any]) => {
+                    const charObj = val as any;
                     hydratedDict[key] = {
                         name: key, // Inject Key as Name
-                        ...val
+                        ...charObj
                     };
                 });
                 finalCharacters = hydratedDict;
             }
-            // [Existing] Handle Array-based Character Data (Wuxia)
+            // [Legacy] Handle Array-based Character Data (Old Wuxia path - Should not trigger for Wuxia anymore)
             else if (Array.isArray(finalCharacters)) {
                 // [Standardization] Convert Array to Dictionary for consistent Key lookup
                 const charDict: Record<string, any> = {};
@@ -387,11 +365,8 @@ export class DataManager {
                 characterMap: charMapModule || {},
                 extraMap: extraMapModule || {},
                 // Fix: Spread module into plain object to avoid serialization error
-                // Fix: Spread module into plain object to avoid serialization error
                 constants: constantsModule ? { ...constantsModule } as any : undefined,
                 // [중요] 상세 설정(Lore) 데이터 구조 분해
-                // WuxiaLore 내부에는 factionsDetail, charactersDetail과 같은 중첩된 객체들이 있습니다.
-                // 이를 클라이언트에서 바로 사용할 수 있도록 펼쳐서(spread) 전달합니다.
                 lore: (loreModule as any)?.WuxiaLore ? {
                     ...(loreModule as any).WuxiaLore,
                     factionsDetail: { ...(loreModule as any).WuxiaLore.factionsDetail },

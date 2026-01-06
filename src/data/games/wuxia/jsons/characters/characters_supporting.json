@@ -1,6 +1,6 @@
 {
     "독고천": {
-        "title": "무림맹주, 독고천",
+        "title": "고뇌하는 무림맹주",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 1.0,
@@ -72,7 +72,7 @@
         }
     },
     "천위강": {
-        "title": "천마신교주, 천위강",
+        "title": "천마신교의 절대 독재자",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 1.0,
@@ -150,7 +150,7 @@
         }
     },
     "남궁천": {
-        "title": "남궁가주, 남궁천",
+        "title": "불같은 성격의 남궁가주",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.8,
@@ -229,7 +229,7 @@
         }
     },
     "장무극": {
-        "title": "패천맹주, 장무극",
+        "title": "도덕 따윈 없는 사파의 패왕",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.9,
@@ -305,7 +305,7 @@
         }
     },
     "연무린": {
-        "title": "북해빙궁주, 연무린",
+        "title": "감정이 제거된 북해의 군주",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.8,
@@ -377,7 +377,7 @@
         }
     },
     "금만수": {
-        "title": "대통상회주, 금만수",
+        "title": "딸바보 천하제일 갑부",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.7,
@@ -449,7 +449,7 @@
         }
     },
     "남궁진": {
-        "title": "남궁소가주, 남궁진",
+        "title": "엘리트 의식에 젖은 소가주",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.8,
@@ -521,7 +521,7 @@
         }
     },
     "모용휘": {
-        "title": "모용소가주, 모용휘",
+        "title": "웃으며 계략을 꾸미는 책사",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.8,
@@ -596,7 +596,7 @@
         }
     },
     "당보": {
-        "title": "사천당가, 당보",
+        "title": "장난기 가득한 천재 비도",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.9,
@@ -669,7 +669,7 @@
         }
     },
     "팽대광": {
-        "title": "하북의 광견, 팽대광",
+        "title": "생각 없는 돌격대장",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.8,
@@ -744,7 +744,7 @@
         }
     },
     "주진양": {
-        "title": "아미의 2인자, 주진양",
+        "title": "질투심 많은 만년 2인자",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.9,
@@ -819,7 +819,7 @@
         }
     },
     "팽무도": {
-        "title": "도왕, 팽무도",
+        "title": "호탕한 근육질 도왕",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.8,
@@ -891,7 +891,7 @@
         }
     },
     "당문식": {
-        "title": "독왕, 당문식",
+        "title": "의심 많은 독의 제왕",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.8,
@@ -967,7 +967,7 @@
         }
     },
     "야율 바르칸": {
-        "title": "야왕, 야율 바르칸",
+        "title": "본능에 충실한 야수왕",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.8,
@@ -1038,7 +1038,7 @@
         }
     },
     "무영": {
-        "title": "살왕, 무영",
+        "title": "감정 없는 살인 기계",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.8,
@@ -1109,7 +1109,7 @@
         }
     },
     "현명": {
-        "title": "달마원주, 현명",
+        "title": "자비롭지만 엄격한 고승",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.7,
@@ -1182,7 +1182,7 @@
         }
     },
     "현무": {
-        "title": "무당 장로, 현무",
+        "title": "융통성 없는 규율 집행자",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.7,
@@ -1254,7 +1254,7 @@
         }
     },
     "운검": {
-        "title": "매화검존, 운검",
+        "title": "실전만을 추구하는 검술 교관",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 1.0,
@@ -1326,7 +1326,7 @@
         }
     },
     "정허": {
-        "title": "철혈여승, 정허",
+        "title": "남자를 혐오하는 철혈 여승",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.9,
@@ -1398,7 +1398,7 @@
         }
     },
     "공손월": {
-        "title": "검선, 공손월",
+        "title": "세상 물정 모르는 4차원 검선",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.5,
@@ -1470,7 +1470,7 @@
         }
     },
     "홍칠": {
-        "title": "취협, 홍칠",
+        "title": "방탕한 애주가 거지",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 1.1,
@@ -1543,7 +1543,7 @@
         }
     },
     "당명": {
-        "title": "독수, 당명",
+        "title": "해부를 즐기는 매드 사이언티스트",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.8,
@@ -1614,7 +1614,7 @@
         }
     },
     "남궁휘": {
-        "title": "창왕, 남궁휘",
+        "title": "형식에 구애받지 않는 남궁세가 창왕",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.9,
@@ -1686,7 +1686,7 @@
         }
     },
     "혈비": {
-        "title": "혈마, 혈비",
+        "title": "천마에게 충성하는 마교 호법",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 1.2,
@@ -1758,7 +1758,7 @@
         }
     },
     "흑풍": {
-        "title": "녹림 대채주, 흑풍",
+        "title": "탐욕스러운 녹림의 산적 두목",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 1.0,
@@ -1830,7 +1830,7 @@
         }
     },
     "혜심": {
-        "title": "십팔동인 조장, 혜심",
+        "title": "융통성 없는 소림사 문지기",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.5,
@@ -1901,7 +1901,7 @@
         }
     },
     "청운": {
-        "title": "무당삼검, 청운",
+        "title": "웃는 얼굴로 중재하는 무당파 도사",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.7,
@@ -1972,7 +1972,7 @@
         }
     },
     "유성": {
-        "title": "매화검수, 유성",
+        "title": "겉으론 까칠한 화산파 쾌검수",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.8,
@@ -2044,7 +2044,7 @@
         }
     },
     "왕초": {
-        "title": "4결 개방도, 왕초",
+        "title": "시장 바닥을 주름잡는 거지 골목대장",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.6,
@@ -2116,7 +2116,7 @@
         }
     },
     "당비": {
-        "title": "암기수, 당비",
+        "title": "존재감 없는 사천당가의 그림자 암살자",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.7,
@@ -2188,7 +2188,7 @@
         }
     },
     "남궁혁": {
-        "title": "호위대장, 남궁혁",
+        "title": "주군만 바라보는 우직한 호위대장",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.7,
@@ -2259,7 +2259,7 @@
         }
     },
     "모용구": {
-        "title": "모용세가 총관, 모용구",
+        "title": "1전 한 푼도 계산하는 깐깐한 살림꾼",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.6,
@@ -2329,7 +2329,7 @@
         }
     },
     "도끼": {
-        "title": "녹림 행동대장, 도끼",
+        "title": "생각보다 몸이 먼저 나가는 녹림 행동대장",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.5,
@@ -2401,7 +2401,7 @@
         }
     },
     "조명": {
-        "title": "하오문 객주, 조명",
+        "title": "돈 냄새를 잘 맡는 하오문 객주",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.6,
@@ -2473,7 +2473,7 @@
         }
     },
     "한철": {
-        "title": "표두, 한철",
+        "title": "표물을 목숨처럼 지키는 베테랑 표두",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.7,
@@ -2545,7 +2545,7 @@
         }
     },
     "왕노야": {
-        "title": "객잔 주인, 왕노야",
+        "title": "수다를 좋아하는 객잔 주인",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.8,
@@ -2616,7 +2616,7 @@
         }
     },
     "박철": {
-        "title": "남궁세가 문지기, 박철",
+        "title": "게으르지만 눈치 빠른 남궁세가 문지기",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.4,
@@ -2688,7 +2688,7 @@
         }
     },
     "소칠": {
-        "title": "꼬마 거지, 소칠",
+        "title": "어른들을 쥐락펴락하는 영악한 꼬마 거지",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.5,
@@ -2760,7 +2760,7 @@
         }
     },
     "조삼": {
-        "title": "산적 졸개, 조삼",
+        "title": "도망치는 실력만 일류인 산적 졸개",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.3,
@@ -2832,7 +2832,7 @@
         }
     },
     "연성": {
-        "title": "소림사 동자승, 연성",
+        "title": "무공을 한 번 보고 배우는 천재 동자승",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.4,
@@ -2903,7 +2903,7 @@
         }
     },
     "명심": {
-        "title": "무당파 도동, 명심",
+        "title": "서서도 잠드는 무당파 잠꾸러기 도동",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.4,
@@ -2974,7 +2974,7 @@
         }
     },
     "김포": {
-        "title": "상단 호위, 김포",
+        "title": "월급 날만 기다리는 생계형 호위무사",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.4,
@@ -3045,7 +3045,7 @@
         }
     },
     "개눈": {
-        "title": "뒷골목 왈패, 개눈",
+        "title": "약한 자에게만 강한 비열한 양아치",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.3,
@@ -3117,7 +3117,7 @@
         }
     },
     "초련": {
-        "title": "약초꾼 제자, 초련",
+        "title": "풀 냄새를 맡으면 흥분하는 약초 덕후",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.5,
@@ -3188,7 +3188,7 @@
         }
     },
     "돌쇠": {
-        "title": "남궁세가 돌쇠, 돌쇠",
+        "title": "힘 쓰는 일은 도맡아 하는 우직한 머슴",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.4,
@@ -3260,7 +3260,7 @@
         }
     },
     "칠성": {
-        "title": "돈귀신, 칠성",
+        "title": "공짜라면 양잿물도 마시는 거지 소방주",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 1,
@@ -3332,7 +3332,7 @@
         }
     },
     "왕곡추": {
-        "title": "색마, 왕곡추",
+        "title": "자칭 사랑꾼, 타칭 색마",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 1,
@@ -3404,7 +3404,7 @@
         }
     },
     "고준": {
-        "title": "소설 [천하제일]의 소설 속 주인공, 고준",
+        "title": "정의감에 불타는 소설 속 진주인공",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.8,
@@ -3476,7 +3476,7 @@
         }
     },
     "마광철": {
-        "title": "인간흉기(?), 마광철",
+        "title": "얼굴만 흉악한 겁쟁이 아저씨",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.4,
@@ -3548,7 +3548,7 @@
         }
     },
     "약선": {
-        "title": "약왕곡주, 약선",
+        "title": "죽은 자도 살려내는 괴팍한 신의",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.5,
@@ -3624,7 +3624,7 @@
         }
     },
     "조윤": {
-        "title": "탐관오리, 조윤",
+        "title": "강자에게 약하고 약자에게 강한 탐관오리",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.5,
@@ -3694,7 +3694,7 @@
         }
     },
     "철우": {
-        "title": "흑풍채 돌격대장, 철우",
+        "title": "보스 말만 듣는 무식한 힘의 돌격대장",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.6,
@@ -3764,7 +3764,7 @@
         }
     },
     "매향": {
-        "title": "흑풍채 부채주, 적사",
+        "title": "독과 채찍을 다루는 잔혹한 미녀 산적",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.7,
@@ -3834,7 +3834,7 @@
         }
     },
     "고칠성": {
-        "title": "흑풍채주, 고칠성",
+        "title": "탐욕과 의심이 많은 산적 우두머리",
         "appearance_phase": 1,
         "system_logic": {
             "base_weight": 0.8,
@@ -3904,7 +3904,7 @@
         }
     },
     "혈수": {
-        "title": "혈수도자, 혈수",
+        "title": "피를 보면 광분하는 미치광이 살인마",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.5,
@@ -3974,7 +3974,7 @@
         }
     },
     "삼칠": {
-        "title": "하오문의 귀, 삼칠",
+        "title": "돈만 주면 무엇이든 듣는 정보꾼",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.7,
@@ -4044,7 +4044,7 @@
         }
     },
     "유선": {
-        "title": "매화검수, 유선",
+        "title": "동생에게 열등감을 느끼는 화산파 이대제자",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.8,
@@ -4114,7 +4114,7 @@
         }
     },
     "진명": {
-        "title": "태극검, 진명",
+        "title": "융통성 없이 정의만 외치는 도학자",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.8,
@@ -4185,7 +4185,7 @@
         }
     },
     "혜광": {
-        "title": "파계승, 혜광",
+        "title": "술과 고기를 즐기는 소림사 파계승",
         "appearance_phase": 2,
         "system_logic": {
             "base_weight": 0.8,
@@ -4256,7 +4256,7 @@
         }
     },
     "사천패": {
-        "title": "혈황, 사천패",
+        "title": "피로 목욕하는 악인곡의 절대자",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.3,
@@ -4266,7 +4266,7 @@
                 "end": 99
             },
             "region": {
-                "home": "강호",
+                "home": "청해",
                 "active_zones": [
                     "악인곡"
                 ]
@@ -4327,7 +4327,7 @@
         }
     },
     "독고미": {
-        "title": "만독마녀, 독고미",
+        "title": "아름다운 외모 뒤에 독을 품은 마녀",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.4,
@@ -4398,7 +4398,7 @@
         }
     },
     "구철": {
-        "title": "식인귀, 구철",
+        "title": "사람을 씹어 먹는 거대한 식인 괴물",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.4,
@@ -4469,7 +4469,7 @@
         }
     },
     "유환": {
-        "title": "환영살수, 유환",
+        "title": "얼굴 가죽을 수집하는 천의 얼굴",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.4,
@@ -4540,7 +4540,7 @@
         }
     },
     "장소": {
-        "title": "낙혼적, 장소",
+        "title": "비명 소리를 연주하는 광기의 음악가",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.4,
@@ -4611,7 +4611,7 @@
         }
     },
     "백골": {
-        "title": "시왕, 백골",
+        "title": "시체를 되살려 조종하는 네크로필리아",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.4,
@@ -4682,7 +4682,7 @@
         }
     },
     "단검": {
-        "title": "쾌검, 단검",
+        "title": "살육을 놀이처럼 즐기는 미친 소년",
         "appearance_phase": 3,
         "system_logic": {
             "base_weight": 0.4,

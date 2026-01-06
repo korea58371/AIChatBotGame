@@ -9,6 +9,7 @@ import { MODEL_CONFIG } from './model-config';
 export interface Message {
   role: 'user' | 'model';
   text: string;
+  snapshot?: Partial<GameState>; // [New] State snapshot for rewind
 }
 
 export interface GameState {
@@ -41,6 +42,9 @@ export interface GameState {
   currentBackground: string;
   setBackground: (bg: string) => void;
 
+  currentBgm: string | null; // [New] Persisted BGM State
+  setBgm: (bgm: string | null) => void;
+
   characterExpression: string;
   setCharacterExpression: (expr: string) => void;
 
@@ -60,8 +64,14 @@ export interface GameState {
   setScenarioSummary: (summary: string) => void;
   currentEvent: string;
   setCurrentEvent: (event: string) => void;
+  // [Deleted] Duplicate Interface Definition
+
   currentMood: MoodType;
   setMood: (mood: MoodType) => void;
+
+  // [NEW] Last Turn Logic Summary (for PreLogic Context)
+  lastTurnSummary: string;
+  setLastTurnSummary: (summary: string) => void;
 
   // Asset Lists
   availableBackgrounds: string[];
@@ -158,15 +168,23 @@ export interface GameState {
   setTensionLevel: (level: number) => void;
   updateTensionLevel: (delta: number) => void;
 
-  // [NEW] Martial Arts & Realm State
-  playerRealm: string;
-  martialArts: MartialArt[];
-  setPlayerRealm: (realm: string) => void;
-  addMartialArt: (art: MartialArt) => void;
-  updateMartialArt: (id: string, updates: Partial<MartialArt>) => void;
+  // [NEW] Unified Skills System (Replaces Martial Arts)
+  skills: Skill[];
+  addSkill: (skill: Skill) => void;
+  updateSkill: (id: string, updates: Partial<Skill>) => void;
+
+  // [NEW] Choice History for Adaptive Choices
+  choiceHistory: ChoiceHistoryEntry[];
+  addChoiceToHistory: (entry: ChoiceHistoryEntry) => void;
 }
 
-export interface MartialArt {
+export interface ChoiceHistoryEntry {
+  text: string;
+  type: 'selected' | 'input';
+  timestamp: number;
+}
+
+export interface Skill {
   id: string;
   name: string;
   rank: string; // e.g. "3성", "절정"
@@ -201,7 +219,7 @@ export interface PlayerStats {
   faction: string;
   personalitySummary: string;
   str: number; agi: number; int: number; vit: number; luk: number;
-  skills: string[];
+  skills: Skill[]; // [Modified] Now array of Skill objects
   personality: {
     morality: number; courage: number; energy: number; decision: number;
     lifestyle: number; openness: number; warmth: number; eloquence: number;
@@ -214,14 +232,11 @@ export interface PlayerStats {
   narrative_perspective?: string; // [New] '1인칭' or '3인칭'
 
   // [Wuxia] Martial Arts System
-  realm: string; // 삼류, 이류, 일류, etc.
-  realmProgress: number; // 0-100%
   growthStagnation: number; // Turn count without growth
-  martialArts: MartialArt[];
   fameTitleIndex?: number; // [New] Index for FAME_TITLES
 }
 
-export interface MartialArt {
+export interface Skill {
   id: string;
   name: string;
   type: string; // 검법, 도법, 권법, etc.
@@ -270,10 +285,7 @@ const INITIAL_STATS: PlayerStats = {
   active_injuries: [],
   fatigue: 0,
   narrative_perspective: '3인칭', // Default
-  realm: '삼류',
-  realmProgress: 0,
   growthStagnation: 0,
-  martialArts: [],
   fameTitleIndex: 0
 };
 
@@ -379,6 +391,9 @@ export const useGameStore = create<GameState>()(
       currentBackground: '/assets/backgrounds/Default_Fallback.jpg',
       setBackground: (bg) => set({ currentBackground: bg }),
 
+      currentBgm: null,
+      setBgm: (bgm) => set({ currentBgm: bgm }),
+
       characterExpression: 'normal',
       setCharacterExpression: (expr) => set({ characterExpression: expr }),
 
@@ -399,6 +414,12 @@ export const useGameStore = create<GameState>()(
       setCurrentEvent: (event) => set({ currentEvent: event }),
       currentMood: 'daily',
       setMood: (mood) => set({ currentMood: mood }),
+
+      // [Deleted] Redundant Property
+      // [Deleted] Duplicate Implementation
+
+      lastTurnSummary: '',
+      setLastTurnSummary: (summary) => set({ lastTurnSummary: summary }),
 
       availableBackgrounds: [],
       availableCharacterImages: [],
@@ -524,7 +545,7 @@ export const useGameStore = create<GameState>()(
         return { textMessageHistory: history };
       }),
 
-      language: null,
+      language: 'ko',
       setLanguage: (lang) => set({ language: lang }),
 
       day: 1,
@@ -554,16 +575,21 @@ export const useGameStore = create<GameState>()(
         tensionLevel: Math.max(-100, Math.min(100, state.tensionLevel + delta))
       })),
 
-      // [NEW] Martial Arts Implementation
-      playerRealm: "삼류 (3rd Rate)",
-      martialArts: [],
-      setPlayerRealm: (realm) => set({ playerRealm: realm }),
-      addMartialArt: (art) => set((state) => ({
-        martialArts: [...state.martialArts, art]
+      // [NEW] Unified Skill Implementation
+      skills: [],
+      addSkill: (skill) => set((state) => ({
+        skills: [...state.skills, skill]
       })),
-      updateMartialArt: (id, updates) => set((state) => ({
-        martialArts: state.martialArts.map(a => a.id === id ? { ...a, ...updates } : a)
+      updateSkill: (id, updates) => set((state) => ({
+        skills: state.skills.map(s => s.id === id ? { ...s, ...updates } : s)
       })),
+
+      choiceHistory: [],
+      addChoiceToHistory: (entry) => set((state) => {
+        const newHistory = [...state.choiceHistory, entry];
+        // Keep only the last 20 entries to prevent context bloat
+        return { choiceHistory: newHistory.slice(-20) };
+      }),
 
       resetGame: () => {
         PromptManager.clearPromptCache();
@@ -581,6 +607,9 @@ export const useGameStore = create<GameState>()(
           time: 'Morning',
           currentEvent: '',
           currentMood: 'daily',
+          // [Deleted] Duplicate Reset Logic
+
+          lastTurnSummary: '',
           statusDescription: '건강함',
           personalityDescription: '평범함',
           playerStats: JSON.parse(JSON.stringify(INITIAL_STATS)), // [Fix] Deep clone to prevent polluted reference
@@ -596,27 +625,66 @@ export const useGameStore = create<GameState>()(
           lore: {}, // [Fix] Clear lore as well
           goals: [],
           tensionLevel: 0,
-          martialArts: [],
-          playerRealm: "삼류 (3rd Rate)",
+          skills: [],
+          choiceHistory: [], // [Fix] Reset choice history
           userCoins: 0,
+          deadCharacters: [], // [Fix] Add missing reset for dead characters
+          isGodMode: false, // [Fix] Reset debug mode
+          currentBgm: null, // [Fix] Reset BGM
         });
       },
     }),
     {
-      name: 'vn-game-storage-v2', // [Fix] Invalidate old cache to apply Second Rate fix
+      name: 'vn-game-storage-v2',
       partialize: (state) => {
+        // [Optimization] Exclude huge static data and ephemeral execution state
         const {
+          // Functions (Automatically excluded but listed for clarity)
           getSystemPromptTemplate,
           getRankInfo,
-          backgroundMappings,
+          setAvailableAssets,
+
+          // Static content that rehydrates from files
+          lore,
+          worldData,
+          availableBackgrounds,
+          availableCharacterImages,
+          availableExtraImages,
+
+          // Ephemeral execution state (no need to persist, should reset on reload)
+          scriptQueue,
+          currentSegment,
+          isDataLoaded,
+
+          // The State itself to process
+          chatHistory,
+          displayHistory,
           ...persistedState
         } = state;
-        return persistedState;
+
+        // [Crucial] Strip Snapshots from history to prevent recursion & quota explosion
+        // Snapshots are only for intra-session rewind, not needed across reloads
+        const lightweightChatHistory = chatHistory.map(msg => {
+          const { snapshot, ...rest } = msg;
+          return rest;
+        });
+
+        const lightweightDisplayHistory = displayHistory.map(msg => {
+          const { snapshot, ...rest } = msg;
+          return rest;
+        });
+
+        return {
+          ...persistedState,
+          chatHistory: lightweightChatHistory,
+          displayHistory: lightweightDisplayHistory
+        };
       },
       onRehydrateStorage: () => (state) => {
         // On rehydration, we need to reload the non-persisted functions
+        // logic handled by component mounting
         if (state && state.activeGameId) {
-          state.setGameId(state.activeGameId);
+          // We don't verify game ID here to avoid side effects during hydration
         }
       }
     }

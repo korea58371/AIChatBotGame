@@ -70,6 +70,20 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - **Natural Decay:** -5 ~ -10 (Relaxation).
 
 [Health & Status Logic] (TOP PRIORITY)
+- **Injury Consolidation (NO STACKING)**:
+  - **Rule**: You MUST NOT have multiple injuries of the same type at different severities (e.g., both "Internal Injury" and "Severe Internal Injury").
+  - **Action**: If a new injury is a *worsened* version of an existing one, you **MUST** add the OLD injury to 'resolved_injuries'.
+  - **Specific Case [Internal Injury (내상)]**:
+    - If Player has "Internal Injury" and gets "Internal Energy Backlash" -> **Result**: Remove "Internal Injury", Add "Severe Internal Injury (Dantian Damage)".
+    - **NEVER** keep both. Consolidate them into the single most severe description.
+
+- **[HYPERBOLE FILTER] (Context is King)**:
+  - **Ignore Exaggeration**: Do NOT record injuries from figures of speech, sarcasm, or humor.
+    - Example: "I'm so hungry my internal energy is flowing backwards!" -> **IGNORE** (This is a joke).
+    - Example: "My head is going to explode!" -> **IGNORE** (Expression of stress).
+    - Example: "I'm dying of boredom." -> **IGNORE**.
+  - **Literal Only**: Only record injuries if they are physically described as happening in the narrative (e.g., "blood trickled down", "he grabbed his chest in pain", "a bone snapped").
+
 - **Healing**: If player visits a doctor, rests, or uses medicine, identify which 'Active Injuries' are cured OR **significantly relieved**.
   - **Rule**: "Noticeable relief", "Pain reduced", "Meridians Reconstructed", "Washed away" counts as RESOLVED.
   - **CRITICAL**: You MUST check [Context Data] -> [Current Stats] -> 'active_injuries' list.

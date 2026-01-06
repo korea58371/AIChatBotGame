@@ -727,19 +727,21 @@ export class LoreConverter {
             output += LoreConverter.convertWeapons(lore.modern_weapons) + "\n\n";
         }
 
-        // 3. [Great Factions & Geography] (Environment)
-        if (lore.factionsDetail) {
-            output += LoreConverter.convertFactions(lore.factionsDetail) + "\n\n";
-        } else if (lore.modern_factions) {
-            output += LoreConverter.convertModernFactions(lore.modern_factions) + "\n\n";
-        }
 
+        // 3. [Geography & Environment] (Environment)
         if (lore.geography_guide) {
             output += LoreConverter.convertWorldGeography(lore.geography_guide) + "\n\n";
         } else if (lore.world_geography) {
             output += LoreConverter.convertWorldGeography(lore.world_geography) + "\n\n";
         } else if (lore.modern_geography) {
             output += LoreConverter.convertModernGeography(lore.modern_geography) + "\n\n";
+        }
+
+        // 4. [Great Factions] (Social Structure)
+        if (lore.factionsDetail) {
+            output += LoreConverter.convertFactions(lore.factionsDetail) + "\n\n";
+        } else if (lore.modern_factions) {
+            output += LoreConverter.convertModernFactions(lore.modern_factions) + "\n\n";
         }
 
         // 4. [Characters & Scenario] (Result)
