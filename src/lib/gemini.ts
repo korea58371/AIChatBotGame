@@ -4,6 +4,7 @@ import { PromptManager } from './prompt-manager';
 import { LoreConverter } from './lore-converter';
 import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from '@/data/prompts/logic';
 import { MODEL_CONFIG, calculateCost } from './model-config';
+import { EventManager } from './event-manager';
 
 // Removed static SYSTEM_PROMPT in favor of dynamic generation
 
@@ -232,57 +233,11 @@ export async function generateGameLogic(
 
     console.log(`[GeminiLogic] GENERATE GAME LOGIC CALLED for GameID: ${gameState.activeGameId}`);
 
-    // [New] Dynamic Event Filtering
-    // 1. Load Events (If not in state, try to import)
-    // Note: State might have 'events' from DataManager
-    let validEvents = [];
-
-    // [SERVER REHYDRATION START]
-    // JSON 직렬화로 인해 'condition' 함수가 소실되므로, 서버 측에서 이벤트를 다시 로드합니다.
-    let events = gameState.events || [];
-    if (gameState.activeGameId) {
-        try {
-            // 게임 ID에 기반한 동적 임포트
-            const eventsModule = await import(`@/data/games/${gameState.activeGameId}/events`);
-            if (eventsModule && eventsModule.GAME_EVENTS) {
-                console.log(`[Gemini] Rehydrated Events for ${gameState.activeGameId}`);
-                events = eventsModule.GAME_EVENTS;
-            }
-        } catch (e) {
-            console.warn(`[Gemini] Failed to rehydrate events for ${gameState.activeGameId} (or no events file):`, e);
-        }
-    }
-    // [SERVER REHYDRATION END]
-
-    if (gameState.activeGameId === 'wuxia') {
-
-        console.log(`[GeminiLogic] Filtering events for 'wuxia'. Total loaded: ${events?.length}`);
-
-        // Filter by condition
-        validEvents = events.filter((e: any) => {
-            // [FIX] Check state.triggeredEvents, not e.triggered (which is undefined)
-            const isTriggered = gameState.triggeredEvents && gameState.triggeredEvents.includes(e.id);
-            if (e.once && isTriggered) {
-                // console.log(`[GeminiLogic] Event ${e.id} skipped (Already triggered)`);
-                return false;
-            }
-
-            // Fallback: If condition is a function, run it.
-            if (typeof e.condition === 'function') {
-                try {
-                    const result = e.condition(gameState);
-                    console.log(`[GeminiLogic] Event ${e.id} condition check: ${result}`);
-                    return result;
-                } catch (err) {
-                    console.warn(`[GeminiLogic] Event ${e.id} condition error:`, err);
-                    return false;
-                }
-            }
-            return false;
-        });
-
-        console.log(`[GeminiLogic] Valid Events for Prompt: ${validEvents.map((e: any) => e.id).join(', ')}`); // Debug Log
-    }
+    // [REFACTOR] Event System Decoupled to Parallel Agent
+    // Events are no longer processed inside the monolithic Logic Model loop.
+    // They are handled by AgentOrchestrator -> EventManager in Phase 2.
+    // validEvents is kept empty here to minimize token usage for the Logic Model.
+    let validEvents: any[] = [];
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -384,25 +339,11 @@ export async function generateGameLogic(
                 json._debug_static_prompt = staticLogicPrompt;
                 json._debug_raw_response = text;
 
-                // Post-Process: Event Trigger
-                // If Logic Model selected an event, we need to locate its prompt
-                // [FIX] Use local 'events' (rehydrated) instead of gameState.events (serialized)
+                // [REFACTOR] Event Trigger Logic Moved
+                // Logic Model no longer selects events.
+                // EventManager (Phase 2 Parallel) handles selection and Next State Injection.
                 if (json.triggerEventId) {
-                    console.log(`[GeminiLogic] processing triggerEventId: ${json.triggerEventId}`);
-                    console.log(`[GeminiLogic] Available events count: ${events ? events.length : 0}`);
-
-                    if (events) {
-                        const selectedEvent = events.find((e: any) => e.id === json.triggerEventId);
-                        if (selectedEvent) {
-                            console.log(`[GeminiLogic] TRIGGERING EVENT FOUND: ${selectedEvent.name} (${selectedEvent.id})`);
-                            // Inject the prompt into next state's currentEvent field
-                            json.currentEvent = selectedEvent.prompt;
-                        } else {
-                            console.warn(`[GeminiLogic] WARNING: Event ID '${json.triggerEventId}' not found in events list! Available IDs: ${events.map((e: any) => e.id).join(', ')}`);
-                        }
-                    } else {
-                        console.warn(`[GeminiLogic] WARNING: Events list is null or undefined/empty during injection!`);
-                    }
+                    console.warn(`[GeminiLogic] DEPRECATED: Logic Model returned triggerEventId '${json.triggerEventId}' but Event System is now parallel.`);
                 }
 
                 return json;

@@ -1,17 +1,22 @@
+import { translations } from '../../../translations';
+
+const r = translations.ko.wuxia.realms;
 
 export const WUXIA_SKILL_PROMPT = `
 [Game Mode: Wuxia (Cheonha Jeil)]
 All progression maps to the 'Murim' Realm system.
 
-[Level to Realm Mapping]
-- Level 1~9: 삼류 (3rd Rate) - Basic physicality, trace internal energy.
-- Level 10~19: 이류 (2nd Rate) - Proficient user, detectable Qi.
-- Level 20~29: 일류 (1st Rate) - Expert, can manifest internal force.
-- Level 30~39: 절정 (Peak - Lower) - Human limitation boundary.
-- Level 40~59: 절정 (Peak - Upper) - Master, flawlessly controls Qi.
-- Level 60~79: 초절정 (Super Peak / Transcendent) - Breaking mortal limits, Qi takes form.
-- Level 80~99: 화경 (Legend / Life & Death) - Pure energy, youthful appearance regained.
-- Level 100+: 현경 (God / Natural State) - One with Nature.
+[Unified Realm & Rank System]
+(These Korean terms are the ONLY allowed string values for the 'rank' field. Do NOT use 'S-Rank', 'Level 1', etc.)
+
+- **${r.intro}**: [Level 1~5] Basic breathing or stance techniques.
+- **${r.third_rate}**: [Level 6~9] Common martial arts. Trace internal energy.
+- **${r.second_rate}**: [Level 10~19] Proficient. Detectable Qi.
+- **${r.first_rate}**: [Level 20~29] Expert. Manifests internal force.
+- **${r.peak}**: [Level 30~59] Master. Flawless Qi control.
+- **${r.transcendent}**: [Level 60~79] Grandmaster. Breaking limits.
+- **${r.harmony}**: [Level 80~99] Mythical. Youth regained.
+- **${r.mystic}**: [Level 100+] Natural State. God-tier.
 
 [Naming Rules] (CRITICAL)
 - **Style**: MUST use Wuxia-style names (Sino-Korean idioms or Poetic names). 

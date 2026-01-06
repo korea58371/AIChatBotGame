@@ -16,10 +16,10 @@ export const getRankInfo = (rankKey: string = '삼류') => {
   const rankData = realmHierarchy[currentRankKey];
 
   // 2. Generate Metadata
-  const playerRank = rankData.name;
-  const rankLogline = `[${rankData.name}] ${rankData.status}`;
-  const rankKeywords = `#무협 #${rankData.archetype}`;
-  const rankGiftDesc = rankData.capability;
+  const playerRank = rankData.명칭; // [Fix] name -> 명칭
+  const rankLogline = `[${rankData.명칭}] ${rankData.위상}`; // [Fix] status -> 위상
+  const rankKeywords = `#무협 #${rankData.위상}`; // [Fix] archetype -> 위상
+  const rankGiftDesc = rankData.능력; // [Fix] capability -> 능력
   const rankConflict = ``;
 
   // 3. Phase Calculation (Wuxia Phase System) - Korean Translation
@@ -161,22 +161,21 @@ ${directInputConstraints}
 - **현재 위치**: ${state.currentLocation}
   - **설명**: ${locationDesc}${locationSecrets}
 - **주인공 상태 (유저에게 비공개)**: [HP: ${stats.hp || 100}], [피로도: ${stats.fatigue || 0}], [경지: ${playerRank}]
-  - **상세**: ${rankData.status} (능력: ${rankData.capability})
+  - **상세**: ${rankData.위상} (능력: ${rankData.능력})
 - **내공**: ${stats.neigong || 0}년
   - **보유 무공**: ${skillList}
 
 **[전투 가이드라인]**:
 주인공은 현재 **'${playerRank}'** 경지이다. 
-- **${playerRank}**의 한계: ${rankData.capability}
+- **${playerRank}**의 한계: ${rankData.능력}
 - 상위 경지와의 싸움은 자살행위이며, 동급이라도 방심하면 즉사한다.
 
+
 # [SCENARIO & SUMMARY]
-- **활성 이벤트**: ${state.currentEvent || "없음"}
+- **활성 이벤트**: ${state.activeEvent ? `[${state.activeEvent.title || state.activeEvent.id}]` : (state.currentEvent || "없음")}
+${state.activeEvent ? `\n### [⚡ 중요: 활성 이벤트 세부 지침 (Active Event Guide)]\n${state.activeEvent.prompt}\n\n**위 이벤트 지침을 최우선으로 반영하여 스토리와 묘사를 전개하십시오.**` : ""}
 - **전체 줄거리 요약**: ${state.scenarioSummary || "아직 요약된 정보가 없습니다."}
 
-### [⚡ 중요: 이벤트 - 최우선 실행]
-**위 '활성 이벤트'가 비어있지 않다면, 다른 어떤 맥락보다 최우선으로 해당 내용을 실행하라.**
-지금 이야기의 흐름에 어색하지 않게 이벤트의 지침을 따라야 한다. 자연스럽게 유도해야한다.
 ${firstTurnGuide}
 `;
 };

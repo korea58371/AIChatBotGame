@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { useGameStore } from '@/lib/store';
-import { Settings, Play, Database, ShoppingBag, RotateCcw, Save, X } from 'lucide-react';
+import { MODEL_CONFIG } from '@/lib/model-config';
+import { Settings, Play, Database, ShoppingBag, RotateCcw, Save, X, Cpu, Zap, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Login from '@/components/Login';
 
@@ -30,6 +31,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const resetGameStore = useGameStore(state => state.resetGame);
     const activeGameId = useGameStore(state => state.activeGameId);
     const setGameId = useGameStore(state => state.setGameId);
+    const storyModel = useGameStore(state => state.storyModel);
+    const setStoryModel = useGameStore(state => state.setStoryModel);
 
     // Check Auth State
     useEffect(() => {
@@ -563,6 +566,56 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                                 </button>
                                             </div>
                                         )}
+                                    </div>
+
+                                    <div className="space-y-4 pt-2">
+                                        <h4 className="text-xs font-bold text-gray-600 uppercase tracking-widest flex items-center gap-2 ml-1">
+                                            <span>🧠</span> AI Model Settings
+                                        </h4>
+
+                                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/60 shadow-inner grid gap-3">
+                                            <button
+                                                onClick={() => setStoryModel(MODEL_CONFIG.STORY)}
+                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${storyModel === MODEL_CONFIG.STORY
+                                                    ? 'bg-blue-50 border-blue-400 shadow-sm ring-1 ring-blue-200'
+                                                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-400 hover:text-gray-600'
+                                                    }`}
+                                            >
+                                                <div className={`p-2 rounded-full ${storyModel === MODEL_CONFIG.STORY ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <Zap className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex flex-col text-left">
+                                                    <span className={`font-bold text-sm ${storyModel === MODEL_CONFIG.STORY ? 'text-blue-900' : 'text-gray-600'}`}>
+                                                        Gemini 3 Flash
+                                                    </span>
+                                                    <span className="text-xs text-gray-400">Fast & Efficient (Default)</span>
+                                                </div>
+                                                {storyModel === MODEL_CONFIG.STORY && (
+                                                    <div className="ml-auto w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                                                )}
+                                            </button>
+
+                                            <button
+                                                onClick={() => setStoryModel('gemini-3-pro-preview')}
+                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${storyModel === 'gemini-3-pro-preview'
+                                                    ? 'bg-violet-50 border-violet-400 shadow-sm ring-1 ring-violet-200'
+                                                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-400 hover:text-gray-600'
+                                                    }`}
+                                            >
+                                                <div className={`p-2 rounded-full ${storyModel === 'gemini-3-pro-preview' ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                    <Star className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex flex-col text-left">
+                                                    <span className={`font-bold text-sm ${storyModel === 'gemini-3-pro-preview' ? 'text-violet-900' : 'text-gray-600'}`}>
+                                                        Gemini 3 Pro
+                                                    </span>
+                                                    <span className="text-xs text-gray-400">High Quality & Creative</span>
+                                                </div>
+                                                {storyModel === 'gemini-3-pro-preview' && (
+                                                    <div className="ml-auto w-2 h-2 bg-violet-500 rounded-full animate-pulse" />
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-center text-xs text-gray-600 font-mono mt-4">

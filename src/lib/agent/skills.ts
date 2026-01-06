@@ -28,6 +28,7 @@ You must also act as a REALITY AUDITOR to prevent "God Mode" (OP) exploits.
 [Core Constraints]
    - **Level Delta (level_delta)**: Output 'level_delta' (float) to represent growth.
    - **Skill Acquisition**: If new move learned, output 'new_skills'.
+   - **Rank Consistency**: You MUST strictly use the values defined in [Skill Rank System] for the 'rank' field.
 
 [Universal Growth Table]
    - **Routine Training**: +0.01 ~ +0.05 Levels

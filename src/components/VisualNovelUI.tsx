@@ -11,7 +11,7 @@ import { resolveBackground } from '@/lib/background-manager';
 import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
 import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/model-config';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
-import { findBestMatch } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
+import { findBestMatch, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping';
 import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP } from '@/data/games/wuxia/constants'; // [New] UI Constants
@@ -22,6 +22,7 @@ import wikiData from '@/data/games/wuxia/wiki_data.json'; // [NEW] Wiki Data Imp
 import { submitGameplayLog } from '@/app/actions/log';
 import { deleteAccount } from '@/app/actions/auth';
 import { translations } from '@/data/translations';
+import { checkNameValidity, getHiddenSettings } from '@/data/games/wuxia/character_creation';
 
 // [Refactoring] New Components & Hooks
 import SaveLoadModal from './visual_novel/ui/SaveLoadModal';
@@ -60,6 +61,8 @@ import AdButton from './visual_novel/ui/common/AdButton';
 
 
 // getKoreanExpression removed in favor of getCharacterImage utility
+
+
 
 // Game Tips Library
 import { LOADING_TIPS } from '@/data/loading_tips';
@@ -157,6 +160,7 @@ export default function VisualNovelUI() {
         setLastTurnSummary,
         activeGameId, // [Refactor] Add activeGameId
         currentLocation, // [Fix] Add currentLocation for HUD updates
+        isDataLoaded,
     } = useGameStore();
 
     // [Localization]
@@ -169,6 +173,7 @@ export default function VisualNovelUI() {
 
     // VN State
     const [isProcessing, setIsProcessing] = useState(false);
+
     const [isTyping, setIsTyping] = useState(false); // [Fix] Missing State
     const [isLogicPending, setIsLogicPending] = useState(false); // [Logic Lock] Track background logic
     const [showHistory_OLD, setShowHistory_OLD] = useState(false); // Placeholder to ensure clean delete if lines shift, but strictly 291-311 should be targeted.
@@ -210,7 +215,49 @@ export default function VisualNovelUI() {
             }, 8000); // Rotate every 8 seconds
             return () => clearInterval(interval);
         }
+
     }, [isProcessing]);
+
+    // [New] Sticky Extra Character Logic
+    // Intercepts character changes to assign and persist images for generic extras
+    useEffect(() => {
+        if (!currentSegment?.character) return;
+        const charName = currentSegment.character;
+
+        // 1. Skip if Main Character (handled by characterMap) or already assigned override
+        // Note: access Store directly to get latest state without dependency lag
+        const state = useGameStore.getState();
+        if (state.characterMap && state.characterMap[charName]) return;
+        if (state.extraOverrides && state.extraOverrides[charName]) return;
+
+        // 2. Find Best Match in availableExtraImages
+        // We need a custom loose match because findBestMatch is strict
+        const availableExtras = state.availableExtraImages || [];
+
+        // Strategy: Filter those that contain the charName (e.g. "산적" matches "산적A", "산적두목")
+        // But prefer exact startsWith if possible.
+
+        const normCharName = normalizeName ? normalizeName(charName) : charName;
+
+        let candidates = availableExtras.filter(img => img.includes(charName));
+
+        // If no direct string match, try normalized
+        if (candidates.length === 0 && normalizeName) {
+            candidates = availableExtras.filter(img => normalizeName(img).includes(normCharName));
+        }
+
+        if (candidates.length > 0) {
+            // Pick deterministic or random?
+            // Random adds variety for "Passerby A" vs "Passerby B" if input is just "Passerby".
+            // We use a simple hash of the name to be deterministic per session if we wanted, 
+            // but for "new" characters, random is better to avoid everyone looking like Bandit A.
+            const bestImage = candidates[Math.floor(Math.random() * candidates.length)];
+
+            console.log(`[StickyExtra] Assigning '${bestImage}' to '${charName}'`);
+            state.setExtraOverride(charName, bestImage);
+        }
+
+    }, [currentSegment?.character]);
 
     // Input State
     const [isLocalhost, setIsLocalhost] = useState(false);
@@ -957,6 +1004,7 @@ export default function VisualNovelUI() {
                 currentLocation: currentState.currentLocation,
                 scenarioSummary: currentState.scenarioSummary,
                 currentEvent: currentState.currentEvent,
+                activeEvent: currentState.activeEvent, // [CRITICAL] Pass the full Event Object (with prompt)
                 currentMood: currentState.currentMood,
                 playerName: currentState.playerName,
                 activeCharacters: currentState.activeCharacters,
@@ -984,6 +1032,7 @@ export default function VisualNovelUI() {
             }));
 
             console.log(`[VisualNovelUI] Sending Tension (Post-Sanitize): ${sanitizedState.tensionLevel}`);
+            console.log(`[VisualNovelUI] Payload ActiveEvent:`, sanitizedState.activeEvent ? sanitizedState.activeEvent.id : "NULL");
 
             // Race Condition for Timeout
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 300000));
@@ -1241,8 +1290,14 @@ export default function VisualNovelUI() {
                                 hp: 0, mp: 0
                             }
                         } : p2Result.martialArtsOut,
-                        _debug_router: routerOut
-                    };
+                        _debug_router: routerOut,
+
+                        // [NEW] Event System Integration
+                        triggerEventId: (p2Result.eventOut as any)?.triggerEventId,
+                        currentEvent: (p2Result.eventOut as any)?.currentEvent,
+                        candidates: (p2Result.eventOut as any)?.candidates,
+                        event_debug_info: (p2Result.eventOut as any)?.debug // Pass debug info
+                    } as any;
 
                     // [Fix] Defer Logic Application to End of Script
                     // Instead of applying immediately, we set it as pending.
@@ -1426,7 +1481,13 @@ export default function VisualNovelUI() {
                         reply: finalStoryText,
                         raw_story: cleanStoryText,
                         router: routerOut,
-                        logic: preLogicDebug,
+                        logic: {
+                            ...preLogicDebug,
+                            triggerEventId: (p2Result.eventOut as any)?.triggerEventId,
+                            candidates: (p2Result.eventOut as any)?.candidates,
+                            event_debug_info: (p2Result.eventOut as any)?.debug,
+                            currentEvent: (p2Result.eventOut as any)?.currentEvent
+                        },
                         post_logic: postLogicOut,
                         martial_arts: p2Result.martialArtsOut,
 
@@ -1548,6 +1609,7 @@ export default function VisualNovelUI() {
                         console.groupEnd();
                     }
 
+
                     // 4.5. Martial Arts Log
                     if (maDebug) {
                         const maResult = p2Result.martialArtsOut;
@@ -1560,6 +1622,55 @@ export default function VisualNovelUI() {
                             Audit: maResult?.audit_log,
                             Stats: maResult?.stat_updates
                         });
+                        console.groupEnd();
+                    }
+
+
+                    // 4.7. Event System Log
+                    // [New] Log critical event triggering info
+                    if (mergedResult.logic) {
+                        const logicDebug = mergedResult.logic;
+                        const triggerId = logicDebug.triggerEventId; // Legacy (Server)
+                        const { mandatory, randomCandidates } = EventManager.checkEvents(useGameStore.getState()); // Client Check (Reference)
+                        const serverCandidates = logicDebug.candidates; // [NEW] Server Source of Truth
+
+                        // [Fix] Always show log for visibility
+                        console.groupCollapsed(`%c[Step 4.7] Event System (Triggered: ${triggerId || 'None'})`, 'color: gold; font-weight: bold;');
+                        console.log(`%c[Server Trigger]`, 'color: gold; font-weight: bold;', triggerId ? `✅ ${triggerId}` : '❌ None');
+
+                        if (triggerId && logicDebug.currentEvent) {
+                            console.log(`%c[Event Prompt]`, 'color: gray;', logicDebug.currentEvent);
+                        }
+
+                        // [NEW] Server Scan Results (Definitive)
+                        if (serverCandidates) {
+                            if (serverCandidates.mandatory && serverCandidates.mandatory.length > 0) {
+                                console.log(`%c[Server Scan (Mandatory)]`, 'color: cyan;', serverCandidates.mandatory);
+                            } else {
+                                console.log(`%c[Server Scan (Mandatory)]`, 'color: cyan;', "None");
+                            }
+
+                            if (serverCandidates.random && serverCandidates.random.length > 0) {
+                                console.log(`%c[Server Scan (Random)]`, 'color: orange;', `Count: ${serverCandidates.random.length}`, serverCandidates.random);
+                            } else {
+                                console.log(`%c[Server Scan (Random)]`, 'color: orange;', "None");
+                            }
+                        } else {
+                            // Fallback to Client Check if Server Data missing (Legacy)
+                            console.warn("Server Candidates data missing. Falling back to Client Check (May be inaccurate due to serialization).");
+                            if (mandatory.length > 0) {
+                                console.log(`%c[Client Check (Mandatory)]`, 'color: cyan;', mandatory.map(e => ({ id: e.id, type: e.type })));
+                            }
+                        }
+
+                        // [NEW] Debug Info Log
+                        if (logicDebug.event_debug_info) {
+                            const { serverGameId, status, loadedEventsCount } = logicDebug.event_debug_info;
+                            console.log(`%c[Event Debug]`, 'color: gray;', `ID: ${serverGameId} | Status: ${status} | Count: ${loadedEventsCount}`);
+                        } else {
+                            console.warn("Event Debug Info missing.");
+                        }
+
                         console.groupEnd();
                     }
 
@@ -2741,7 +2852,7 @@ export default function VisualNovelUI() {
 
         // [New] Event System Check
         // Check events based on the NEW stats
-        const triggeredEvents = EventManager.checkEvents({
+        const { mandatory: triggeredEvents } = EventManager.checkEvents({
             ...useGameStore.getState(),
             playerStats: newStats // Use the updated stats for checking
         });
@@ -2771,9 +2882,44 @@ export default function VisualNovelUI() {
                 hasActiveEvent = matchedEvent.id; // Store ID as truthy value
 
                 addToast(t.systemMessages?.eventTriggered?.replace('{0}', matchedEvent.id) || `Event Triggered: ${matchedEvent.id}`, 'info');
+
+                // [CRITICAL] Persist Active Event for Next Turn's Context
+                useGameStore.getState().setActiveEvent(matchedEvent);
+
                 console.log(`[Event Found] Prompt Length: ${matchedEvent.prompt.length}`);
             } else {
-                console.warn(`[Logic Error] Triggered ID '${logicResult.triggerEventId}' not found in Event Registry.`);
+                console.warn(`[Logic Warning] Triggered ID '${logicResult.triggerEventId}' not found in Client Event Registry.`);
+
+                // [Fallback] Construct Event from Server Data
+                if (logicResult.currentEvent) {
+                    console.log(`[Fallback] Using Server-provided Event Prompt for '${logicResult.triggerEventId}'`);
+                    const syntheticEvent = {
+                        id: logicResult.triggerEventId,
+                        title: logicResult.triggerEventId, // Fallback title
+                        prompt: logicResult.currentEvent,
+                        type: logicResult.type || 'SERVER_EVENT',
+                        priority: 100
+                    };
+
+                    useGameStore.getState().setActiveEvent(syntheticEvent);
+                    activeEventPrompt = syntheticEvent.prompt;
+                    hasActiveEvent = syntheticEvent.id;
+
+                    addToast(t.systemMessages?.eventTriggered?.replace('{0}', syntheticEvent.id) || `Event Triggered: ${syntheticEvent.id}`, 'info');
+                }
+            }
+        }
+
+
+        // [Event System Refactor] PreLogic determines Event Lifecycle
+        // Instead of auto-clearing, we listen to the AI's judgment.
+        // 'active': Keep event / 'completed' or 'ignored': Clear event.
+        if (logicResult.logic && (logicResult.logic.event_status === 'completed' || logicResult.logic.event_status === 'ignored')) {
+            const currentActiveEvent = useGameStore.getState().activeEvent;
+            if (currentActiveEvent) {
+                console.log(`[Event System] PreLogic signaled '${logicResult.logic.event_status}'. Clearing Active Event: ${currentActiveEvent.id}`);
+                addToast(`Event Resolved: ${currentActiveEvent.title || currentActiveEvent.id}`, 'info');
+                useGameStore.getState().setActiveEvent(null);
             }
         }
 
@@ -3436,7 +3582,7 @@ export default function VisualNovelUI() {
 
                                                 profileText += `이름: ${finalName || playerName || '성현우'}\n`;
 
-                                                const prompt = `
+                                                let prompt = `
 [SYSTEM: Game Start Protocol]
 The player has created a new character with the following profile:
 ${profileText}
@@ -3546,11 +3692,51 @@ Instructions:
 
                                                 // [Fix] Pass isDirectInput=false so we don't trigger "You cannot control..." constraints
                                                 // isHidden=true keeps it out of the visible chat bubble history (but logic sees it)
+
+                                                // [Hidden Settings Logic]
+                                                if (activeGameId === 'wuxia') {
+                                                    const hidden = getHiddenSettings(finalName);
+                                                    if (hidden && hidden.found) {
+                                                        console.log("Applying Hidden Settings:", hidden);
+
+                                                        // 1. Append Narrative
+                                                        prompt += `\n${hidden.narrative}\n`;
+                                                        addToast(`히든 설정 발견: ${hidden.statsModifier?.faction}`, 'success');
+
+                                                        // 2. Apply Stats
+                                                        if (hidden.statsModifier) {
+                                                            const currentSkills = newStats.skills || [];
+                                                            const newSkills = hidden.statsModifier.skills || [];
+
+                                                            newStats.faction = hidden.statsModifier.faction || newStats.faction;
+                                                            newStats.skills = [...currentSkills, ...newSkills];
+
+                                                            // Apply other modifiers if needed
+                                                            if (hidden.statsModifier.active_injuries) {
+                                                                newStats.active_injuries = [...(newStats.active_injuries || []), ...hidden.statsModifier.active_injuries];
+                                                            }
+
+                                                            // Commit merged stats
+                                                            useGameStore.getState().setPlayerStats(newStats);
+                                                        }
+                                                    }
+                                                }
+
                                                 handleSend(prompt, false, true);
                                             }
                                         };
 
                                         if (!isMounted) return null; // [Fix] Prevent Hydration Mismatch for Client-Only UI
+
+                                        // [Fix] Data Loading Guard
+                                        if (!isDataLoaded) {
+                                            return (
+                                                <div className="flex flex-col items-center justify-center w-full h-full min-h-[50vh] text-yellow-500 animate-in fade-in duration-500">
+                                                    <Loader2 className="w-12 h-12 animate-spin mb-4" />
+                                                    <p className="text-xl font-bold">운명 데이터를 불러오는 중...</p>
+                                                </div>
+                                            );
+                                        }
 
                                         return (
                                             <div className="bg-black/90 p-8 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center max-w-2xl w-full">
@@ -3576,11 +3762,19 @@ Instructions:
                                                                 type="text"
                                                                 className="bg-gray-800/80 border-2 border-yellow-600/50 text-white px-6 py-4 rounded-xl focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/20 text-center text-xl font-bold placeholder-gray-500 transition-all shadow-inner"
                                                                 placeholder="이름을 입력하세요"
+                                                                value={playerName || ''}
                                                                 onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
-                                                                defaultValue={playerName || ''}
                                                                 autoFocus
                                                                 onKeyDown={(e) => {
                                                                     if (e.key === 'Enter') {
+                                                                        const state = useGameStore.getState();
+                                                                        console.log("[NameInput] Validating:", state.playerName, "Data Count:", Object.keys(state.characterData || {}).length);
+
+                                                                        const result = checkNameValidity(state.playerName, state.characterData);
+                                                                        if (!result.valid) {
+                                                                            addToast(result.message || "Invalid Name", "error");
+                                                                            return;
+                                                                        }
                                                                         setCreationStep(prev => prev + 1);
                                                                     }
                                                                 }}
@@ -3588,7 +3782,17 @@ Instructions:
                                                         </div>
 
                                                         <button
-                                                            onClick={() => setCreationStep(prev => prev + 1)}
+                                                            onClick={() => {
+                                                                const state = useGameStore.getState();
+                                                                console.log("[NameButton] Validating:", state.playerName, "Data Count:", Object.keys(state.characterData || {}).length);
+
+                                                                const result = checkNameValidity(state.playerName, state.characterData);
+                                                                if (!result.valid) {
+                                                                    addToast(result.message || "Invalid Name", "error");
+                                                                    return;
+                                                                }
+                                                                setCreationStep(prev => prev + 1);
+                                                            }}
                                                             className="mt-2 w-full px-8 py-4 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 rounded-xl font-bold text-black text-lg shadow-lg hover:shadow-yellow-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                                         >
                                                             <span>운명 시작하기</span>

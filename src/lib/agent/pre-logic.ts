@@ -232,15 +232,23 @@ ${this.CORE_RULES}
     "goal_guide": "Tips for the Story Model to advance Active Goals based on current situation.",
     "success": boolean,
     "narrative_guide": "Specific instructions for the narrator.",
+    "event_status": "active" | "completed" | "ignored" | null, // [New] Event Lifecycle Management
     "state_changes": { "hp": -10, "stamina": -5 },
     "mechanics_log": ["Analysis: ...", "Score: X/10"]
 }
 
 [Guide Generation Instructions]
 1. **Combat Guide**: If intent is 'combat' or tension is high, compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
-2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator (e.g. "She loves him but hides it").
-3. **Character Guide**: Check [Nearby Candidates]. PROACTIVELY suggest their entrance if they fit the context (e.g. a Merchant in a city, or a Rival appearing). Don't wait for the user to call them.
-4. **Goal Guide**: Check [Active Goals]. If the user's action helps/hinders a goal, provide a tip (e.g. "This action advances 'Become Stronger' goal").
+2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
+3. **Character Guide**: Check [Nearby Candidates]. PROACTIVELY suggest their entrance if relevant.
+4. **Goal Guide**: Check [Active Goals]. Advise on progress.
+5. **Active Event Guide**: Check [ACTIVE EVENT]. 
+   - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED based on user input.
+     * "active": Event is still relevant and unresolved.
+     * "completed": User successfully handled the event or the event reached a natural conclusion.
+     * "ignored": User explicitly ignored the event or moved away. (This will clear the event).
+   - If "active", you MUST guide the narrative to align with the event.
+   - If the event triggers a Crisis, judging 'Relaxed' actions as Success is BANNED.
 `.trim();
 
         // 갓 모드 체크
@@ -392,6 +400,8 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
 
 [Active Goals]
 "${goalsGuide}"
+
+${gameState.activeEvent ? `[ACTIVE EVENT (PRIORITY)]\nTitle: ${gameState.activeEvent.title}\nInstruction: ${gameState.activeEvent.prompt}\n` : ""}
 
 ${activeCharContext}
 ${candidatesContext}

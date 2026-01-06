@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { deleteAccount } from '@/app/actions/auth';
+import { Zap, Star, Cpu } from 'lucide-react';
+import { MODEL_CONFIG } from '@/lib/model-config';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -14,6 +16,8 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ isOpen, onClose, t, session, onResetGame }: SettingsModalProps) {
     const supabase = createClient();
+    const storyModel = useGameStore(state => state.storyModel);
+    const setStoryModel = useGameStore(state => state.setStoryModel);
 
     return (
         <AnimatePresence>
@@ -57,6 +61,54 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                 <p className="text-xs text-gray-500 text-center">
                                     * 언어 변경 시 UI 텍스트가 즉시 반영됩니다.
                                 </p>
+                            </div>
+
+                            {/* AI Model Settings */}
+                            <div className="space-y-4 pt-4 border-t border-gray-700">
+                                <h3 className="text-lg font-bold text-gray-300 border-b border-gray-700 pb-2">AI Model Settings</h3>
+                                <div className="bg-black/40 p-4 rounded-lg border border-gray-700 grid gap-3">
+                                    <button
+                                        onClick={() => setStoryModel(MODEL_CONFIG.STORY)}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${storyModel === MODEL_CONFIG.STORY
+                                            ? 'bg-blue-900/30 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.2)]'
+                                            : 'bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-400 hover:text-gray-200'
+                                            }`}
+                                    >
+                                        <div className={`p-2 rounded-full ${storyModel === MODEL_CONFIG.STORY ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-700 text-gray-400'}`}>
+                                            <Zap className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex flex-col text-left">
+                                            <span className={`font-bold text-sm ${storyModel === MODEL_CONFIG.STORY ? 'text-blue-400' : 'text-gray-300'}`}>
+                                                Gemini 3 Flash
+                                            </span>
+                                            <span className="text-xs text-gray-500">Fast & Efficient (Default)</span>
+                                        </div>
+                                        {storyModel === MODEL_CONFIG.STORY && (
+                                            <div className="ml-auto w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                                        )}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setStoryModel('gemini-3-pro-preview')}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${storyModel === 'gemini-3-pro-preview'
+                                            ? 'bg-purple-900/30 border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
+                                            : 'bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-400 hover:text-gray-200'
+                                            }`}
+                                    >
+                                        <div className={`p-2 rounded-full ${storyModel === 'gemini-3-pro-preview' ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-700 text-gray-400'}`}>
+                                            <Star className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex flex-col text-left">
+                                            <span className={`font-bold text-sm ${storyModel === 'gemini-3-pro-preview' ? 'text-purple-400' : 'text-gray-300'}`}>
+                                                Gemini 3 Pro
+                                            </span>
+                                            <span className="text-xs text-gray-500">High Quality & Creative</span>
+                                        </div>
+                                        {storyModel === 'gemini-3-pro-preview' && (
+                                            <div className="ml-auto w-2 h-2 bg-purple-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Account Settings */}

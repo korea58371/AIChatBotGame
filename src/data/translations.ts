@@ -133,6 +133,7 @@ export const translations = {
                 critical: "Critical"
             },
             realms: {
+                intro: "Intro",
                 third_rate: "3rd Rate",
                 second_rate: "2nd Rate",
                 first_rate: "1st Rate",
@@ -292,6 +293,7 @@ export const translations = {
                 critical: "탈진 임박"
             },
             realms: {
+                intro: "입문",
                 third_rate: "삼류",
                 second_rate: "이류",
                 first_rate: "일류",

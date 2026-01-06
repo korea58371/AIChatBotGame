@@ -11,6 +11,7 @@ import { generateResponse } from '../gemini'; // 기존 함수 재사용/리팩�
 import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../model-config';
 import { PromptManager } from '../prompt-manager';
+import { EventManager } from '../event-manager'; // [NEW]
 
 export class AgentOrchestrator {
 
@@ -106,6 +107,7 @@ ${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysi
 ${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
 ${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
 ${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
+${gameState.activeEvent ? `\n[Active Event Guide]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}` : ""}
 
 [Context data]
 ${PromptManager.getPlayerContext(effectiveGameState, language)}
@@ -208,14 +210,14 @@ ${userInput}
         cleanStoryText: string,
         language: 'ko' | 'en' | null = 'ko'
     ) {
-        console.log(`[Orchestrator] Phase 2: Logic Execution Start...`);
+        console.log(`[Orchestrator] Phase 2: Logic Execution Start... ActiveGameId: ${gameState.activeGameId}`);
         const startTime = Date.now();
 
         const validCharacters = Object.keys(gameState.characterData || {});
         const playerName = gameState.playerName || 'Player';
 
-        // Parallel Execution with individualized timing
-        const [postLogicRes, martialArtsRes, choicesRes] = await Promise.all([
+        // Parallel Execution
+        const [postLogicRes, martialArtsRes, choicesRes, eventRes] = await Promise.all([
             this.measure(AgentPostLogic.analyze(
                 userInput,
                 cleanStoryText,
@@ -239,12 +241,77 @@ ${userInput}
                 cleanStoryText,
                 gameState,
                 language
-            ))
+            )),
+            // [NEW] Parallel Event System (Deterministic)
+            this.measure((async () => {
+                const gameId = gameState.activeGameId;
+                console.log(`[Orchestrator] Event System Start. GameID: ${gameId}`);
+
+                // Determine events
+                const events = gameState.events || [];
+
+                // If ID is Wuxia, we use EventManager
+                if (gameId === 'wuxia') {
+                    // Rehydration Attempt if needed (Server-side safety)
+                    let loadedEvents = events;
+                    if (!events || events.length === 0) {
+                        try {
+                            console.log(`[Orchestrator] Rehydrating events for ${gameId}...`);
+                            const eventsModule = await import(`@/data/games/${gameId}/events`);
+                            if (eventsModule && eventsModule.GAME_EVENTS) {
+                                loadedEvents = eventsModule.GAME_EVENTS;
+                            }
+                        } catch (e) { console.warn("[Orchestrator] Event Rehydration Failed", e); }
+                    }
+                    console.log(`[Orchestrator] Events Loaded: ${loadedEvents?.length || 0}`);
+
+                    const { mandatory, randomCandidates } = EventManager.scan(loadedEvents, gameState);
+                    console.log(`[Orchestrator] Scan Result - Mandatory: ${mandatory.length}, Random: ${randomCandidates.length}`);
+
+                    const resultOut = {
+                        triggerEventId: null as string | null,
+                        currentEvent: null as string | null,
+                        type: null as string | null,
+                        candidates: {
+                            mandatory: mandatory.map(m => m.id),
+                            random: randomCandidates.map(r => r.id)
+                        },
+                        debug: {
+                            serverGameId: gameId,
+                            status: 'SCANNED',
+                            loadedEventsCount: loadedEvents?.length || 0
+                        }
+                    };
+
+                    // Logic: Mandatory > Random Pick (2) > None
+                    if (mandatory.length > 0) {
+                        resultOut.triggerEventId = mandatory[0].id;
+                        resultOut.currentEvent = mandatory[0].prompt;
+                        resultOut.type = 'MANDATORY';
+                        return resultOut;
+                    }
+
+                    if (randomCandidates.length > 0) {
+                        // Weighted Random
+                        const picked = EventManager.pickRandom(randomCandidates, 1);
+                        if (picked.length > 0) {
+                            // "Next Turn" trigger
+                            resultOut.triggerEventId = picked[0].id;
+                            resultOut.currentEvent = picked[0].prompt;
+                            resultOut.type = 'RANDOM';
+                            return resultOut;
+                        }
+                    }
+                    return resultOut;
+                }
+                return null;
+            })())
         ]);
 
         const postLogicOut = postLogicRes.result;
         const martialArtsOut = martialArtsRes.result;
         const choicesOut = choicesRes.result;
+        const eventOut = eventRes.result || { debug: { status: 'UNKNOWN_ERROR', serverGameId: 'UNKNOWN' } };
 
         const t6 = Date.now();
 
@@ -356,6 +423,7 @@ ${userInput}
             postLogicOut,
             martialArtsOut,
             choicesOut, // [NEW] Return for Debugging
+            eventOut, // [NEW] Return for Orchestrator Wrapper
             latencies: {
                 postLogic: postLogicRes.duration,
                 martial_arts: martialArtsRes.duration,
@@ -371,6 +439,8 @@ ${userInput}
                 choices: this.normalizeUsage(choicesOut.usageMetadata, choiceCost)
             }
         };
+
+
     }
 
     /**
@@ -399,7 +469,13 @@ ${userInput}
         return {
             reply: p2.finalStoryText,
             raw_story: p1.cleanStoryText,
-            logic: p1.preLogicOut,
+            logic: {
+                ...p1.preLogicOut,
+                // [NEW] Map Phase 2 Parallel Event to Legacy Logic Key
+                triggerEventId: (p2 as any).eventOut?.triggerEventId,
+                currentEvent: (p2 as any).eventOut?.currentEvent,
+                candidates: (p2 as any).eventOut?.candidates // [NEW] Pass candidates for debugging
+            },
             post_logic: p2.postLogicOut,
             martial_arts: p2.martialArtsOut, // [NEW]
 
@@ -409,6 +485,9 @@ ${userInput}
             choices_debug: { // [NEW] Choices Debug Info
                 _debug_prompt: p2.choicesOut._debug_prompt,
                 output: p2.choicesOut.text
+            },
+            event_debug: { // [NEW] Event Debug Info
+                output: (p2 as any).eventOut
             },
             router: p1.routerOut,
             casting: p1.suggestions, // [NEW] Returns ALL candidates for UI debugging
