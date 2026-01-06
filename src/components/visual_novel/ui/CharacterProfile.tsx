@@ -19,7 +19,7 @@ const TRAIT_KO_MAP: Record<string, string> = {
     eloquence: '화술',
     leadership: '통솔력',
     humor: '유머',
-    lust: '색욕'
+    lust: '변태'
 };
 
 const PERSONALITY_TRAITS = [
@@ -71,7 +71,7 @@ export default function CharacterProfile({
         { key: 'eloquence', label: t.eloquence || '화술', color: 'text-cyan-400', bar: 'bg-cyan-600' },
         { key: 'leadership', label: t.leadership || '통솔력', color: 'text-orange-400', bar: 'bg-orange-600' },
         { key: 'humor', label: t.humor || '유머', color: 'text-lime-400', bar: 'bg-lime-600' },
-        { key: 'lust', label: t.lust || '색욕', color: 'text-rose-400', bar: 'bg-rose-600' }
+        { key: 'lust', label: t.lust || '변태', color: 'text-rose-400', bar: 'bg-rose-600' }
     ];
 
     if (!isOpen) return null;

@@ -185,7 +185,7 @@ export const translations = {
         eloquence: '화술', // [Flattened]
         leadership: '통솔력', // [Flattened]
         humor: '유머', // [Flattened]
-        lust: '색욕', // [Flattened]
+        lust: '변태', // [Flattened]
         relationships: "관계도",
         noRelationships: "아직 관계가 없습니다.",
         skills: "보유 스킬",
