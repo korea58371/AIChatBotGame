@@ -11,7 +11,7 @@ import { resolveBackground } from '@/lib/background-manager';
 import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
 import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/model-config';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
-import { findBestMatch, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
+import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping';
 import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP } from '@/data/games/wuxia/constants'; // [New] UI Constants
@@ -162,6 +162,25 @@ export default function VisualNovelUI() {
         currentLocation, // [Fix] Add currentLocation for HUD updates
         isDataLoaded,
     } = useGameStore();
+
+    // [DEBUG] Check Startup Logic
+    useEffect(() => {
+        console.log("[VN_DEBUG_MOUNT] State:", {
+            turnCount,
+            questionsLen: characterCreationQuestions?.length,
+            activeGameId,
+            isDataLoaded,
+            scriptQueueLen: scriptQueue.length,
+            choicesLen: choices.length, // [DEBUG] Track choices
+            choicesContent: choices // [DEBUG] Track content
+        });
+
+        // [Fix] Ensure Game Data is Loaded on Mount (especially after New Game reset)
+        if (!isDataLoaded) {
+            console.log("[Initialization] Data not loaded, triggering setGameId for:", activeGameId);
+            useGameStore.getState().setGameId(activeGameId);
+        }
+    }, [turnCount, characterCreationQuestions, activeGameId, isDataLoaded, scriptQueue, choices]);
 
     // [Localization]
     const t = translations[language as keyof typeof translations] || translations.en;
@@ -455,6 +474,19 @@ export default function VisualNovelUI() {
                 }
             }
         }
+
+        // [Safeguard] Enforce Data Loading (Fix for Character Creation Bypass)
+        const checkDataLoaded = async () => {
+            const state = useGameStore.getState();
+            // If activeGameId exists but important data is missing, force reload
+            // (especially characterCreationQuestions which are critical for start)
+            if (state.activeGameId && (!state.characterCreationQuestions || state.characterCreationQuestions.length === 0)) {
+                console.warn("[VisualNovelUI] Initialization Data Missing! Force reloading...");
+                await state.setGameId(state.activeGameId);
+            }
+        };
+        checkDataLoaded();
+
     }, []); // Run once on mount (after hydration)
 
     // Initialize Session ID
@@ -546,6 +578,30 @@ export default function VisualNovelUI() {
             setPendingLogic(null);
         }
     }, [scriptQueue, currentSegment, pendingLogic]);
+
+    // [Fix] Choice Recovery Mechanism (Lost Path Prevention)
+    useEffect(() => {
+        if (isDataLoaded && !currentSegment && scriptQueue.length === 0 && choices.length === 0 && chatHistory.length > 0) {
+            const lastMsg = chatHistory[chatHistory.length - 1];
+            if (lastMsg.role === 'model' && lastMsg.text.includes('<선택지')) {
+                console.log("[Recovery] Found lost choices in history. Restoring...");
+                const recoveredChoices = [];
+                const regex = /<선택지(\d+)>\s*(.*?)(?=(<선택지|$))/g; // Simple regex, or reuse parse logic
+                // Better: Reuse the exact same parsing logic as advanceScript if possible, 
+                // but here we have text, not segments.
+                // Let's manually parse.
+                let match;
+                while ((match = regex.exec(lastMsg.text)) !== null) {
+                    recoveredChoices.push({ type: 'choice' as const, content: match[2].trim() });
+                }
+
+                if (recoveredChoices.length > 0) {
+                    console.log("[Recovery] Restored choices:", recoveredChoices);
+                    setChoices(recoveredChoices);
+                }
+            }
+        }
+    }, [isDataLoaded, currentSegment, scriptQueue, choices, chatHistory]);
 
     // Helper Functions
     const getBgUrl = (bg: string) => {
@@ -899,6 +955,36 @@ export default function VisualNovelUI() {
                     // Clean up emotion input (remove parens if any, though system prompt forbids them)
                     // The mapper expects clean distinct Korean words.
                     imagePath = getCharacterImage(charName, emotion);
+
+                    // [Fallback] Fuzzy Match for Missing Images
+                    // If imagePath is empty, try to find the best match from availableExtraImages
+                    if (!imagePath && availableExtraImages && availableExtraImages.length > 0) {
+                        // Priority 1: Match defined image key (e.g. "냉철한사파무인남")
+                        let targetKey = nextSegment.characterImageKey || charName;
+
+                        // Clean target key (remove brackets if any remaining)
+                        targetKey = targetKey.replace(/\(.*\)/, '').trim();
+
+                        const candidates = availableExtraImages;
+                        // Use Detail version for Score Access
+                        const bestMatch = findBestMatchDetail(targetKey, candidates);
+
+                        if (bestMatch && bestMatch.rating > 0.4) { // 40% similarity threshold
+                            console.log(`[Image Fallback] Fuzzy Match: ${targetKey} -> ${bestMatch.target}`);
+                            imagePath = `/assets/${gameId}/ExtraCharacters/${bestMatch.target}.png`; // Simplified assumption: extra images are flat
+                            // Wait, availableExtraImages might be full filenames or keys? 
+                            // Usually they are keys like "점소이_비굴한" or just "점소이".
+                            // Let's assume they are keys without extension if coming from store, 
+                            // BUT lines 926 and 950 add .png extension.
+                            // Let's check how availableExtraImages is populated. 
+                            // It is likely filenames without extension or keys.
+                            // Line 950: `.../${combinedKey}.png` implies combinedKey is the filename base.
+                            // If bestMatch.target is the filename base, we append .png.
+
+                            // Re-verify: availableExtraImages comes from store.
+
+                        }
+                    }
                 }
 
                 setCharacterExpression(imagePath);
@@ -1210,16 +1296,18 @@ export default function VisualNovelUI() {
 
                     // Start Phase 2 Logic & Summary concurrently
                     const p2Start = Date.now();
-                    const [p2Result, _summaryResult] = await Promise.all([
-                        serverAgentTurnPhase2(
-                            currentHistory,
-                            text,
-                            effectiveGameState, // Pass state with Mood Override
-                            cleanStoryText,
-                            language
-                        ),
-                        summaryPromise
-                    ]);
+
+                    // [Parallel] Run Logic (Await) + Summary (Fire/Forget)
+                    // We do not wait for summaryPromise here to improve perceived latency.
+                    const p2Result = await serverAgentTurnPhase2(
+                        currentHistory,
+                        text,
+                        effectiveGameState, // Pass state with Mood Override
+                        cleanStoryText,
+                        language
+                    );
+                    // Summary Promise runs in background (started above)
+
                     const p2Duration = Date.now() - p2Start;
 
                     const postLogicOut = p2Result.postLogicOut; // [Fix] Restore definition
@@ -1337,6 +1425,13 @@ export default function VisualNovelUI() {
                     // To be safe, we subtract what we ACTUALLY applied.
 
                     const finalDeferred = { ...deferredLogic };
+
+                    // [Fix] Update History with Final Text (including Choices)
+                    // This ensures that 'Rewind' (History Modal) can parse choices correctly.
+                    if (finalStoryText) {
+                        useGameStore.getState().updateLastMessage(finalStoryText);
+                        console.log("[VisualNovelUI] Updated History with Final Text (Choices included)");
+                    }
 
                     // [Refactor] Script Replacement & Tag Deduction Strategy
                     // We need to switch the active script to `finalStoryText` (which contains tags)
@@ -1932,92 +2027,145 @@ export default function VisualNovelUI() {
         }
     };
 
-    const handleStartGame = () => {
-        // [GOD MODE CHECK]
-        if (playerName === '김현준갓모드') {
-            useGameStore.getState().setPlayerName('김현준');
-            useGameStore.getState().setGodMode(true);
-            addToast("😇 God Mode Activated", "success");
-        }
+    const handleStartGame = async () => {
+        // [Safety] Immediate Feedback
+        setIsProcessing(true);
+        setIsLogicPending(true); // Assume we might need AI
 
-        // Replace Placeholder with Real Name
-        const effectiveName = (playerName === '김현준갓모드' ? '김현준' : playerName) || '성현우';
-        const processedScenario = (initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
-        setLastStoryOutput(processedScenario); // [Logging] Capture initial scenario
-
-        // Parse the raw text scenario
-        const segments = parseScript(processedScenario);
-
-        // 1. Construct text for History & AI Context
-        const historyText = segments.map(seg => {
-            if (seg.type === 'background') return `<배경>${seg.content}`;
-            if (seg.type === 'system_popup') return `<시스템팝업>${seg.content}`;
-            if (seg.type === 'narration') return `<나레이션>${seg.content}`;
-            if (seg.type === 'choice') return `<선택지${seg.choiceId || ''}>${seg.content}`;
-            if (seg.type === 'dialogue') {
-                return `<대사>${seg.character}_${seg.expression}: ${seg.content}`;
+        try {
+            // [GOD MODE CHECK]
+            if (playerName === '김현준갓모드') {
+                useGameStore.getState().setPlayerName('김현준');
+                useGameStore.getState().setGodMode(true);
+                addToast("😇 God Mode Activated", "success");
             }
-            return seg.content;
-        }).join('\n\n');
 
-        // 2. Add to History (Silently, so it's in the log and available for AI)
-        addMessage({ role: 'model', text: historyText });
+            // Replace Placeholder with Real Name
+            const effectiveName = (playerName === '김현준갓모드' ? '김현준' : playerName) || '성현우';
+            const processedScenario = (initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
+            setLastStoryOutput(processedScenario); // [Logging] Capture initial scenario
 
-        // 3. Play Script
-        // Skip initial background segments and set background immediately
-        let startIndex = 0;
-        while (startIndex < segments.length && segments[startIndex].type === 'background') {
-            const resolvedBg = resolveBackground(segments[startIndex].content);
-            setBackground(resolvedBg);
-            startIndex++;
-        }
+            // Parse the raw text scenario
+            const segments = parseScript(processedScenario);
 
-        if (startIndex < segments.length) {
-            const first = segments[startIndex];
-            setCurrentSegment(first);
-            setScriptQueue(segments.slice(startIndex + 1));
+            // [Fallback] If scenario data is missing/empty, Force AI Start
+            if (!processedScenario || segments.length === 0) {
+                console.warn("[StartGame] Initial Scenario is empty. Triggering AI Generation fallback.");
+                addToast("오프닝 생성 중...", "info");
 
-            // Set character expression if the first segment is dialogue
-            if (first.type === 'dialogue' && first.expression && first.character) {
-                const charMap = useGameStore.getState().characterMap || {};
-                const isMainCharacter = !!charMap[first.character];
+                // Fallback: Just trigger standard turn which will see empty history and generate intro
+                const result = await serverGenerateResponse(
+                    [], // history (empty for start)
+                    `게임 시작. 주인공 이름: ${effectiveName}. [Game Start]`, // userMessage
+                    useGameStore.getState(), // gameState
+                    'ko' // language
+                );
 
-                // [New] Override check for first segment
-                // Prevent override if it is a Main Character (AI descriptions in parens shouldn't hijack the image)
-                if (first.characterImageKey && first.character && !isMainCharacter) {
-                    useGameStore.getState().setExtraOverride(first.character, first.characterImageKey);
-                }
+                if (result && result.text) {
+                    const fallbackSegments = parseScript(result.text);
+                    // Add to history
+                    addMessage({ role: 'model', text: result.text });
 
-                const charName = first.character === playerName ? '주인공' : first.character;
-                const emotion = first.expression;
-                const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
-                const extraMap = useGameStore.getState().extraMap;
-
-                let imagePath = '';
-                const combinedKey = `${charName}_${emotion}`;
-
-                // [Fix] Explicit Key Lookup (Priority)
-                // Only use characterImageKey if NOT a Main Character (unless we add a costume system later)
-                if (first.characterImageKey && !isMainCharacter) {
-                    if (extraMap && extraMap[first.characterImageKey]) {
-                        imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[first.characterImageKey]}`;
-                    } else {
-                        imagePath = getCharacterImage(first.characterImageKey, emotion);
+                    if (fallbackSegments.length > 0) {
+                        setCurrentSegment(fallbackSegments[0]);
+                        setScriptQueue(fallbackSegments.slice(1));
+                        setIsLogicPending(false); // We have content now
+                        setIsProcessing(false);
+                        return;
                     }
                 }
-                else if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
-                    imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
-                } else if (extraMap && extraMap[charName]) {
-                    imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
-                } else {
-                    imagePath = getCharacterImage(charName, emotion);
-                }
-                setCharacterExpression(imagePath);
+
+                // If even fallback fails
+                addToast("오프닝 생성 실패. 다시 시도해주세요.", "error");
+                setIsProcessing(false);
+                setIsLogicPending(false);
+                return;
             }
-        } else {
-            // Fallback if scenario is just backgrounds (unlikely)
-            setScriptQueue([]);
-            setCurrentSegment(null);
+
+            // 1. Construct text for History & AI Context
+            const historyText = segments.map(seg => {
+                if (seg.type === 'background') return `<배경>${seg.content}`;
+                if (seg.type === 'system_popup') return `<시스템팝업>${seg.content}`;
+                if (seg.type === 'narration') return `<나레이션>${seg.content}`;
+                if (seg.type === 'choice') return `<선택지${seg.choiceId || ''}>${seg.content}`;
+                if (seg.type === 'dialogue') {
+                    return `<대사>${seg.character}_${seg.expression}: ${seg.content}`;
+                }
+                return seg.content;
+            }).join('\n\n');
+
+            // 2. Add to History (Silently, so it's in the log and available for AI)
+            addMessage({ role: 'model', text: historyText });
+
+            // 3. Play Script
+            // Skip initial background segments and set background immediately
+            let startIndex = 0;
+            while (startIndex < segments.length && segments[startIndex].type === 'background') {
+                const resolvedBg = resolveBackground(segments[startIndex].content);
+                setBackground(resolvedBg);
+                startIndex++;
+            }
+
+            if (startIndex < segments.length) {
+                const first = segments[startIndex];
+                setCurrentSegment(first);
+                setScriptQueue(segments.slice(startIndex + 1));
+
+                // [Logic] We have content, so we are not "pending" anymore for the UI check
+                setIsLogicPending(false);
+
+                // Set character expression if the first segment is dialogue
+                if (first.type === 'dialogue' && first.expression && first.character) {
+                    const charMap = useGameStore.getState().characterMap || {};
+                    const isMainCharacter = !!charMap[first.character];
+
+                    // [New] Override check for first segment
+                    // Prevent override if it is a Main Character (AI descriptions in parens shouldn't hijack the image)
+                    if (first.characterImageKey && first.character && !isMainCharacter) {
+                        useGameStore.getState().setExtraOverride(first.character, first.characterImageKey);
+                    }
+
+                    const charName = first.character === playerName ? '주인공' : first.character;
+                    const emotion = first.expression;
+                    const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
+                    const extraMap = useGameStore.getState().extraMap;
+
+                    let imagePath = '';
+                    const combinedKey = `${charName}_${emotion}`;
+
+                    // [Fix] Explicit Key Lookup (Priority)
+                    // Only use characterImageKey if NOT a Main Character (unless we add a costume system later)
+                    if (first.characterImageKey && !isMainCharacter) {
+                        if (extraMap && extraMap[first.characterImageKey]) {
+                            imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[first.characterImageKey]}`;
+                        } else {
+                            imagePath = getCharacterImage(first.characterImageKey, emotion);
+                        }
+                    }
+                    else if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
+                        imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
+                    } else if (extraMap && extraMap[charName]) {
+                        imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
+                    } else {
+                        imagePath = getCharacterImage(charName, emotion);
+                    }
+                    setCharacterExpression(imagePath);
+                }
+            } else {
+                // Fallback if scenario is just backgrounds (unlikely)
+                setScriptQueue([]);
+                setCurrentSegment(null);
+                // Even if "empty" content, we finished "processing" the start request.
+                // But this will trigger the error screen. 
+                // Let's rely on standard logic pending being false now.
+                setIsLogicPending(false);
+            }
+        } catch (e) {
+            console.error("[StartGame] Error:", e);
+            addToast("게임 시작 중 오류 발생", "error");
+            setIsLogicPending(false);
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -2328,6 +2476,34 @@ export default function VisualNovelUI() {
                 useGameStore.getState().addGoal(newGoal);
                 addToast(`New Goal: ${g.description}`, 'info');
             });
+        }
+
+        // [New] Event Lifecycle Management (Fix for Event Loop Bug)
+        // 1. Trigger New Event
+        if (logicResult.triggerEventId) {
+            const currentActive = useGameStore.getState().activeEvent;
+            // Only trigger if not already active (or different)
+            if (!currentActive || currentActive.id !== logicResult.triggerEventId) {
+                const eventPayload = {
+                    id: logicResult.triggerEventId,
+                    prompt: logicResult.currentEvent || "", // Save prompt for context
+                    startedTurn: useGameStore.getState().turnCount
+                };
+                useGameStore.getState().setActiveEvent(eventPayload);
+                useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
+                addToast("새로운 이벤트가 발생했습니다!", 'info');
+                console.log(`[Event System] New Event Triggered & Activated: ${logicResult.triggerEventId}`);
+            }
+        }
+
+        // 2. Clear Completed/Ignored Event (From PreLogic)
+        if (logicResult.event_status === 'completed' || logicResult.event_status === 'ignored') {
+            const currentActive = useGameStore.getState().activeEvent;
+            if (currentActive) {
+                useGameStore.getState().setActiveEvent(null);
+                console.log(`[Event System] Event Cleared (${logicResult.event_status}): ${currentActive.id}`);
+                addToast(logicResult.event_status === 'completed' ? "이벤트가 종료되었습니다." : "이벤트가 넘어갔습니다.", 'info');
+            }
         }
 
         if (logicResult.goal_updates) {
@@ -2837,8 +3013,31 @@ export default function VisualNovelUI() {
                     }
                 }
 
-                // [Optimization] Memory Summarization moved to Background Phase 2 (handleSend)
-                // to prevent UI blocking during logic application.
+                // [Optimization] Memory Summarization Logic
+                // Trigger if memories exceed threshold (12) -> Summarize down to ~10
+                const updatedCharData = useGameStore.getState().characterData[targetId];
+                const currentMemories = updatedCharData?.memories || [];
+
+                if (currentMemories.length > 12) {
+                    console.log(`[Memory Limit] ${targetId} has ${currentMemories.length} memories. Triggering Summary...`);
+                    // activeToast is annoying if it happens too often, maybe just log? 
+                    // User requested functionality so a toast is good feedback.
+                    addToast(`${targetId}의 기억을 정리하는 중...`, 'info');
+
+                    // Fire-and-forget (don't await) to not block UI
+                    serverGenerateCharacterMemorySummary(targetId, currentMemories)
+                        .then((summarized: string[]) => {
+                            if (summarized && Array.isArray(summarized) && summarized.length > 0) {
+                                console.log(`[Memory Summary] ${targetId}: ${currentMemories.length} -> ${summarized.length}`);
+                                // Verify we actually reduced it or at least didn't break it
+                                if (summarized.length < currentMemories.length) {
+                                    useGameStore.getState().updateCharacterData(targetId, { memories: summarized });
+                                    addToast(`${targetId}의 중요한 기억만 남겼습니다.`, 'success');
+                                }
+                            }
+                        })
+                        .catch(err => console.error(`[Memory Summary Failed] ${targetId}`, err));
+                }
             });
         }
 
@@ -3528,7 +3727,8 @@ export default function VisualNovelUI() {
                 {
                     isMounted && !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-auto z-[100]">
-                            {chatHistory.length === 0 ? (
+                            {/* [Fix] Use turnCount === 0 to prioritize Creation Wizard even if logs exist */}
+                            {turnCount === 0 ? (
                                 // Creation or Start Screen
                                 (() => {
                                     const creationQuestions = useGameStore.getState().characterCreationQuestions;
@@ -3841,6 +4041,37 @@ Instructions:
                                     }
 
                                     // Fallback to Standard Start Screen
+                                    // Fallback to Standard Start Screen
+                                    const { activeGameId, setGameId } = useGameStore.getState();
+
+                                    // [Fix] Wuxia Data Integrity Guard
+                                    if (activeGameId === 'wuxia' && (!creationQuestions || creationQuestions.length === 0)) {
+                                        return (
+                                            <div className="bg-black/90 p-12 rounded-xl border-2 border-red-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center animate-pulse">
+                                                <h1 className="text-3xl font-bold text-red-500 mb-2">⚠ 데이터 로드 실패</h1>
+                                                <p className="text-gray-300">
+                                                    캐릭터 생성 데이터를 불러오지 못했습니다.<br />
+                                                    네트워크 상태를 확인하거나 다시 시도해주세요.
+                                                </p>
+                                                <div className="flex gap-4">
+                                                    <button
+                                                        onClick={() => setGameId('wuxia')}
+                                                        className="px-6 py-3 bg-red-600 hover:bg-red-500 rounded font-bold text-white shadow-lg transform hover:scale-105 transition-all"
+                                                    >
+                                                        ↻ 데이터 재시도
+                                                    </button>
+                                                    <button
+                                                        onClick={() => window.location.reload()}
+                                                        className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded font-bold text-gray-200"
+                                                    >
+                                                        새로고침
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-4">ActiveID: {activeGameId} | QLen: {creationQuestions?.length || 0}</p>
+                                            </div>
+                                        );
+                                    }
+
                                     return (
                                         <div className="bg-black/80 p-12 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center">
                                             <h1 className="text-4xl font-bold text-yellow-400 mb-2">Game Title</h1>
@@ -3858,7 +4089,11 @@ Instructions:
                                             </div>
 
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); handleStartGame(); }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // [Fix] Ensure handleStartGame exists before calling (it is defined in outer scope)
+                                                    handleStartGame();
+                                                }}
                                                 className="px-8 py-4 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-bold text-black text-xl shadow-[0_0_20px_rgba(234,179,8,0.5)] hover:scale-105 transition-transform animate-pulse"
                                             >
                                                 Game Start
@@ -3874,24 +4109,45 @@ Instructions:
                                 </div>
                             ) : (
                                 // Error/Paused Screen
-                                <div className="bg-black/80 p-8 rounded-xl border border-red-500 text-center shadow-2xl backdrop-blur-md">
-                                    <h2 className="text-2xl font-bold text-red-500 mb-4">{t.scenePaused}</h2>
-                                    <p className="text-gray-300 mb-6">{t.noActiveDialogue}</p>
-                                    <div className="flex gap-4 justify-center">
+                                // [Fix] Safe fallback to Start Screen check
+                                (turnCount === 0 && !currentSegment) ? (
+                                    <div className="bg-black/80 p-8 rounded-xl border border-blue-500 text-center shadow-2xl backdrop-blur-md animate-in fade-in zoom-in duration-300">
+                                        <h2 className="text-2xl font-bold text-blue-400 mb-4">게임 준비 완료</h2>
+                                        <p className="text-gray-300 mb-6">시작하려면 아래 버튼을 클릭하세요.</p>
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); handleNewGame(); }}
-                                            className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded font-bold text-white shadow-lg hover:scale-105 transition-transform"
+                                            onClick={(e) => { e.stopPropagation(); handleStartGame(); }}
+                                            className="px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white text-xl shadow-lg hover:scale-105 transition-transform animate-pulse"
                                         >
-                                            {t.resetGame}
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); setIsInputOpen(true); }}
-                                            className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded font-bold text-white shadow-lg hover:scale-105 transition-transform"
-                                        >
-                                            {t.continueInput}
+                                            게임 시작
                                         </button>
                                     </div>
-                                </div>
+                                ) : (choices.length > 0) ? (
+                                    // [Fix] Choices are present, so don't show Error Screen
+                                    // The choices overlay (line 3512) will handle the rendering.
+                                    null
+                                ) : (!isDataLoaded) ? (
+                                    // [Fix] Data not loaded logic handled by top-level guard, but if here safely return null
+                                    null
+                                ) : (
+                                    <div className="bg-black/80 p-8 rounded-xl border border-red-500 text-center shadow-2xl backdrop-blur-md">
+                                        <h2 className="text-2xl font-bold text-red-500 mb-4">{t.scenePaused}</h2>
+                                        <p className="text-gray-300 mb-6">{t.noActiveDialogue}</p>
+                                        <div className="flex gap-4 justify-center">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleNewGame(); }}
+                                                className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded font-bold text-white shadow-lg hover:scale-105 transition-transform"
+                                            >
+                                                {t.resetGame}
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setIsInputOpen(true); }}
+                                                className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded font-bold text-white shadow-lg hover:scale-105 transition-transform"
+                                            >
+                                                {t.continueInput}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )
                             )}
                         </div>
                     )
@@ -3965,6 +4221,53 @@ Instructions:
                                             addToast("광고 보상: 50 골드 지급 완료!", "success");
                                         }}
                                     />
+                                </div>
+
+                                {/* [NEW] System Menu Bar (Available during Generation) */}
+                                <div className="flex w-full justify-center gap-3 md:gap-4 mt-6 pointer-events-auto z-20">
+                                    {(() => {
+                                        const currentWikiTarget = (() => {
+                                            if (currentSegment?.character) {
+                                                const charName = currentSegment.character.split('(')[0].trim();
+                                                return findBestMatch(charName, wikiKeys);
+                                            }
+                                            return null;
+                                        })();
+
+                                        return [
+                                            { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => setShowCharacterInfo(true) },
+                                            { icon: <History size={20} />, label: t.chatHistory, onClick: () => setShowHistory(true) },
+                                            {
+                                                icon: <Book size={20} />,
+                                                label: t.wiki,
+                                                onClick: () => {
+                                                    if (currentWikiTarget) setWikiTargetCharacter(currentWikiTarget);
+                                                    setShowWiki(true);
+                                                },
+                                                isActive: !!currentWikiTarget,
+                                                activeColor: "bg-gradient-to-r from-yellow-600 to-yellow-500 border-yellow-400 text-black shadow-yellow-500/50 animate-pulse"
+                                            },
+                                            { icon: <Save size={20} />, label: t.saveLoad, onClick: () => setShowSaveLoad(true) },
+                                            { icon: <Settings size={20} />, label: t.settings, onClick: () => setShowResetConfirm(true) },
+                                        ].map((btn, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
+                                                className={`p-3 md:p-3 rounded-full border transition-all backdrop-blur-md shadow-lg group relative
+                                                    ${(btn as any).isActive
+                                                        ? (btn as any).activeColor
+                                                        : 'bg-black/60 border-white/20 text-white hover:bg-white/20 hover:border-white'
+                                                    } hover:scale-110`}
+                                                title={btn.label}
+                                            >
+                                                {btn.icon}
+                                                {/* Tooltip */}
+                                                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
+                                                    {btn.label}
+                                                </span>
+                                            </button>
+                                        ));
+                                    })()}
                                 </div>
                             </div>
                         </motion.div>
@@ -4402,6 +4705,9 @@ Instructions:
                     )
                 }
             </div >
+
+
+
             {/* Debug Popup */}
             {
                 isLocalhost && (

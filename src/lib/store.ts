@@ -32,6 +32,7 @@ export interface GameState {
   setUserCoins: (coins: number) => void;
 
   addMessage: (message: Message) => void;
+  updateLastMessage: (newText: string) => void; // [Fix] Allow updating last message for async content
   clearHistory: () => void;
   truncateHistory: (keepCount: number) => void;
 
@@ -299,6 +300,8 @@ export const useGameStore = create<GameState>()(
       setStoryModel: (model) => set({ storyModel: model }),
 
       setGameId: async (id: string) => {
+        console.log("[Store] setGameId called with:", id);
+        console.log("[Store] Current Choices BEFORE setGameId:", get().choices);
         set({ isDataLoaded: false });
         try {
           const data = await DataManager.loadGameData(id);
@@ -376,6 +379,23 @@ export const useGameStore = create<GameState>()(
         chatHistory: [...state.chatHistory, message],
         displayHistory: [...(state.displayHistory || []), message]
       })),
+      updateLastMessage: (newText) => set((state) => {
+        const history = [...state.chatHistory];
+        if (history.length === 0) return {};
+        const lastMsg = { ...history[history.length - 1], text: newText };
+        history[history.length - 1] = lastMsg;
+
+        // [Fix] Also update displayHistory to ensure HistoryModal sees the changes
+        const displayHistory = state.displayHistory ? [...state.displayHistory] : [...history];
+        if (displayHistory.length > 0) {
+          displayHistory[displayHistory.length - 1] = {
+            ...displayHistory[displayHistory.length - 1],
+            text: newText
+          };
+        }
+
+        return { chatHistory: history, displayHistory };
+      }),
       clearHistory: () => set({ chatHistory: [], displayHistory: [] }),
       truncateHistory: (keepCount) => set((state) => {
         let newHistory = state.chatHistory.slice(-keepCount);
@@ -451,12 +471,20 @@ export const useGameStore = create<GameState>()(
         // Avoid duplicates
         if (currentMemories.includes(memory)) return {};
 
+        let newMemories = [...currentMemories, memory];
+
+        // [Safety] Hard Limit Cap to prevent infinite bloat (50 max)
+        // Summarization should happen before this, but this is a failsafe.
+        if (newMemories.length > 50) {
+          newMemories = newMemories.slice(-50);
+        }
+
         return {
           characterData: {
             ...state.characterData,
             [charId]: {
               ...currentData,
-              memories: [...currentMemories, memory]
+              memories: newMemories
             }
           }
         };
@@ -526,7 +554,11 @@ export const useGameStore = create<GameState>()(
       currentSegment: null,
       setCurrentSegment: (segment) => set({ currentSegment: segment }),
       choices: [],
-      setChoices: (choices) => set({ choices }),
+      setChoices: (choices) => {
+        console.log("[Store] setChoices called with:", choices);
+        if (choices.length === 0) console.trace("[Store] setChoices([]) called from:");
+        set({ choices });
+      },
 
       textMessageHistory: {},
       addTextMessage: (partner, message) => set((state) => {
@@ -652,8 +684,9 @@ export const useGameStore = create<GameState>()(
           availableExtraImages,
 
           // Ephemeral execution state (no need to persist, should reset on reload)
-          scriptQueue,
-          currentSegment,
+          // scriptQueue, // [Persisted]
+          // currentSegment, // [Persisted]
+          // choices, // [Persisted]
           isDataLoaded,
 
           // The State itself to process
@@ -676,11 +709,19 @@ export const useGameStore = create<GameState>()(
 
         return {
           ...persistedState,
+          choices: state.choices, // [Fix] Explicitly persist
+          scriptQueue: state.scriptQueue, // [Fix] Explicitly persist
+          currentSegment: state.currentSegment, // [Fix] Explicitly persist
           chatHistory: lightweightChatHistory,
           displayHistory: lightweightDisplayHistory
         };
       },
       onRehydrateStorage: () => (state) => {
+        console.log("[Store] Rehydrating...", state ? "Found State" : "No State");
+        if (state) {
+          console.log("[Store] Hydrated Choices:", state.choices);
+          console.log("[Store] Hydrated Queue:", state.scriptQueue?.length);
+        }
         // On rehydration, we need to reload the non-persisted functions
         // logic handled by component mounting
         if (state && state.activeGameId) {

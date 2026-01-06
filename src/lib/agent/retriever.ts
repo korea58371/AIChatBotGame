@@ -19,38 +19,45 @@ export class AgentRetriever {
      * 유저 입력 및 후보군에 기반하여 관련 컨텍스트를 검색합니다.
      */
     static async retrieveContext(
-        userInput: string, // [CHANGED] RouterOut -> userInput
+        userInput: string,
         state: any,
-        suggestedCharacters: any[] = []
+        suggestedCharacters: any[] = [],
+        backgroundCharacters: any[] = [] // [NEW] Background List
     ): Promise<string> {
 
         console.log(`[Retriever] 컨텍스트 검색 중... Input Length: ${userInput.length}`);
         let context = "";
 
-        // 1. Casting/Encounter Suggestions (Priority)
+        // 1. Casting Suggestions (Active - Full Details)
         if (suggestedCharacters.length > 0) {
             context += `[Casting Suggestions] (Available for Narrative - You may introduce these characters if relevant)\n`;
             suggestedCharacters.forEach(candidate => {
                 const charData = candidate.data;
                 const desc = charData.profile?.신분 || charData.title || "Unknown";
                 const appearance = charData.외형?.얼굴형_인상 || charData.외형?.outfit_style || "";
-
-                // [NEW] Faction Info
                 const faction = charData.faction || charData.profile?.소속 || "Unknown";
-
-                // [EXPANDED] Always include Personality/Speech for consistency
                 const pVal = charData.personality ? JSON.stringify(charData.personality) : "Unknown";
-
-                // [NEW] Rank Info (Strength)
-                // Wuxia & GBY shared path: charData.강함?.등급 or charData.profile?.등급
                 const rank = charData.강함?.등급 || charData.profile?.등급 || "Unknown";
 
-                // Inference Speech Style (Reuse logic if possible, or simple check)
                 let speechStyle = "Unknown";
                 if (charData.relationshipInfo?.speechStyle) speechStyle = charData.relationshipInfo.speechStyle;
                 else if (JSON.stringify(charData).includes("존댓말")) speechStyle = "Polite/Honorific";
 
                 context += `- ${candidate.name} (${charData.title})\n  Identity: ${desc} | Faction: ${faction} | Rank: ${rank}\n  Appearance: ${appearance}\n  Personality: ${pVal}\n  Speech: ${speechStyle}\n`;
+            });
+            context += "\n";
+        }
+
+        // 2. Background Knowledge (Minimal - Context Only)
+        if (backgroundCharacters.length > 0) {
+            context += `[Background Knowledge] (Context Only - Do not spawn unless necessary)\n`;
+            backgroundCharacters.forEach(candidate => {
+                const charData = candidate.data;
+                const desc = charData.profile?.신분 || charData.title || "Unknown";
+                const rank = charData.강함?.등급 || charData.profile?.등급 || "Unknown";
+
+                // Minimal Info: Name, Title, Identity, Rank
+                context += `- ${candidate.name} (${charData.title || "Unknown"}) | Identity: ${desc} | Rank: ${rank}\n`;
             });
             context += "\n";
         }

@@ -19,7 +19,7 @@ const unifiedEmotionMap: Record<string, string> = {
     "고양이": "CatFace",            // Cat-face Joy
     "음침": "DarkShadow",           // Gloomy/Depressed with vertical lines
     "어지러움": "Dizzy",            // Swirly eyes
-    "멍함": "Dumbfounded",          // Blank stare / Dot eyes
+    "멍함": "Sleepy",          // Blank stare / Dot eyes // Dumbfounded였는데 안어울려서 수정
     "당황": "Panic",                // Sweating/Panicking
     "충격": "Shock",                // Shocked blue face
     "반짝": "Sparkle",              // Sparkly eyes

@@ -248,7 +248,9 @@ ${this.CORE_RULES}
      * "completed": User successfully handled the event or the event reached a natural conclusion.
      * "ignored": User explicitly ignored the event or moved away. (This will clear the event).
    - If "active", you MUST guide the narrative to align with the event.
-   - If the event triggers a Crisis, judging 'Relaxed' actions as Success is BANNED.
+   - **CRITICAL CONDITION**: If 'Tension' is HIGH/COMBAT, do NOT force the event to disrupt the scene.
+     - Instead, treat the event as "present in background" (e.g., waiting for the fight to end).
+     - Only forcefully interrupt if the event is an EMERGENCY or DIRECT THREAT.
 `.trim();
 
         // 갓 모드 체크
@@ -401,7 +403,7 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
 [Active Goals]
 "${goalsGuide}"
 
-${gameState.activeEvent ? `[ACTIVE EVENT (PRIORITY)]\nTitle: ${gameState.activeEvent.title}\nInstruction: ${gameState.activeEvent.prompt}\n` : ""}
+${gameState.activeEvent ? `[ACTIVE EVENT (CONTEXT)]\nTitle: ${gameState.activeEvent.title}\nInfo: ${gameState.activeEvent.prompt}\n(Note: Integrate naturally. If scene is High Tension/Combat, hold event progression until calm unless it's an emergency.)\n` : ""}
 
 ${activeCharContext}
 ${candidatesContext}

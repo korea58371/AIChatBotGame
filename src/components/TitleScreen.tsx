@@ -337,7 +337,9 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 {/* Game Selector UI */}
                 <div className="absolute bottom-[16vh] md:bottom-24 w-full flex justify-center gap-6 z-30">
                     <button
-                        onClick={() => setGameId('god_bless_you')}
+                        onClick={async () => {
+                            await setGameId('god_bless_you');
+                        }}
                         className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${activeGameId === 'god_bless_you' ? 'scale-110 opacity-100' : 'scale-100 opacity-50 hover:opacity-80'}`}
                     >
                         <div className={`p-4 rounded-full border-2 transition-all duration-300 ${activeGameId === 'god_bless_you' ? 'bg-blue-900/80 border-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.5)]' : 'bg-black/50 border-gray-600'}`}>
@@ -357,7 +359,9 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                     <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-600 to-transparent" />
 
                     <button
-                        onClick={() => setGameId('wuxia')}
+                        onClick={async () => {
+                            await setGameId('wuxia');
+                        }}
                         className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${activeGameId === 'wuxia' ? 'scale-110 opacity-100' : 'scale-100 opacity-50 hover:opacity-80'}`}
                     >
                         <div className={`p-4 rounded-full border-2 transition-all duration-300 ${activeGameId === 'wuxia' ? 'bg-red-900/80 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-black/50 border-gray-600'}`}>

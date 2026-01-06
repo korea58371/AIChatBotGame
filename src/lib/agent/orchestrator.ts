@@ -65,21 +65,26 @@ export class AgentOrchestrator {
         //    AgentRouter.analyze(history, lastContext, activeCharacterNames, lastTurnSummary),
         //    AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel)
         // ]);
-        const allCastingCandidates = await AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel);
+        const castingResult = await AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel);
+        const { active, background } = castingResult;
 
-        const suggestions = allCastingCandidates.slice(0, 10);
+        const suggestions = active; // Top candidates active in scene
         const t2 = Date.now();
 
         // 3. Retriever
         // 3. Retriever (Use userInput directly)
-        const retrievedContext = await AgentRetriever.retrieveContext(userInput, gameState, suggestions);
+        // [Refactor] Pass both Active and Background lists to Retriever for distinct formatting
+        let retrievedContext = await AgentRetriever.retrieveContext(userInput, gameState, active, background);
+
+        // [Cleanup] 'Regional Key Figures' injection is now handled by Retriever as '[Background Knowledge]'
+
         const t3 = Date.now();
 
         // 4. Pre-Logic
         console.log(`[Orchestrator] PreLogic State Tension: ${gameState.tensionLevel}, PlayerStats Tension: ${gameState.playerStats?.tensionLevel}`);
         // 4. Pre-Logic (Handles classification now)
         console.log(`[Orchestrator] PreLogic State Tension: ${gameState.tensionLevel}, PlayerStats Tension: ${gameState.playerStats?.tensionLevel}`);
-        const preLogicOut = await AgentPreLogic.analyze(history, retrievedContext, userInput, gameState, lastTurnSummary, suggestions, language);
+        const preLogicOut = await AgentPreLogic.analyze(history, retrievedContext, userInput, gameState, lastTurnSummary, [], language);
 
         // [ADAPTER] Create fake router output for UI compatibility
         const routerOut = {
@@ -107,7 +112,7 @@ ${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysi
 ${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
 ${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
 ${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
-${gameState.activeEvent ? `\n[Active Event Guide]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}` : ""}
+${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)` : ""}
 
 [Context data]
 ${PromptManager.getPlayerContext(effectiveGameState, language)}
@@ -152,6 +157,13 @@ ${userInput}
             .replace(/<Tension[^>]*>/gi, '')
             .replace(/<NewInjury[^>]*>/gi, '')
             .replace(/<Injury[^>]*>/gi, '');
+
+        // [Guard] Empty Story Validation
+        if (!cleanStoryText || !cleanStoryText.trim()) {
+            console.error(`[Orchestrator] Critical: Story Generation returned empty text (or only filtered tags). Raw Length: ${storyResult.text?.length || 0}`);
+            // If the model returned *something* but we filtered it all out (e.g. just tags), that's also a failure.
+            throw new Error("Story Generation Failed: Model returned empty or filtered-out content.");
+        }
 
         // Calculations
         const routerCost = 0; // [MERGED] Input merged into PreLogic, no separate Router cost
@@ -249,6 +261,22 @@ ${userInput}
 
                 // Determine events
                 const events = gameState.events || [];
+
+                // [Fix] Check for Active Event First
+                if (gameState.activeEvent) {
+                    console.log(`[Orchestrator] Active Event Exists (${gameState.activeEvent.id}). Skipping Scan.`);
+                    return {
+                        triggerEventId: null,
+                        currentEvent: gameState.activeEvent.prompt, // Keep enforcing current event prompt
+                        type: 'ACTIVE_MAINTAINED',
+                        candidates: null,
+                        debug: {
+                            serverGameId: gameId,
+                            status: 'ACTIVE_SKIPPED',
+                            loadedEventsCount: events.length
+                        }
+                    };
+                }
 
                 // If ID is Wuxia, we use EventManager
                 if (gameId === 'wuxia') {

@@ -53,11 +53,25 @@ export const GAME_EVENTS: GameEvent[] = [
         priority: 20,
         once: true,
         name: '입문/채용 시험',
-        // Condition: Early game (Turn 5~20), Low Rank
+        // Condition: Early game (Turn 5~30), Low Rank + Specific Location only
         condition: (state) => {
             const turn = state.turnCount || 0;
             const rank = state.playerStats?.playerRank || '삼류';
-            return turn >= 5 && turn <= 30 && (rank === '삼류' || rank === '이류');
+
+            // 1. 기간 및 등급 제한
+            if (turn < 5 || turn > 30 || (rank !== '삼류' && rank !== '이류')) return false;
+
+            // 2. 장소 제한 (거대 세력 근처에서만 발생)
+            const location = state.currentLocation || "";
+            const validLocations = ['무림맹', '가', '세가', '표국', '관청', '도시', '장안', '낙양', '성도'];
+            // '가'(Family) matches 남궁가, 당가, 팽가 etc. '표국'(Escort), '관청'(Office)
+            // Wilderness/Mountains/Caves should be excluded.
+
+            const isNearFaction = validLocations.some(loc => location.includes(loc));
+            if (!isNearFaction) return false;
+
+            // 3. 확률 대폭 감소 (매 턴 5% 확률 -> 25턴 동안 약 72% 확률로 1번 발생, 운 없으면 안 뜸)
+            return Math.random() < 0.05;
         },
         prompt: `
         ## [EVENT: 등용문 (The Gate to Success)]

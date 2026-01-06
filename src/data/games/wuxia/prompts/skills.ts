@@ -28,7 +28,15 @@ All progression maps to the 'Murim' Realm system.
    4. **Movement**: Roots: 보, 신법, 행. Ex: 답설무흔, 수상비.
 
 [Valid Generation Examples]
-- "독고구검" (O), "구천뇌봉" (O), "일보신권" (O)
-- "Fire Punch" (X - English)
-- "화염 펀치" (X - Modern)
+- **Positive (Formal)**:
+  - "유술을 사용하여 적을 매쳤다" -> Create Skill "유술" (O)
+  - "제왕군림보를 수련하였다" -> Create Skill "제왕군림보" (O)
+  - "보법을 밟아 피했다" -> Create Skill "보법" (or specific name if mentioned)
+- **Negative (Generic/Descriptive)**:
+  - "적을 잡아 바닥에 패대기쳤다" -> NO SKILL (Generic Action) (X)
+  - "강대한 기운으로 적을 옭아맸다" -> NO SKILL (Simple Qi Application) (X)
+  - "검을 휘둘러 막았다" -> NO SKILL (Basic Action) (X)
+- **Naming Checks**:
+  - "Fire Punch" (X - English)
+  - "화염 펀치" (X - Modern)
 `;

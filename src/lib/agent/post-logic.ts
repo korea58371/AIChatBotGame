@@ -37,13 +37,15 @@ Your job is to read the generated story turn and identify IMPLICIT changes in th
 Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS, GOALS, and TENSION.
 
 [Memory Logic] (Strict Filtering)
-- **Do NOT record trivial events.** (e.g. "We ate dinner", "He smiled at me", "I felt sad") -> These are handled by Relationship Score.
+- **Do NOT record trivial events.** (e.g. "We ate dinner", "He smiled at me", "I felt sad", "Walked together", "Had a small chat") -> These are handled by Relationship Score.
 - **Record ONLY Long-term Significant Facts:**
   1. **Promises/Contracts:** "Promised to meet at the teahouse at noon", "Agreed to kill the Demon King".
   2. **Permanent Changes:** "Lost a left arm", "Acquired the Legendary Sword", "Housing burned down".
   3. **Skill/Growth:** "Learned the Flying Dragon Fist", "Realized the Dao of Empty Sky".
   4. **Major Secrets:** "Learned that the Player is actually the King", "Discovered the spy".
+  5. **Life-Changing Events:** "Saved from death", "Betrayed by best friend".
 - **Format:** Keep it concise. "Promise: Meet at Teahouse", "Injury: Lost Left Eye".
+- **CRITICAL:** If the event is just a conversation without a major outcome, DO NOT RECORD IT.
 
 [Goal Tracking]
 - Identify if the player creates a new Goal ("I will become the Alliance Leader").
@@ -232,6 +234,12 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 
     const apiKey = this.apiKey;
     if (!apiKey) return {};
+
+    // [Guard] Empty AI Response
+    if (!aiResponse || !aiResponse.trim()) {
+      console.warn("[AgentPostLogic] Empty AI Response provided. Skipping analysis.");
+      return {};
+    }
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
