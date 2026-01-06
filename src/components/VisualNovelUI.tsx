@@ -84,6 +84,26 @@ const formatText = (text: string) => {
     });
 };
 
+
+// Helper to select Protagonist Image based on Personality Tone
+function selectProtagonistImage(personality: string): string {
+    // Mappings based on extra_map.json
+    const mappings: Record<string, string[]> = {
+        'humorous': ['유쾌한주인공1', '유쾌한주인공2', '유쾌한주인공3', '유쾌한주인공4'],
+        'serious': ['원칙적주인공', '성실한주인공', '냉철한주인공'],
+        'cynical': ['계산적주인공1', '계산적주인공2', '계산적주인공3', '영악한주인공1', '영악한주인공2'],
+        'timid': ['소심형주인공'],
+        'domineering': ['패도형주인공1', '패도형주인공2', '패도형주인공3', '패도형주인공4', '패도형주인공5']
+    };
+
+    const candidates = mappings[personality];
+    if (candidates && candidates.length > 0) {
+        return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    // Fallback default
+    return '성실한주인공';
+}
+
 export default function VisualNovelUI() {
     // [Refactor] UI State Hook
     const {
@@ -730,7 +750,7 @@ export default function VisualNovelUI() {
                             const val = Number(normalizedChanges.hp);
                             if (!isNaN(val)) {
                                 newStats.hp = Math.min(Math.max(0, newStats.hp + val), newStats.maxHp);
-                                addToast(`HP ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
+                                addToast(`${t.hp} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
 
                                 // [Fix] Trigger Visual Damage for Inline Tag
                                 if (val < 0) {
@@ -742,28 +762,28 @@ export default function VisualNovelUI() {
                             const val = Number(normalizedChanges.mp);
                             if (!isNaN(val)) {
                                 newStats.mp = Math.min(Math.max(0, newStats.mp + val), newStats.maxMp);
-                                addToast(`MP ${val > 0 ? '+' : ''}${val}`, 'info');
+                                addToast(`${t.mp} ${val > 0 ? '+' : ''}${val}`, 'info');
                             }
                         }
                         if (normalizedChanges.gold !== undefined) {
                             const val = Number(normalizedChanges.gold);
                             if (!isNaN(val)) {
                                 newStats.gold = Math.max(0, newStats.gold + val);
-                                addToast(`Gold ${val > 0 ? '+' : ''}${val}`, 'success');
+                                addToast(`${t.gold} ${val > 0 ? '+' : ''}${val}`, 'success');
                             }
                         }
                         if (normalizedChanges.fame !== undefined) {
                             const val = Number(normalizedChanges.fame);
                             if (!isNaN(val)) {
                                 newStats.fame = Math.max(0, (newStats.fame || 0) + val);
-                                addToast(`Fame ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
+                                addToast(`${t.fame} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
                             }
                         }
                         if (normalizedChanges.morality !== undefined) {
                             const val = Number(normalizedChanges.morality);
                             if (!isNaN(val)) {
                                 newStats.personality = { ...newStats.personality, morality: Math.min(100, Math.max(-100, (newStats.personality?.morality || 0) + val)) };
-                                addToast(`Morality ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
+                                addToast(`${t.morality} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
                             }
                         }
 
@@ -775,10 +795,14 @@ export default function VisualNovelUI() {
                             if (!isNaN(val)) {
                                 if (typeof (newStats as any)[key] === 'number') {
                                     (newStats as any)[key] = ((newStats as any)[key] as number) + val;
-                                    addToast(`${key.toUpperCase()} ${val > 0 ? '+' : ''}${val}`, 'info');
+                                    // @ts-ignore
+                                    const label = t[key] || key.toUpperCase();
+                                    addToast(`${label} ${val > 0 ? '+' : ''}${val}`, 'info');
                                 } else if (newStats.personality && typeof (newStats.personality as any)[key] === 'number') {
                                     (newStats.personality as any)[key] = ((newStats.personality as any)[key] as number) + val;
-                                    addToast(`${key.toUpperCase()} ${val > 0 ? '+' : ''}${val}`, 'info');
+                                    // @ts-ignore
+                                    const label = t[key] || key.toUpperCase();
+                                    addToast(`${label} ${val > 0 ? '+' : ''}${val}`, 'info');
                                 }
                             }
                         });
@@ -925,7 +949,26 @@ export default function VisualNovelUI() {
                 let imagePath = '';
 
                 // Prevent Protagonist Image from showing (Immersion)
+                // [Modified] Allow if Override exists (Persisted Choice)
                 if (charName === '주인공' || charName === playerName) {
+                    const state = useGameStore.getState();
+                    if (state.extraOverrides && state.extraOverrides['주인공']) {
+                        const overrideKey = state.extraOverrides['주인공'];
+                        const extraMap = state.extraMap;
+                        let finalImage = '';
+
+                        if (extraMap && extraMap[overrideKey]) {
+                            finalImage = extraMap[overrideKey];
+                        } else {
+                            finalImage = `${overrideKey}.png`;
+                        }
+
+                        // Set full path
+                        imagePath = `/assets/${useGameStore.getState().activeGameId || 'wuxia'}/ExtraCharacters/${finalImage}`;
+                        setCharacterExpression(imagePath);
+                        return;
+                    }
+
                     setCharacterExpression('');
                     return;
                 }
@@ -3870,6 +3913,14 @@ Instructions:
                                                     pLink.warmth = (pLink.warmth || 0) - 5;
                                                 }
                                                 newStats.personality = pLink;
+
+                                                // [New] Protagonist Image Selection
+                                                const protoImage = selectProtagonistImage(pTone);
+                                                if (protoImage) {
+                                                    const currentOverrides = useGameStore.getState().extraOverrides || {};
+                                                    useGameStore.getState().setExtraOverride('주인공', protoImage);
+                                                    console.log("[Creation] Selected Protagonist Image:", protoImage);
+                                                }
 
                                                 // [Bonus Application] Final Goal (5문)
                                                 // Stored for Narrative Guidance in PreLogic

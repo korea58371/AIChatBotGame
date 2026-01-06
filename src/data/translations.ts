@@ -89,6 +89,7 @@ export const translations = {
         memoriesLabel: "Memories (Read-Only):", // [New]
         andXMore: "more", // [New]
         gold: "Gold",
+        fame: "Fame", // [New]
         exp: "EXP",
         str: "STR (Strength)",
         agi: "AGI (Agility)",
@@ -249,6 +250,7 @@ export const translations = {
         memoriesLabel: "기억 (Read-Only):", // [New]
         andXMore: "개 더보기", // [New]
         gold: "골드",
+        fame: "명성", // [New]
         exp: "경험치",
         str: "STR (힘)",
         agi: "AGI (민첩)",
