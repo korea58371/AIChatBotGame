@@ -145,7 +145,9 @@ export class PromptManager {
         // [수정] 사용자의 요청대로 Mood별 프롬프트 자체가 정적이므로, 캐시 키를 Mood 자체로 설정합니다.
         // [SHARED CACHE KEY]
         // Remove 'mood' dependency. This key is now unified for the game.
-        const cacheKey = `${PromptManager.CACHE_PREFIX}${state.activeGameId}_SHARED_${PromptManager.CACHE_VERSION}`;
+        // [New] Add Persona Override to Cache Key
+        const overrideKey = state.personaOverride ? `_PERSONA_${state.personaOverride}` : '';
+        const cacheKey = `${PromptManager.CACHE_PREFIX}${state.activeGameId}_SHARED_${PromptManager.CACHE_VERSION}${overrideKey}`;
         console.log(`[PromptManager] Generated Shared Cache Key: ${cacheKey}`);
 
         // 브라우저 환경이라면, 로컬 스토리지에서 먼저 로드 시도 (새로고침 옵션이 꺼져있을 때)
@@ -161,7 +163,8 @@ export class PromptManager {
 
         // [SANDWICH STRUCTURE: BLOCKS 1-4 (SHARED STATIC)]
         if (state.activeGameId === 'wuxia') {
-            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA } = await import('../data/games/wuxia/constants');
+            const CONSTANTS = await import('../data/games/wuxia/constants');
+            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA } = CONSTANTS;
 
             // [BLOCK 1: IDENTITY]
             const systemIdentity = WUXIA_IDENTITY;
@@ -169,11 +172,28 @@ export class PromptManager {
             // [BLOCK 2: KNOWLEDGE BASE]
             // 2.1 Lore Injection (Markdown/JSON) - Now includes Factions via LoreConverter
             let loreContext = "";
+
+            // [New] Determine Persona (Default vs Override)
+            let selectedPersona = WUXIA_PROTAGONIST_PERSONA;
+            if (state.personaOverride) {
+                // Determine which Persona to load
+                if (state.personaOverride === 'WUXIA_IM_SEONG_JUN_PERSONA') {
+                    // @ts-ignore
+                    selectedPersona = CONSTANTS.WUXIA_IM_SEONG_JUN_PERSONA || WUXIA_PROTAGONIST_PERSONA;
+                } else if (state.personaOverride === 'WUXIA_NAM_GANG_HYEOK_PERSONA') {
+                    // @ts-ignore
+                    selectedPersona = CONSTANTS.WUXIA_NAM_GANG_HYEOK_PERSONA || WUXIA_PROTAGONIST_PERSONA;
+                }
+                // Add more overrides here if needed
+                console.log(`[PromptManager] Injecting Persona Override: ${state.personaOverride}`);
+            }
+
             if (state.lore) {
                 try {
                     // LoreConverter now handles the header and Possessor Persona injection
                     // Use 'daily' as default context for shared lore, or pass empty to be neutral
-                    loreContext = LoreConverter.convertToMarkdown(state.lore, WUXIA_PROTAGONIST_PERSONA, 'daily');
+                    // [Fix] Pass selectedPersona instead of hardcoded default
+                    loreContext = LoreConverter.convertToMarkdown(state.lore, selectedPersona, 'daily');
                 } catch (e: any) {
                     console.error("[PromptManager] LoreConverter Failed! Falling back to JSON.");
                     loreContext = JSON.stringify(PromptManager.deepSort(state.lore), null, 2);

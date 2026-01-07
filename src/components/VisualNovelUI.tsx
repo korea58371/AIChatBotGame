@@ -7,6 +7,7 @@ import { useGameStore, GameState, Skill } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn, serverAgentTurnPhase1, serverAgentTurnPhase2, serverGenerateCharacterMemorySummary } from '@/app/actions/game';
 import { getCharacterImage } from '@/lib/image-mapper';
+import { isHiddenProtagonist } from '@/lib/utils/character-utils';
 import { resolveBackground } from '@/lib/background-manager';
 import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
 import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/model-config';
@@ -14,7 +15,7 @@ import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping';
-import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP } from '@/data/games/wuxia/constants'; // [New] UI Constants
+import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP, WUXIA_IM_SEONG_JUN_SCENARIO, WUXIA_NAM_GANG_HYEOK_SCENARIO } from '@/data/games/wuxia/constants'; // [New] UI Constants
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants'; // [New] UI Constants
 import wikiData from '@/data/games/wuxia/wiki_data.json'; // [NEW] Wiki Data Import
 
@@ -288,6 +289,42 @@ export default function VisualNovelUI() {
         }
     }, [turnCount, characterCreationQuestions, activeGameId, isDataLoaded, scriptQueue, choices]);
 
+    // [Fix] Retroactive Hidden Settings Application (Re-apply if missing)
+    useEffect(() => {
+        if (!isDataLoaded) return;
+        const state = useGameStore.getState();
+        if (state.activeGameId !== 'wuxia') return;
+
+        // Dynamic Import to avoid circular dependencies/bloat if unnecessary
+        import('../data/games/wuxia/character_creation').then(({ getHiddenSettings }) => {
+            const hidden = getHiddenSettings(state.playerName);
+
+            // [Debug] Always show status
+            const statusMsg = `진단: 이름=${state.playerName}, Override=${state.protagonistImageOverride || '없음'}, HiddenFound=${!!hidden}`;
+            console.log(statusMsg);
+
+            if (hidden && hidden.imageOverride) {
+                // If store is missing the override (from older session state), apply it now
+                if (state.protagonistImageOverride !== hidden.imageOverride) {
+                    console.log(`[Retroactive Fix] Applying missing image override for ${state.playerName}`);
+                    state.setHiddenOverrides({
+                        persona: hidden.personaOverride,
+                        scenario: hidden.scenarioOverride,
+                        disabledEvents: hidden.disabledEvents,
+                        protagonistImage: hidden.imageOverride
+                    });
+                    addToast(`설정 복구됨! ${statusMsg}`, 'success');
+                } else {
+                    // It is already set correctly
+                    addToast(`설정 정상임. ${statusMsg}`, 'info');
+                }
+            } else {
+                // Not a hidden character
+                addToast(`히든 아님. ${statusMsg}`, 'info');
+            }
+        });
+    }, [isDataLoaded, activeGameId]);
+
     // [Localization]
     const t = translations[language as keyof typeof translations] || translations.en;
 
@@ -354,6 +391,10 @@ export default function VisualNovelUI() {
         const state = useGameStore.getState();
         if (state.characterMap && state.characterMap[charName]) return;
         if (state.extraOverrides && state.extraOverrides[charName]) return;
+
+        // [New] Skip if this is the Hidden Protagonist
+        // If the current character matches the override name (e.g. "남강혁"), do NOT treat as random extra
+        if (state.protagonistImageOverride && (charName === state.protagonistImageOverride || charName === state.playerName)) return;
 
         // 2. Find Best Match in availableExtraImages
         // We need a custom loose match because findBestMatch is strict
@@ -771,6 +812,36 @@ export default function VisualNovelUI() {
         setBgm(bgmPath);
     };
 
+    // [Fix] Self-Correction for Stale Save State (Hidden Protagonist Image)
+    // This ensures that even if the save file has the wrong image path, it corrects itself on load.
+    useEffect(() => {
+        if (!currentSegment || !currentSegment.character) return;
+
+        const state = useGameStore.getState();
+        const pOverride = state.protagonistImageOverride;
+
+        if (!pOverride) return;
+
+        const charName = currentSegment.character;
+        const isHiddenProtagonist =
+            charName === '주인공' ||
+            charName === '나' ||
+            charName === 'Me' ||
+            charName === state.playerName ||
+            charName === pOverride;
+
+        if (isHiddenProtagonist) {
+            const gameId = state.activeGameId || 'wuxia';
+            const expectedPath = `/assets/${gameId}/characters/${pOverride}.png`;
+
+            // If current display is wrong (different path or empty), force update
+            if (characterExpression !== expectedPath) {
+                console.log("[Auto-Fix] Correcting Stale Protagonist Image:", expectedPath);
+                setCharacterExpression(expectedPath);
+            }
+        }
+    }, [currentSegment, characterExpression, useGameStore.getState().protagonistImageOverride]);
+
     const advanceScript = () => {
         // Handle Character Exit (Exit Tag Logic)
         if (currentSegment?.characterLeave) {
@@ -1027,7 +1098,7 @@ export default function VisualNovelUI() {
         setScriptQueue(currentQueue.slice(1));
         setCurrentSegment(nextSegment);
 
-        if (nextSegment.type === 'dialogue' && nextSegment.expression) {
+        if (nextSegment.type === 'dialogue') {
             // [New] Dynamic Override for Extra Characters
             const charMap = useGameStore.getState().characterMap || {};
             const isMainCharacter = !!charMap[nextSegment.character || ''];
@@ -1037,16 +1108,27 @@ export default function VisualNovelUI() {
                 useGameStore.getState().setExtraOverride(nextSegment.character, nextSegment.characterImageKey);
             }
 
-            if (nextSegment.character && nextSegment.expression) {
+            if (nextSegment.character) {
                 // Determine Name and Emotion from AI output
                 // AI is instructed to output Korean Name and Korean Emotion.
                 const charName = nextSegment.character === playerName ? '주인공' : nextSegment.character;
-                const emotion = nextSegment.expression; // AI output (e.g., '기쁨', 'Happy')
+                const emotion = nextSegment.expression || 'Default'; // AI output (e.g., '기쁨', 'Happy')
 
                 let imagePath = '';
 
                 // Prevent Protagonist Image from showing (Immersion)
                 // [Modified] Allow if Override exists (Persisted Choice)
+                const state = useGameStore.getState();
+                // [Fix] Priority 0: Hidden Protagonist Override
+                // If this is a hidden character, we MUST show their specific image.
+                if (isHiddenProtagonist(charName, playerName, state.protagonistImageOverride)) {
+                    // [Fix] Force distinct image for hidden protagonist
+                    // We can now safely rely on getCharacterImage because image-mapper also checks isHiddenProtagonist
+                    imagePath = getCharacterImage(charName, emotion);
+                    setCharacterExpression(imagePath);
+                    return; // Skip standard hiding logic
+                }
+
                 if (charName === '주인공' || charName === playerName) {
                     const state = useGameStore.getState();
                     if (state.extraOverrides && state.extraOverrides['주인공']) {
@@ -2353,7 +2435,7 @@ export default function VisualNovelUI() {
                 setIsLogicPending(false);
 
                 // Set character expression if the first segment is dialogue
-                if (first.type === 'dialogue' && first.expression && first.character) {
+                if (first.type === 'dialogue' && first.character) {
                     const charMap = useGameStore.getState().characterMap || {};
                     const isMainCharacter = !!charMap[first.character];
 
@@ -2364,7 +2446,7 @@ export default function VisualNovelUI() {
                     }
 
                     const charName = first.character === playerName ? '주인공' : first.character;
-                    const emotion = first.expression;
+                    const emotion = first.expression || 'Default';
                     const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
                     const extraMap = useGameStore.getState().extraMap;
 
@@ -2373,16 +2455,20 @@ export default function VisualNovelUI() {
 
                     // [Fix] Explicit Key Lookup (Priority)
                     // Only use characterImageKey if NOT a Main Character (unless we add a costume system later)
-                    if (first.characterImageKey && !isMainCharacter) {
+                    // [Fix] Also skip if text is from Hidden Protagonist (who has a forced image override)
+                    const state = useGameStore.getState();
+                    const isHiddenProtagonistMatch = isHiddenProtagonist(first.character, playerName, state.protagonistImageOverride);
+
+                    if (first.characterImageKey && !isMainCharacter && !isHiddenProtagonistMatch) {
                         if (extraMap && extraMap[first.characterImageKey]) {
                             imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[first.characterImageKey]}`;
                         } else {
                             imagePath = getCharacterImage(first.characterImageKey, emotion);
                         }
                     }
-                    else if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
+                    else if (availableExtraImages && availableExtraImages.includes(combinedKey) && !isHiddenProtagonist) {
                         imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
-                    } else if (extraMap && extraMap[charName]) {
+                    } else if (extraMap && extraMap[charName] && !isHiddenProtagonist) {
                         imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
                     } else {
                         imagePath = getCharacterImage(charName, emotion);
@@ -4137,8 +4223,9 @@ Instructions:
                                                 const protoImage = selectProtagonistImage(pTone);
                                                 if (protoImage) {
                                                     const currentOverrides = useGameStore.getState().extraOverrides || {};
-                                                    useGameStore.getState().setExtraOverride('주인공', protoImage);
-                                                    console.log("[Creation] Selected Protagonist Image:", protoImage);
+                                                    // Bind to PLAYER NAME for persistence (ImageMapper resolves '주인공' -> PlayerName)
+                                                    useGameStore.getState().setExtraOverride(finalName, protoImage);
+                                                    console.log("[Creation] Selected Protagonist Image:", protoImage, "for", finalName);
                                                 }
 
                                                 // [Bonus Application] Final Goal (5문)
@@ -4169,9 +4256,25 @@ Instructions:
                                                     if (hidden && hidden.found) {
                                                         console.log("Applying Hidden Settings:", hidden);
 
+                                                        // [New] Apply Overrides to Store
+                                                        useGameStore.getState().setHiddenOverrides({
+                                                            persona: hidden.personaOverride,
+                                                            scenario: hidden.scenarioOverride,
+                                                            disabledEvents: hidden.disabledEvents,
+                                                            protagonistImage: hidden.imageOverride // [New]
+                                                        });
+
                                                         // 1. Append Narrative
                                                         prompt += `\n${hidden.narrative}\n`;
-                                                        addToast(`히든 설정 발견: ${hidden.statsModifier?.faction}`, 'success');
+
+                                                        // [New] Append Scenario Override if matching
+                                                        if (hidden.scenarioOverride === 'WUXIA_IM_SEONG_JUN_SCENARIO') {
+                                                            prompt += `\n[SCENARIO KEY OVERRIDE]\n${WUXIA_IM_SEONG_JUN_SCENARIO}\n`;
+                                                        } else if (hidden.scenarioOverride === 'WUXIA_NAM_GANG_HYEOK_SCENARIO') {
+                                                            prompt += `\n[SCENARIO KEY OVERRIDE]\n${WUXIA_NAM_GANG_HYEOK_SCENARIO}\n`;
+                                                        }
+
+                                                        addToast(`히든 설정 발동: ${hidden.statsModifier?.faction || 'Unknown'}`, 'success');
 
                                                         // 2. Apply Stats
                                                         if (hidden.statsModifier) {
@@ -4184,6 +4287,16 @@ Instructions:
                                                             // Apply other modifiers if needed
                                                             if (hidden.statsModifier.active_injuries) {
                                                                 newStats.active_injuries = [...(newStats.active_injuries || []), ...hidden.statsModifier.active_injuries];
+                                                            }
+
+                                                            // Apply Personality Modifier if present
+                                                            if (hidden.statsModifier.personality) {
+                                                                // Merge or Overwrite? Let's Merge additively
+                                                                Object.keys(hidden.statsModifier.personality).forEach(k => {
+                                                                    const key = k as keyof typeof newStats.personality;
+                                                                    // @ts-ignore
+                                                                    newStats.personality[key] = (newStats.personality[key] || 0) + (hidden.statsModifier.personality[key] || 0);
+                                                                });
                                                             }
 
                                                             // Commit merged stats

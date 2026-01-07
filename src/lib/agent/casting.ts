@@ -96,23 +96,7 @@ export class AgentCasting {
             let actScore = baseScore;
             const actReasons: string[] = [...regionReasons];
 
-            // 1. Rank Penalty (Active Only)
-            // Determine Player Rank Value
-            const pRankVal = AgentCasting.getRankFromLevel(playerLevel);
-
-            const rankGap = charLevel - pRankVal;
-
-            if (rankGap >= 2) {
-                // Too Strong (Anti-Bullying)
-                actScore *= 0.1;
-                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Strong]`);
-            } else if (rankGap <= -2) {
-                // Too Weak (Anti-Clutter) - Ignored if User Mentioned or Related
-                // If Player is multiple ranks above, these should be Background/Extras.
-                // Exception: If they are 'Related' (checked later) they get bonus back. activeScore is cumulative.
-                actScore *= 0.5;
-                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Weak]`);
-            }
+            // 1. Rank Penalty (Moved to End)
 
             // 2. Location/Tag Bonus (Active)
             const affiliationStr = cAny.profile?.소속 || cAny.소속 || "";
@@ -143,6 +127,10 @@ export class AgentCasting {
             if (tags.length > 0) {
                 for (const tag of tags) {
                     if (!tag) continue;
+                    // [Fix] Balance Issue: Single character tags (e.g. '공', '용', '일') trigger too easily.
+                    // Ignore them unless specifically whitelisted (none for now).
+                    if (tag.length < 2) continue;
+
                     // User Input Match (Strong)
                     if (userInput.includes(tag)) {
                         actScore += 1.5;
@@ -165,6 +153,24 @@ export class AgentCasting {
                     actScore += 2.0;
                     actReasons.push(`Related to ${activeId}`);
                 }
+            }
+
+            // [Moved] Rank Penalty (Final Calc)
+            // Apply AFTER all bonuses to strictly gate content.
+            const pRankVal = AgentCasting.getRankFromLevel(playerLevel);
+            const rankGap = charLevel - pRankVal;
+
+            if (rankGap >= 2) {
+                // Too Strong (Anti-Bullying)
+                // Exception: If explicitly mentioned by user, we allow it slightly more (already +10 bonus).
+                // 10 * 0.1 = 1.0 (Passable).
+                // 3.0 (Tags) * 0.1 = 0.3 (Fail).
+                actScore *= 0.1;
+                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Strong] (Final)`);
+            } else if (rankGap <= -2) {
+                // Too Weak
+                actScore *= 0.5;
+                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Weak] (Final)`);
             }
 
 

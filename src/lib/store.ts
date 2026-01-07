@@ -174,9 +174,22 @@ export interface GameState {
   addSkill: (skill: Skill) => void;
   updateSkill: (id: string, updates: Partial<Skill>) => void;
 
-  // [NEW] Choice History for Adaptive Choices
+  // [NEW] Choise History for Adaptive Choices
   choiceHistory: ChoiceHistoryEntry[];
   addChoiceToHistory: (entry: ChoiceHistoryEntry) => void;
+
+  // [New] Session Overrides (Hidden Characters)
+  personaOverride?: string; // Key for alternate Persona (e.g. Non-possessor)
+  scenarioOverride?: string; // Key for alternate Start Scenario
+  disabledEvents?: string[]; // List of Event IDs to block
+  protagonistImageOverride?: string; // [New] Forces specific image file for '주인공'
+
+  setHiddenOverrides: (overrides: {
+    persona?: string,
+    scenario?: string,
+    disabledEvents?: string[],
+    protagonistImage?: string
+  }) => void;
 }
 
 export interface ChoiceHistoryEntry {
@@ -619,6 +632,15 @@ export const useGameStore = create<GameState>()(
         skills: state.skills.map(s => s.id === id ? { ...s, ...updates } : s)
       })),
 
+      setHiddenOverrides: (overrides) => {
+        set((state) => ({
+          personaOverride: overrides.persona !== undefined ? overrides.persona : state.personaOverride,
+          scenarioOverride: overrides.scenario !== undefined ? overrides.scenario : state.scenarioOverride,
+          disabledEvents: overrides.disabledEvents !== undefined ? overrides.disabledEvents : state.disabledEvents,
+          protagonistImageOverride: overrides.protagonistImage !== undefined ? overrides.protagonistImage : state.protagonistImageOverride
+        }));
+      },
+
       choiceHistory: [],
       addChoiceToHistory: (entry) => set((state) => {
         const newHistory = [...state.choiceHistory, entry];
@@ -666,6 +688,10 @@ export const useGameStore = create<GameState>()(
           deadCharacters: [], // [Fix] Add missing reset for dead characters
           isGodMode: false, // [Fix] Reset debug mode
           currentBgm: null, // [Fix] Reset BGM
+          personaOverride: undefined,
+          scenarioOverride: undefined,
+          disabledEvents: [],
+          protagonistImageOverride: undefined // [Fix] Reset image override
         });
       },
     }),

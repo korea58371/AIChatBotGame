@@ -232,9 +232,84 @@ export function getHiddenSettings(name: string): {
     found: boolean;
     familyId?: string;
     narrative?: string;
+    personaOverride?: string;
+    scenarioOverride?: string;
+    disabledEvents?: string[];
+    imageOverride?: string; // [New]
     statsModifier?: Partial<PlayerStats>;
 } | null {
     const trimmedName = name.trim();
+
+    // [New] Special Character: Im Seong-jun (Hidden)
+    if (trimmedName === '임성준') {
+        return {
+            found: true,
+            familyId: 'hidden_im',
+            narrative: `
+[히든 설정 발동: 차원 이동자]
+당신은 대한민국 서울의 40세 편의점 아르바이트생 '임성준'입니다.
+야간 근무 중 알 수 없는 굉음과 함께 이 세계로 소환되었습니다.
+당신은 **현대의 몸 그대로(편의점 유니폼 착용)**이며, 이 세계가 소설 속이라는 것을 모릅니다.
+`,
+            // These will be used to override GameState
+            personaOverride: 'WUXIA_IM_SEONG_JUN_PERSONA', // Key reference (resolved in prompt-manager)
+            scenarioOverride: 'WUXIA_IM_SEONG_JUN_SCENARIO', // Key reference (resolved in UI)
+            disabledEvents: ['wuxia_intro'],
+            imageOverride: '임성준', // [New]
+
+            statsModifier: {
+                faction: '무소속 (차원 이동자)',
+                personalitySummary: '차원 이동자 (현대인 신체, 편의점 유니폼 착용, 오타쿠, 겉과 속이 다름, 게으름, 여색, 망상)',
+                // 40yo average male stats (High INT due to Otaku knowledge? Low VIT due to laziness)
+                str: 6, agi: 6, int: 14, vit: 6, luk: 20, // Low Phys, High Luck & Int
+                skills: [], // No martial arts
+                personality: {
+                    morality: -20, // Hypocritical
+                    courage: -20, // Cowardly
+                    patience: 10,
+                    energy: -40, // Very Lazy
+                    decision: -10,
+                    lifestyle: -30, // Unorganized/Otaku lifestyle
+                    openness: 30, // Open to delusions
+                    warmth: 10,
+                    eloquence: 10,
+                    leadership: -30,
+                    humor: 20,
+                    lust: 50 // Very Lustful
+                } as any
+            }
+        };
+    } else if (trimmedName === '남강혁') {
+        return {
+            found: true,
+            personaOverride: 'WUXIA_NAM_GANG_HYEOK_PERSONA',
+            scenarioOverride: 'WUXIA_NAM_GANG_HYEOK_SCENARIO', // New constant key
+            disabledEvents: ['wuxia_intro'], // Disable Possessor Intro
+            imageOverride: '남강혁', // [New]
+            narrative: "※ 특수 설정 '남강혁(전투광 마초)'가 활성화되었습니다.\n(근력/체력 대폭 증가, 지능 감소, 무림을 드래곤볼 식으로 해석)",
+            statsModifier: {
+                faction: '무소속 (전투광)',
+                personalitySummary: '차원 이동자 (무림을 드래곤볼로 착각, 마초, 의리파, 단순무식, 애완견 마루/꿍이 집착)',
+                // Macho Stats: High Phys, Low Int
+                str: 18, agi: 12, int: 5, vit: 20, luk: 10,
+                skills: [], // No martial arts yet? Or maybe "Basic Fitness"?
+                personality: {
+                    morality: 10,
+                    courage: 50, // Very Brave
+                    patience: -20, // Impatient
+                    energy: 30, // Energetic
+                    decision: 20,
+                    lifestyle: 10, // Routine training
+                    openness: -30, // Simple minded
+                    warmth: 40, // Bromance warmth
+                    eloquence: -20, // Blunt
+                    leadership: 10,
+                    humor: 0,
+                    lust: 10 // Normal?
+                } as any
+            }
+        };
+    }
 
     // Check for famous surnames
     // Sort keys by length desc to match 'Namgung' (2 chars) before others if there's overlap

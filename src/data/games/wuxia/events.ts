@@ -11,7 +11,16 @@ export const GAME_EVENTS: GameEvent[] = [
         priority: 1,
         once: true,
         name: '강호출두',
-        condition: (state) => (!state.turnCount || state.turnCount <= 3),
+        condition: (state) => {
+            // [Generic] Check if event is disabled by hidden settings
+            if (state.disabledEvents?.includes('wuxia_intro')) return false;
+
+            // [Failsafe] Hidden Characters Hard Check
+            const name = (state.playerName || '').trim();
+            if (name === '임성준' || name === '남강혁') return false;
+
+            return !state.turnCount || state.turnCount <= 3;
+        },
         prompt: `
         ## [EVENT: 빙의자의 각성]
         (System: 현재 이야기의 흐름을 끊지 말고, 주인공의 내면 심리로 자연스럽게 연결할 것.)

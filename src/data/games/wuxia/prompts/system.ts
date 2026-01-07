@@ -135,6 +135,16 @@ ${perspectiveRule}
 *피로도가 90 이상이면 모든 행동은 실패합니다. 경지 차이가 나면 즉사합니다.*
 **CRITICAL**: [SYSTEM-INTERNAL] 태그나 내부 수치(Score, Rank 등)를 절대 발설하지 마십시오.
 
+**[서술 및 출력 포맷 절대 규칙]**
+1. **주인공 대사 태그 고정**:
+   - 주인공의 대사 출력 시, 태그의 이름은 무조건 **'${state.playerName || '주인공'}'**이어야 합니다.
+   - **절대 금지**: <대사>나_기쁨, <대사>주인공_기쁨, <대사>Me_Happy 등 대명사 사용 금지.
+   - **올바른 예시**: <대사>${state.playerName || '주인공'}_기쁨: "이봐, 거기 서!"
+   - 이유: 시스템이 이미지를 바인딩하기 위해 정확한 키(Player Name)가 필요합니다.
+
+2. **서술(나레이션) 시점 준수**:
+   - 위 [서술 시점] 규칙(1인칭/3인칭)에 따라 본문 서술을 진행하십시오. 단, 대사 태그만큼은 시점과 무관하게 '이름'을 써야 합니다.
+
 - **현재 시간**: ${state.day || 1}일차 ${state.time || '14:00'}
 - **현재 위치**: ${state.currentLocation}
   - **설명**: ${locationDesc}${locationSecrets}
@@ -147,12 +157,6 @@ ${perspectiveRule}
 주인공은 현재 **'${playerRank}'** 경지이다. 
 - **${playerRank}**의 한계: ${rankData.능력}
 - 상위 경지와의 싸움은 자살행위이며, 동급이라도 방심하면 즉사한다.
-
-
-# [SCENARIO & SUMMARY]
-- **활성 이벤트**: ${state.activeEvent ? `[${state.activeEvent.title || state.activeEvent.id}]` : (state.currentEvent || "없음")}
-${state.activeEvent ? `\n### [⚡ 중요: 활성 이벤트 세부 지침 (Active Event Guide)]\n${state.activeEvent.prompt}\n\n**위 이벤트 지침을 최우선으로 반영하여 스토리와 묘사를 전개하십시오.**` : ""}
-- **전체 줄거리 요약**: ${state.scenarioSummary || "아직 요약된 정보가 없습니다."}
 
 ${firstTurnGuide}
 `;

@@ -1,6 +1,10 @@
+import { isHiddenProtagonist } from './utils/character-utils';
 import { useGameStore } from './store';
 
-// [Unified Emotion Map]
+// ... (existing imports)
+
+// ...
+
 // Shared across 'wuxia' and 'god_bless_you' after standardization (Dec 2025).
 // Final Standard Version - Contains only the canonical keys expected from the AI.
 const unifiedEmotionMap: Record<string, string> = {
@@ -66,9 +70,25 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
         return ''; // 빈 문자열 반환 (시스템이 처리하도록)
     }
 
+    // [Alias Resolution] Normalize '주인공'/'나' -> Player Name
+    // This ensures consistent lookup for both Overrides and CharMap
+    let resolvedName = koreanName;
+    if (koreanName === '주인공' || koreanName === '나' || koreanName === 'Me') {
+        resolvedName = state.playerName || '';
+    }
+
+    // [Priority 1] Protagonist Image Override (Hidden Characters)
+    // Must be checked BEFORE extraOverrides to prevent "Seong-jun" being caught as a generic extra
+    // Note: isHiddenProtagonist handles its own aliasing checks usually, but passing resolvedName is safer?
+    // Actually, isHiddenProtagonist checks 'Name' vs 'PlayerName'.
+    if (isHiddenProtagonist(koreanName, state.playerName || '', state.protagonistImageOverride)) {
+        return `${charBasePath}/${state.protagonistImageOverride}.png`;
+    }
+
     // [Overrides] Dynamic Mapping from <대사> input
-    if (state.extraOverrides && state.extraOverrides[koreanName]) {
-        const overrideKey = state.extraOverrides[koreanName];
+    // Check using RESOLVED name (so overrides bound to 'CheolU' work for 'Overview')
+    if (state.extraOverrides && state.extraOverrides[resolvedName]) {
+        const overrideKey = state.extraOverrides[resolvedName];
 
         // 1. Check Extra Map for the override key
         if (extraMap[overrideKey]) {
@@ -83,7 +103,8 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
     }
 
     // 1. 메인 캐릭터 매핑 확인
-    const charId = charMap[koreanName];
+    // Use resolvedName
+    const charId = charMap[resolvedName];
 
     // 2. 감정 매핑 확인 (Unified Map)
     const emotionKeyword = unifiedEmotionMap[koreanEmotion] || 'Default';
@@ -97,6 +118,8 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
     if (availableExtraImages.includes(koreanName)) {
         return `${extraBasePath}/${koreanName}.png`;
     }
+
+
 
     // B. 메인 캐릭터인 경우
     if (charId) {

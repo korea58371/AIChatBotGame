@@ -44,10 +44,11 @@ export class AgentPreLogic {
     // 1점: 불가능/망상 (시도 자체가 무시되거나 즉각 차단됨)
     private static readonly PLAUSIBILITY_RUBRIC = `
 [Plausibility Scoring Rubric (1-10)]
-The AI MUST assign a score based on REALISM within the Wuxia context.
+The AI MUST assign a score based on REALISM, LOGIC, and STRICT CONTEXT ADHERENCE.
 
 **Score 10 (Miraculous/Perfect)**: 
 - Geniuses only. Uses environment/physics perfectly. Overcomes gaps with undeniable logic.
+- NO added conveniences. Pure skill.
 - Result: Critical Success + Narrative Advantage.
 
 **Score 7-9 (Great/Solid)**:
@@ -56,18 +57,21 @@ The AI MUST assign a score based on REALISM within the Wuxia context.
 
 **Score 4-6 (Average/Risky)**:
 - Standard actions. "I attack him." "I run away."
+- Actions relying on minor luck or assumptions.
 - Result: Standard outcome (Stat/Dice check mostly hidden).
 
-**Score 2-3 (Unlikely/Flawed)**:
+**Score 2-3 (Unlikely/Flawed/Hallucinated)**:
 - Ignores disadvantage. Poor tactic. "I punch the steel wall."
+- **Inventing convenient facts** (e.g., "I suddenly remember I have a bomb" when not inventory).
+- **Adding unmentioned settings** (e.g., "He is actually my brother" when not in lore).
 - Result: Failure + Minor Consequence.
 
 **Score 1 (Impossible/God-Mode)**:
 - Violates limitations. Controlling NPCs ("She loves me"). Controlling Reality ("It rains").
+- Blatant Hallucination or Lying about context.
 - **Result: IMMEDIATE DENIAL.**
 - **CRITICAL:** Do NOT describe the success and then "it was a dream".
 - **Describe the World resisting.** (e.g., User: "She kisses me." -> Response: "She pushes you away coldly.")
-- The attempt happens, but the desired outcome is BLOCKED by reality.
 `;
 
     // [핵심 판정 규칙 (Core Rules)]
@@ -84,6 +88,17 @@ CRITICAL: The Player controls ONLY their own character.
    - Narrative: She looks at you with confusion or indifference. (Do NOT say "You thought she loved you but...")
 2. **NO Instant Mastery**: The player CANNOT suddenly become a master. Growth takes time. 
 3. **NO World Control**: The player CANNOT dictate world events.
+
+[Strict Context & Anti-Hallucination Protocol]
+**CRITICAL**: You must judgment based ONLY on the provided [Context], [Active Characters], and [Helper/Target Info].
+1. **NO Invented Settings**: 
+   - Do NOT accept user claims about the world unless supported by [Lore] or [Context].
+   - Example User: "I use the secret passage here." (If no passage in Context -> Fail).
+   - Example User: "He remembers my father." (If no such link in Character Info -> Fail/Confused reaction).
+2. **NO False Memories**: 
+   - If the user adds a flashback or memory that was not in [Previous Turn] or [Context], treat it as a **Delusion** or **Lie**.
+   - Result: NPCs will not understand or will call it out. "What are you talking about?"
+3. **Only Verified Assets**: Use only items/skills listed in [Player Capability].
 
 [Fate Intervention System]
 User can spend 'Fate Points' to bend reality.
@@ -195,6 +210,24 @@ ${this.PLAUSIBILITY_RUBRIC}
 
 ${this.CORE_RULES}
 
+[Reasoning Steps (Mental Process)]
+Follow this logical flow to reach your judgment.
+STEP 1: **Analyze Input**
+   - Identify Intent (Combat/Dialogue/Action) and Target.
+   - Separate "Intended Action" from "Desired Result".
+STEP 2: **Context Verification (Anti-Hallucination)**
+   - Check [Active Characters] & [Context]. Does the Target exist?
+   - Check [User Input]. Does it imply specific settings/memories?
+   - **Validation**: If User mentions a fact NOT in Context/History -> Flag as Hallucination (Score Deduction).
+STEP 3: **Feasibility Calculation**
+   - **Combat**: Compare Ranks. Apply modifiers for Surprise/Tactics.
+   - **Dialogue**: Check Personality Resonance. Is the approach logical?
+   - **Action**: Is it physically possible?
+STEP 4: **Final Judgment**
+   - Assign Plausibility Score (1-10).
+   - Determine Success/Failure.
+   - Draft Narrative Guide.
+
 [Intent Classification Rules]
 - **combat**: Attacking, defending, using skills (Martial Arts), fleeing, tactical movement.
 - **dialogue**: Speaking to characters, asking questions, emotional expression.
@@ -216,7 +249,7 @@ ${this.CORE_RULES}
      * Logical/Respectful -> Effective on Scholars/Righteous.
      * Aggressive/Rough -> Effective on Bandits/Unorthodox.
      * Emotional -> Effective on Intimate relationships.
-   - Outcome: Target reacts favorably vs Refuses/Gets angry.
+    - Outcome: Target reacts favorably vs Refuses/Gets angry.
 
 3. IF Intent == 'action' (Use [Reality Judge]):
    - Focus: CAUSALITY & PHYSICALITY.
@@ -229,7 +262,7 @@ ${this.CORE_RULES}
     "target": "Target Name/ID (optional, e.g. 'Bandit Leader')",
     "mood_override": "daily" | "tension" | "combat" | "romance" | null,
     "plausibility_score": number, // 1-10
-    "judgment_analysis": "Brief reasoning.",
+    "judgment_analysis": "Step-by-step reasoning used.",
     "combat_analysis": "Compare Player vs Target strength. Estimate winning chance.",
     "emotional_context": "Summarize active character sentiments (Hidden/Overt). e.g. 'A loves B, B is curious about A'.",
     "character_suggestion": "Suggest a relevant character to appear/react if appropriate. Or 'None'.",
@@ -244,7 +277,10 @@ ${this.CORE_RULES}
 [Guide Generation Instructions]
 1. **Combat Guide**: If intent is 'combat' or tension is high, compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
 2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
-3. **Character Guide**: Check [Casting Suggestions]. PROACTIVELY suggest their entrance if relevant.
+3. **Character Guide**: Check [Casting Suggestions]. 
+   - **PROACTIVELY SUGGEST** characters to appear. 
+   - If the scene is boring or static, **FORCE** a character appearance from the list. 
+   - Don't wait for the user to ask. "Unexpected meetings" drive the story.
 4. **Goal Guide**: Check [Active Goals]. Advise on progress.
 5. **Active Event Guide**: Check [ACTIVE EVENT]. 
    - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED based on user input.
@@ -407,7 +443,7 @@ ${finalGoalGuide}
 1. **CLASSIFY** the User's Intent (Combat/Dialogue/Action/System).
 2. **IDENTIFY** the Target (if any). If the target is in [Casting Suggestions], allow interaction if logical (e.g. shouting).
 3. **JUDGE** the action's Plausibility (1-10). Check Player Capability vs Target Strength.
-4. **GENERATE** the Narrative Guide.
+4. **GENERATE** the Narrative Guide. **Aggressively suggest** new characters if the scene allows.
 `;
 
         try {
