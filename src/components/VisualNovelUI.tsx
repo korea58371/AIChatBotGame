@@ -2002,24 +2002,27 @@ export default function VisualNovelUI() {
                                 console.log(`%c[Server Scan (Random)]`, 'color: orange;', "None");
                             }
                         } else {
-                            // Fallback to Client Check if Server Data missing (Legacy)
-                            console.warn("Server Candidates data missing. Falling back to Client Check (May be inaccurate due to serialization).");
-                            if (mandatory.length > 0) {
-                                console.log(`%c[Client Check (Mandatory)]`, 'color: cyan;', mandatory.map(e => ({ id: e.id, type: e.type })));
-                            }
+                            // Legacy Log
+                            console.log(`%c[Candidates (Client)]`, 'color: gray;', mandatory.length > 0 ? "Blocked by Mandatory" : randomCandidates.map(e => e.id));
                         }
-
-                        // [NEW] Debug Info Log
-                        if (logicDebug.event_debug_info) {
-                            const { serverGameId, status, loadedEventsCount } = logicDebug.event_debug_info;
-                            console.log(`%c[Event Debug]`, 'color: gray;', `ID: ${serverGameId} | Status: ${status} | Count: ${loadedEventsCount}`);
-                        } else {
-                            console.warn("Event Debug Info missing.");
-                        }
-
                         console.groupEnd();
                     }
 
+                    // [Fix] Refresh Last Turn Summary with the FINAL story text
+                    // This clears out any temporary "System Events" (like Realm Promotion) that were appended 
+                    // to the previous summary, preventing them from contaminating the next turn's PreLogic.
+                    // We use finalStoryText (cleaned) or cleanStoryText (raw). 
+                    const nextSummary = cleanStoryText || finalStoryText;
+                    if (nextSummary) {
+                        let summaryToSet = nextSummary;
+                        // [Fix] If a NEW Realm Event happened THIS turn, we must carry it forward to the Next Turn
+                        // so PreLogic can see it. But since we are overwriting the summary, we must re-append it.
+                        if (logicProgression && logicProgression.narrativeEvent) {
+                            summaryToSet += "\n" + logicProgression.narrativeEvent;
+                        }
+                        useGameStore.getState().setLastTurnSummary(summaryToSet);
+                        console.log("[VisualNovelUI] Refreshed LastTurnSummary for Next Turn (Event Carried: " + !!logicProgression?.narrativeEvent + ")");
+                    }
 
                     // (Full logging omitted to save space, but critical data is captured in submitGameplayLog)
 
