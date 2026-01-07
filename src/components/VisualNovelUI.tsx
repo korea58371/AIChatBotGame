@@ -104,6 +104,10 @@ function selectProtagonistImage(personality: string): string {
     return '성실한주인공';
 }
 
+// [New] Helper to Determine Realm Order
+const REALM_ORDER = ["삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경"];
+
+
 export default function VisualNovelUI() {
     // [Refactor] UI State Hook
     const {
@@ -138,6 +142,110 @@ export default function VisualNovelUI() {
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    // [New] Realm Progression Logic
+    const processRealmProgression = useCallback((currentStats: any, addToastCallback: (msg: string, type: any) => void) => {
+        let stats = { ...currentStats };
+        const currentRankName = stats.playerRank || "삼류";
+        const currentRankIdx = REALM_ORDER.indexOf(currentRankName);
+
+        // Safety check
+        if (currentRankIdx === -1) return { stats, narrativeEvent: null }; // Unknown rank, skip logic
+
+        // 1. Get Limits for Current Realm
+        const currentRealmConfig = (martialArtsLevels as any)[currentRankName];
+
+        // Use LEVEL_TO_REALM_MAP for Level Limits (Index matches REALM_ORDER)
+        const currentLevelMap = LEVEL_TO_REALM_MAP[currentRankIdx];
+        const maxLevelForRealm = currentLevelMap ? currentLevelMap.max : 999;
+
+        // 2. Get Requirements for Next Realm
+        const nextRankIdx = currentRankIdx + 1;
+        const nextRankName = REALM_ORDER[nextRankIdx];
+
+        if (nextRankName) {
+            const nextRealmConfig = (martialArtsLevels as any)[nextRankName];
+            const energyReq = nextRealmConfig?.조건?.최소_내공 || 9999; // Default high if missing
+
+            // [Rule 1: Energy Cap] 
+            // "Internal energy cannot pile up beyond what level allows."
+            // Interpretation: If you haven't broken through, you can't exceed the requirement for the next breakthrough significantly.
+            // Or strictly: Cap at Next Req.
+            const energyCap = energyReq;
+
+            if (stats.neigong > energyCap) {
+                // Determine if we are ready to breakthrough
+                // Only cap if we are NOT breaking through this turn
+            }
+
+            // [Rule 2: Level Cap]
+            // "Level doesn't rise above 10lv (if not promoted)."
+            // Strictly cap level at Current Realm's MAX
+            if (stats.level > maxLevelForRealm) {
+                // Check if we qualify for promotion
+                const canPromote = (stats.neigong >= energyReq);
+
+                if (!canPromote) {
+                    // CAP level
+                    stats.level = maxLevelForRealm;
+                    // addToastCallback(`레벨 정체! (내공 부족: ${stats.neigong}/${energyReq}년)`, 'warning'); 
+                    // (Notification handled by caller or silent cap?)
+                } else {
+                    // PROMOTE!
+                    stats.playerRank = nextRankName;
+                    stats.level = Math.max(stats.level, currentLevelMap.max + 1); // Ensure we bump up
+
+                    addToastCallback(`✨ 경지 상승! [${nextRankName}] 달성!`, 'success');
+                    return {
+                        stats,
+                        narrativeEvent: `[SYSTEM EVENT: REALM_BREAKTHROUGH] Player successfully promoted from ${currentRankName} to ${nextRankName}! Current Level: ${stats.level}, Neigong: ${stats.neigong}y. **NARRATIVE INSTRUCTION**: The next turn MUST describe this breakthrough with epic flair ("뽕차는 멘트"). Describe the feeling of breaking the wall.`
+                    };
+                }
+            }
+
+            // [Rule 3: Enforce Energy Cap if not promoted]
+            // If we are at the level cap and NOT promoting, cap energy too?
+            // User: "Internal energy also cannot pile up beyond level allows."
+            // If I am Lv 9 (Max), and I have 10y Energy -> I promote immediately.
+            // If I am Lv 9, and I have 9y Energy. I gain +2y -> 11y.
+            // Result: 11y > 10y (Req). Level is 9.
+            // -> I promote to Second Rate.
+
+            // Scenario: I am Lv 5. Max Exp implies Lv 6.
+            // Energy 20y (Cheat?). 
+            // "Level allows".
+            // Let's assume Energy Cap scales with Level within Realm? 
+            // Simpler Interpretation: You can't exceed the Next Realm's Req until you reach the Level to break through.
+            // But the Level Req is usually the bottleneck. 
+            // "Level 10 achievement needed". 
+            // So you need Level 10 AND Energy 10.
+            // If I have Energy 10 but Level 5 -> Can I keep gaining Energy?
+            // User: "Level experience reaches next step, if energy insufficient... energy also cannot pile up".
+            // This implies if Level is STUCK (at cap), Energy is capped?
+            // Or if Energy is Stuck, Level is capped?
+
+            // Case A: XP High, Energy Low -> Level Capped at 9. Energy continues to grow until 10.
+            // Case B: Energy High, XP Low -> Energy Capped at 10? until Level 10?
+            // "Internal energy also cannot pile up beyond level allows"
+            // -> Implies Energy Cap is dynamic based on Level.
+            // But simpler: Cap Energy at Next Realm Req.
+            if (stats.playerRank === currentRankName && stats.neigong > energyReq) {
+                // Check if Level requirement is met?
+                // Usually if we have Energy > Req, we just need XP.
+                // If we restrict energy accumulation until Level catches up:
+                if (stats.level < (currentLevelMap.min + 1)) { // Arbitrary low level check?
+                    // Let's just Cap Energy at Req if we haven't promoted yet.
+                    // The promotion logic above handles the breakthrough.
+                    // If we returned 'stats' with new rank, this check doesn't apply.
+                    // If we are here, we are still 'currentRankName'.
+                    stats.neigong = energyReq;
+                    // addToastCallback(`내공 정체! (경지 벽)`, 'warning');
+                }
+            }
+        }
+
+        return { stats, narrativeEvent: null };
     }, []);
 
     // Core Game Store
@@ -808,7 +916,18 @@ export default function VisualNovelUI() {
                         });
 
 
-                        useGameStore.getState().setPlayerStats(newStats);
+
+                        // [New] Apply Realm/Level Logic
+                        const progression = processRealmProgression(newStats, addToast);
+                        if (progression.narrativeEvent) {
+                            console.log("[Progression] Event Triggered:", progression.narrativeEvent);
+                            // Append to LastTurnSummary for PreLogic to see next turn
+                            const currentSummary = useGameStore.getState().lastTurnSummary || "";
+                            setLastTurnSummary(currentSummary + "\n" + progression.narrativeEvent);
+                        }
+
+                        useGameStore.getState().setPlayerStats(progression.stats);
+
 
                     } catch (e) {
                         console.error("Failed to parse update_stat command:", e);
@@ -1597,6 +1716,95 @@ export default function VisualNovelUI() {
                             }
                         });
                     }
+
+                    // [Refactor] Apply Logic via processRealmProgression
+                    // First, construct the 'next' stats candidate
+                    let tempStats = { ...useGameStore.getState().playerStats };
+
+                    // Apply HP/MP/Personality first (Standard Logic)
+                    if (finalDeferred.hpChange) tempStats.hp = Math.min(tempStats.maxHp, Math.max(0, tempStats.hp + finalDeferred.hpChange));
+                    if (finalDeferred.mpChange) tempStats.mp = Math.min(tempStats.maxMp, Math.max(0, tempStats.mp + finalDeferred.mpChange));
+                    // Note: 'mp' in standard stats might be 'neigong' in Wuxia context?
+                    // User prompt uses 'neigong' (years). Store has 'neigong'.
+                    // PostLogic 'stat_updates' might imply 'mp' as 'inner power'?
+                    // If PostLogic sends 'mp', does it mean 'neigong'? 
+                    // Usually 'mp' is Mana/Activity. 'neigong' is Year stats.
+                    // Let's check if PostLogic sends 'neigong'. The schema allows 'stat_updates' dictionary.
+                    // If PostLogic sends { "neigong": 1 }, it goes into 'personalityChange' (catch-all) or separate?
+                    // Lines 1387-1393 puts everything except 'hp','mp' into 'personalityChange'.
+                    // So 'neigong' is in 'personalityChange'.
+
+                    // Apply Personality/Misc including Neigong
+                    if (finalDeferred.personalityChange) {
+                        const pDelta = finalDeferred.personalityChange;
+                        // Handle Neigong specifically if present
+                        if (pDelta.neigong) {
+                            tempStats.neigong = (tempStats.neigong || 0) + pDelta.neigong;
+                            delete pDelta.neigong; // Remote from personality map
+                        }
+
+                        // Handle Level/Exp if present
+                        if (pDelta.exp) {
+                            tempStats.exp = (tempStats.exp || 0) + pDelta.exp;
+                            // Simple Level Up (Base)
+                            const expReq = tempStats.level * 100;
+                            if (tempStats.exp >= expReq) {
+                                // Potential Level Up (ProcessRealmProgression will enforce caps)
+                                tempStats.level += 1;
+                                tempStats.exp -= expReq;
+                            }
+                            delete pDelta.exp;
+                        }
+
+                        // Apply others to personality
+                        Object.entries(pDelta).forEach(([k, v]) => {
+                            if (typeof v === 'number') {
+                                // Check if it matches a root stat (str, agi...) or personality
+                                if (['str', 'agi', 'int', 'vit', 'luk', 'fame', 'gold'].includes(k)) {
+                                    (tempStats as any)[k] = ((tempStats as any)[k] || 0) + v;
+                                } else if (tempStats.personality && (k in tempStats.personality)) {
+                                    (tempStats.personality as any)[k] += v;
+                                }
+                            }
+                        });
+                    }
+
+                    // Now Run Realm Check on the TempStats
+                    const logicProgression = processRealmProgression(tempStats, addToast);
+                    if (logicProgression.narrativeEvent) {
+                        const currentSummary = useGameStore.getState().lastTurnSummary || "";
+                        setLastTurnSummary(currentSummary + "\n" + logicProgression.narrativeEvent);
+                    }
+
+                    // Update the final stats in store
+                    const finalStatsToSet = logicProgression.stats;
+
+                    // Also merge other deferred logic
+                    // We need to actually CALL applyGameLogic-like steps or set store directly?
+                    // The original code passed 'finalDeferred' to `applyGameLogic`.
+                    // But `applyGameLogic` is not shown here (it's likely defined later).
+                    // We must assume `applyGameLogic` exists and handles the rest (mood, memories, goals).
+                    // BUT we already modified stats.
+                    // So we should update stats manually here, and pass rest to applyGameLogic?
+                    // OR: Pass 'stats' to applyGameLogic if it accepts it.
+                    // Standard `applyGameLogic` handles `hp`, `mp`.
+                    // We handled them here. So set hpChange/mpChange/personalityChange to null/empty in `finalDeferred`?
+
+                    // Update Store with Stats
+                    useGameStore.getState().setPlayerStats(finalStatsToSet);
+
+                    // Clear applied changes from deferred logic so applyGameLogic doesn't double apply
+                    finalDeferred.hpChange = 0;
+                    finalDeferred.mpChange = 0;
+                    finalDeferred.personalityChange = {};
+                    // (We kept non-stat changes like memories, clues)
+
+                    // [Security] Strip playerRank from deferred logic to ensure processRealmProgression is the System Authority
+                    if (finalDeferred.playerRank) delete finalDeferred.playerRank;
+                    if (finalDeferred.post_logic?.playerRank) delete finalDeferred.post_logic.playerRank;
+
+                    applyGameLogic(finalDeferred);
+
 
                     if (finalDeferred.post_logic?.relationship_updates) {
                         const rels = finalDeferred.post_logic.relationship_updates;
@@ -2405,10 +2613,19 @@ export default function VisualNovelUI() {
             if (c.leadership) p.leadership = Math.min(100, Math.max(-100, (p.leadership || 0) + c.leadership));
         }
 
-        // [Wuxia] Neigong Update
         if (logicResult.neigongChange) {
             newStats.neigong = Math.max(0, (newStats.neigong || 0) + logicResult.neigongChange);
             addToast(`내공(Internal Energy) ${logicResult.neigongChange > 0 ? '+' : ''}${logicResult.neigongChange}년`, logicResult.neigongChange > 0 ? 'success' : 'warning');
+        }
+
+        // [New] Player Rank & Faction Update
+        if (logicResult.playerRank) {
+            newStats.playerRank = logicResult.playerRank;
+            addToast(`등급 변경: ${logicResult.playerRank}`, 'success');
+        }
+        if (logicResult.factionChange) {
+            newStats.faction = logicResult.factionChange;
+            addToast(`소속 변경: ${logicResult.factionChange}`, 'info');
         }
 
         // Skills

@@ -128,6 +128,8 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 
 - Physical/Mental Stats: hp, mp, str, agi, int, vit, luk, fame.
 
+- **CRITICAL**: Do NOT invent other stats (e.g. "stamina", "karma", "stress"). Use ONLY the keys defined above.
+
 [Personality Update Guidelines] (Consistency & Inertia)
 - **Principle:** Stats represent a developing character arc.
 - **Diminishing Returns (Saturation):**
@@ -230,6 +232,9 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 - For 'character_memories', extract 1 key memory per active character if they had significant interaction with the player this turn.
 - For 'dead_character_ids', list IDs of ANY character who died or was permanently incapacitated/killed in this turn.
 - The 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.
+
+[Relationship Tiers Guide]
+${RelationshipManager.getPromptContext()}
 `;
 
   static async analyze(
@@ -323,7 +328,7 @@ Active Goals: ${JSON.stringify(gameState.goals ? gameState.goals.filter((g: any)
 ${locationContext}
 
 [Relationship Tiers Guide]
-${RelationshipManager.getPromptContext()}
+(Refer to System Prompt for Tier definitions)
 Check if the AI's portrayal matches these tiers. If not, suggest a mood update.
 
 [Input Story Turn]
@@ -351,6 +356,37 @@ Generate the JSON output.
 
         // [Validation] Ensure inline_triggers exist
         if (!json.inline_triggers) json.inline_triggers = [];
+
+        // [Sanitization] Filter inline_triggers allowed tags ONLY
+        json.inline_triggers = json.inline_triggers.filter((trigger: { quote: string, tag: string }) => {
+          if (!trigger.tag) return false;
+          // Only allow <Stat> and <Rel>
+          const isStat = trigger.tag.startsWith('<Stat');
+          const isRel = trigger.tag.startsWith('<Rel');
+          return isStat || isRel;
+        });
+
+        // [Sanitization] Filter stat_updates keys
+        if (json.stat_updates) {
+          const ALLOWED_STATS = new Set([
+            // Core
+            'hp', 'mp', 'str', 'agi', 'int', 'vit', 'luk', 'fame',
+            // Personality
+            'morality', 'courage', 'energy', 'decision', 'lifestyle',
+            'openness', 'warmth', 'eloquence', 'leadership', 'humor', 'lust'
+          ]);
+
+          const filteredStats: Record<string, number> = {};
+          for (const key in json.stat_updates) {
+            const lowerKey = key.toLowerCase();
+            if (ALLOWED_STATS.has(lowerKey)) {
+              filteredStats[lowerKey] = json.stat_updates[key];
+            } else {
+              console.warn(`[AgentPostLogic] Filtered unknown stat key: ${key}`);
+            }
+          }
+          json.stat_updates = filteredStats;
+        }
 
         // [Safety Clamp & Diminishing Returns] Check Relationship Inertia
         if (json.relationship_updates) {

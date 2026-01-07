@@ -162,6 +162,10 @@ ${userInput}
             .replace(/<Location[^>]*>/gi, '')
             .replace(/<Faction[^>]*>/gi, '')
             .replace(/<Rank[^>]*>/gi, '')
+            .replace(/<PlayerRank[^>]*>/gi, '')
+            .replace(/\[PlayerRank[^\]]*\]/gi, '')
+            .replace(/<EventProgress[^>]*>/gi, '')
+            .replace(/\[EventProgress[^\]]*\]/gi, '')
             .replace(/<ResolvedInjury[^>]*>/gi, '')
             .replace(/\[ResolvedInjury[^\]]*\]/gi, '');
 

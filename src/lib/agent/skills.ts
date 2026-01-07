@@ -82,17 +82,25 @@ You must also act as a REALITY AUDITOR to prevent "God Mode" (OP) exploits.
         });
 
         const activeGameId = gameState.activeGameId || 'wuxia';
+        const currentSkills = gameState.playerStats?.skills || [];
 
         // [NEW] Dynamic Prompt Injection
         let genrePrompt = "";
         if (activeGameId === 'wuxia') genrePrompt = WUXIA_SKILL_PROMPT;
         else if (activeGameId === 'god_bless_you') genrePrompt = GBY_SKILL_PROMPT;
 
+        const skillListInfo = currentSkills.length > 0
+            ? currentSkills.map((s: any) => `- [ID: "${s.id}"] ${s.name} (${s.rank}): ${s.description}`).join('\n')
+            : "No existing skills.";
+
         const context = `
 [Context]
 Game Mode: ${activeGameId}
 Current Level: ${playerLevel}
 Current Turn: ${turnCount}
+
+[Current Player Skills] (CHECK THIS FIRST)
+${skillListInfo}
 
 ${genrePrompt}
 
@@ -104,8 +112,13 @@ ${storyText}
 """
 
 [Instruction]
-Analyze the narrative for progression (Level/Skills).
-Determine 'level_delta' based on the intensity of training/combat/events.
+1. Analyze the narrative for progression (Level/Skills).
+2. **CRITICAL**: Compare new moves against [Current Player Skills].
+   - If the move is a variation/application of an existing skill (e.g. "Fast [Skill A]", "Strong [Skill A]"), do NOT create a new skill.
+   - Instead, output an entry in 'updated_skills' for that existing ID with a proficiency boost (proficiency_delta).
+   - ONLY create a 'new_skill' if it is a completely new technique with a distinct formal name that cannot be merged into an existing one.
+   - Ensure new skill IDs do not clash with existing IDs.
+3. Determine 'level_delta' based on the intensity of training/combat/events.
 `;
 
         try {
@@ -115,6 +128,28 @@ Determine 'level_delta' based on the intensity of training/combat/events.
 
             try {
                 const json = JSON.parse(text);
+
+                // [Safety Guard] ID Duplication Check & Auto-Merge
+                if (json.new_skills && Array.isArray(json.new_skills)) {
+                    const existingIds = new Set(currentSkills.map((s: any) => s.id));
+
+                    json.new_skills = json.new_skills.filter((ns: any) => {
+                        if (existingIds.has(ns.id)) {
+                            // ID Collision -> Auto-convert to Update (Integration)
+                            if (!json.updated_skills) json.updated_skills = [];
+                            // Check if already in updated_skills to avoid double counting
+                            const alreadyUpdated = json.updated_skills.find((us: any) => us.id === ns.id);
+                            if (!alreadyUpdated) {
+                                json.updated_skills.push({
+                                    id: ns.id,
+                                    proficiency_delta: 10 // Substantial boost since it was generated as a "New Skill"
+                                });
+                            }
+                            return false; // Remove from new_skills
+                        }
+                        return true; // Keep unique new skills
+                    });
+                }
 
                 // [Safety Guard] Cap Growth
                 if (json.level_delta > 10) {
