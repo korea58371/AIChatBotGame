@@ -3418,7 +3418,7 @@ export default function VisualNovelUI() {
                 </AnimatePresence>
 
                 {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 -> Z-20 (Basic UI) */}
-                <div className="absolute bottom-[5vh] right-[4vw] md:bottom-10 md:right-8 flex gap-[1vw] md:gap-2 z-40 opacity-50 hover:opacity-100 transition-opacity pointer-events-auto">
+                <div className={`absolute bottom-[5vh] right-[4vw] md:bottom-10 md:right-8 flex gap-[1vw] md:gap-2 z-[100] transition-opacity pointer-events-auto ${choices.length > 0 ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`}>
                     <button
                         className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
@@ -3631,7 +3631,7 @@ export default function VisualNovelUI() {
                 {/* Top Right Menu (Removed - Merged into Top Resources Row & Profile Click) */}
 
                 {/* Toast Notifications */}
-                <div className="fixed top-24 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+                <div className="fixed top-24 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
                     <AnimatePresence>
                         {toasts.map(toast => (
                             <motion.div
@@ -3653,138 +3653,93 @@ export default function VisualNovelUI() {
                 {/* Center: Choices */}
                 {
                     choices.length > 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-auto z-[60] p-4">
-                            <div className="flex flex-col gap-3 md:gap-4 w-[85vw] md:w-[min(50vw,800px)] items-center">
-                                {/* [NEW] Turn Summary Display */}
-                                {turnSummary && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="w-full bg-black/80 border-l-4 border-yellow-500 rounded-r-lg p-4 mb-2 backdrop-blur-sm shadow-lg max-w-2xl"
-                                    >
-                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-1">Current Situation</h4>
-                                        <p className="text-gray-200 text-sm leading-relaxed">{turnSummary}</p>
-                                    </motion.div>
-                                )}
-                                {choices.map((choice, idx) => (
-                                    <motion.button
-                                        key={idx}
-                                        initial={{ opacity: 0, y: 20, skewX: -12 }}
-                                        animate={{ opacity: 1, y: 0, skewX: -12 }}
-                                        whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
-                                        transition={{ delay: idx * 0.1 }}
-                                        disabled={isProcessing || isLogicPending}
-                                        /* 
-                                         * [Responsive Logic]
-                                         * Mobile: Scaled down to ~60% size
-                                         * Width: 85vw, Text: 2.5vw, Padding: 1.2vh
-                                         * Desktop: Unchanged
-                                         */
-                                        className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
+                        <>
+                            {/* [NEW] Background Dimmer (Layered BELOW UI at z-20) */}
+                            <div className="absolute inset-0 bg-black/40 z-[20] pointer-events-none transition-opacity duration-500" />
+
+                            {/* Center: Choices (Layered ABOVE UI at z-60) */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[60] p-4">
+                                <div className="flex flex-col gap-3 md:gap-4 w-[85vw] md:w-[min(50vw,800px)] items-center pointer-events-auto">
+                                    {/* [NEW] Turn Summary Display */}
+                                    {turnSummary && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="w-full bg-black/80 border-l-4 border-yellow-500 rounded-r-lg p-4 mb-2 backdrop-blur-sm shadow-lg max-w-2xl"
+                                        >
+                                            <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-1">Current Situation</h4>
+                                            <p className="text-gray-200 text-sm leading-relaxed">{turnSummary}</p>
+                                        </motion.div>
+                                    )}
+                                    {choices.map((choice, idx) => (
+                                        <motion.button
+                                            key={idx}
+                                            initial={{ opacity: 0, y: 20, skewX: -12 }}
+                                            animate={{ opacity: 1, y: 0, skewX: -12 }}
+                                            whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
+                                            transition={{ delay: idx * 0.1 }}
+                                            disabled={isProcessing || isLogicPending}
+                                            /* 
+                                             * [Responsive Logic]
+                                             * Mobile: Scaled down to ~60% size
+                                             * Width: 85vw, Text: 2.5vw, Padding: 1.2vh
+                                             * Desktop: Unchanged
+                                             */
+                                            className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
                                             w-[85vw] md:w-[min(50vw,1200px)] 
                                             py-[1.2vh] px-[5vw] md:py-[1.5vh] md:px-[min(2vw,48px)] 
                                             text-[2.5vw] md:text-[min(0.9vw,27px)] leading-tight 
                                             shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                             ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                                         `}
-                                        onClick={(e) => {
-                                            if (isProcessing || isLogicPending) return;
-                                            console.log("Choice clicked:", choice.content);
-                                            e.stopPropagation();
+                                            onClick={(e) => {
+                                                if (isProcessing || isLogicPending) return;
+                                                console.log("Choice clicked:", choice.content);
+                                                e.stopPropagation();
 
-                                            // [LOGGING] Handled in handleSend
+                                                // [LOGGING] Handled in handleSend
 
 
-                                            // [Adaptive Agent] Track Selected Choice
-                                            addChoiceToHistory({ text: choice.content, type: 'selected', timestamp: Date.now() });
+                                                // [Adaptive Agent] Track Selected Choice
+                                                addChoiceToHistory({ text: choice.content, type: 'selected', timestamp: Date.now() });
 
-                                            handleSend(choice.content);
-                                        }}
-                                    >
-                                        <span className="block transform skew-x-12">
-                                            {choice.content}
-                                        </span>
-                                    </motion.button>
-                                ))}
+                                                handleSend(choice.content);
+                                            }}
+                                        >
+                                            <span className="block transform skew-x-12">
+                                                {choice.content}
+                                            </span>
+                                        </motion.button>
+                                    ))}
 
-                                {/* Direct Input Option */}
-                                <motion.button
-                                    initial={{ opacity: 0, y: 20, skewX: -12 }}
-                                    animate={{ opacity: 1, y: 0, skewX: -12 }}
-                                    whileHover={{ scale: 1.05, skewX: -12 }}
-                                    transition={{ delay: choices.length * 0.1 }}
-                                    className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold 
+                                    {/* Direct Input Option */}
+                                    <motion.button
+                                        initial={{ opacity: 0, y: 20, skewX: -12 }}
+                                        animate={{ opacity: 1, y: 0, skewX: -12 }}
+                                        whileHover={{ scale: 1.05, skewX: -12 }}
+                                        transition={{ delay: choices.length * 0.1 }}
+                                        className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold 
                                         w-[85vw] md:w-[min(50vw,1200px)] 
                                         py-[1.2vh] px-[5vw] md:py-[1.5vh] md:px-[min(2vw,48px)] 
                                         text-[2.5vw] md:text-[min(0.9vw,27px)] leading-tight 
                                         shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                         ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                                     `}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isProcessing || isLogicPending) return;
-                                        setIsInputOpen(true);
-                                    }}
-                                >
-                                    <span className="block transform skew-x-12">
-                                        {t.directInput}
-                                    </span>
-                                </motion.button>
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isProcessing || isLogicPending) return;
+                                            setIsInputOpen(true);
+                                        }}
+                                    >
+                                        <span className="block transform skew-x-12">
+                                            {t.directInput}
+                                        </span>
+                                    </motion.button>
 
-                                {/* [NEW] System Menu Bar (Profile, History, Wiki, Save, Settings) */}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.5 }}
-                                    className="flex w-[85vw] md:w-[min(50vw,1200px)] justify-center gap-3 md:gap-4 mt-2"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    {(() => {
-                                        const currentWikiTarget = (() => {
-                                            if (currentSegment?.character) {
-                                                const charName = currentSegment.character.split('(')[0].trim();
-                                                return findBestMatch(charName, wikiKeys);
-                                            }
-                                            return null;
-                                        })();
 
-                                        return [
-                                            { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => setShowCharacterInfo(true) },
-                                            { icon: <History size={20} />, label: t.chatHistory, onClick: () => setShowHistory(true) },
-                                            {
-                                                icon: <Book size={20} />,
-                                                label: t.wiki,
-                                                onClick: () => {
-                                                    if (currentWikiTarget) setWikiTargetCharacter(currentWikiTarget);
-                                                    setShowWiki(true);
-                                                },
-                                                isActive: !!currentWikiTarget,
-                                                activeColor: "bg-gradient-to-r from-yellow-600 to-yellow-500 border-yellow-400 text-black shadow-yellow-500/50 animate-pulse"
-                                            },
-                                            { icon: <Save size={20} />, label: t.saveLoad, onClick: () => setShowSaveLoad(true) },
-                                            { icon: <Settings size={20} />, label: t.settings, onClick: () => setShowResetConfirm(true) },
-                                        ].map((btn, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
-                                                className={`p-3 md:p-3 rounded-full border transition-all backdrop-blur-md shadow-lg group relative
-                                                    ${(btn as any).isActive
-                                                        ? (btn as any).activeColor
-                                                        : 'bg-black/60 border-white/20 text-white hover:bg-white/20 hover:border-white'
-                                                    } hover:scale-110`}
-                                                title={btn.label}
-                                            >
-                                                {btn.icon}
-                                                {/* Tooltip */}
-                                                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
-                                                    {btn.label}
-                                                </span>
-                                            </button>
-                                        ));
-                                    })()}
-                                </motion.div>
+                                </div>
                             </div>
-                        </div>
+                        </>
                     )
                 }
 
@@ -4352,6 +4307,21 @@ Instructions:
                     )}
                 </AnimatePresence>
 
+                {/* [NEW] HUD Layer (Always visible in Wuxia mode) */}
+                {isMounted && activeGameId === 'wuxia' && (
+                    <WuxiaHUD
+                        playerName={playerName}
+                        playerStats={playerStats}
+                        onOpenProfile={() => setShowCharacterInfo(true)}
+                        onOpenWiki={() => setShowWiki(true)}
+                        language={language || 'ko'}
+                        day={day}
+                        time={time}
+                        location={currentLocation}
+                        turnCount={turnCount}
+                    />
+                )}
+
                 {/* History Modal */}
                 <HistoryModal
                     isOpen={showHistory}
@@ -4539,7 +4509,7 @@ Instructions:
                 <AnimatePresence>
                     {
                         isDebugOpen && (
-                            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}

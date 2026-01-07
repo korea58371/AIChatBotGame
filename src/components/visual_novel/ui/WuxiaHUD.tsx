@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { User, Scroll } from 'lucide-react';
+import { User, Scroll, Maximize, Minimize } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json';
 import { FAME_TITLES, FATIGUE_LEVELS } from '@/data/games/wuxia/constants';
@@ -16,10 +16,29 @@ interface WuxiaHUDProps {
     day?: number;
     time?: string;
     location?: string;
+    turnCount?: number; // [NEW] For Onboarding Logic
 }
 
-export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpenWiki, language = 'ko', day, time, location }: WuxiaHUDProps) {
+export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpenWiki, language = 'ko', day, time, location, turnCount = 0 }: WuxiaHUDProps) {
     if (!playerStats) return null;
+
+    // [Fullscreen Logic]
+    const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.error(err));
+        } else {
+            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(err => console.error(err));
+        }
+    };
+
+    // Sync state with standard browser events (ESC key)
+    React.useEffect(() => {
+        const handleChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleChange);
+        return () => document.removeEventListener('fullscreenchange', handleChange);
+    }, []);
 
     const t = translations[language].wuxia;
 
@@ -59,6 +78,46 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                     className="w-full h-full object-contain"
                     alt=""
                 />
+            </div>
+
+            {/* [Fullscreen Button - Top Right (Left of Token UI)] */}
+            {/* Positioned absolute to avoid layout shifts. right-64 (approx 16rem/250px) to clear AdButton */}
+            <div className="absolute top-4 right-64 z-50 pointer-events-auto flex items-center gap-2">
+                {/* Onboarding Tooltip (Turn 1) */}
+                {turnCount === 1 && (
+                    <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: [0, 6, 0] }}
+                        transition={{
+                            opacity: { duration: 0.5 },
+                            x: { repeat: Infinity, duration: 1.5, ease: "easeInOut", repeatType: "reverse" }
+                        }}
+                        className="relative mr-4 bg-gray-900 border border-yellow-500 text-yellow-100 text-lg font-bold font-sans px-3 py-1 rounded-lg shadow-[0_0_15px_rgba(234,179,8,0.4)] whitespace-nowrap hidden md:flex items-center"
+                    >
+                        전체화면 권장
+                        {/* Speech Bubble Tail */}
+                        <div className="absolute top-1/2 -right-[6px] -translate-y-1/2 w-3 h-3 bg-gray-900 border-t border-r border-yellow-500 transform rotate-45"></div>
+                    </motion.div>
+                )}
+
+                {/* Fullscreen Button Wrapper */}
+                <div className="relative">
+                    {/* Pulse Glow Underlay */}
+                    {turnCount === 1 && (
+                        <div className="absolute inset-0 rounded-lg bg-yellow-500/50 blur-md animate-pulse"></div>
+                    )}
+                    <button
+                        onClick={toggleFullscreen}
+                        className={`relative w-10 h-10 flex items-center justify-center bg-stone-900/90 border rounded-lg transition-all shadow-lg backdrop-blur z-10
+                            ${turnCount === 1
+                                ? 'border-yellow-500 text-yellow-500'
+                                : 'border-stone-600 text-stone-400 hover:border-yellow-500 hover:text-yellow-500'
+                            }`}
+                        title={isFullscreen ? "전체화면 종료" : "전체화면 전환"}
+                    >
+                        {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                    </button>
+                </div>
             </div>
 
             {/* LEFT SIDE: Player Stats */}
@@ -150,6 +209,10 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                 Actually, simpler to just put them in the top-right flow.
             */}
             <div className="flex flex-col items-end gap-2 pointer-events-auto mt-12 mr-2">
+                {/* [NEW] System Controls Row (Fullscreen) REMOVED - Moved to Left Side */}
+                <div className="flex items-center gap-2 mb-1">
+                    {/* Placeholder or Empty if needed, or remove entire block */}
+                </div>
                 {/* Time & Location (Wuxia Style - Right Aligned) */}
                 <div className="flex flex-col items-end gap-1">
                     <div className="px-4 py-1.5 bg-stone-900/90 border-y-2 border-stone-700 text-stone-200 text-sm md:text-base font-serif tracking-widest shadow-2xl flex items-center gap-3">
