@@ -68,7 +68,7 @@ export class AgentOrchestrator {
         const castingResult = await AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel);
         const { active, background } = castingResult;
 
-        const suggestions = active; // Top candidates active in scene
+        const suggestions = [...active, ...background]; // [Fix] Return ALL 12 candidates to UI for debugging
         const t2 = Date.now();
 
         // 3. Retriever

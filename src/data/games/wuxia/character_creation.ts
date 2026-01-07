@@ -105,6 +105,101 @@ export const FAMOUS_FAMILIES: Record<string, {
         ],
         disadvantage: '겁쟁이: 팽가의 핏줄답지 않게 겁이 많아 조롱거리가 되었다.',
         narrative_intro: '당신은 **하북팽가(河北彭家)**의 연무장 구석진 곳, 아무도 찾지 않는 창고에서 눈을 떴다.'
+    },
+    '독고': {
+        id: 'dokgo',
+        name: '독고세가',
+        description: '검마(劍魔)를 배출한 무패의 가문. 오직 승리만을 추구한다.',
+        initial_skills: [
+            {
+                id: 'dokgo_basic_sword',
+                name: '독고검법(기초)',
+                rank: '삼류',
+                type: '검법',
+                description: '독고세가의 검술 원리를 흉내 낸 초식.',
+                proficiency: 30,
+                effects: ['치명타 확률 증가'],
+                createdTurn: 0
+            }
+        ],
+        disadvantage: '고독한 늑대: 특유의 오만함 때문에 주변에 사람이 모이지 않는다.',
+        narrative_intro: '당신은 **독고세가(獨孤世家)**의 황량한 연무장에서 홀로 검을 닦으며 눈을 떴다.'
+    },
+    '위지': {
+        id: 'wiji',
+        name: '위지세가',
+        description: '폭풍(暴風). 하북팽가와 패권을 다투는 쾌검과 장법의 명가.',
+        initial_skills: [
+            {
+                id: 'wiji_cloud_sword',
+                name: '일운검법(기초)',
+                rank: '삼류',
+                type: '검법',
+                description: '구름 속에서 번개처럼 찌르는 위지세가의 쾌검. 상대의 방심을 유도한다.',
+                proficiency: 30,
+                effects: ['공격 속도 증가'],
+                createdTurn: 0
+            }
+        ],
+        disadvantage: '이인자의 설움: 하북 패권 경쟁에서 팽가에 밀린 탓에, 가문 전체가 과도한 명예욕과 열등감에 사로잡혀 있다.',
+        narrative_intro: '당신은 **하북 위지세가(尉遲世家)**의 연무장에서 거친 숨을 몰아쉬며 눈을 떴다.'
+    },
+    '사마': {
+        id: 'sama',
+        name: '사마세가',
+        description: '잠룡(潛龍). 조조의 군사 사마의의 후예를 자처하는 책략가들의 가문.',
+        initial_skills: [
+            {
+                id: 'sama_white_crane_sword',
+                name: '백학검법(기초)',
+                rank: '삼류',
+                type: '검법',
+                description: '사마세가가 수집한 절전 검법 중 하나. 우아하고 날카롭다.',
+                proficiency: 30,
+                effects: ['통찰력 보정'],
+                createdTurn: 0
+            }
+        ],
+        disadvantage: '의심암귀: 매사 의심이 많아 동료를 온전히 신뢰하지 못하며, 때로는 아군조차 장기말 취급한다.',
+        narrative_intro: '당신은 **하남 사마세가(司馬世家)**의 은밀한 밀실에서 병법서를 덮으며 눈을 떴다.'
+    },
+    '단리': {
+        id: 'danli',
+        name: '단리세가',
+        description: '왕족의 후예. 검과 암기, 그리고 진법이 어우러진 철벽의 가문.',
+        initial_skills: [
+            {
+                id: 'danli_fly_sword',
+                name: '비천검법(기초)',
+                rank: '삼류',
+                type: '검법',
+                description: '하늘을 비상하는 듯한 화려한 검결.',
+                proficiency: 30,
+                effects: ['회피율 증가'],
+                createdTurn: 0
+            }
+        ],
+        disadvantage: '망국의 굴레: 옛 왕족이라는 콧대 높은 자존심 탓에 타 문파를 은연중에 깔보는 경향이 있다.',
+        narrative_intro: '당신은 **안휘 단리세가(段利世家)**의 고풍스러운 정원에서 검을 닦으며 눈을 떴다.'
+    },
+    '상관': {
+        id: 'sanggwan',
+        name: '상관세가',
+        description: '도혼(刀魂). 재력으로 무림을 움직이는 상인과 무인의 이중적 면모.',
+        initial_skills: [
+            {
+                id: 'sanggwan_wind_blade',
+                name: '광풍십팔도(입문)',
+                rank: '삼류',
+                type: '도법',
+                description: '돈으로 구한 비급을 집대성한 패도적인 도법.',
+                proficiency: 30,
+                effects: ['치명타 피해량 증가'],
+                createdTurn: 0
+            }
+        ],
+        disadvantage: '전전긍긍: 모든 가치를 돈으로 환산하려 들어, 진정한 협객들에게 경멸을 사곤 한다.',
+        narrative_intro: '당신은 **하남 상관세가(上官世家)**의 화려한 금장식 방 안에서 장부를 덮으며 눈을 떴다.'
     }
 };
 

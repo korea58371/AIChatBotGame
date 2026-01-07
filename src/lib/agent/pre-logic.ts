@@ -244,7 +244,7 @@ ${this.CORE_RULES}
 [Guide Generation Instructions]
 1. **Combat Guide**: If intent is 'combat' or tension is high, compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
 2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
-3. **Character Guide**: Check [Nearby Candidates]. PROACTIVELY suggest their entrance if relevant.
+3. **Character Guide**: Check [Casting Suggestions]. PROACTIVELY suggest their entrance if relevant.
 4. **Goal Guide**: Check [Active Goals]. Advise on progress.
 5. **Active Event Guide**: Check [ACTIVE EVENT]. 
    - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED based on user input.
@@ -344,41 +344,14 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
             activeCharContext += "None (Only Player)";
         }
 
-        // [Deduplication Logic]
-        // retrievedContext(상세 프로필)에 이미 포함된 캐릭터는 candidatesContext(간략 목록)에서 제외합니다.
-        // 이는 중복 정보를 방지하고 토큰을 절약하기 위함입니다.
-        const candidatesContext = castingCandidates.length > 0 ?
-            `[Nearby Candidates](Potential encounters. You MAY suggest their entrance if relevant to the context or to enliven the scene.) \n${castingCandidates
-                .filter(c => {
-                    // Filter out if name is already in retrievedContext or activeCharContext
-                    const name = c.name || "";
-                    const koreanName = c.data?.이름 || "";
-
-                    // 만약 retrievedContext나 activeCharContext에 이미 이 이름이 언급되어 있다면 제외
-                    if (retrievedContext.includes(`[Target Profile: ${name}`) || retrievedContext.includes(`[Target Profile: ${koreanName}`)) return false;
-                    if (activeCharContext.includes(`- Name: ${name}`) || activeCharContext.includes(name)) return false;
-
-                    return true;
-                })
-                .map(c => {
-                    const s = c.data?.강함 || c.data?.strength || c.data?.combat;
-                    let strengthStr = "";
-
-                    if (typeof s === 'object' && s !== null) {
-                        // [Token Optimization] Flatten outer JSON for readability and token cost
-                        const rank = s.등급 || s.grade || s.rank || "Unknown";
-                        const lvl = s.power_level ? `(Lv.${s.power_level})` : "";
-                        const desc = s.description ? `Desc: ${s.description}` : "";
-                        const skills = s.skills ? `Skills: ${JSON.stringify(s.skills)}` : "";
-
-                        strengthStr = `[Rank: ${rank}${lvl}] ${desc} | ${skills}`.trim();
-                    } else {
-                        strengthStr = String(s || "Unknown");
-                    }
-
-                    return `- ${c.name} (${c.data?.title || c.data?.role || "Unknown"}) | ${strengthStr}`;
-                }).join('\n')} ` :
-            "";
+        // Deduplication Logic
+        // We pass the candidates (now merged in orchestrator, but pre-logic actually receives [] there due to '[]' arg in call)
+        // Wait, Orchestrator calls: AgentPreLogic.analyze(..., [], ...) 
+        // So 'castingCandidates' arg is actually EMPTY in current code. 
+        // The context is ALREADY in 'retrievedContext'.
+        // So we can just IGNORE this block or keep it empty. 
+        // Let's keep it minimal to avoid confusion.
+        const candidatesContext = ""; // [Modified] We rely on Retriever's [Casting Suggestions] block.
 
         // [New] Previous Turn Context Injection (History)
         // Router가 전달해준 history에서 가장 최근의 AI 응답(NPC 대사 포함)을 추출합니다.
@@ -432,7 +405,7 @@ ${finalGoalGuide}
 
 [Execution Order]
 1. **CLASSIFY** the User's Intent (Combat/Dialogue/Action/System).
-2. **IDENTIFY** the Target (if any). If the target is in [Nearby Candidates], allow interaction if logical (e.g. shouting).
+2. **IDENTIFY** the Target (if any). If the target is in [Casting Suggestions], allow interaction if logical (e.g. shouting).
 3. **JUDGE** the action's Plausibility (1-10). Check Player Capability vs Target Strength.
 4. **GENERATE** the Narrative Guide.
 `;
