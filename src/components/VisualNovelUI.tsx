@@ -170,28 +170,15 @@ export default function VisualNovelUI() {
 
             // [Rule 1: Energy Cap] 
             // "Internal energy cannot pile up beyond what level allows."
-            // Interpretation: If you haven't broken through, you can't exceed the requirement for the next breakthrough significantly.
-            // Or strictly: Cap at Next Req.
             const energyCap = energyReq;
 
-            if (stats.neigong > energyCap) {
-                // Determine if we are ready to breakthrough
-                // Only cap if we are NOT breaking through this turn
-            }
-
-            // [Rule 2: Level Cap]
-            // "Level doesn't rise above 10lv (if not promoted)."
-            // Strictly cap level at Current Realm's MAX
+            // [Rule 2: Level Cap Enforcement]
+            // STRICT Enforcement: If not promoted, Level CANNOT exceed maxLevelForRealm.
             if (stats.level > maxLevelForRealm) {
                 // Check if we qualify for promotion
                 const canPromote = (stats.neigong >= energyReq);
 
-                if (!canPromote) {
-                    // CAP level
-                    stats.level = maxLevelForRealm;
-                    // addToastCallback(`레벨 정체! (내공 부족: ${stats.neigong}/${energyReq}년)`, 'warning'); 
-                    // (Notification handled by caller or silent cap?)
-                } else {
+                if (canPromote) {
                     // PROMOTE!
                     stats.playerRank = nextRankName;
                     stats.level = Math.max(stats.level, currentLevelMap.max + 1); // Ensure we bump up
@@ -201,47 +188,48 @@ export default function VisualNovelUI() {
                         stats,
                         narrativeEvent: `[SYSTEM EVENT: REALM_BREAKTHROUGH] Player successfully promoted from ${currentRankName} to ${nextRankName}! Current Level: ${stats.level}, Neigong: ${stats.neigong}y. **NARRATIVE INSTRUCTION**: The next turn MUST describe this breakthrough with epic flair ("뽕차는 멘트"). Describe the feeling of breaking the wall.`
                     };
+                } else {
+                    // [Fix] FORCE Level Cap
+                    // If you have Level 45 but Neigong 45 (Req 60), you are stuck at Peak (Max 39).
+                    // We must correct the level down to preserve data integrity.
+                    if (stats.level > maxLevelForRealm) {
+                        const originalLevel = stats.level;
+                        stats.level = maxLevelForRealm;
+
+                        // Notify user of the correction (only if significant change)
+                        if (originalLevel > maxLevelForRealm) {
+                            addToastCallback(`경지 정체: 내공(${stats.neigong}년)이 부족하여 레벨이 ${maxLevelForRealm}로 제한됩니다. (필요: ${energyReq}년)`, 'warning');
+                        }
+                    }
                 }
             }
 
             // [Rule 3: Enforce Energy Cap if not promoted]
-            // If we are at the level cap and NOT promoting, cap energy too?
-            // User: "Internal energy also cannot pile up beyond level allows."
-            // If I am Lv 9 (Max), and I have 10y Energy -> I promote immediately.
-            // If I am Lv 9, and I have 9y Energy. I gain +2y -> 11y.
-            // Result: 11y > 10y (Req). Level is 9.
-            // -> I promote to Second Rate.
+            // If Level is stuck at Cap, Energy is also capped at Next Req?
+            // "Internal energy also cannot pile up beyond level allows."
+            // If my Level is capped at 39 (Peak Max), and I have 60 Neigong... I should have promoted above.
+            // If I have 59 Neigong, I am fine.
+            // If I gain +2 -> 61 Neigong.
+            // Loop runs: Level 39. Neigong 61 > 60.
+            // -> Promote? Yes.
 
-            // Scenario: I am Lv 5. Max Exp implies Lv 6.
-            // Energy 20y (Cheat?). 
-            // "Level allows".
-            // Let's assume Energy Cap scales with Level within Realm? 
-            // Simpler Interpretation: You can't exceed the Next Realm's Req until you reach the Level to break through.
-            // But the Level Req is usually the bottleneck. 
-            // "Level 10 achievement needed". 
-            // So you need Level 10 AND Energy 10.
-            // If I have Energy 10 but Level 5 -> Can I keep gaining Energy?
-            // User: "Level experience reaches next step, if energy insufficient... energy also cannot pile up".
-            // This implies if Level is STUCK (at cap), Energy is capped?
-            // Or if Energy is Stuck, Level is capped?
+            // What if I am Level 30 (Peak Start). Neigong 61.
+            // Level is NOT > maxLevelForRealm (39).
+            // So we don't enter the Promotion Block above.
+            // But Neigong 61 > 60 (Req for Transcendent).
+            // "Energy cannot pile up beyond level allows".
+            // Since Level 30 < 39, can I have Transcendent Energy?
+            // Usually no. You need to be at the bottleneck.
+            // But if I have 60y energy at Lv 30, I am OP.
+            // Let's cap Energy at Next Req if Level is not Maxed?
+            // Or just allow Energy to stack up to the trigger point?
+            // User says: "Internal energy also cannot pile up beyond level allows."
+            // This suggests strict sync.
+            // Let's Cap Neigong at `energyReq` if we are NOT promoting.
 
-            // Case A: XP High, Energy Low -> Level Capped at 9. Energy continues to grow until 10.
-            // Case B: Energy High, XP Low -> Energy Capped at 10? until Level 10?
-            // "Internal energy also cannot pile up beyond level allows"
-            // -> Implies Energy Cap is dynamic based on Level.
-            // But simpler: Cap Energy at Next Realm Req.
             if (stats.playerRank === currentRankName && stats.neigong > energyReq) {
-                // Check if Level requirement is met?
-                // Usually if we have Energy > Req, we just need XP.
-                // If we restrict energy accumulation until Level catches up:
-                if (stats.level < (currentLevelMap.min + 1)) { // Arbitrary low level check?
-                    // Let's just Cap Energy at Req if we haven't promoted yet.
-                    // The promotion logic above handles the breakthrough.
-                    // If we returned 'stats' with new rank, this check doesn't apply.
-                    // If we are here, we are still 'currentRankName'.
-                    stats.neigong = energyReq;
-                    // addToastCallback(`내공 정체! (경지 벽)`, 'warning');
-                }
+                stats.neigong = energyReq;
+                // addToastCallback(`내공 과잉: 현재 경지에서는 ${energyReq}년 이상 쌓을 수 없습니다.`, 'warning');
             }
         }
 
