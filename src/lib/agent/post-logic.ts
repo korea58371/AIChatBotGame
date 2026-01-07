@@ -144,6 +144,19 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 
 - **CRITICAL**: Do NOT invent other stats (e.g. "stamina", "karma", "stress"). Use ONLY the keys defined above.
 
+[Reputation (Fame) Logic]
+- **Concept**: How widely known the player is in Jianghu. 
+- **Trigger**: Gain Fame when you *impact the world* or *influence others*, properly scaled by their status.
+- **Scaling Rules (Per Event)**:
+  - **Minor (Local)**: Helping a villager, beating a thug. (+1 ~ +10)
+  - **Notable (City)**: Defeating a 3rd/2nd rate warrior, solving a local mystery. (+20 ~ +50)
+  - **Major (Province)**: Defeating a 1st Rate Expert, Saving a Town, Public Duel victory. (+100 ~ +300)
+  - **Legendary (Jianghu)**: Defeating a Peak Master, Changing the fate of a Sect. (+1000+)
+- **Witness Factor**:
+  - Public events = 100% Fame.
+  - Private events (features only dead witnesses) = 0% Fame (Unless clues are left).
+- **Instruction**: Even if the text does not explicitly say "Fame increased", you MUST update the 'fame' stat if the achievements warrant it.
+
 [Personality Update Guidelines] (Consistency & Inertia)
 - **Principle:** Stats represent a developing character arc.
 - **Diminishing Returns (Saturation):**
@@ -202,7 +215,9 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 
 [Location Updates]
 - Identify if the characters have moved to a NEW significant location.
-- Format: "Region_Place" in KOREAN (e.g., "사천_성도", "하북_팽가", "중원_객잔", "북해_빙궁").
+- **Format:** "Region_Place" in KOREAN (e.g., "사천_성도", "하북_팽가", "중원_객잔", "북해_빙궁").
+- **CRITICAL**: For generic locations (Mountain Path, Forest, Inn, Market) that exist within a specific region, YOU MUST PREFIX the region name.
+  - Example: If moving from 'Shaanxi_MountHua' to a mountain path, output '섬서_산길' (Shaanxi_Mountain Path), NOT just '산길'.
 - Use standard Wuxia region names: 중원, 사천, 하북, 산동, 북해, 남만, 서역, 등.
 - If no change, return null.
 
@@ -309,16 +324,42 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
       let currentZoneSpots: string[] = [];
       let currentRegionName = "Unknown";
 
-      // Find current zone spots
-      for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
-        if (rData.zones && rData.zones[currentLocation]) {
-          currentRegionName = rName;
-          currentZoneSpots = rData.zones[currentLocation].spots || [];
-          break;
+      // Helper to find data
+      const findZoneData = (locKey: string) => {
+        // 1. Try Direct Region Lookup (e.g. "Shaanxi")
+        if (locationsData.regions[locKey]) return { region: locKey, zones: locationsData.regions[locKey].zones };
+
+        // 2. Try Composite Lookup (e.g. "Shaanxi_City")
+        if (locKey.includes('_')) {
+          const parts = locKey.split('_');
+          const rKey = parts[0];
+          const zKey = parts[1];
+          if (locationsData.regions[rKey]) {
+            // It's a valid region. Check if zone exists there.
+            if (locationsData.regions[rKey].zones[zKey]) {
+              return { region: rKey, zoneData: locationsData.regions[rKey].zones[zKey] };
+            }
+            // If not in region, check 'Jianghu' (Generic)
+            if (locationsData.regions['강호'] && locationsData.regions['강호'].zones[zKey]) {
+              // It's a generic spot instantiated in a region.
+              return { region: rKey, zoneData: locationsData.regions['강호'].zones[zKey] };
+            }
+          }
         }
-        if (rName === currentLocation) {
-          currentRegionName = rName;
+
+        // 3. Fallback Scan
+        for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
+          if (rData.zones && rData.zones[locKey]) {
+            return { region: rName, zoneData: rData.zones[locKey] };
+          }
         }
+        return null;
+      };
+
+      const locInfo = findZoneData(currentLocation);
+      if (locInfo) {
+        currentRegionName = locInfo.region;
+        if (locInfo.zoneData) currentZoneSpots = locInfo.zoneData.spots || [];
       }
 
       locationContext = `
@@ -443,6 +484,40 @@ Generate the JSON output.
             // if (val < -10) val = -10; // REMOVED: Allow catastrophic drops
 
             json.relationship_updates[key] = val;
+          }
+        }
+
+        // [Canonicalize Location Update]
+        // If the AI output "Jungwon_Luoyang" but the map says Luoyang is in "Henan", FIX IT.
+        if (json.location_update && typeof json.location_update === 'string') {
+          const rawLoc = json.location_update;
+          if (rawLoc.includes('_')) {
+            const [rawRegion, rawZone] = rawLoc.split('_');
+
+            // Reuse findZoneData logic or simplified lookup
+            // We need to find where 'rawZone' actually lives.
+            let foundRegion = null;
+
+            // 1. Check if the rawRegion is already correct
+            if (locationsData?.regions?.[rawRegion]?.zones?.[rawZone]) {
+              foundRegion = rawRegion;
+            } else {
+              // 2. Scan all regions to find the zone
+              if (locationsData?.regions) {
+                for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
+                  if (rData.zones && rData.zones[rawZone]) {
+                    foundRegion = rName;
+                    break;
+                  }
+                }
+              }
+            }
+
+            // 3. Correction
+            if (foundRegion && foundRegion !== rawRegion) {
+              console.log(`[AgentPostLogic] Correcting Location Region: ${rawLoc} -> ${foundRegion}_${rawZone}`);
+              json.location_update = `${foundRegion}_${rawZone}`;
+            }
           }
         }
 

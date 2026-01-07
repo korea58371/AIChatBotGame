@@ -1877,6 +1877,12 @@ export default function VisualNovelUI() {
                             console.log("No candidates found (All filtered by Phase/Region/Active). check AgentCasting logic.");
                         } else {
                             // Display Top 15
+                            console.log(`%c[Context Info]`, 'color: gray;', {
+                                Location: effectiveGameState.currentLocation,
+                                PlayerRank: effectiveGameState.playerStats?.playerRank,
+                                PlayerLevel: effectiveGameState.playerStats?.level,
+                                Phase: effectiveGameState.phase
+                            });
                             console.log(`%c[Leaderboard (Top 15)]`, 'color: purple; font-weight: bold;', castingDebug.slice(0, 15).map((c: any) => ({
                                 Name: c.name,
                                 Score: c.score.toFixed(2),

@@ -594,9 +594,12 @@ export const useGameStore = create<GameState>()(
       })),
 
       goals: [],
-      addGoal: (goal) => set((state) => ({
-        goals: [...state.goals, goal]
-      })),
+      addGoal: (goal) => set((state) => {
+        // [Fix] Prevent Duplicates (Check by Description)
+        const exists = state.goals.some(g => g.description.trim() === goal.description.trim() && g.status === 'ACTIVE');
+        if (exists) return {};
+        return { goals: [...state.goals, goal] };
+      }),
       updateGoal: (id, updates) => set((state) => ({
         goals: state.goals.map(g => g.id === id ? { ...g, ...updates } : g)
       })),

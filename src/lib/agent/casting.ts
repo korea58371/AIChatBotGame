@@ -86,36 +86,32 @@ export class AgentCasting {
             let baseScore = 0.5; // Start with small base
             // Region Logic
             const region = cAny.profile?.거주지 || cAny.region || "";
-            if (fullLocation.includes(region)) baseScore += 1.0;
+            const regionReasons: string[] = [];
+            if (fullLocation.includes(region)) {
+                baseScore += 1.0;
+                regionReasons.push("Base Region Match (+1.0)");
+            }
 
             // --- Active Scoring ---
             let actScore = baseScore;
-            const actReasons: string[] = [];
+            const actReasons: string[] = [...regionReasons];
 
             // 1. Rank Penalty (Active Only)
-            const gap = charLevel - this.parseRank(playerLevel.toString()); // Try to use parseRank or just pass number
-            // Actually playerLevel input is number (1~??). Let's map playerLevel to rankVal.
-            const playerRankVal = this.getRankFromLevel(playerLevel); // Assume getRankFromLevel exists as helper or implement local
-            // Local Helper for this scope if not static
-            const pRank = playerLevel >= 10 ? Math.floor(playerLevel / 10) : 1; // Simplistic fallback
-            // Better: Re-use getRankFromLevel logic from previous code block if accessible, OR simple logic:
-            // Let's assume input playerLevel is actual Level (1~99)
-            // 1~9: 3rd Rate (1)
-            // 10~19: 2nd Rate (2)
-            // ...
-
-            const rGap = charLevel - ((playerLevel >= 10) ? Math.floor(playerLevel / 10) : 1);
-
-            // Re-implement Rank Logic accurately
-            // If player is lvl 1, rank is 1. If lvl 50, rank is 5.
-            const pRankVal = (playerLevel < 10) ? 1 : Math.floor(playerLevel / 10) + 1; // approx
+            // Determine Player Rank Value
+            const pRankVal = AgentCasting.getRankFromLevel(playerLevel);
 
             const rankGap = charLevel - pRankVal;
 
             if (rankGap >= 2) {
                 // Too Strong (Anti-Bullying)
                 actScore *= 0.1;
-                actReasons.push(`Rank Gap(${rankGap}) Penalty`);
+                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Strong]`);
+            } else if (rankGap <= -2) {
+                // Too Weak (Anti-Clutter) - Ignored if User Mentioned or Related
+                // If Player is multiple ranks above, these should be Background/Extras.
+                // Exception: If they are 'Related' (checked later) they get bonus back. activeScore is cumulative.
+                actScore *= 0.5;
+                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Weak]`);
             }
 
             // 2. Location/Tag Bonus (Active)
@@ -144,7 +140,7 @@ export class AgentCasting {
 
             // --- Background Scoring ---
             let bgScore = baseScore;
-            const bgReasons: string[] = [];
+            const bgReasons: string[] = [...regionReasons];
 
             // 1. NO Rank Penalty for Background
 
