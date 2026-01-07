@@ -30,6 +30,7 @@ export interface PreLogicOutput {
     emotional_context?: string; // [NEW] 감정 상태 요약 (숨겨진 감정 포함)
     character_suggestion?: string; // [NEW] 등장 제안 인물
     goal_guide?: string; // [NEW] 목표 달성 가이드
+    location_inference?: string; // [NEW] 위치 추론 (Region Inference)
 }
 
 export class AgentPreLogic {
@@ -271,7 +272,8 @@ STEP 4: **Final Judgment**
     "narrative_guide": "Specific instructions for the narrator.",
     "event_status": "active" | "completed" | "ignored" | null, // [New] Event Lifecycle Management
     "state_changes": { "hp": -10, "stamina": -5, "factionChange": "New Faction", "playerRank": "New Title" },
-    "mechanics_log": ["Analysis: ...", "Score: X/10"]
+    "mechanics_log": ["Analysis: ...", "Score: X/10"],
+    "location_inference": "Inferred Region/Context if unknown (e.g. 'Sichuan - Chengdu')" // [New]
 }
 
 [Guide Generation Instructions]
@@ -291,6 +293,8 @@ STEP 4: **Final Judgment**
    - **CRITICAL CONDITION**: If 'Tension' is HIGH/COMBAT, do NOT force the event to disrupt the scene.
      - Instead, treat the event as "present in background" (e.g., waiting for the fight to end).
      - Only forcefully interrupt if the event is an EMERGENCY or DIRECT THREAT.
+6. **Location Guide**: If [Location Context] is vague (e.g. just a room name without Region), **INFER** the likely Region/City from history/context.
+   - Guide the narrator to describe the atmosphere of that region (e.g. "Humid and spicy air of Sichuan", "Cold winds of North").
 `.trim();
 
         // 갓 모드 체크
@@ -348,7 +352,12 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
 - Visible Spots: ${visibleSpots.join(', ')}
 - Description: ${locationsData.regions[currentRegionName]?.description || ""}
 `;
+            } else {
+                // [Fallback] Explicitly mark as Unknown to trigger Inference
+                locationContext = `[Location Context: Unknown Region] Current Spot: "${currentLocation}". (PreLogic MUST Infer Region based on context).`;
             }
+        } else {
+            locationContext = `[Location Context: Missing] Current Spot: "${currentLocation}". (PreLogic MUST Infer Region based on context).`;
         }
 
         // 5. [내러티브 시스템 가이드 주입]
@@ -444,6 +453,7 @@ ${finalGoalGuide}
 2. **IDENTIFY** the Target (if any). If the target is in [Casting Suggestions], allow interaction if logical (e.g. shouting).
 3. **JUDGE** the action's Plausibility (1-10). Check Player Capability vs Target Strength.
 4. **GENERATE** the Narrative Guide. **Aggressively suggest** new characters if the scene allows.
+5. **INFER LOCATION**: If unknown, deduce Region/Atmosphere and include in guide.
 `;
 
         try {

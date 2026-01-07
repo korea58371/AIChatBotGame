@@ -112,7 +112,8 @@ ${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysi
 ${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
 ${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
 ${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
-${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)` : ""}
+${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_inference}` : ""}
+${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}
 
 [Context data]
 ${PromptManager.getPlayerContext(effectiveGameState, language)}
