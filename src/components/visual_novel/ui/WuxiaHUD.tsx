@@ -52,8 +52,17 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
 
     return (
         <div className="absolute inset-0 z-50 flex justify-between items-start p-4 pointer-events-none font-serif">
+            {/* Profile Background Brush */}
+            <div className="absolute -top-20 -left-10 w-[600px] h-[300px] pointer-events-none select-none z-0 opacity-90">
+                <img
+                    src="/assets/wuxia/interface/UI_ProfileBG.png"
+                    className="w-full h-full object-contain"
+                    alt=""
+                />
+            </div>
+
             {/* LEFT SIDE: Player Stats */}
-            <div className="flex items-start gap-4 pointer-events-auto">
+            <div className="relative flex items-start gap-4 pointer-events-auto z-10">
                 {/* Wuxia Frame (Stone/Gold Texture) */}
                 <div
                     className="relative group cursor-pointer mt-3"

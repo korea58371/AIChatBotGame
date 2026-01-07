@@ -2691,6 +2691,28 @@ export default function VisualNovelUI() {
                 // TODO: Implement actual relationship update in store if needed
             }
 
+            // [NEW] Faction Update (PostLogic)
+            if (postLogic.factionChange) {
+                const currentFaction = useGameStore.getState().playerStats.faction;
+                if (currentFaction !== postLogic.factionChange) {
+                    newStats.faction = postLogic.factionChange;
+                    useGameStore.getState().setPlayerStats(newStats);
+                    addToast(`소속 변경: ${postLogic.factionChange}`, 'success');
+                    console.log(`[PostLogic] Faction updated: ${postLogic.factionChange}`);
+                }
+            }
+
+            // [NEW] Rank Update (PostLogic)
+            if (postLogic.playerRank) {
+                const currentRank = useGameStore.getState().playerStats.playerRank;
+                if (currentRank !== postLogic.playerRank) {
+                    newStats.playerRank = postLogic.playerRank;
+                    useGameStore.getState().setPlayerStats(newStats);
+                    addToast(`Rank Up: ${postLogic.playerRank}`, 'success');
+                    console.log(`[PostLogic] Rank updated: ${postLogic.playerRank}`);
+                }
+            }
+
             // [NEW] Injury Management (Healing & Mutation)
             if (postLogic.resolved_injuries || postLogic.new_injuries) {
                 useGameStore.setState(state => {
@@ -3990,28 +4012,31 @@ Instructions:
                                         }
 
                                         return (
-                                            <div className="bg-black/90 p-8 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center max-w-2xl w-full">
-
+                                            <div className="bg-[#1e1e1e]/95 p-8 rounded-xl border border-[#333] text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center max-w-2xl w-full relative overflow-hidden">
+                                                {/* Decorative Top Line */}
+                                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#D4AF37]/50 to-transparent" />
 
                                                 {/* Progress */}
-                                                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                                                <div className="w-full h-1 bg-[#333] rounded-full overflow-hidden mt-2">
                                                     <div
-                                                        className="h-full bg-yellow-500 transition-all duration-300"
+                                                        className="h-full bg-[#D4AF37] transition-all duration-300 shadow-[0_0_10px_#D4AF37]"
                                                         style={{ width: `${((creationStep + 1) / (creationQuestions.length + 1)) * 100}%` }}
                                                     />
                                                 </div>
 
-                                                {/* Name Input (Only on first step or separate?) 
-                                                    Let's put name input at the top always or just on step 0
-                                                  */}
+                                                {/* Name Input (Step 0) */}
                                                 {isNameStep ? (
-                                                    <div className="flex flex-col items-center gap-6 w-full max-w-md animate-in fade-in zoom-in duration-500 my-4">
-                                                        <h2 className="text-2xl text-yellow-400 font-bold mb-2">당신의 이름은 무엇입니까?</h2>
+                                                    <div className="flex flex-col items-center gap-8 w-full max-w-md animate-in fade-in zoom-in duration-500 my-4">
+                                                        <h2 className="text-3xl text-[#D4AF37] font-serif font-bold mb-2 tracking-wider">
+                                                            <span className="text-[#D4AF37]/50 mr-2">◆</span>
+                                                            당신의 이름은 무엇입니까?
+                                                            <span className="text-[#D4AF37]/50 ml-2">◆</span>
+                                                        </h2>
                                                         <div className="flex flex-col gap-2 w-full">
-                                                            <label className="text-yellow-500/80 text-xs font-bold text-left uppercase tracking-wider ml-1">Name</label>
+                                                            <label className="text-[#888] text-xs font-bold text-left uppercase tracking-wider ml-1">Name</label>
                                                             <input
                                                                 type="text"
-                                                                className="bg-gray-800/80 border-2 border-yellow-600/50 text-white px-6 py-4 rounded-xl focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-500/20 text-center text-xl font-bold placeholder-gray-500 transition-all shadow-inner"
+                                                                className="bg-[#252525] border border-[#333] focus:border-[#D4AF37] text-[#eee] px-6 py-4 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30 text-center text-xl font-bold placeholder-[#555] transition-all font-serif tracking-widest"
                                                                 placeholder="이름을 입력하세요"
                                                                 value={playerName || ''}
                                                                 onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
@@ -4019,8 +4044,6 @@ Instructions:
                                                                 onKeyDown={(e) => {
                                                                     if (e.key === 'Enter') {
                                                                         const state = useGameStore.getState();
-                                                                        console.log("[NameInput] Validating:", state.playerName, "Data Count:", Object.keys(state.characterData || {}).length);
-
                                                                         const result = checkNameValidity(state.playerName, state.characterData);
                                                                         if (!result.valid) {
                                                                             addToast(result.message || "Invalid Name", "error");
@@ -4035,8 +4058,6 @@ Instructions:
                                                         <button
                                                             onClick={() => {
                                                                 const state = useGameStore.getState();
-                                                                console.log("[NameButton] Validating:", state.playerName, "Data Count:", Object.keys(state.characterData || {}).length);
-
                                                                 const result = checkNameValidity(state.playerName, state.characterData);
                                                                 if (!result.valid) {
                                                                     addToast(result.message || "Invalid Name", "error");
@@ -4044,21 +4065,21 @@ Instructions:
                                                                 }
                                                                 setCreationStep(prev => prev + 1);
                                                             }}
-                                                            className="mt-2 w-full px-8 py-4 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 rounded-xl font-bold text-black text-lg shadow-lg hover:shadow-yellow-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                            className="mt-4 w-full px-8 py-3.5 bg-[#D4AF37] hover:bg-[#b5952f] rounded-lg font-bold text-[#1e1e1e] text-lg shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 font-serif"
                                                         >
                                                             <span>운명 시작하기</span>
-                                                            <span>→</span>
+                                                            <span className="text-base">→</span>
                                                         </button>
                                                     </div>
                                                 ) : (
                                                     <>
-                                                        <h2 className="text-base md:text-lg text-white font-bold leading-relaxed whitespace-pre-wrap animate-in fade-in slide-in-from-right-4 duration-300">
+                                                        <h2 className="text-lg md:text-xl text-[#D4AF37] font-bold leading-relaxed whitespace-pre-wrap animate-in fade-in slide-in-from-right-4 duration-300 px-4">
+                                                            <span className="text-[#D4AF37]/50 text-sm mr-2 align-middle">◆</span>
                                                             {currentQuestion?.question}
                                                         </h2>
 
                                                         <div className="grid grid-cols-1 w-full gap-3 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
                                                             {currentQuestion?.options.map((opt: any) => {
-                                                                // Check Condition
                                                                 if (opt.condition) {
                                                                     const { key, value } = opt.condition;
                                                                     if (creationData[key] !== value) return null;
@@ -4068,10 +4089,13 @@ Instructions:
                                                                     <button
                                                                         key={opt.value}
                                                                         onClick={() => currentQuestion && handleOptionSelect(currentQuestion.id, opt.value)}
-                                                                        className="px-6 py-4 bg-gray-800 hover:bg-yellow-900/50 border border-gray-600 hover:border-yellow-500 rounded-lg text-left text-gray-200 hover:text-white transition-all shadow-md group active:scale-[0.99]"
+                                                                        className="group relative px-6 py-4 bg-[#252525] hover:bg-[#2a2a2a] border border-[#333] hover:border-[#D4AF37]/50 rounded-lg text-left transition-all shadow-md active:scale-[0.99] overflow-hidden"
                                                                     >
-                                                                        <span className="font-bold text-yellow-500 mr-2 group-hover:text-yellow-300">▶</span>
-                                                                        {opt.label}
+                                                                        <div className="absolute inset-y-0 left-0 w-1 bg-[#333] group-hover:bg-[#D4AF37] transition-colors" />
+                                                                        <span className="font-bold text-[#666] group-hover:text-[#D4AF37] mr-3 font-serif transition-colors">◈</span>
+                                                                        <span className="text-gray-300 group-hover:text-[#eee] font-medium transition-colors">
+                                                                            {opt.label}
+                                                                        </span>
                                                                     </button>
                                                                 );
                                                             })}
@@ -4082,9 +4106,9 @@ Instructions:
                                                 {creationStep > 0 && (
                                                     <button
                                                         onClick={() => setCreationStep(prev => prev - 1)}
-                                                        className="mt-4 text-gray-500 hover:text-white text-sm"
+                                                        className="mt-2 text-[#666] hover:text-[#D4AF37] text-sm transition-colors flex items-center gap-1 font-serif"
                                                     >
-                                                        이전 단계로
+                                                        <span>←</span> 이전 단계로
                                                     </button>
                                                 )}
                                             </div>
@@ -4213,31 +4237,34 @@ Instructions:
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm"
+                            className="absolute inset-0 bg-[#000]/90 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm"
                         >
-                            <div className="flex flex-col items-center gap-6 max-w-xl w-full p-8 rounded-2xl border border-yellow-500/30 bg-gray-900/90 shadow-2xl relative overflow-hidden">
+                            <div className="flex flex-col items-center gap-6 max-w-xl w-full p-10 rounded-xl border border-[#333] bg-gradient-to-b from-[#2a2a2a] via-[#1a1a1a] to-[#0d0d0d] shadow-2xl relative overflow-hidden">
                                 {/* Background Glow */}
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl animate-pulse" />
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#D4AF37]/5 rounded-full blur-3xl animate-pulse" />
 
                                 {/* Spinner & Title */}
-                                <div className="flex flex-col items-center gap-2 z-10">
-                                    <div className="w-full flex flex-col items-center">
-                                        <h3 className="text-2xl font-bold text-yellow-400 animate-pulse mb-4 tracking-widest uppercase text-center">
-                                            {t.fateIsWeaving}
-                                        </h3>
+                                <div className="flex flex-col items-center gap-3 z-10 w-full">
+                                    <div className="w-16 h-16 rounded-full border-2 border-[#333] border-t-[#D4AF37] animate-spin mb-4" />
+
+                                    <h3 className="text-3xl font-serif font-bold text-[#D4AF37] animate-pulse tracking-widest uppercase text-center flex items-center gap-3">
+                                        <span className="text-[#D4AF37]/50 text-xl">◆</span>
+                                        {t.fateIsWeaving}
+                                        <span className="text-[#D4AF37]/50 text-xl">◆</span>
+                                    </h3>
+
+                                    <div className="text-center w-full">
                                         <ResponseTimer avgTime={avgResponseTime} />
-                                        <p className="text-xs text-gray-500 mt-4 font-mono">
-                                            {t.avgResponseTime.replace('{0}', Math.round(avgResponseTime / 1000).toString())}
+                                        <p className="text-xs text-[#666] mt-2 font-mono tracking-widest">
+                                            ESTIMATED: {Math.round(avgResponseTime / 1000)}s
                                         </p>
                                     </div>
                                 </div>
 
-
-
-                                {/* Dynamic Tips (Simple Random Implementation) */}
-                                <div className="bg-black/50 p-4 rounded-lg border border-gray-700 w-full text-center z-10 transition-all duration-500">
-                                    <span className="text-gray-400 text-xs uppercase tracking-widest block mb-1">{t.tipLabel}</span>
-                                    <p key={currentTipIndex} className="text-gray-200 text-sm italic animate-in fade-in slide-in-from-bottom-2 duration-700">
+                                {/* Dynamic Tips */}
+                                <div className="bg-[#252525] p-5 rounded-lg border border-[#333] w-full text-center z-10 shadow-inner mt-2">
+                                    <span className="text-[#D4AF37] text-xs font-serif font-bold tracking-[0.2em] block mb-2 border-b border-[#333] pb-2 mx-auto w-12">TIP</span>
+                                    <p key={currentTipIndex} className="text-[#ccc] text-sm leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-2 duration-700 min-h-[3rem] flex items-center justify-center">
                                         "{LOADING_TIPS[currentTipIndex]}"
                                     </p>
                                 </div>

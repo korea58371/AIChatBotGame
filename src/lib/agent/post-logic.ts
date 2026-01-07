@@ -14,6 +14,9 @@ export interface PostLogicOutput {
   inline_triggers?: { quote: string, tag: string }[]; // [NEW] Quotes to inject tags into
   summary_trigger?: boolean;
   dead_character_ids?: string[]; // [NEW] Characters confirmed dead this turn
+  factionChange?: string; // [NEW] Faction Change (e.g. "Mount Hua Sect")
+  playerRank?: string; // [NEW] Title/Rank Change (e.g. "First Rate Warrior")
+
 
   // [New] Injury Management
   resolved_injuries?: string[]; // Injuries to remove (Healed or Mutated)
@@ -184,6 +187,12 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 - Use standard Wuxia region names: 중원, 사천, 하북, 산동, 북해, 남만, 서역, 등.
 - If no change, return null.
 
+[Faction & Rank Updates]
+- **factionChange**: If the narrative explicitly states the player has joined or left a faction/sect (e.g. "You have formally become a disciple of Mount Hua").
+- **playerRank**: If the narrative explicitly awards a new title or martial rank (e.g. "You have reached the level of a First Rate Warrior" or "People now call you the Sword Demon").
+- **Constraint**: Only valid if explicitly confirmed in the text. Do not guess.
+
+
 [Output Schema (JSON)]
 {
   "mood_update": "tension" | "romance" | "daily" | null,
@@ -208,10 +217,12 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
   "goal_updates": [ { "id": "goal_1", "status": "COMPLETED" } ],
   "new_goals": [ { "description": "Survive the ambush", "type": "SUB" } ],
   "tension_update": 10,
-  "dead_character_ids": ["bandit_leader"]
+  "dead_character_ids": ["bandit_leader"],
+  "factionChange": "Mount Hua Sect",
+  "playerRank": "First Rate Warrior"
 }
 [Critically Important]
-- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'character_memories') MUST be in KOREAN (한국어).
+- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'character_memories', 'factionChange', 'playerRank') MUST be in KOREAN (한국어).
 - For 'activeCharacters', list EVERY character ID that speaks or performs an action in the text.
 - For 'character_memories', extract 1 key memory per active character if they had significant interaction with the player this turn.
 - For 'dead_character_ids', list IDs of ANY character who died or was permanently incapacitated/killed in this turn.

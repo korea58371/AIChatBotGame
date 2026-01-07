@@ -12,6 +12,7 @@ export const translations = {
         action: "Action",
         charInfo: "Character Information",
         profile: "Profile", // [New]
+        currentGoal: "Current Goals", // [New]
         wiki: "Wiki",
         heroism: "Heroism",
         morality: "Morality",
@@ -171,6 +172,7 @@ export const translations = {
         action: "실행",
         charInfo: "캐릭터 정보",
         profile: "프로필", // [New]
+        currentGoal: "현재 목표", // [New]
         wiki: "위키",
         heroism: "영웅심",
         herosim: "영웅심",

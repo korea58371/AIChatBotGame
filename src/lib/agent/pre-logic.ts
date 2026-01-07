@@ -16,6 +16,8 @@ export interface PreLogicOutput {
         fate?: number; // [NEW] 운명 점수 변화량 (획득 - 소모)
         location?: string; // 위치 이동 발생 시
         item_changes?: string[]; // 아이템 획득/소실
+        factionChange?: string; // [NEW] 소속 변경 (e.g. "Mount Hua Sect")
+        playerRank?: string; // [NEW] 등급/이칭 변경 (e.g. "First Rate Warrior")
         // 필요에 따라 더 구체적인 게임 상태 필드 추가
     };
     mechanics_log?: string[]; // [로그] 주사위 굴림, 룰 체크 등 기계적 판정의 상세 내역
@@ -146,7 +148,9 @@ User can spend 'Fate Points' to bend reality.
     "narrative_guide": "Specific instructions for the narrator.",
     "state_changes": { 
         "hp": -10, 
-        "fate": number // Calculated Net Change (Gain - Usage)
+        "fate": number, // Calculated Net Change (Gain - Usage)
+        "factionChange": "New Faction Name",
+        "playerRank": "New Rank Title"
     },
     "mechanics_log": ["Analysis: ...", "Score: X/10"]
 }
@@ -233,7 +237,7 @@ ${this.CORE_RULES}
     "success": boolean,
     "narrative_guide": "Specific instructions for the narrator.",
     "event_status": "active" | "completed" | "ignored" | null, // [New] Event Lifecycle Management
-    "state_changes": { "hp": -10, "stamina": -5 },
+    "state_changes": { "hp": -10, "stamina": -5, "factionChange": "New Faction", "playerRank": "New Title" },
     "mechanics_log": ["Analysis: ...", "Score: X/10"]
 }
 
@@ -612,13 +616,13 @@ ${finalGoalGuide}
         const goal = stats.final_goal;
         switch (goal) {
             case 'harem_king':
-                return "[GOAL BONUS: Harem King] Romance checks are lenient. NPCs of opposite sex are more receptive (+2 Bonus to Affection events).";
+                return "[GOAL BONUS: Harem King] Romance checks are lenient. NPCs of opposite sex are more receptive (+1 Bonus to Affection events).";
             case 'tycoon':
-                return "[GOAL BONUS: Tycoon] Economic/Mercantile checks are lenient. Money-making schemes succeed more often (+2 Bonus to Wealth events).";
+                return "[GOAL BONUS: Tycoon] Economic/Mercantile checks are lenient. Money-making schemes succeed more often (+1 Bonus to Wealth events).";
             case 'survival':
-                return "[GOAL BONUS: Survival] Crisis survival checks are prioritized. Evasion and escaping death is easier (+2 Bonus to Survival).";
+                return "[GOAL BONUS: Survival] Crisis survival checks are prioritized. Evasion and escaping death is easier (+1 Bonus to Survival).";
             case 'murim_lord':
-                return "[GOAL BONUS: Murim Lord] Combat and Training progression is accelerated (+2 Bonus to Growth/Combat).";
+                return "[GOAL BONUS: Murim Lord] Combat and Training progression is accelerated (+1 Bonus to Growth/Combat).";
             case 'go_home':
                 return "[GOAL BONUS: Go Home] Reality insight increased. Higher perception of 'novel tropes' and breaking the 4th wall.";
             default:
