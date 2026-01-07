@@ -156,7 +156,12 @@ ${userInput}
             .replace(/\[Tension[^\]]*\]/gi, '')
             .replace(/<Tension[^>]*>/gi, '')
             .replace(/<NewInjury[^>]*>/gi, '')
-            .replace(/<Injury[^>]*>/gi, '');
+            .replace(/<Injury[^>]*>/gi, '')
+            .replace(/<Dead[^>]*>/gi, '')
+            .replace(/\[Dead[^\]]*\]/gi, '')
+            .replace(/<Location[^>]*>/gi, '')
+            .replace(/<Faction[^>]*>/gi, '')
+            .replace(/<Rank[^>]*>/gi, '');
 
         // [Guard] Empty Story Validation
         if (!cleanStoryText || !cleanStoryText.trim()) {
