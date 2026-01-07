@@ -127,6 +127,36 @@ export class AgentCasting {
                 actReasons.push("User Mentioned (+10.0)");
             }
 
+            // 4. Tag Resonance (Active) [NEW]
+            let tags = [...(cAny.system_logic?.tags || [])];
+
+            // [Auto-Include] Affiliation & Nicknames as Tags
+            if (cAny.profile?.소속) {
+                const affiliationTags = cAny.profile.소속.split(/[\/,]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+                tags.push(...affiliationTags);
+            }
+            if (cAny.profile?.별명) {
+                const nicknameTags = cAny.profile.별명.split(/[\/,]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+                tags.push(...nicknameTags);
+            }
+
+            if (tags.length > 0) {
+                for (const tag of tags) {
+                    if (!tag) continue;
+                    // User Input Match (Strong)
+                    if (userInput.includes(tag)) {
+                        actScore += 1.5;
+                        actReasons.push(`Tag Resonance [${tag}] (User) (+1.5)`);
+                    }
+                    // Summary Match (Weak) - only if not already matched by user input to avoid double counting? 
+                    // Let's allow stacking but maybe smaller weight or just distinct reasons.
+                    else if (summary.includes(tag)) {
+                        actScore += 0.5;
+                        actReasons.push(`Tag Resonance [${tag}] (Story) (+0.5)`);
+                    }
+                }
+            }
+
             // RELATION CHECK
             const activeCharIdsArr = Array.from(activeCharIds);
             const relations = cAny.인간관계 || {};
