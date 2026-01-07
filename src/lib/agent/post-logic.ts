@@ -107,6 +107,9 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - If the narrative implies **Time Passing** (Sleep, Travel, Meditation) or **Resting** in a safe place:
   - CHECK for "Minor Injuries" in 'active_injuries' (e.g., "Bruise", "Scratch", "Muscle Pain", "Minor Cut", "타박상", "찰과상", "근육통").
   - **ACTION**: Add them to 'resolved_injuries' AUTOMATICALLY.
+  - **RECOVERY**: Check if MP (Internal Energy) or Focus was consumed. If finding rest/meditation, PROPOSE POSITIVE MP RECOVERY in 'stat_updates'.
+    - Sleep/Meditation: +10 ~ +50 MP
+    - Short Rest: +5 ~ +10 MP
   - **Constraint**: Do NOT naturally heal severe injuries (Fractures, Internal Injuries, Poison) without explicit medical treatment or items.
 
 [Personality Stats Guidelines]
@@ -123,7 +126,7 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
    - humor: -100 (Serious) <-> 100 (Jester)
    - lust: -100 (Ascetic) <-> 100 (Hedonist)
 
-- Physical/Mental Stats: hp, mp, str, agi, int, vit, luk.
+- Physical/Mental Stats: hp, mp, str, agi, int, vit, luk, fame.
 
 [Personality Update Guidelines] (Consistency & Inertia)
 - **Principle:** Stats represent a developing character arc.
@@ -198,7 +201,7 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
   "mood_update": "tension" | "romance" | "daily" | null,
   "location_update": "Region_Place" | null,
   "relationship_updates": { "character_id": 5, "another_char": -2 },
-  "stat_updates": { "morality": -2, "eloquence": 1, "hp": -5, "mp": 2 },
+  "stat_updates": { "morality": -2, "eloquence": 1, "hp": -5, "mp": 2, "fame": 10 },
   "character_memories": { 
       "soso": ["Player praised my cooking", "Player asked about my past"], 
       "chilsung": ["Player defeated me", "Player gave me a healing potion"] 

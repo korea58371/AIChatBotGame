@@ -161,7 +161,9 @@ ${userInput}
             .replace(/\[Dead[^\]]*\]/gi, '')
             .replace(/<Location[^>]*>/gi, '')
             .replace(/<Faction[^>]*>/gi, '')
-            .replace(/<Rank[^>]*>/gi, '');
+            .replace(/<Rank[^>]*>/gi, '')
+            .replace(/<ResolvedInjury[^>]*>/gi, '')
+            .replace(/\[ResolvedInjury[^\]]*\]/gi, '');
 
         // [Guard] Empty Story Validation
         if (!cleanStoryText || !cleanStoryText.trim()) {

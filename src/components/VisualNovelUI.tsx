@@ -2256,6 +2256,44 @@ export default function VisualNovelUI() {
         // Initialize if missing (Redundant but safe)
         if (!newStats.relationships) newStats.relationships = {};
 
+        // [New] Generic Stat Updates (PostLogic)
+        if (logicResult.stat_updates) {
+            console.log("[applyGameLogic] Processing Generic Stat Updates:", logicResult.stat_updates);
+            Object.entries(logicResult.stat_updates).forEach(([key, val]) => {
+                const numVal = Number(val);
+                if (isNaN(numVal) || numVal === 0) return;
+
+                const lowerKey = key.toLowerCase();
+
+                // 1. Core Stats
+                if (lowerKey === 'hp') {
+                    newStats.hp = Math.min(Math.max(0, newStats.hp + numVal), newStats.maxHp);
+                    handleVisualDamage(numVal, newStats.hp, newStats.maxHp);
+                }
+                else if (lowerKey === 'mp') newStats.mp = Math.min(Math.max(0, newStats.mp + numVal), newStats.maxMp);
+                else if (lowerKey === 'gold') newStats.gold = Math.max(0, newStats.gold + numVal);
+                else if (lowerKey === 'fame') {
+                    newStats.fame = Math.max(0, (newStats.fame || 0) + numVal);
+                    addToast(`${t.fame} ${numVal > 0 ? '+' : ''}${numVal}`, numVal > 0 ? 'success' : 'warning');
+                }
+                else if (lowerKey === 'neigong') newStats.neigong = Math.max(0, (newStats.neigong || 0) + numVal);
+                else if (lowerKey === 'fate') newStats.fate = Math.max(0, (newStats.fate || 0) + numVal);
+
+                // 2. Personality Stats
+                else if (newStats.personality && Object.prototype.hasOwnProperty.call(newStats.personality, lowerKey)) {
+                    // @ts-ignore
+                    newStats.personality[lowerKey] = Math.min(100, Math.max(-100, (newStats.personality[lowerKey] || 0) + numVal));
+                    // Optional: Toast for personality update? Maybe too spammy if handled by tag injection.
+                }
+
+                // 3. Base Stats
+                else if (['str', 'agi', 'int', 'vit', 'luk'].includes(lowerKey)) {
+                    // @ts-ignore
+                    newStats[lowerKey] = (newStats[lowerKey] || 10) + numVal;
+                }
+            });
+        }
+
         if (logicResult.hpChange) {
             newStats.hp = Math.min(Math.max(0, newStats.hp + logicResult.hpChange), newStats.maxHp);
             handleVisualDamage(logicResult.hpChange, newStats.hp, newStats.maxHp);
