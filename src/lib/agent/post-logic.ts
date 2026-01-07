@@ -51,8 +51,12 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 - **CRITICAL:** If the event is just a conversation without a major outcome, DO NOT RECORD IT.
 
 [Goal Tracking]
-- Identify if the player creates a new Goal ("I will become the Alliance Leader").
-- Monitor [Active Goals] for progress, completion, or failure based on the story.
+- **MANDATORY CHECK**: Review the [Active Goals] list provided in the context context.
+- For EACH active goal:
+  1. Does the current story complete this goal? -> Set status: "COMPLETED"
+  2. Does the current story make this goal impossible, OR has the narrative direction shifted away from it (Opportunity Lost)? -> Set status: "FAILED"
+- **CRITICAL**: Use the **EXACT ID** from the [Active Goals] list. Do NOT invent new IDs.
+- Identify if the player creates a NEW Goal ("I will become the Alliance Leader") -> Add to 'new_goals'.
 
 [Narrative Tension System] (-100 ~ +100)
 - **Concept**: Tension is the "Probability of Crisis". High Tension = Danger imminent. Negative Tension = Guaranteed Peace (Cool-down).
