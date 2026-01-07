@@ -230,10 +230,13 @@ export class AgentCasting {
                 r.includes("Related") ||
                 r.includes("User Mentioned") ||
                 r.includes("Context Mentioned") ||
-                r.includes("Tag Match")
+                r.includes("Tag Match") ||
+                r.includes("Region Match") // [Fix] Allow simple region matches
             );
             // Special case: If score is very high (e.g. > 3.0), keep it even if reason logic misses (shouldn't happen but safeguard)
-            return isRelevant || c.bgScore > 2.0;
+            // Also allow if we don't have enough candidates? No, better to have valid ones.
+            // Let's lower score threshold to 1.0 (Base 0.5 + Region 1.0 = 1.5)
+            return isRelevant || c.bgScore >= 1.0;
         });
 
         // Sort by Priority: Home Ground First, then Score

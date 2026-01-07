@@ -34,6 +34,15 @@ Your ONLY role is to read the provided story segment and generate 3 branching op
 
 ${WUXIA_CHOICE_RULES}
 
+[CRITICAL INSTRUCTION - PLAYER ONLY]
+- You must ONLY generate choices for the protagonist (${gameState.playerName || 'Protagonist'}).
+- NEVER generate choices that describe an NPC's action, dialogue, or reaction.
+- BAD: "The merchant gets angry." (NPC action)
+- BAD: "Cheon Se-yun nods." (NPC action)
+- GOOD: "Glare at the merchant." (Player action)
+- GOOD: "Nod to Cheon Se-yun." (Player action)
+- The choices should be ACTIONS or DIALOGUE that the PLAYER can choose to do.
+
 [Output Requirements]
 - Output ONLY the 3 lines of choices.
 - Do NOT output any conversational text or JSON.
@@ -45,11 +54,22 @@ ${WUXIA_CHOICE_RULES}
             systemInstruction: systemPrompt
         });
 
+        // [New] Skill Extraction
+        const skills = gameState.playerStats?.skills || gameState.skills || [];
+        const skillList = skills.length > 0
+            ? skills.map((s: any) => `- [${s.name}] (${s.rank}): ${s.description}`).join('\n')
+            : "No known martial arts skills.";
+
         // Construct Dynamic Prompt
         const dynamicPrompt = `
 [Player Info]
 Name: ${gameState.playerName || 'Protagonist'}
-Trait: ${gameState.playerStats?.trait || 'Unknown'} (Modern Earthling possessing a body)
+Identity: ${gameState.playerStats?.playerRank || 'Unknown'} Rank Martial Artist
+Personality: ${gameState.playerStats?.personalitySummary || 'Modern Earthling possessing a body (Calculator, Pragmatic)'}
+Current Status: ${gameState.statusDescription || 'Normal'}
+
+[Known Skills]
+${skillList}
 
 [User Playstyle History]
 ${(() => {
@@ -69,9 +89,14 @@ ${userInput}
 ${storyText}
 
 [Task]
-Generate 3 distinct choices based on the [Current Story Segment].
-- Analyze the [User Playstyle History]. If the user prefers short/aggressive inputs, offer shorter choices. If they prefer detailed/polite inputs, offer more descriptive choices.
-- Adapt to the user's "Voice".
+Generate 3 distinct choices based on the [Current Story Segment] for [${gameState.playerName}].
+- Choice 1: Active/Aggressive/Bold (Reflecting a martial artist's spirit). *If combat/danger, suggest using a [Known Skill].*
+- Choice 2: Cautious/Observant/Pragmatic (Reflecting a modern transmigrator's wit).
+- Choice 3: Creative/Social/Humorous (Reflecting the specific personality).
+
+[Constraint Check]
+- Does the choice describe *someone else's* action? -> REJECT.
+- Is it the Player's action? -> ACCEPT.
 `;
         try {
             const result = await model.generateContent(dynamicPrompt);

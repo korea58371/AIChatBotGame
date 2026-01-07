@@ -279,17 +279,7 @@ export default function VisualNovelUI() {
         isDataLoaded,
     } = useGameStore();
 
-    // [DEBUG] Check Startup Logic
     useEffect(() => {
-        console.log("[VN_DEBUG_MOUNT] State:", {
-            turnCount,
-            questionsLen: characterCreationQuestions?.length,
-            activeGameId,
-            isDataLoaded,
-            scriptQueueLen: scriptQueue.length,
-            choicesLen: choices.length, // [DEBUG] Track choices
-            choicesContent: choices // [DEBUG] Track content
-        });
 
         // [Fix] Ensure Game Data is Loaded on Mount (especially after New Game reset)
         if (!isDataLoaded) {
