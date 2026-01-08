@@ -29,6 +29,8 @@ export function parseScript(text: string): ScriptSegment[] {
 
     // Unescape HTML entities if present
     text = text.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    // [Fix] Normalize ellipses to prevent unwanted sentence splitting
+    text = text.replace(/\.\.\./g, '…');
 
     // [Fix] Enforce Newline before specific system tags to prevent inline parsing errors
     // If AI writes "Text.<BGM> Title", we convert it to "Text.\n<BGM> Title"

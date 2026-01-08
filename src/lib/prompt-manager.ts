@@ -164,7 +164,7 @@ export class PromptManager {
         // [SANDWICH STRUCTURE: BLOCKS 1-4 (SHARED STATIC)]
         if (state.activeGameId === 'wuxia') {
             const CONSTANTS = await import('../data/games/wuxia/constants');
-            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA } = CONSTANTS;
+            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT, WUXIA_PROTAGONIST_PERSONA, WUXIA_THOUGHT_PROCESS } = CONSTANTS;
 
             // [BLOCK 1: IDENTITY]
             const systemIdentity = WUXIA_IDENTITY;
@@ -204,6 +204,8 @@ export class PromptManager {
             const availableBackgrounds = PromptManager.getAvailableBackgrounds(state);
 
             // [BLOCK 3: BEHAVIOR GUIDELINES]
+            // WUXIA_THOUGHT_PROCESS is now included inside WUXIA_BEHAVIOR_RULES or can be explicitly added if preferred structure changes.
+            // Based on constant definition, it's already prepended to BEHAVIOR_RULES, but to be safe and explicit based on plan:
             let behaviorRules = WUXIA_BEHAVIOR_RULES;
 
             // [BLOCK 4: STRICT OUTPUT FORMAT]

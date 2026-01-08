@@ -113,7 +113,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
       ? WUXIA_FIRST_TURN_EXAMPLE_3RD
       : WUXIA_FIRST_TURN_EXAMPLE_1ST;
 
-    firstTurnGuide = `\n\n# [EXAMPLE: INITIAL OUTPUT] (참고용)\n${targetExample}`;
+    firstTurnGuide = `\n\n# [EXAMPLE: INITIAL OUTPUT] (참고용)\n${targetExample.replace(/{playerName}/g, state.playerName || '주인공')}`;
   }
 
   return `
