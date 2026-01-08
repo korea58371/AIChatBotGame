@@ -44,6 +44,12 @@ export class AgentRetriever {
                 else if (JSON.stringify(charData).includes("존댓말")) speechStyle = "Polite/Honorific";
 
                 context += `- ${candidate.name} (${charData.title})\n  Identity: ${desc} | Faction: ${faction} | Rank: ${rank}\n  Appearance: ${appearance}\n  Personality: ${pVal}\n  Speech: ${speechStyle}\n`;
+
+                // [NEW] Memory Injection (Top 3)
+                if (charData.memories && charData.memories.length > 0) {
+                    const recentMemories = charData.memories.slice(0, 3);
+                    context += `  Memories: ${recentMemories.join(" / ")}\n`;
+                }
             });
             context += "\n";
         }
