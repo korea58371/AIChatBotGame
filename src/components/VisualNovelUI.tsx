@@ -1333,15 +1333,11 @@ export default function VisualNovelUI() {
                 isGodMode: currentState.isGodMode, // Pass God Mode Flag to Server
                 lastTurnSummary: lastTurnSummary, // [NEW] Pass Last Turn Summary
                 fateUsage: fateUsage, // [Fate System] Pass requested fate points
-                tensionLevel: (() => {
-                    const t = currentState.tensionLevel || 0;
-                    console.log(`[VisualNovelUI] CAPTURED TENSION: ${t}`);
-                    return t;
-                })(), // [FIX] Explicitly pass Tension Level with Log
+
                 turnCount: nextTurnCount, // [FIX] Pass updated Turn Count for System Prompt Logic
             }));
 
-            console.log(`[VisualNovelUI] Sending Tension (Post-Sanitize): ${sanitizedState.tensionLevel}`);
+
             console.log(`[VisualNovelUI] Payload ActiveEvent:`, sanitizedState.activeEvent ? sanitizedState.activeEvent.id : "NULL");
 
             // Race Condition for Timeout
@@ -1587,7 +1583,7 @@ export default function VisualNovelUI() {
                         location: postLogicOut?.location_update,
                         new_memories: postLogicOut?.new_memories,
                         activeCharacters: postLogicOut?.activeCharacters,
-                        tension_update: postLogicOut?.tension_update,
+
                         goal_updates: postLogicOut?.goal_updates,
                         new_goals: postLogicOut?.new_goals,
                         post_logic: {

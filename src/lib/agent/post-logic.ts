@@ -25,7 +25,7 @@ export interface PostLogicOutput {
   // [Narrative Systems]
   goal_updates?: { id: string, status: 'COMPLETED' | 'FAILED' | 'ACTIVE', updates?: string }[];
   new_goals?: { description: string, type: 'MAIN' | 'SUB' }[];
-  tension_update?: number; // Delta
+
 
   usageMetadata?: any; // [Cost] 토큰 사용량
   _debug_prompt?: string; // [Debug] 실제 프롬프트
@@ -37,7 +37,7 @@ export class AgentPostLogic {
   private static readonly SYSTEM_PROMPT = `
 You are the [Post-Logic Analyst].
 Your job is to read the generated story turn and identify IMPLICIT changes in the game state.
-Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS, GOALS, and TENSION.
+Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS, and GOALS.
 
 [Memory Logic] (Strict Filtering)
 - **Do NOT record trivial events.** (e.g. "We ate dinner", "He smiled at me", "I felt sad", "Walked together", "Had a small chat") -> These are handled by Relationship Score.
@@ -58,25 +58,6 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 - **CRITICAL**: Use the **EXACT ID** from the [Active Goals] list. Do NOT invent new IDs.
 - Identify if the player creates a NEW Goal ("I will become the Alliance Leader") -> Add to 'new_goals'.
 
-[Narrative Tension System] (-100 ~ +100)
-- **Concept**: Tension is the "Probability of Crisis". High Tension = Danger imminent. Negative Tension = Guaranteed Peace (Cool-down).
-- **ACCUMULATION (Time/Environment/Inaction):**
-  - **Dangerous Place/Night:** +1 ~ +3 (Slow passive rise)
-  - **Ignoring Flags:** +5 ~ +10 (User ignores warning clues)
-  - **Active Provocation:** +10 ~ +20 (Spike, but survivable)
-  - **Static Combat:** +1 (Very slow rise during stalemate)
-
-- **RESOLUTION (The "Cool-down" Rule):**
-  - If a Crisis/Combat is **Resolved** (Win/Escape/Negotiate/Avoid):
-    - **Invert Current Tension**: Delta = -(Current Tension * 1.5). 
-      - Example: Current 60 -> Resolved -> Delta -90 -> Result -30.
-    - **Logic**: Higher tension solved = Longer peace period.
-  
-- **RECOVERY (Peace Period):**
-  - If Tension is Negative (< 0):
-    - **Natural Recovery:** +3 ~ +5 (Return to 0).
-  - If Tension is Positive but Character is RESTING/SAFE (e.g. Inn, Home):
-    - **Natural Decay:** -5 ~ -10 (Relaxation).
 
 [Health & Status Logic] (TOP PRIORITY)
 - **Injury Consolidation (NO STACKING)**:
@@ -86,12 +67,14 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - If Player has "Internal Injury" and gets "Internal Energy Backlash" -> **Result**: Remove "Internal Injury", Add "Severe Internal Injury (Dantian Damage)".
     - **NEVER** keep both. Consolidate them into the single most severe description.
 
-- **[HYPERBOLE FILTER] (Context is King)**:
+- [HYPERBOLE & AMBIGUITY FILTER] (STRICT):
   - **Ignore Exaggeration**: Do NOT record injuries from figures of speech, sarcasm, or humor.
-    - Example: "I'm so hungry my internal energy is flowing backwards!" -> **IGNORE** (This is a joke).
-    - Example: "My head is going to explode!" -> **IGNORE** (Expression of stress).
-    - Example: "I'm dying of boredom." -> **IGNORE**.
-  - **Literal Only**: Only record injuries if they are physically described as happening in the narrative (e.g., "blood trickled down", "he grabbed his chest in pain", "a bone snapped").
+    - Example: "I'm so hungry my internal energy is flowing backwards!" -> **IGNORE** (Joke).
+    - Example: "My head is going to explode!" -> **IGNORE** (Stress).
+  - **Ignore Ambiguous Pain**: If the text says "It hurts" or "I feel pain" WITHOUT a specific physical cause (cut, blow, poison), it is likely just fatigue or status. **DO NOT** record it as an injury.
+  - **Literal Only**: Only record injuries if they are **PHYSICALLY DESCRIBED** as happening to the **Player ({playerName})**.
+    - Valid: "Blood trickled down your arm", "You felt a rib crack", "The poison entered your veins".
+    - Invalid: "You felt tired", "Your pride was hurt", "You felt a phantom pain".
 
 - **Healing**: If player visits a doctor, rests, or uses medicine, identify which 'Active Injuries' are cured OR **significantly relieved**.
   - **Rule**: "Noticeable relief", "Pain reduced", "Meridians Reconstructed", "Washed away" counts as RESOLVED.
@@ -108,7 +91,13 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - Example (Fracture -> Disabled): 
     - "resolved_injuries": ["Right Arm Fracture"]
     - "new_injuries": ["Right Arm Permanent Disability"]
-- **New Injury**: If a new injury occurs implicit in the narrative (not combat), add it to 'new_injuries'.
+- **New Injury Logic (STRICT)**:
+  - **Target**: **ONLY** record injuries for the **Player ({playerName})**. Do not record injuries for NPCs here.
+  - **Threshold**: Only record **SIGNIFICANT** physical damage. 
+    - **INCLUDE**: Cuts, Fractures, Internal Injuries, Poison, Burns, Deep Wounds.
+    - **EXCLUDE**: Scratches, Bruises, Muscle Aches, Fatigue, "Feeling weak".
+  - **Format**: Be descriptive but concise. "Left Arm Fracture", "Internal Injury (Mild)", "Poisoned (Snake)".
+  - **Ambiguity Rule**: If you are not 100% sure it is a lasting injury, **IGNORE IT**.
 - **Natural Recovery (Time/Rest)**:
   - If the narrative implies **Time Passing** (Sleep, Travel, Meditation) or **Resting** in a safe place:
   - CHECK for "Minor Injuries" in 'active_injuries' (e.g., "Bruise", "Scratch", "Muscle Pain", "Minor Cut", "타박상", "찰과상", "근육통").
@@ -243,7 +232,7 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
       { "quote": "The bandit's blade grazed my arm!", "tag": "<Stat hp='-5'>" },
       { "quote": "She laughed at my joke.", "tag": "<Rel char='NamgungSeAh' val='5'>" }
   ],
-  "tension_update": number, // Optional: Shift in tension (-100 to +100)
+
   "resolved_injuries": ["Broken Arm"], // Optional
   "new_injuries": ["Permanent Disability"], // Optional
   "new_goals": [{ "type": "MAIN" | "SUB", "description": "Goal description" }], // Optional
@@ -380,7 +369,7 @@ Valid Character IDs (Target Whitelist): ${JSON.stringify(validCharacters)}
 Current Stats: ${JSON.stringify(currentStats)}
 Active Injuries (CRITICAL): ${JSON.stringify(currentStats.active_injuries || [])}
 Current Relationships: ${JSON.stringify(activeRelationships)}
-Current Tension: ${gameState.tensionLevel || 0}/100
+
 Active Goals: ${JSON.stringify(gameState.goals ? gameState.goals.filter((g: any) => g.status === 'ACTIVE') : [])}
 ${locationContext}
 

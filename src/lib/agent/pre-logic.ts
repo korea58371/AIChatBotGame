@@ -61,18 +61,17 @@ The AI MUST assign a score based on REALISM, LOGIC, and STRICT CONTEXT ADHERENCE
 - Actions relying on minor luck or assumptions.
 - Result: Standard outcome (Stat/Dice check mostly hidden).
 
-**Score 2-3 (Unlikely/Flawed/Hallucinated)**:
-- Ignores disadvantage. Poor tactic. "I punch the steel wall."
-- **Inventing convenient facts** (e.g., "I suddenly remember I have a bomb" when not inventory).
-- **Adding unmentioned settings** (e.g., "He is actually my brother" when not in lore).
-- Result: Failure + Minor Consequence.
+**Score 2-3 (Overreach / Soft Correction)**:
+- User attempts actions BEYOND their current Capability or Rank.
+- User dictates a RESULT that conflicts with Reality (e.g., "I kill the Master instantly" when weak).
+- **ACTION**: **Do NOT block.** Reinterpret as a **FAILED ATTEMPT**.
+- **Narrative**: Describe the *struggle*, the *gap in power*, or the *clumsiness*.
+- Example: "I fly over the wall" (No skill) -> "You jump with all your might, but your heavy body barely reaches halfway before crashing down."
 
-**Score 1 (Impossible/God-Mode)**:
-- Violates limitations. Controlling NPCs ("She loves me"). Controlling Reality ("It rains").
-- Blatant Hallucination or Lying about context.
-- **Result: IMMEDIATE DENIAL.**
-- **CRITICAL:** Do NOT describe the success and then "it was a dream".
-- **Describe the World resisting.** (e.g., User: "She kisses me." -> Response: "She pushes you away coldly.")
+**Score 1 (Impossible / Hard Denial)**:
+- Violates Fundamental Laws of Physics or Logic (e.g., "I turn into a Dragon", "I become God").
+- Blatant Hallucination (e.g., "I use the item I don't have").
+- **result**: IMMEDIATE DENIAL. State clearly why it is impossible in the narrative.
 `;
 
     // [핵심 판정 규칙 (Core Rules)]
@@ -81,37 +80,38 @@ The AI MUST assign a score based on REALISM, LOGIC, and STRICT CONTEXT ADHERENCE
     // 3. 서사적 흐름 (실패하더라도 재미있게)
     // 4. 전술적 창의성 우대 (지형지물, 심리전 사용 시 보정)
     private static readonly CORE_RULES = `
+[Protocol: Intent Preservation & Soft Correction]
+**CRITICAL**: Users often describe the *RESULT* they want ("I kill him"), not just the action.
+1. **Interpretation Rule**: ALWAYS interpret "Result-Oriented Input" as "INTENT/ATTEMPT".
+   - User: "I chop his head off."
+   - Interpretation: "User *tries* to chop his head off with full force."
+2. **Reality Check**:
+   - IF (User Rank >= Target Rank) -> GRANT Result (Score 7-9).
+   - IF (User Rank < Target Rank) -> DENY Result, BUT EXECUTE ATTEMPT (Score 2-3).
+   - **Narrative**: "You swing your sword viciously at his neck (Intent preserved), BUT he stops it with a single finger (Reality enforced)."
+3. **NO "Dream" Endings**: NEVER describe the success and then say "it was a hallucination". Describe the RESISTANCE in real-time.
+
 [Anti-God Mode Protocol]
-CRITICAL: The Player controls ONLY their own character.
-1. **NO Forced Affection**: The player CANNOT dictate how an NPC feels. 
-   - User: "She falls in love with me." 
-   - AI Judge: **REJECT**. 
-   - Narrative: She looks at you with confusion or indifference. (Do NOT say "You thought she loved you but...")
-2. **NO Instant Mastery**: The player CANNOT suddenly become a master. Growth takes time. 
-3. **NO World Control**: The player CANNOT dictate world events.
+The Player controls ONLY their own character's *Body* and *Speech*.
+1. **Forced Affection**: "She falls in love" -> "She looks at you with confusion." (Soft Correction)
+2. **World Control**: "It starts raining" -> "You look up at the clear sky, wishing for rain." (Soft Correction)
 
 [Strict Context & Anti-Hallucination Protocol]
 **CRITICAL**: You must judgment based ONLY on the provided [Context], [Active Characters], and [Helper/Target Info].
 1. **NO Invented Settings**: 
    - Do NOT accept user claims about the world unless supported by [Lore] or [Context].
    - Example User: "I use the secret passage here." (If no passage in Context -> Fail).
-   - Example User: "He remembers my father." (If no such link in Character Info -> Fail/Confused reaction).
-2. **NO False Memories**: 
-   - If the user adds a flashback or memory that was not in [Previous Turn] or [Context], treat it as a **Delusion** or **Lie**.
-   - Result: NPCs will not understand or will call it out. "What are you talking about?"
-3. **Only Verified Assets**: Use only items/skills listed in [Player Capability].
+2. **Only Verified Assets**: Use only items/skills listed in [Player Capability].
 
 [Fate Intervention System]
 User can spend 'Fate Points' to bend reality.
 - **Usage**: Only if 'Fate Usage' > 0 in Input.
 - **Boost**: Add 'Fate Usage' points to the Base Plausibility Score.
-- **Downgraded Success Rule (CRITICAL)**:
+- **Downgraded Success Rule**:
   - If Base Score was 1 (Impossible) and became 4+ via Fate:
   - **DO NOT GRANT** the User's exact wish if it breaks the world (e.g. "I become Emperor").
   - **INSTEAD GRANT** a "Downgraded Version" or "Lucky Coincidence".
-  - Example: User "I become 1st Rank Master" (+3 Fate) -> Result: "You find a hint/manual for 1st Rank, but you are not there yet."
-  - Example: User "She is my lover" (+3 Fate) -> Result: "She blushes and shows interest, but is not your lover yet."
-  - **Goal**: Turn 'Impossible' into 'Possible Opportunity', NOT 'Instant Win'.
+  - Goal: Turn 'Impossible' into 'Possible Opportunity'.
 
 [Fate Accumulation Rule]
 - **Gain Formula**: Fate Gain = MAX(0, Final Plausibility Score - 7).
@@ -120,33 +120,20 @@ User can spend 'Fate Points' to bend reality.
 - If Score <= 7, Gain 0.
 - **Net Calculation**: Return 'fate' in state_changes as (Gain - Usage).
 
-[Strict Causality (No Retcons)]
-- If a user dictates a result that violates the rules (Score 1), **rewrite the ACTION as an ATTEMPT.**
-- **User**: "I chop his head off instantly." (Level 1 vs Level 50)
-- **AI**: "You swing your sword with all your might (Attempt), but he catches it with two fingers (Reality)."
-- **NEVER** write: "You chopped his head off... but wait, it was a dream." (BANNED).
-
 [Wuxia Reality Check (Flexible)]
 **Rank vs Utility**:
 - **Direct Clash**: Rank matters. A 3rd Rate cannot beat a 1st Rate in a head-on duel.
 - **Tactical Creativity (CRITICAL)**: If the player uses **environment, poison, traps, deception, or psychology**, IGNORE rank gap for the *success of the action itself*.
   - Example: A weakling throwing sand in a master's eyes -> **SUCCESS** (The master is blinded temporarily).
-  - Example: A weakling challenging a master to a strength contest -> **FAIL** (Result of direct clash).
 
 [Adjudication Standard]
-- **Reasonability over Rules**: Does the action make sense physically and logically? If yes, ALLOW it.
-- **Narrative Flow**: Does this make the story more interesting?
-- **Fail Forward**: Even if they fail, describe *how* they fail. Use the failure to drive the story.
+- **Fail Forward**: A low score (2-3) should NOT stop the story.
+- **Consequence**: The failure should create a NEW situation (e.g., weapon stuck, enemy alerted, lost balance).
+- **Fun over Frustration**: Even a failure should be described coolly or humorously, not dismissively.
 
 [Personality Logic (CRITICAL for Dialogue)]
-- **Resonance (Bonus)**: If Player and Target share traits (e.g. Righteous + Righteous, or Greedy + Greedy), APPLY +1~2 Bonus to Plausibility.
-- **Dissonance (Penalty)**: If traits clash (e.g. Righteous vs Evil), APPLY -1~2 Penalty. Negotiation is harder.
-- **Consistency (Penalty)**: If Player acts against their own Stats (e.g. High Integrity character lying, or High Lust character acting ascetic), apply penalty for "Unconvincing Acting".
-
-[Tactical Creativity Protocol]
-- If the input involves innovative use of items/terrain: **GRANT ADVANTAGE**.
-- Reward specific descriptions over generic "I attack".
-`;
+- **Resonance (Bonus)**: If Player and Target share traits, APPLY +1 Bonus.
+- **Dissonance (Penalty)**: If traits clash, negotiation is harder (Narrative Resistance).`;
 
     // [출력 포맷 (JSON Schema)]
     // AI가 반환해야 할 JSON 구조를 정의합니다.
@@ -277,7 +264,7 @@ STEP 4: **Final Judgment**
 }
 
 [Guide Generation Instructions]
-1. **Combat Guide**: If intent is 'combat' or tension is high, compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
+1. **Combat Guide**: If intent is 'combat', compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
 2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
 3. **Character Guide**: Check [Casting Suggestions]. 
    - **PROACTIVELY SUGGEST** characters to appear. 
@@ -290,9 +277,6 @@ STEP 4: **Final Judgment**
      * "completed": User successfully handled the event or the event reached a natural conclusion.
      * "ignored": User explicitly ignored the event or moved away. (This will clear the event).
    - If "active", you MUST guide the narrative to align with the event.
-   - **CRITICAL CONDITION**: If 'Tension' is HIGH/COMBAT, do NOT force the event to disrupt the scene.
-     - Instead, treat the event as "present in background" (e.g., waiting for the fight to end).
-     - Only forcefully interrupt if the event is an EMERGENCY or DIRECT THREAT.
 6. **Location Guide**: If [Location Context] is vague (e.g. just a room name without Region), **INFER** the likely Region/City from history/context.
    - Guide the narrator to describe the atmosphere of that region (e.g. "Humid and spicy air of Sichuan", "Cold winds of North").
 `.trim();
@@ -362,7 +346,7 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
 
         // 5. [내러티브 시스템 가이드 주입]
         const physicalGuide = this.getPhysicalStateGuide(gameState.playerStats);
-        const tensionGuide = this.getTensionGuide(gameState.tensionLevel || 0, gameState.playerStats);
+
         const goalsGuide = this.getGoalsGuide(gameState.goals || []);
         const finalGoalGuide = this.getFinalGoalGuide(gameState.playerStats);
 
@@ -419,8 +403,7 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
 "${physicalGuide}"
 - Growth Stagnation: ${gameState.playerStats?.growthStagnation || 0} / 10 turns
 
-[Narrative Tension]
-"${tensionGuide}"
+
 
 [Active Goals]
 "${goalsGuide}"
@@ -571,46 +554,7 @@ ${finalGoalGuide}
         return guides.join("\n") || "Normal Condition.";
     }
 
-    /**
-     * [텐션(긴장도) 가이드 생성]
-     * 현재 텐션 수치(-100 ~ 100)에 따라 내러티브 분위기를 정의합니다.
-     * 음수일 경우 '절대적인 평화'를 보장합니다.
-     */
-    private static getTensionGuide(tension: number, stats: any = null): string {
-        // [난이도 밸런싱] 저레벨 플레이어를 위한 긴장도 상한선(Cap) 적용
-        // 플레이어가 '삼류' 등급(약함)일 때, 긴장도 제한을 걸어 스토리 모델이 '세계를 멸망시킬 위기'를 환각하지 않도록 방지합니다.
-        let tensionCap = 100;
-        let rankLabel = "Unknown";
 
-        if (stats) {
-            const rankStr = stats.realm || "삼류";
-            rankLabel = rankStr;
-            if (rankStr.includes("삼류")) tensionCap = 50; // 최대 '경계' 수준 (Max Moderate)
-            else if (rankStr.includes("이류")) tensionCap = 80; // 최대 '높음' 수준 (Max High)
-        }
-
-        // 제한 적용 (Cap Application)
-        let effectiveTension = tension;
-        if (tension > tensionCap) {
-            effectiveTension = tensionCap;
-            // 실제 게임 상태(gameState)의 수치는 변경하지 않고, AI에게 전달하는 내러티브 해석만 제한합니다.
-        }
-
-        // Tension Guide: -100 (평화 보장) -> +100 (절정/위기)
-        if (effectiveTension < 0) return `Tension Negative(${tension}): PEACE BUFFER. The crisis has passed. Absolute safety. NO random enemies or ambushes allowed. Focus on recovery, romance, or humor.`;
-
-        if (effectiveTension >= 100) return `Tension MAX(${tension}): CLIMAX. A boss fight or life-or-death crisis is imminent/active. No casual banter.`;
-        if (effectiveTension >= 80) return `Tension High(${tension}): Serious Danger. Enemies are abundant. Atmosphere is heavy.`;
-
-        // 제한된 상태에 대한 맞춤형 메시지 (Custom message for capped state)
-        if (stats && tension > tensionCap) {
-            return `Tension Moderate(${tension} -> Capped at ${tensionCap} for ${rankLabel}): Alert. Danger is present, but manageable for a novice. Local thugs or minor beasts only. NO ASSASSINS/MASTERS.`;
-        }
-
-        if (effectiveTension >= 50) return `Tension Moderate(${tension}): Alert. Passive danger increases. Suspicion rises.`;
-        if (effectiveTension >= 20) return `Tension Low(${tension}): Minor signs of trouble, but mostly calm.`;
-        return `Tension Zero(${tension}): Peace. Standard peaceful journey. Enjoy the scenery.`;
-    }
 
     /**
      * [목표 가이드 생성]
