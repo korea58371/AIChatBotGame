@@ -307,6 +307,7 @@ ${userInput}
 
                     const { mandatory, randomCandidates } = EventManager.scan(loadedEvents, gameState);
                     console.log(`[Orchestrator] Scan Result - Mandatory: ${mandatory.length}, Random: ${randomCandidates.length}`);
+                    console.log(`[Orchestrator] Client Triggered Events: ${gameState.triggeredEvents?.length || 0} (${JSON.stringify(gameState.triggeredEvents?.slice(-5) || [])})`);
 
                     const resultOut = {
                         triggerEventId: null as string | null,

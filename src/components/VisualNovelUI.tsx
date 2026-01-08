@@ -2873,6 +2873,15 @@ export default function VisualNovelUI() {
         if (logicResult.event_status === 'completed' || logicResult.event_status === 'ignored') {
             const currentActive = useGameStore.getState().activeEvent;
             if (currentActive) {
+                // [Fix] Failsafe: Ensure it is marked as triggered (Prevent Loops)
+                if (logicResult.event_status === 'completed') {
+                    const triggered = useGameStore.getState().triggeredEvents || [];
+                    if (!triggered.includes(currentActive.id)) {
+                        useGameStore.getState().addTriggeredEvent(currentActive.id);
+                        console.log(`[Event System] Failsafe: Added ${currentActive.id} to triggeredEvents on completion.`);
+                    }
+                }
+
                 useGameStore.getState().setActiveEvent(null);
                 console.log(`[Event System] Event Cleared (${logicResult.event_status}): ${currentActive.id}`);
                 addToast(logicResult.event_status === 'completed' ? "이벤트가 종료되었습니다." : "이벤트가 넘어갔습니다.", 'info');
