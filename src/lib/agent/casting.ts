@@ -76,8 +76,7 @@ export class AgentCasting {
             if (gameState.deadCharacters && gameState.deadCharacters.includes(id)) continue;
             if (cAny.is_dead || cAny.is_retired) continue;
 
-            // Phase Check (Story Progression)
-            if (cAny.appearance_phase && cAny.appearance_phase > currentPhase) continue;
+            // Phase Check removed by user request
 
 
             const kName = cAny.이름 || cAny.name || cAny.profile?.이름 || cAny.profile?.name || id;
