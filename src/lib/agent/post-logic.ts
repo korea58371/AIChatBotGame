@@ -102,6 +102,8 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - [BAD]: List=["Internal Injury"], Output="Pain" (FAIL: Mismatch)
     - [GOOD]: List=["Broken Arm"], Output="Broken Arm" (SUCCESS)
   - OUTPUT: "resolved_injuries": ["Broken Arm"]
+  - **STRICT RULE**: If the injury name does not EXACTLY match (or is not a very close variation of) the string in 'active_injuries', DO NOT include it.
+  - **STRICT RULE**: If you cannot find a matching injury to heal, return an empty list or null. DO NOT invent a new name to heal.
 - **Worsening/Mutation**: If player ignores an injury and strains themselves, REMOVE the old injury and ADD a worse one.
   - Example (Fracture -> Disabled): 
     - "resolved_injuries": ["Right Arm Fracture"]

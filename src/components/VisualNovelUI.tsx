@@ -3050,21 +3050,40 @@ export default function VisualNovelUI() {
                     // 1. Resolve (Remove) Injuries
                     if (postLogic.resolved_injuries && postLogic.resolved_injuries.length > 0) {
                         postLogic.resolved_injuries.forEach((resolved: string) => {
-                            // Fuzzy removal: remove if strictly equal or if string contains/is contained (simple fuzzy)
-                            const initialLength = updatedInjuries.length;
-                            updatedInjuries = updatedInjuries.filter(injury => {
-                                const iNorm = injury.toLowerCase().replace(/\s+/g, '');
-                                const rNorm = resolved.toLowerCase().replace(/\s+/g, '');
-                                // If they match closely, REMOVE it (return false)
-                                return !(iNorm.includes(rNorm) || rNorm.includes(iNorm));
-                            });
+                            // [Fix] Fuzzy Match Logic (Dice Coefficient)
+                            // We attempt to find the BEST match in the current injury list.
+                            // If match score > 0.6, we accept it as the target.
 
-                            if (updatedInjuries.length < initialLength) {
-                                // Indeed removed
-                                addToast(t.systemMessages?.statusRecovered?.replace('{0}', resolved) || `상태 회복: ${resolved}`, 'success');
+                            let targetToRemove: string | null = null;
+                            const candidates = updatedInjuries;
+
+                            // 1. Exact or Simple Inclusion Match (Legacy)
+                            const exact = candidates.find(c => c === resolved);
+                            if (exact) targetToRemove = exact;
+                            else {
+                                // 2. Fuzzy Match
+                                const bestMatch = findBestMatchDetail(resolved, candidates);
+                                if (bestMatch && bestMatch.rating >= 0.5) { // 0.5 Threshold (Lenient)
+                                    console.log(`[Injury] Fuzzy Resolved: "${resolved}" -> "${bestMatch.target}" (Score: ${bestMatch.rating.toFixed(2)})`);
+                                    targetToRemove = bestMatch.target;
+                                } else {
+                                    // 3. Fallback: Check for substring inclusion (Aggressive)
+                                    const subMatch = candidates.find(c => c.includes(resolved) || resolved.includes(c));
+                                    if (subMatch) {
+                                        console.log(`[Injury] Substring Resolved: "${resolved}" -> "${subMatch}"`);
+                                        targetToRemove = subMatch;
+                                    }
+                                }
+                            }
+
+                            if (targetToRemove) {
+                                // Remove specific instance
+                                updatedInjuries = updatedInjuries.filter(i => i !== targetToRemove);
+                                addToast(t.systemMessages?.statusRecovered?.replace('{0}', targetToRemove) || `상태 회복: ${targetToRemove}`, 'success');
                             } else {
-                                // Match Failed - Warn User (Debug)
-                                addToast(t.systemMessages?.recoveryFailed?.replace('{0}', resolved) || `회복 실패(명칭 불일치): AI가 '${resolved}' 치유를 시도했으나, 목록에 없습니다.`, 'error');
+                                // [Fix] Silent Failure
+                                // If AI tries to heal something clearly not there, just log it. Do NOT annoy user.
+                                console.warn(`[Injury] AI tried to heal '${resolved}' but no match found in:`, updatedInjuries);
                             }
                         });
                     }
