@@ -1131,8 +1131,10 @@ export default function VisualNovelUI() {
 
                 if (charName === '주인공' || charName === playerName) {
                     const state = useGameStore.getState();
-                    if (state.extraOverrides && state.extraOverrides['주인공']) {
-                        const overrideKey = state.extraOverrides['주인공'];
+                    // [Fix] Check PlayerName key (Standard) OR '주인공' key (Legacy/Fallback)
+                    const overrideKey = state.extraOverrides?.[playerName] || state.extraOverrides?.['주인공'];
+
+                    if (overrideKey) {
                         const extraMap = state.extraMap;
                         let finalImage = '';
 
