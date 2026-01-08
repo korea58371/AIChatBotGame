@@ -66,7 +66,12 @@ ${WUXIA_CHOICE_RULES}
 Name: ${gameState.playerName || 'Protagonist'}
 Identity: ${gameState.playerStats?.playerRank || 'Unknown'} Rank Martial Artist
 Personality: ${gameState.playerStats?.personalitySummary || 'Modern Earthling possessing a body (Calculator, Pragmatic)'}
+Final Goal: ${gameState.playerStats?.final_goal || 'Survival (Avoid Bad Ending)'}
 Current Status: ${gameState.statusDescription || 'Normal'}
+Active Injuries: ${(() => {
+                const injuries = gameState.playerStats?.active_injuries || [];
+                return injuries.length > 0 ? injuries.join(', ') : 'None';
+            })()}
 
 [Known Skills]
 ${skillList}
@@ -90,13 +95,26 @@ ${storyText}
 
 [Task]
 Generate 3 distinct choices based on the [Current Story Segment] for [${gameState.playerName}].
-- Choice 1: Active/Aggressive/Bold (Reflecting a martial artist's spirit). *If combat/danger, suggest using a [Known Skill].*
+- Choice 1: Active/Aggressive/Bold (Align with [Final Goal] and martial spirit). *If combat/danger, suggest using a [Known Skill].*
 - Choice 2: Cautious/Observant/Pragmatic (Reflecting a modern transmigrator's wit).
-- Choice 3: Creative/Social/Humorous (Reflecting the specific personality).
+- Choice 3: Creative/Social/Humorous (Reflecting the specific [Personality]).
+
+[WUXIA GENRE BIAS - CRITICAL]
+- **INJURY OVERRIDE**: If [Active Injuries] is NOT 'None', OR the story describes pain/damage:
+  - **YOU MUST PRIORTIZE [Recovery/Healing]**.
+  - Suggest choices like "운기조식하여 상처를 다스린다", "휴식을 취하며 내공으로 회복한다".
+  - **DO NOT** suggest strenuous Training if it would worsen the injury.
+  
+- If the [Current Story Segment] implies **downtime, rest, or safety** AND [Active Injuries] is 'None':
+  - **YOU MUST INCLUDE at least one choice related to [Training/Growth] (e.g., "운기조식하여 내공을 쌓는다", "검법의 초식을 연마한다").**
+  - This is a Wuxia game; the player expects opportunities to grow stronger constantly.
+
+- If the situation matches the player's [Final Goal], provide a choice that aggressively pursues it.
 
 [Constraint Check]
 - Does the choice describe *someone else's* action? -> REJECT.
 - Is it the Player's action? -> ACCEPT.
+
 `;
         try {
             const result = await model.generateContent(dynamicPrompt);

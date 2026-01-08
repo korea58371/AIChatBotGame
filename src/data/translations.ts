@@ -286,7 +286,7 @@ export const translations = {
                 unknown: "무명소졸",
                 rookie: "강호초출",
                 rising_star: "후기지수",
-                first_class: "일류고수",
+                first_class: "무림명숙",
                 famous: "천하유명",
                 legend: "강호전설"
             },

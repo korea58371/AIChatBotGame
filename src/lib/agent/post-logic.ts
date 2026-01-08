@@ -17,6 +17,9 @@ export interface PostLogicOutput {
   factionChange?: string; // [NEW] Faction Change (e.g. "Mount Hua Sect")
   playerRank?: string; // [NEW] Title/Rank Change (e.g. "First Rate Warrior")
 
+  // [NEW] Relationship Info Updates (Status & Speech)
+  relationship_info_updates?: Record<string, { status?: string, speech_style?: string }>;
+
 
   // [New] Injury Management
   resolved_injuries?: string[]; // Injuries to remove (Healed or Mutated)
@@ -60,6 +63,17 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 
 
 [Health & Status Logic] (TOP PRIORITY)
+- **GLOBAL TARGETING RULE (CRITICAL)**: 
+  - All 'stat_updates' (HP, MP, active_injuries) MUST apply **ONLY** to the **Protagonist ({playerName})**.
+  - **COMPANION PROTECTION**: If a companion (e.g., Soso, Namgung) gets hurt, coughs blood, or dies, **DO NOT** reduce the Player's HP. **DO NOT** add injuries to the Player.
+  - **Reasoning**: The Player is the User. The UI HUD tracks the USER'S status.
+
+- **Status Quo Check (CRITICAL)**:
+  - If the narrative describes pain, symptoms, or effects of an injury that is ALREADY in 'active_injuries':
+  - **ACTION**: IGNORE IT. Do not output anything. 
+  - **Reasoning**: This is a *description* of current state, not a *change* in state.
+  - **Exception**: Only record if the text EXPLICITLY says the injury "worsened", "tore open", "deepened", or a "new" injury occurred.
+
 - **Injury Consolidation (NO STACKING)**:
   - **Rule**: You MUST NOT have multiple injuries of the same type at different severities (e.g., both "Internal Injury" and "Severe Internal Injury").
   - **Action**: If a new injury is a *worsened* version of an existing one, you **MUST** add the OLD injury to 'resolved_injuries'.
@@ -98,18 +112,24 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - **EXCLUDE**: Scratches, Bruises, Muscle Aches, Fatigue, "Feeling weak".
   - **Format**: Be descriptive but concise. "Left Arm Fracture", "Internal Injury (Mild)", "Poisoned (Snake)".
   - **Ambiguity Rule**: If you are not 100% sure it is a lasting injury, **IGNORE IT**.
-- **Natural Recovery (Time/Rest)**:
-  - If the narrative implies **Time Passing** (Sleep, Travel, Meditation) or **Resting** in a safe place:
-  - CHECK for "Minor Injuries" in 'active_injuries' (e.g., "Bruise", "Scratch", "Muscle Pain", "Minor Cut", "타박상", "찰과상", "근육통").
-  - **ACTION**: Add them to 'resolved_injuries' AUTOMATICALLY.
-  - **RECOVERY**: Check if MP (Internal Energy) or Focus was consumed. If finding rest/meditation, PROPOSE POSITIVE MP RECOVERY in 'stat_updates'.
-    - Sleep/Meditation: +10 ~ +50 MP
-    - Short Rest: +5 ~ +10 MP
-  - **Constraint**: Do NOT naturally heal severe injuries (Fractures, Internal Injuries, Poison) without explicit medical treatment or items.
+
+- **Recovery Logic (HP & MP)**:
+  - **1. Natural Recovery (Passing Time / Travel)**: 
+     - If describing travel or idle time: **MP +5~10**, **HP +5**.
+  - **2. Rest (Sleep / Inn / Camp)**:
+     - If describing a good night's sleep or rest: **MP +20~30**, **HP +20~30**.
+     - **Action**: Auto-Resolve "Minor Injuries" (Bruise, Scratch, Muscle Pain).
+  - **3. Meditation (Un-gi-jo-sik / 찜질 / Breathing)**:
+     - **MAJOR RECOVERY EVENT**.
+     - If player explicitly meditates or circulates Qi:
+     - **MP**: **+80 ~ +100** (Recover to near Max).
+     - **HP**: **+50 ~ +80** (Significantly heal wounds).
+     - **Action**: Often resolves mild internal injuries or fatigue.
+  - **Constraint**: Do NOT naturally heal severe physical trauma (Fractures, Severed Limbs) without medical treatment.
 
 [Cultivation (Neigong) Logic]
 - **MP vs Neigong (CRITICAL DISTINCTION)**:
-  - **MP (Internal Energy Pool)**: Expendable energy used for skills. Recovers via rest/meditation.
+  - **MP (Internal Energy Pool)**: Expendable energy used for skills. Recovers via rest/meditation (as above).
   - **Neigong (Years of Cultivation)**: The *capacity* and *depth* of power (1 Year, 10 Years, 60 Years/1 Cycle).
 - **Rules for Neigong Gain**:
   - **Daily Routine**: Meditation, walking, or breathing exercises do **NOT** increase Neigong Years. (They only restore MP).
@@ -194,6 +214,24 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **Vendetta / Nemesis (Score < -90):** The character loathes the player.
     - Compliments or gifts (+1 ~ +10) are REJECTED or viewed as insults/traps (0 change).
     - Only a "Life Debt" or "World-Shaking Redemption" can unlock this state.
+
+[Explicit Relationship & Speech Style Updates] (CRITICAL)
+- Unlike 'Relationship Score' (which is numeric), this tracks the **DEFINED STATUS** and **SPEECH STYLE**.
+- **When to update:** ONLY when the narrative EXPLICITLY changes these.
+- **Fields:**
+  - **status**: The defined social role. (e.g., "Friend", "Lover", "Disciple", "Master", "Enemy", "Stranger", "Business Partner").
+  - **speech_style**: The tone of voice used towards the player. (e.g., "Polite", "Informal", "Archaic", "Honorific", "Cold").
+- **Language**: MUST be in **KOREAN** (한국어).
+- **Trigger Examples**:
+  - "Let's drop the honorifics." -> speech_style: "반말" (Informal)
+  - "I will accept you as my disciple." -> status: "제자" (Disciple), speech_style: "하대" (Low form) or "권위적" (Authoritative).
+  - "We are no longer friends." -> status: "남" (Stranger) or "적" (Enemy).
+  - "Please, call me older brother." -> status: "의형제" (Sworn Brother).
+- **Format**:
+  "relationship_info_updates": {
+       "soso": { "status": "연인", "speech_style": "반말" },
+       "namgung_se_ah": { "speech_style": "존댓말" }
+  }
 
 [Inline Event Triggers] (CRITICAL)
 You must identify the EXACT sentence segment (quote) where a change happens and generate a tag for it.

@@ -57,10 +57,12 @@ export class AgentCasting {
             if (rankStr.includes('일류') || rankStr.includes('C')) return 3;
             if (rankStr.includes('이류') || rankStr.includes('D')) return 2;
             if (rankStr.includes('삼류') || rankStr.includes('E') || rankStr.includes('F')) return 1;
+            if (rankStr.includes('삼류') || rankStr.includes('E') || rankStr.includes('F')) return 1;
             return 0;
         };
 
         const allCharacters = { ...characters_main_typed, ...characters_supporting_typed };
+        const mainCharacterIds = new Set(Object.keys(characters_main_typed)); // [NEW] Track Main Heroines
 
         for (const [id, char] of Object.entries(allCharacters)) {
             const cAny = char as any;
@@ -84,6 +86,31 @@ export class AgentCasting {
 
             // --- Base Scoring (Common) ---
             let baseScore = 0.5; // Start with small base
+
+            // [NEW] Early Game / Crisis Logic
+            const turnCount = gameState.turnCount || 0;
+            const playerHpPct = (gameState.playerStats?.hp / gameState.playerStats?.maxHp) * 100 || 100;
+
+            // Condition 1: Early Game Heroine Bonus (Plot Armor)
+            // If early game, boost Main Heroines to ensure they appear to guide the story.
+            if (mainCharacterIds.has(id)) {
+                baseScore = Math.max(baseScore, 2.0);
+
+                if (turnCount < 30) {
+                    baseScore += 2.0; // Early Game Helper Bonus
+                    // Note: We don't add to reasons yet, handled below to avoid clutter
+                }
+            }
+
+            // Condition 2: Crisis Intervention (Values 'Righteous' or 'Main')
+            // If player is dying, someone MUST save them.
+            if (playerHpPct < 30) {
+                const isRighteous = cAny.profile?.성향?.includes('정파') || cAny.profile?.alignment?.includes('Good');
+                if (mainCharacterIds.has(id) || isRighteous) {
+                    baseScore += 5.0; // Crisis Savior Bonus
+                }
+            }
+
             // Region Logic
             const region = cAny.profile?.거주지 || cAny.region || "";
             const regionReasons: string[] = [];
@@ -109,6 +136,17 @@ export class AgentCasting {
             if (userInput.includes(kName)) {
                 actScore += 10.0;
                 actReasons.push("User Mentioned (+10.0)");
+            }
+
+            // [Refinement] Log Special Bonuses
+            if (turnCount < 30 && mainCharacterIds.has(id)) {
+                actReasons.push("Early Game Plot Armor (+2.0)");
+            }
+            if (playerHpPct < 30 && (baseScore >= 5.0)) { // Simple check if bonus applied
+                const isRighteous = cAny.profile?.성향?.includes('정파') || cAny.profile?.alignment?.includes('Good');
+                if (mainCharacterIds.has(id) || isRighteous) {
+                    actReasons.push("Crisis Intervention Protocol (+5.0)");
+                }
             }
 
             // 4. Tag Resonance (Active) [NEW]
@@ -155,22 +193,60 @@ export class AgentCasting {
                 }
             }
 
-            // [Moved] Rank Penalty (Final Calc)
+
+            // -----------------------------------------------------------------------
+            // 7. [NEW] Early Game Helper Bias (Opposite Sex + Righteous)
+            // -----------------------------------------------------------------------
+            const playerGender = gameState.playerStats?.gender || 'male';
+            const isEarlyGame = (gameState.turnCount || 0) < 30;
+
+            if (isEarlyGame) {
+                const targetGender = playerGender === 'male' ? '여성' : '남성';
+                // Check if Righteous (Affiliation or Tags)
+                // Righteous: Not Magyo, Not Sapa. Or has 'Righteous' tag.
+                const isMagyo = region?.home?.includes('마교') || region?.home?.includes('십만대산') || tags.includes('마교');
+                const isSapa = region?.home?.includes('사파') || region?.home?.includes('패천맹') || tags.includes('녹림') || tags.includes('악당');
+
+                const isRighteous = !isMagyo && !isSapa;
+                const charGender = cAny.profile?.성별 || '남성'; // Default to male if unknown
+
+                if (isRighteous && charGender === targetGender) {
+                    actScore += 5.0;
+                    actReasons.push(`Early Game Companion (${charGender} Righteous)`);
+                }
+            }
+
+
+            // -----------------------------------------------------------------------
+            // 8. FINAL: Rank Penalty (Dynamic)
+            // -----------------------------------------------------------------------
             // Apply AFTER all bonuses to strictly gate content.
             const pRankVal = AgentCasting.getRankFromLevel(playerLevel);
             const rankGap = charLevel - pRankVal;
 
+            // [New Formula] Penalty = 1 / (Gap * 2)
+            // e.g. Gap 2 -> 1/4 = 0.25
+            // e.g. Gap 3 -> 1/6 = 0.16
+            // e.g. Gap 4 -> 1/8 = 0.125
             if (rankGap >= 2) {
                 // Too Strong (Anti-Bullying)
                 // Exception: If explicitly mentioned by user, we allow it slightly more (already +10 bonus).
-                // 10 * 0.1 = 1.0 (Passable).
-                // 3.0 (Tags) * 0.1 = 0.3 (Fail).
-                actScore *= 0.1;
-                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Strong] (Final)`);
+                const penaltyMp = 1.0 / (rankGap * 2.0);
+                actScore *= penaltyMp;
+                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Strong] (x${penaltyMp.toFixed(2)})`);
             } else if (rankGap <= -2) {
                 // Too Weak
-                actScore *= 0.5;
-                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Weak] (Final)`);
+                // Use same formula for symmetry or keep static?
+                // User said "The bigger the difference, the lower the probability".
+                // Let's apply symmetric logic for purely keeping balance, but usually weaklings are fine fodder.
+                // However, "Too Weak" was 0.5. Let's keep it 0.5 for now unless user asked for symmetric.
+                // User input: "grade difference... probability drops" implies both ways, but context usually implies "Too Strong".
+                // Let's stick to the specific request formula for "Gap".
+                // Assuming absolute gap for now.
+                const absGap = Math.abs(rankGap);
+                const penaltyMp = 1.0 / (absGap * 2.0);
+                actScore *= penaltyMp;
+                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Weak] (x${penaltyMp.toFixed(2)})`);
             }
 
 

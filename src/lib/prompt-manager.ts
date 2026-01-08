@@ -1013,6 +1013,12 @@ ${spawnCandidates || "None"}
             // [OPTIMIZED DYNAMIC CONTEXT]
             let charInfo = `### [ACTIVE] ${displayName} (${char.role || char.title || 'Unknown'})`;
 
+            // [USER REQ] Relationship Info Injection
+            if (char.relationshipInfo) {
+                if (char.relationshipInfo.status) charInfo += `\n- Relationship Status: ${char.relationshipInfo.status}`;
+                if (char.relationshipInfo.speechStyle) charInfo += `\n- Speech Style: ${char.relationshipInfo.speechStyle}`;
+            }
+
             // [FIX] Inject Critical Standard Specs (Faction, Rank, etc.) to prevent hallucinations
             if (char.faction) charInfo += `\n- Faction: ${char.faction}`;
 

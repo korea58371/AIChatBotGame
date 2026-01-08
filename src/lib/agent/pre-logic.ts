@@ -268,8 +268,10 @@ STEP 4: **Final Judgment**
 2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
 3. **Character Guide**: Check [Casting Suggestions]. 
    - **PROACTIVELY SUGGEST** characters to appear. 
-   - If the scene is boring or static, **FORCE** a character appearance from the list. 
-   - Don't wait for the user to ask. "Unexpected meetings" drive the story.
+   - **AGGRESSIVE INTERVENTION**: If the scene is stagnant, or if the user is just wandering, **YOU MUST** introduce a new character from the suggestions.
+   - **NARRATIVE HOOK**: Do NOT just suggest a name ("Suggest: Namgung Seeah"). 
+     - **MUST** provide the *HOW* ("Suggest: Namgung Seeah falls from the roof chasing a thief", "Suggest: You bump into Peng A-Hwi eating dumplings").
+     - "Unexpected meetings" drive the story. Make them happen NOW.
 4. **Goal Guide**: Check [Active Goals]. Advise on progress.
 5. **Active Event Guide**: Check [ACTIVE EVENT]. 
    - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED based on user input.
@@ -401,6 +403,7 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
         const prompt = `
 [Current State Guide]
 "${physicalGuide}"
+${this.getEarlyGameGuidance(gameState.turnCount || 0, gameState.playerStats)}
 - Growth Stagnation: ${gameState.playerStats?.growthStagnation || 0} / 10 turns
 
 
@@ -591,5 +594,32 @@ ${finalGoalGuide}
             default:
                 return "";
         }
+    }
+
+    /**
+     * [초반 게임 가이드 (Novice Protection)]
+     * 30턴 이내의 극초반부에는 난이도를 조절하고 성장을 유도하는 가이드를 제공합니다.
+     */
+    private static getEarlyGameGuidance(turnCount: number, stats: any): string {
+        if (turnCount >= 30) return "";
+
+        const hpPct = stats ? (stats.hp / stats.maxHp) * 100 : 100;
+        let guide = `
+[PHASE: EARLY GAME (NOVICE PROTECTION ACTIVE)]
+- **Current Turn**: ${turnCount} / 30 (Tutorial Phase)
+- **Combat Limit**: IF combat happens, do NOT spawn impossible enemies (Rank < 2nd Rate). Focus on thugs or bullies.
+- **Narrative Goal**: Prioritize [GROWTH] events (Finding a manual, meeting a teacher, eating a spirit herb).
+- **Turn 1 Special Instruction**: START SLOW. Establish the atmosphere and the protagonist's internal ambition. Do NOT force a combat encounter immediately unless the user attacks someone. Prioritize [Atmosphere] or [Neutral Encounter].
+`;
+
+        // Crisis Intervention Trigger in PreLogic (Narrative Layer)
+        if (hpPct < 30) {
+            guide += `
+- **[CRITICAL WARNING]**: Player is dying in Tutorial Phase.
+- **INSTRUCTION**: Trigger a [HEROINE / HELPER INTERVENTION] immediately. Someone must appear to save or heal the player. Do NOT kill the player yet.
+`;
+        }
+
+        return guide;
     }
 }

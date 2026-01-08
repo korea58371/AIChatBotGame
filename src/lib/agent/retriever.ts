@@ -115,7 +115,10 @@ export class AgentRetriever {
                     // 현재 장면에 없는 경우에만 프로필 추가 (장면에 있으면 Orchestrator가 이미 추가함)
                     if (!isActive) {
                         const displayName = name || koreanName || "Unknown";
-                        context += `\n[Target Profile: ${displayName}]\nPersonality: ${JSON.stringify(c.personality)}\nRelationship: ${c.relationship || "Neutral"}\n`;
+                        const relInfo = (c as any).relationshipInfo;
+                        const statusStr = relInfo?.status ? ` | Status: ${relInfo.status}` : "";
+                        const speechStr = relInfo?.speechStyle ? ` | Speech: ${relInfo.speechStyle}` : "";
+                        context += `\n[Target Profile: ${displayName}]\nPersonality: ${JSON.stringify(c.personality)}\nRelationship: ${c.relationship || "Neutral"}${statusStr}${speechStr}\n`;
                     }
 
                     // 기억(Memories)은 항상 중요하므로 추가

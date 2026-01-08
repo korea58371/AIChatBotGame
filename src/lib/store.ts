@@ -85,7 +85,10 @@ export interface GameState {
   characterData: Record<string, GameCharacterData>;
   updateCharacterRelationship: (charId: string, value: number) => void;
   // [NEW] Add specific memory to a character
+  // [NEW] Add specific memory to a character
   addCharacterMemory: (charId: string, memory: string) => void;
+  // [NEW] Update explicit relationship status/speech
+  updateCharacterRelationshipInfo: (charId: string, info: Partial<RelationshipInfo>) => void;
   updateCharacterData: (charId: string, data: Partial<GameCharacterData>) => void;
 
   // Dynamic World Data
@@ -244,6 +247,7 @@ export interface PlayerStats {
   memories?: string[]; // [New] Character-specific memories
   fatigue: number; // [New] 0-100
   narrative_perspective?: string; // [New] '1인칭' or '3인칭'
+  gender: 'male' | 'female'; // [New] Player Gender
 
   // [Wuxia] Martial Arts System
   growthStagnation: number; // Turn count without growth
@@ -261,11 +265,17 @@ export interface Skill {
   createdTurn: number;
 }
 
+export interface RelationshipInfo {
+  status: string | null;      // e.g. "Friend", "Lover", "Enemy"
+  speechStyle: string | null; // e.g. "Polite", "Casual", "Archaic"
+}
+
 export interface GameCharacterData {
   id: string;
   name: string;
   relationship?: number;
   memories?: string[];
+  relationshipInfo?: RelationshipInfo; // [NEW] Explicit Social Contract
   [key: string]: any; // Allow extensibility
 }
 
@@ -299,6 +309,7 @@ const INITIAL_STATS: PlayerStats = {
   active_injuries: [],
   fatigue: 0,
   narrative_perspective: '3인칭', // Default
+  gender: 'male', // Default Gender
   growthStagnation: 0,
   fameTitleIndex: 0
 };
@@ -498,6 +509,26 @@ export const useGameStore = create<GameState>()(
             [charId]: {
               ...currentData,
               memories: newMemories
+            }
+          }
+        };
+      }),
+      // [NEW] Update Explicit Relationship Status & Speech Style
+      updateCharacterRelationshipInfo: (charId, info) => set((state) => {
+        const char = state.characterData[charId];
+        // If character doesn't exist yet, we might want to create it or just return.
+        // Usually should exist if we are interacting. If not, auto-create basic entry.
+        const effectiveChar = char || { id: charId, name: charId, relationship: 0, memories: [] };
+
+        const currentInfo = effectiveChar.relationshipInfo || { status: null, speechStyle: null };
+        const newInfo = { ...currentInfo, ...info };
+
+        return {
+          characterData: {
+            ...state.characterData,
+            [charId]: {
+              ...effectiveChar,
+              relationshipInfo: newInfo
             }
           }
         };

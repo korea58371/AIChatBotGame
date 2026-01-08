@@ -289,41 +289,7 @@ export default function VisualNovelUI() {
         }
     }, [turnCount, characterCreationQuestions, activeGameId, isDataLoaded, scriptQueue, choices]);
 
-    // [Fix] Retroactive Hidden Settings Application (Re-apply if missing)
-    useEffect(() => {
-        if (!isDataLoaded) return;
-        const state = useGameStore.getState();
-        if (state.activeGameId !== 'wuxia') return;
 
-        // Dynamic Import to avoid circular dependencies/bloat if unnecessary
-        import('../data/games/wuxia/character_creation').then(({ getHiddenSettings }) => {
-            const hidden = getHiddenSettings(state.playerName);
-
-            // [Debug] Always show status
-            const statusMsg = `진단: 이름=${state.playerName}, Override=${state.protagonistImageOverride || '없음'}, HiddenFound=${!!hidden}`;
-            console.log(statusMsg);
-
-            if (hidden && hidden.imageOverride) {
-                // If store is missing the override (from older session state), apply it now
-                if (state.protagonistImageOverride !== hidden.imageOverride) {
-                    console.log(`[Retroactive Fix] Applying missing image override for ${state.playerName}`);
-                    state.setHiddenOverrides({
-                        persona: hidden.personaOverride,
-                        scenario: hidden.scenarioOverride,
-                        disabledEvents: hidden.disabledEvents,
-                        protagonistImage: hidden.imageOverride
-                    });
-                    addToast(`설정 복구됨! ${statusMsg}`, 'success');
-                } else {
-                    // It is already set correctly
-                    addToast(`설정 정상임. ${statusMsg}`, 'info');
-                }
-            } else {
-                // Not a hidden character
-                addToast(`히든 아님. ${statusMsg}`, 'info');
-            }
-        });
-    }, [isDataLoaded, activeGameId]);
 
     // [Localization]
     const t = translations[language as keyof typeof translations] || translations.en;
@@ -4389,6 +4355,32 @@ Instructions:
                                                                     }
                                                                 }}
                                                             />
+                                                            <div className="flex flex-col gap-2 w-full">
+                                                                <label className="text-[#888] text-xs font-bold text-left uppercase tracking-wider ml-1">Gender</label>
+                                                                <div className="flex gap-2 p-1 bg-[#252525] rounded-lg border border-[#333]">
+                                                                    {['male', 'female'].map((g) => {
+                                                                        const currentGender = playerStats.gender || 'male';
+                                                                        const isSelected = currentGender === g;
+                                                                        return (
+                                                                            <button
+                                                                                key={g}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setPlayerStats({ gender: g as 'male' | 'female' });
+                                                                                }}
+                                                                                className={`flex-1 py-3 px-4 rounded-md text-2xl font-bold transition-all font-serif tracking-wide ${isSelected
+                                                                                    ? (g === 'male'
+                                                                                        ? 'bg-blue-600 text-white border-2 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]'
+                                                                                        : 'bg-pink-600 text-white border-2 border-pink-400 shadow-[0_0_15px_rgba(219,39,119,0.5)]')
+                                                                                    : 'bg-gray-800 text-gray-500 border border-gray-700 hover:bg-gray-700 hover:text-gray-300'
+                                                                                    }`}
+                                                                            >
+                                                                                {g === 'male' ? '♂' : '♀'}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
                                                         </div>
 
                                                         <button
@@ -4497,6 +4489,33 @@ Instructions:
                                                     onChange={(e) => useGameStore.getState().setPlayerName(e.target.value)}
                                                     defaultValue={useGameStore.getState().playerName}
                                                 />
+                                            </div>
+
+                                            {/* [NEW] Gender Toggle */}
+                                            <div className="flex flex-col gap-2 w-full max-w-xs">
+                                                <label className="text-yellow-500 text-sm font-bold text-left">Gender</label>
+                                                <div className="flex gap-2 p-1 bg-gray-900 rounded-lg border border-gray-700">
+                                                    {['male', 'female'].map((g) => {
+                                                        const isSelected = playerStats.gender === g;
+                                                        return (
+                                                            <button
+                                                                key={g}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    // Use hook setter if available or direct update via store action if defined.
+                                                                    // Since we didn't add a specialized setter, we use setPlayerStats from hook.
+                                                                    setPlayerStats({ ...playerStats, gender: g as 'male' | 'female' });
+                                                                }}
+                                                                className={`flex-1 py-1 px-3 rounded text-sm font-bold transition-all \${isSelected
+                                                                    ? (g === 'male' ? 'bg-blue-600 text-white shadow-lg' : 'bg-pink-600 text-white shadow-lg')
+                                                                    : 'bg-transparent text-gray-500 hover:text-gray-300'
+                                                                    }`}
+                                                            >
+                                                                {g === 'male' ? '남성 (Male)' : '여성 (Female)'}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
 
                                             <button

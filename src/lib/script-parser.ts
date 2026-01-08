@@ -145,7 +145,13 @@ export function parseScript(text: string): ScriptSegment[] {
             const colonIndex = content.indexOf(':');
             if (colonIndex !== -1) {
                 const meta = content.substring(0, colonIndex).trim();
-                const dialogue = content.substring(colonIndex + 1).trim();
+                // [Fix] Explicitly strip quotes from the raw dialogue string immediately
+                let dialogue = content.substring(colonIndex + 1).trim();
+                if (dialogue.startsWith('"') && dialogue.endsWith('"')) {
+                    dialogue = dialogue.substring(1, dialogue.length - 1);
+                } else if (dialogue.startsWith('“') && dialogue.endsWith('”')) {
+                    dialogue = dialogue.substring(1, dialogue.length - 1);
+                }
 
                 let name = '';
                 let expression = '';
@@ -185,7 +191,7 @@ export function parseScript(text: string): ScriptSegment[] {
                 let narrationContent = null;
 
                 if (splitMatch) {
-                    dialogueContent = `"${splitMatch[1]}"`;
+                    dialogueContent = splitMatch[1]; // [Fix] Do not re-add quotes
                     narrationContent = splitMatch[2].trim();
                 }
 
@@ -435,7 +441,8 @@ function pushTextSegments(segments: ScriptSegment[], text: string, context: Part
         const sentences = splitSentences(line.trim());
         for (const s of sentences) {
             // Remove wrapping quotes if present (AI sometimes adds them)
-            const cleanS = s.trim().replace(/^"(.*)"$/, '$1').replace(/^“(.*)”$/, '$1');
+            // [Fix] Use [\s\S] to match newlines in multiline sentences
+            const cleanS = s.trim().replace(/^"([\s\S]*)"$/, '$1').replace(/^“([\s\S]*)”$/, '$1');
             if (cleanS) {
                 segments.push({
                     ...context,

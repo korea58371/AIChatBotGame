@@ -6,35 +6,6 @@ export const GAME_EVENTS: GameEvent[] = [
     // [MAIN STORY] 핵심 서사
     // ============================================================
     {
-        id: 'wuxia_intro',
-        type: 'MAIN',
-        priority: 1,
-        once: true,
-        name: '강호출두',
-        condition: (state) => {
-            // [Generic] Check if event is disabled by hidden settings
-            if (state.disabledEvents?.includes('wuxia_intro')) return false;
-
-            // [Failsafe] Hidden Characters Hard Check
-            const name = (state.playerName || '').trim();
-            if (name === '임성준' || name === '남강혁') return false;
-
-            return !state.turnCount || state.turnCount <= 3;
-        },
-        prompt: `
-        ## [EVENT: 빙의자의 각성]
-        (System: 현재 이야기의 흐름을 끊지 말고, 주인공의 내면 심리로 자연스럽게 연결할 것.)
-
-        문득, 주인공의 뇌리에 소설 <천하제일>의 예고된 파멸이 섬광처럼 스쳐 지나갑니다.
-        - **2년 후**: 정사대전(正邪大戰)으로 인한 강호의 붕괴.
-        - **5년 후**: 마교(魔敎)의 대침공과 세상의 멸망.
-
-        이 기억은 현재 장면의 분위기 속에 조용히, 그러나 무겁게 내려앉습니다. 남은 시간이 얼마 남지 않았다는 사실이 주인공의 등을 떠미는 듯한 긴장감을 조성합니다.
-
-        주인공은 자신의 성격에 맞춰 이 운명을 받아들입니다. 압도적인 미래에 대한 불안일 수도, 혹은 기필코 바꾸고 말겠다는 서늘한 오기일 수도 있습니다. 이 감정을 지금의 상황에 자연스럽게 녹여내십시오.
-        `
-    },
-    {
         id: 'blood_cult_appearance',
         type: 'MAIN',
         priority: 5,
