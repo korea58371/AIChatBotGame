@@ -85,6 +85,7 @@ export class AgentCasting {
 
             // --- Base Scoring (Common) ---
             let baseScore = 0.5; // Start with small base
+            const baseReasons: string[] = [];
 
             // [NEW] Early Game / Crisis Logic
             const turnCount = gameState.turnCount || 0;
@@ -93,12 +94,15 @@ export class AgentCasting {
             // Condition 1: Early Game Heroine Bonus (Plot Armor)
             // If early game, boost Main Heroines to ensure they appear to guide the story.
             if (mainCharacterIds.has(id)) {
-                baseScore = Math.max(baseScore, 2.0);
+                baseScore = Math.max(baseScore, 1.5);
+                baseReasons.push(`Base(Main) (1.5)`);
 
                 if (turnCount < 30) {
                     baseScore += 2.0; // Early Game Helper Bonus
-                    // Note: We don't add to reasons yet, handled below to avoid clutter
+                    baseReasons.push(`Early Game Plot Armor (+2.0)`);
                 }
+            } else {
+                baseReasons.push(`Base (0.5)`);
             }
 
             // Condition 2: Crisis Intervention (Values 'Righteous' or 'Main')
@@ -107,20 +111,21 @@ export class AgentCasting {
                 const isRighteous = cAny.profile?.성향?.includes('정파') || cAny.profile?.alignment?.includes('Good');
                 if (mainCharacterIds.has(id) || isRighteous) {
                     baseScore += 5.0; // Crisis Savior Bonus
+                    baseReasons.push(`Crisis Intervention Protocol (+5.0)`);
                 }
             }
 
             // Region Logic
             const region = cAny.profile?.거주지 || cAny.region || "";
-            const regionReasons: string[] = [];
+            // const regionReasons: string[] = []; // Removed separate array to unify
             if (fullLocation.includes(region)) {
                 baseScore += 1.0;
-                regionReasons.push("Base Region Match (+1.0)");
+                baseReasons.push("Base Region Match (+1.0)");
             }
 
             // --- Active Scoring ---
             let actScore = baseScore;
-            const actReasons: string[] = [...regionReasons];
+            const actReasons: string[] = [...baseReasons];
 
             // 1. Rank Penalty (Moved to End)
 
@@ -137,16 +142,8 @@ export class AgentCasting {
                 actReasons.push("User Mentioned (+10.0)");
             }
 
-            // [Refinement] Log Special Bonuses
-            if (turnCount < 30 && mainCharacterIds.has(id)) {
-                actReasons.push("Early Game Plot Armor (+2.0)");
-            }
-            if (playerHpPct < 30 && (baseScore >= 5.0)) { // Simple check if bonus applied
-                const isRighteous = cAny.profile?.성향?.includes('정파') || cAny.profile?.alignment?.includes('Good');
-                if (mainCharacterIds.has(id) || isRighteous) {
-                    actReasons.push("Crisis Intervention Protocol (+5.0)");
-                }
-            }
+            // [Refinement] Removed redundant logging block since we added it above directly
+            // ...
 
             // 4. Tag Resonance (Active) [NEW]
             let tags = [...(cAny.system_logic?.tags || [])];
@@ -251,7 +248,7 @@ export class AgentCasting {
 
             // --- Background Scoring ---
             let bgScore = baseScore;
-            const bgReasons: string[] = [...regionReasons];
+            const bgReasons: string[] = [...baseReasons];
 
             // 1. NO Rank Penalty for Background
 

@@ -266,12 +266,17 @@ STEP 4: **Final Judgment**
 [Guide Generation Instructions]
 1. **Combat Guide**: If intent is 'combat', compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
 2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
-3. **Character Guide**: Check [Casting Suggestions]. 
-   - **PROACTIVELY SUGGEST** characters to appear. 
-   - **AGGRESSIVE INTERVENTION**: If the scene is stagnant, or if the user is just wandering, **YOU MUST** introduce a new character from the suggestions.
-   - **NARRATIVE HOOK**: Do NOT just suggest a name ("Suggest: Namgung Seeah"). 
-     - **MUST** provide the *HOW* ("Suggest: Namgung Seeah falls from the roof chasing a thief", "Suggest: You bump into Peng A-Hwi eating dumplings").
-     - "Unexpected meetings" drive the story. Make them happen NOW.
+3. **Character Suggestion Protocol** (INDEPENDENT PRIORITY):
+   - **MANDATORY CHECK**: Review [Casting Suggestions] immediately.
+   - **PRIORITY**: Allies, Companions, Heroines > Neutrals > Enemies.
+   - **TRIGGER RULE**:
+     1. IF a high-scoring candidate exists (especially Companions/Heroines) AND is NOT present:
+        -> **AGGRESSIVELY SUGGEST** an appearance event.
+        -> "Suddenly, [Name] arrives...", "[Name] steps in to help...", "[Name] calls out from behind...".
+     2. **DO NOT** wait for "stagnant scenes". Be proactive.
+     3. **EVEN IN COMBAT**: Allies can arrive as reinforcements.
+     4. **EVEN IN DIALOGUE**: Rivals/Friends can interrupt.
+   - **Narrative Hook**: Provide the *HOW*. "Suggest: Yeon Hwa-rin blocks the enemy's attack with ice."
 4. **Goal Guide**: Check [Active Goals]. Advise on progress.
 5. **Active Event Guide**: Check [ACTIVE EVENT]. 
    - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED based on user input.
