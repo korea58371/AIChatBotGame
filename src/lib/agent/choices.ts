@@ -27,6 +27,51 @@ export class AgentChoices {
 
         const genAI = new GoogleGenerativeAI(apiKey);
 
+        // [1] Location Context Extraction (Mirrors PreLogic)
+        let locationContext = "";
+        const currentLocation = gameState.currentLocation || "Unknown";
+        const locationsData = gameState.lore?.locations;
+        if (locationsData && locationsData.regions && currentLocation) {
+            let currentRegionName = "Unknown";
+            let visibleSpots = [];
+            // Search logic
+            for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
+                if (rData.zones && rData.zones[currentLocation]) {
+                    currentRegionName = rName;
+                    visibleSpots = rData.zones[currentLocation].spots || [];
+                    break;
+                }
+                if (rName === currentLocation) {
+                    currentRegionName = rName;
+                    visibleSpots = Object.keys(rData.zones || {});
+                }
+            }
+            locationContext = `Region: ${currentRegionName}\nSpot: ${currentLocation}\nvisible_spots: ${visibleSpots.join(', ')}`;
+        } else {
+            locationContext = `Location: ${currentLocation} (Details Unknown)`;
+        }
+
+        // [2] Active Character Context Extraction
+        const activeCharIds = gameState.activeCharacters || [];
+        let activeCharContext = "";
+        const playerRelationships = gameState.playerStats?.relationships || {};
+
+        if (activeCharIds.length > 0) {
+            activeCharContext = activeCharIds.map((id: string) => {
+                const char = gameState.characterData?.[id];
+                if (!char) return "";
+                const relScore = playerRelationships[id] || 0;
+                let relStatus = "Stranger";
+                if (relScore > 50) relStatus = "Close Friend/Ally";
+                if (relScore > 80) relStatus = "Lover/Devoted";
+                if (relScore < -20) relStatus = "Hostile/Enemy";
+
+                return `- [${char.name}] (${char.title || "NPC"})\n  Desc: ${char.profile?.신분 || "Unknown"} | Faction: ${char.faction || "None"}\n  Relation: ${relStatus} (Score: ${relScore})`;
+            }).filter(Boolean).join('\n');
+        } else {
+            activeCharContext = "None (Only Protagonist present)";
+        }
+
         // System Prompt: Choice Specialist
         const systemPrompt = `
 You are the [Choice Generator] for a text-based Wuxia RPG.
@@ -42,6 +87,12 @@ ${WUXIA_CHOICE_RULES}
 - GOOD: "Glare at the merchant." (Player action)
 - GOOD: "Nod to Cheon Se-yun." (Player action)
 - The choices should be ACTIONS or DIALOGUE that the PLAYER can choose to do.
+
+[CRITICAL INSTRUCTION - CONTEXT AWARENESS]
+- **Active Characters Only**: You CANNOT interact with characters who are NOT in the [Active Characters] list.
+  - If [Active Characters] says "None", do NOT generate choices to talk to "Soso" or "Namgung".
+  - If the story segment implies someone left, do not chase them unless the story allows.
+- **Location Awareness**: Use [Location Context]. If in a "Cave", do not "Walk into the busy street".
 
 [Output Requirements]
 - Output ONLY the 3 lines of choices.
@@ -73,6 +124,12 @@ Active Injuries: ${(() => {
                 return injuries.length > 0 ? injuries.join(', ') : 'None';
             })()}
 
+[Location Context]
+${locationContext}
+
+[Active Characters] (Only these people are here!)
+${activeCharContext}
+
 [Known Skills]
 ${skillList}
 
@@ -81,8 +138,6 @@ ${(() => {
                 // [Adaptive Logic] Summarize History
                 const history = gameState.choiceHistory || [];
                 if (history.length === 0) return "No prior history. Assume neutral stance.";
-
-                // Analyze Tone (Simple Heuristic for now, or just dump last few)
                 const recent = history.slice(-5); // Use last 5 for immediate context
                 return recent.map((h: any) => `- [${h.type === 'input' ? 'Direct' : 'Selected'}] ${h.text}`).join('\n');
             })()}
@@ -114,6 +169,7 @@ Generate 3 distinct choices based on the [Current Story Segment] for [${gameStat
 [Constraint Check]
 - Does the choice describe *someone else's* action? -> REJECT.
 - Is it the Player's action? -> ACCEPT.
+- Is the target character present in [Active Characters]? -> If NO, REJECT.
 
 `;
         try {
