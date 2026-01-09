@@ -90,25 +90,26 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - Valid: "Blood trickled down your arm", "You felt a rib crack", "The poison entered your veins".
     - Invalid: "You felt tired", "Your pride was hurt", "You felt a phantom pain".
 
-- **Healing**: If player visits a doctor, rests, or uses medicine, identify which 'Active Injuries' are cured OR **significantly relieved**.
-  - **Rule**: "Noticeable relief", "Pain reduced", "Meridians Reconstructed", "Washed away" counts as RESOLVED.
+- **Healing**: If player visits a doctor, rests, uses medicine, OR if time passes significantly, identify which 'Active Injuries' are cured.
+  - **Rule**: "Noticeable relief", "Pain reduced", "Meridians Reconstructed", "Washed away", "Fully recovered" counts as RESOLVED.
   - **CRITICAL**: You MUST check [Context Data] -> [Current Stats] -> 'active_injuries' list.
-  - **CRITICAL**: You MUST use the **EXACT STRING** from that list. Do NOT invent synonyms.
-  - **Match Strategy**:
-    - [BAD]: List=["Broken Arm"], Output="Fracture" (FAIL: Mismatch)
-    - [BAD]: List=["Internal Injury"], Output="Pain" (FAIL: Mismatch)
-    - [GOOD]: List=["Broken Arm"], Output="Broken Arm" (SUCCESS)
-  - OUTPUT: "resolved_injuries": ["Broken Arm"]
-  - **STRICT RULE**: If the injury name does not EXACTLY match (or is not a very close variation of) the string in 'active_injuries', DO NOT include it.
-  - **STRICT RULE**: If you cannot find a matching injury to heal, return an empty list or null. DO NOT invent a new name to heal.
+  - **Match Strategy (Semantic Mapping)**:
+    - If the text says "Your arm is better", and active_injuries has "Fractured Left Arm" -> **MATCH** (Resolve it).
+    - If the text says "You feel healthy again", and active_injuries has ["Internal Injury", "Bruise"] -> **MATCH ALL** (Resolve both).
+    - If the text implies **Functional Recovery** (e.g., Player runs fast despite "Broken Leg"), assume it healed during the time skip -> **MATCH** (Resolve "Broken Leg").
+  - OUTPUT: "resolved_injuries": ["Fractured Left Arm", "Internal Injury"]
+  - **Note**: You do not need an exact string match if the *meaning* is clear.
+  - **STRICT RULE**: If you cannot find a matching injury to heal, return an empty list.
+
 - **Worsening/Mutation**: If player ignores an injury and strains themselves, REMOVE the old injury and ADD a worse one.
   - Example (Fracture -> Disabled): 
     - "resolved_injuries": ["Right Arm Fracture"]
     - "new_injuries": ["Right Arm Permanent Disability"]
+
 - **New Injury Logic (STRICT)**:
   - **Target**: **ONLY** record injuries for the **Player ({playerName})**. Do not record injuries for NPCs here.
   - **Threshold**: Only record **SIGNIFICANT** physical damage. 
-    - **INCLUDE**: Cuts, Fractures, Internal Injuries, Poison, Burns, Deep Wounds.
+    - **INCLUDE**: Cuts, Fractures, Internal Injuries, Poison, Burns, Deep Wounds, "Backlash" (Ju-hwa-ip-ma).
     - **EXCLUDE**: Scratches, Bruises, Muscle Aches, Fatigue, "Feeling weak".
   - **Format**: Be descriptive but concise. "Left Arm Fracture", "Internal Injury (Mild)", "Poisoned (Snake)".
   - **Ambiguity Rule**: If you are not 100% sure it is a lasting injury, **IGNORE IT**.

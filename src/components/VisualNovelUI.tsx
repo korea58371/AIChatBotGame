@@ -1549,6 +1549,13 @@ export default function VisualNovelUI() {
                         new_memories: postLogicOut?.new_memories,
                         activeCharacters: postLogicOut?.activeCharacters,
 
+                        // [Fix] Map Injuries & Generic Stats from PostLogic
+                        injuriesUpdate: {
+                            add: postLogicOut?.new_injuries,
+                            remove: postLogicOut?.resolved_injuries
+                        },
+                        stat_updates: postLogicOut?.stat_updates,
+
                         goal_updates: postLogicOut?.goal_updates,
                         new_goals: postLogicOut?.new_goals,
                         post_logic: {
@@ -2722,9 +2729,29 @@ export default function VisualNovelUI() {
             }
 
             // Remove
+            // Remove
             if (logicResult.injuriesUpdate.remove) {
                 const initialLen = currentInjuries.length;
-                currentInjuries = currentInjuries.filter(inj => !logicResult.injuriesUpdate.remove.includes(inj));
+                const toRemove = new Set<string>();
+
+                logicResult.injuriesUpdate.remove.forEach((targetInj: string) => {
+                    // 1. Exact Match
+                    if (currentInjuries.includes(targetInj)) {
+                        toRemove.add(targetInj);
+                        return;
+                    }
+
+                    // 2. Fuzzy Match (Fallback)
+                    const best = findBestMatchDetail(targetInj, currentInjuries);
+                    // Threshold 0.6 (Dice Coefficient)
+                    if (best && best.rating >= 0.6) {
+                        console.log(`[Injury] Fuzzy Removal: '${targetInj}' matches '${best.target}' (Score: ${best.rating.toFixed(2)})`);
+                        toRemove.add(best.target);
+                    }
+                });
+
+                currentInjuries = currentInjuries.filter(inj => !toRemove.has(inj));
+
                 if (currentInjuries.length !== initialLen) {
                     addToast("부상 회복!", 'success');
                     changed = true;
