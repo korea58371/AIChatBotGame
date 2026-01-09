@@ -4807,6 +4807,13 @@ Instructions:
                                     </div>
                                 </div>
 
+                                <div className="bg-red-900/30 border border-red-500/50 rounded p-3 mb-4 text-sm text-red-200">
+                                    <ul className="list-disc list-inside space-y-1">
+                                        <li>오직 주인공의 행동과 대사만 서술할 수 있습니다.</li>
+                                        <li>상황에 맞지 않는 신적 개입은 허용되지 않습니다.</li>
+                                    </ul>
+                                </div>
+
                                 <textarea
                                     value={userInput}
                                     onChange={(e) => setUserInput(e.target.value.slice(0, 256))}
