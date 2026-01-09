@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Scroll, Maximize, Minimize } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json';
-import { FAME_TITLES, FATIGUE_LEVELS } from '@/data/games/wuxia/constants';
+import { FAME_TITLES, FATIGUE_LEVELS, REALM_ORDER, LEVEL_TO_REALM_MAP } from '@/data/games/wuxia/constants';
 
 import { translations } from '@/data/translations';
 
@@ -46,7 +46,35 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
     const rankKey = playerStats.playerRank || '삼류';
     const hierarchy = martialArtsLevels as any;
     const rankData = hierarchy[rankKey] || hierarchy[rankKey.toLowerCase()];
-    const displayRank = (rankData?.name || rankKey).split('(')[0];
+    const displayRankCore = (rankData?.name || rankKey).split('(')[0];
+
+    // [Bottleneck Logic]
+    const currentRankIdx = REALM_ORDER.indexOf(rankKey);
+    let bottleneckSuffix = "";
+    let bottleneckColor = "text-amber-500"; // Default
+
+    if (currentRankIdx !== -1 && currentRankIdx < REALM_ORDER.length - 1) {
+        const currentLevelMap = LEVEL_TO_REALM_MAP[currentRankIdx];
+        const maxLevel = currentLevelMap?.max || 999;
+
+        const nextRankName = REALM_ORDER[currentRankIdx + 1];
+        const nextRankConfig = (hierarchy as any)[nextRankName];
+        const nextReq = nextRankConfig?.조건?.최소_내공 ?? 999;
+
+        const currentLevel = playerStats.level || 1;
+        const currentNeigong = playerStats.neigong || 0;
+
+        // 1. Neigong Bottleneck: Level Maxed, Neigong Low
+        if (currentLevel >= maxLevel && currentNeigong < nextReq) {
+            bottleneckSuffix = " (내공 부족)";
+            bottleneckColor = "text-red-400";
+        }
+        // 2. Experience Bottleneck: Neigong Capped (Ready), Level Low
+        else if (currentNeigong >= nextReq && currentLevel < maxLevel) {
+            bottleneckSuffix = " (경험 부족)";
+            bottleneckColor = "text-blue-400";
+        }
+    }
 
     // Fame Title Logic
     const fame = playerStats.fame || 0;
@@ -134,8 +162,13 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                         </div>
                     </div>
                     {/* Realm Badge */}
-                    <div className="absolute bottom-0 right-0 translate-y-2 translate-x-2 bg-stone-800 text-amber-500 text-xs md:text-sm font-bold px-3 py-1 border border-amber-700 shadow-lg" style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0% 100%)' }}>
-                        {displayRank}
+                    <div className="absolute bottom-0 right-0 translate-y-2 translate-x-2 bg-stone-800 px-3 py-1 border border-amber-700 shadow-lg flex items-center gap-1 min-w-max" style={{ clipPath: 'polygon(5% 0, 100% 0, 100% 100%, 0% 100%)' }}>
+                        <span className="text-amber-500 text-xs md:text-sm font-bold">{displayRankCore}</span>
+                        {bottleneckSuffix && (
+                            <span className={`text-[10px] md:text-xs font-bold ${bottleneckColor} animate-pulse`}>
+                                {bottleneckSuffix}
+                            </span>
+                        )}
                     </div>
                 </div>
 

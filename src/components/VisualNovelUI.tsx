@@ -15,7 +15,7 @@ import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping';
-import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP, WUXIA_IM_SEONG_JUN_SCENARIO, WUXIA_NAM_GANG_HYEOK_SCENARIO } from '@/data/games/wuxia/constants'; // [New] UI Constants
+import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP, REALM_ORDER, WUXIA_IM_SEONG_JUN_SCENARIO, WUXIA_NAM_GANG_HYEOK_SCENARIO } from '@/data/games/wuxia/constants'; // [New] UI Constants
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants'; // [New] UI Constants
 import wikiData from '@/data/games/wuxia/wiki_data.json'; // [NEW] Wiki Data Import
 
@@ -105,8 +105,7 @@ function selectProtagonistImage(personality: string): string {
     return '성실한주인공';
 }
 
-// [New] Helper to Determine Realm Order
-const REALM_ORDER = ["삼류", "이류", "일류", "절정", "초절정", "화경", "현경", "생사경"];
+
 
 
 export default function VisualNovelUI() {
@@ -160,6 +159,35 @@ export default function VisualNovelUI() {
         // Use LEVEL_TO_REALM_MAP for Level Limits (Index matches REALM_ORDER)
         const currentLevelMap = LEVEL_TO_REALM_MAP[currentRankIdx];
         const maxLevelForRealm = currentLevelMap ? currentLevelMap.max : 999;
+
+        // [Rule 0: Integrity Check - Realism Enforcement]
+        // If Player has High Rank (e.g. Peak) but Low Neigong (e.g. 12y), it is a "False Realm".
+        // Instead of giving free Neigong, we DOWNGRADE the Rank to match reality.
+        const minEnergyForCurrentRank = currentRealmConfig?.조건?.최소_내공 ?? 0;
+
+        if (stats.neigong < minEnergyForCurrentRank) {
+            console.warn(`[Realm] False Realm Detected: ${currentRankName} requires ${minEnergyForCurrentRank}y, but had ${stats.neigong}y. Downgrading.`);
+
+            // Find the correct rank for this neigong amount
+            let correctRank = "삼류";
+            // Iterate reverse to find highest qualifying rank
+            for (let i = REALM_ORDER.length - 1; i >= 0; i--) {
+                const rName = REALM_ORDER[i];
+                const rConfig = (martialArtsLevels as any)[rName];
+                const rMin = rConfig?.조건?.최소_내공 ?? 0;
+                if (stats.neigong >= rMin) {
+                    correctRank = rName;
+                    break;
+                }
+            }
+
+            // Apply Downgrade
+            if (stats.playerRank !== correctRank) {
+                stats.playerRank = correctRank;
+                addToastCallback(`경지 불안정: 내공이 부족하여 [${currentRankName}] 유지가 불가능합니다. -> [${correctRank}] 하락.`, 'error');
+                return { stats, narrativeEvent: null }; // Stop processing promotion for this turn
+            }
+        }
 
         // 2. Get Requirements for Next Realm
         const nextRankIdx = currentRankIdx + 1;
