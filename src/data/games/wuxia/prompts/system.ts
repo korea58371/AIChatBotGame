@@ -60,7 +60,9 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
   const faction = stats.faction || '무소속';
 
   // Construct Skill List
-  const skillList = (stats.skills || []).join(', ') || "없음 (기본 주먹질)";
+  const skillList = (stats.skills || [])
+    .map((s: any) => (typeof s === 'string' ? s : s.name))
+    .join(', ') || "없음 (기본 주먹질)";
 
 
   // [Location Details]

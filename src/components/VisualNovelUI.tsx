@@ -843,7 +843,9 @@ export default function VisualNovelUI() {
                     // [Fix] Clean Time String (Remove Day part to avoid duplication in HUD)
                     // "2일차 07:00 (아침)" -> "07:00 (아침)"
                     const cleanTime = rawContent.replace(/(\d+)(일차|Day)\s*/i, '').trim();
-                    useGameStore.getState().setTime(cleanTime);
+                    if (cleanTime) {
+                        useGameStore.getState().setTime(cleanTime);
+                    }
                 } else if (nextSegment.commandType === 'update_stat') {
                     try {
                         const changes = JSON.parse(nextSegment.content);
@@ -1315,6 +1317,8 @@ export default function VisualNovelUI() {
                 lastTurnSummary: lastTurnSummary, // [NEW] Pass Last Turn Summary
                 fateUsage: fateUsage, // [Fate System] Pass requested fate points
 
+                day: currentState.day, // [FIX] Pass Day to Server
+                time: currentState.time, // [FIX] Pass Time to Server
                 turnCount: nextTurnCount, // [FIX] Pass updated Turn Count for System Prompt Logic
             }));
 
