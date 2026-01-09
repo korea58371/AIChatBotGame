@@ -826,8 +826,24 @@ export default function VisualNovelUI() {
             } else if (nextSegment.type === 'command') {
                 // [New] Handle Commands
                 if (nextSegment.commandType === 'set_time') {
-                    console.log(`[Command] Updating Time: ${nextSegment.content}`);
-                    useGameStore.getState().setTime(nextSegment.content);
+                    const rawContent = nextSegment.content;
+                    console.log(`[Command] Updating Time/Day: ${rawContent}`);
+
+                    // [Fix] Parse Day explicitly to update State
+                    // Format: "2일차 07:00 (아침)"
+                    const dayMatch = rawContent.match(/(\d+)(일차|Day)/i);
+                    if (dayMatch) {
+                        const newDay = parseInt(dayMatch[1], 10);
+                        if (!isNaN(newDay)) {
+                            console.log(`[Command] Day Update: ${newDay}`);
+                            useGameStore.getState().setDay(newDay);
+                        }
+                    }
+
+                    // [Fix] Clean Time String (Remove Day part to avoid duplication in HUD)
+                    // "2일차 07:00 (아침)" -> "07:00 (아침)"
+                    const cleanTime = rawContent.replace(/(\d+)(일차|Day)\s*/i, '').trim();
+                    useGameStore.getState().setTime(cleanTime);
                 } else if (nextSegment.commandType === 'update_stat') {
                     try {
                         const changes = JSON.parse(nextSegment.content);
