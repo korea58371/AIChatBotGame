@@ -891,10 +891,27 @@ export default function VisualNovelUI() {
                                 addToast(`${t.morality} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
                             }
                         }
+                        // [Fix] Explicit Neigong Handling (Years)
+                        if (normalizedChanges.neigong !== undefined) {
+                            const val = Number(normalizedChanges.neigong);
+                            if (!isNaN(val)) {
+                                const oldVal = newStats.neigong || 0;
+                                newStats.neigong = Math.max(0, oldVal + val);
+
+                                console.log(`[Stat] Neigong Update: ${oldVal} -> ${newStats.neigong} (Change: ${val})`);
+
+                                // Distinct Toast for Years
+                                if (val > 0) {
+                                    addToast(`내공(갑자) ${val}년 증가!`, 'success');
+                                } else if (val < 0) {
+                                    addToast(`내공(갑자) ${Math.abs(val)}년 손실! (심각한 부상)`, 'error');
+                                }
+                            }
+                        }
 
                         // Generic Fallback
                         Object.keys(normalizedChanges).forEach(key => {
-                            if (['hp', 'mp', 'gold', 'fame', 'morality'].includes(key)) return;
+                            if (['hp', 'mp', 'gold', 'fame', 'morality', 'neigong'].includes(key)) return;
 
                             const val = Number(normalizedChanges[key]);
                             if (!isNaN(val)) {

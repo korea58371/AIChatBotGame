@@ -135,7 +135,10 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **Daily Routine**: Meditation, walking, or breathing exercises do **NOT** increase Neigong Years. (They only restore MP).
   - **Elixirs**: Gaining Neigong from elixirs takes time to absorb. 
   - **Major Breakthroughs**: Only grant Neigong Years (+1, +5, etc.) for *Epiphanies*, *Rare Elixirs*, or *Transfers*.
-- **FORBIDDEN**: Do NOT grant 'neigong' (Years) for simple rest or travel. Only grant 'mp' recovery.
+- **FORBIDDEN (Consumption)**: 
+  - **NEVER** decrease 'neigong' (Years) for using skills or fighting. Skill usage ONLY consumes 'mp'.
+  - **EXCEPTION**: Neigong (Years) is ONLY lost via "Crippling Injury", "Dantian Destruction", or "Transferring Power to another".
+- **FORBIDDEN (Gain)**: Do NOT grant 'neigong' (Years) for simple rest or travel. Only grant 'mp' recovery.
 
 [Personality Stats Guidelines]
 - Personality Stats (-100 to 100):
