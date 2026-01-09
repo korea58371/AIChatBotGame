@@ -266,26 +266,31 @@ STEP 4: **Final Judgment**
 [Guide Generation Instructions]
 1. **Combat Guide**: If intent is 'combat', compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
 2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
-3. **Character Suggestion Protocol** (Balanced Pacing):
-   - **GOAL**: Introduce characters naturally, avoiding "Guest of the Week" fatigue.
-   - **TRIGGER RULE**:
-     1. **Crisis/Combat**: Allies/Rivals can arrive SUDDENLY to help/interfere. (Direct Arrival).
-     2. **Calm/Exploration**: 
-        - If High Affection (>40) / Known Character: They can "bump into" the player.
-        - If **Stranger/New**: Do NOT spawn immediately. **FORESHADOW** first.
-          -> Narrative: "You recall [Faction] operates here...", "You hear a rumor about [Name]...", "You spot a distinctive [Item]..."
-          -> Suggestion: "Suggest: Player notices signs of [Name]'s presence (Foreshadowing)."
-     3. **Only spawn** if it adds drama or resolves a boring scene.
-   - **Mandatory Format**: "Suggest: [Name] - [Type: Arrival/Foreshadowing] because [Reason]."
+3. **Character Suggestion Protocol** (Balanced Pacing & Foreshadowing):
+   - **GOAL**: Introduce characters naturally. Avoid "Guest of the Week".
+   - **STRONG CANDIDATE RULE**: If a character is marked **[STRONG CANDIDATE]** in the context:
+     - **PRIORITY**: You MUST address this character.
+     - **Approach**: 
+       1. **Direct Arrival**: If logical (nearby, crisis), spawn them immediately.
+       2. **Foreshadowing (Bait)**: If immediate spawn is awkward, drop "Narrative Bait" (Rumors, specific tracks, sensing their aura, hearing their voice nearby).
+       3. **Preparation**: Build up the narrative so they can appear in the next 1-2 turns.
+   - **Heroine Interaction Rule**: 
+     - IF an [Active Character] is a Heroine (or Love Interest):
+     - **DO NOT** let them just stand there.
+     - **CREATE SCENARIOS**: Trigger jealousy, playful teasing, deep emotional moments, or sudden cooperation requests. Make the scene lively.
+   - **Trigger Logic**:
+     1. **Crisis/Combat**: Allies/Rivals can arrive SUDDENLY.
+     2. **Calm**: Use [Foreshadowing] first for Strangers. Use [Direct Encounter] for Friends.
+   - **Mandatory Format**: "Suggest: [Name] - [Type: Arrival/Foreshadowing] because [Reason] (Score: High)."
+
 4. **Goal Guide**: Check [Active Goals]. Advise on progress.
 5. **Active Event Guide**: Check [ACTIVE EVENT]. 
-   - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED based on user input.
-     * "active": Event is still relevant and unresolved.
-     * "completed": User successfully handled the event or the event reached a natural conclusion.
-     * "ignored": User explicitly ignored the event or moved away. (This will clear the event).
-   - If "active", you MUST guide the narrative to align with the event.
-6. **Location Guide**: If [Location Context] is vague (e.g. just a room name without Region), **INFER** the likely Region/City from history/context.
-    - Guide the narrator to describe the atmosphere of that region (e.g. "Humid and spicy air of Sichuan", "Cold winds of North").
+   - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED.
+     * "active": Guide narrative to align with event.
+     * "completed": User handled it.
+     * "ignored": User moved away.
+6. **Location Guide**: If [Location Context] is vague, **INFER** Region/City.
+    - Describe atmosphere (e.g. "Humid air of Sichuan", "Cold winds of North").
 
 [Narrative Guide Requirements]
 1. **Action Result**: Clearly state the IMMEDIATE outcome of the input. Did it fail? Succeed? How?

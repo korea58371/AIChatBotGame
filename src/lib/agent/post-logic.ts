@@ -131,18 +131,20 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
      - **Action**: Often resolves mild internal injuries or fatigue.
   - **Constraint**: Do NOT naturally heal severe physical trauma (Fractures, Severed Limbs) without medical treatment.
 
-[Cultivation (Neigong) Logic]
+[Cultivation (Neigong) Logic] (STRICT GROWTH PACING)
 - **MP vs Neigong (CRITICAL DISTINCTION)**:
-  - **MP (Internal Energy Pool)**: Expendable energy used for skills. Recovers via rest/meditation (as above).
-  - **Neigong (Years of Cultivation)**: The *capacity* and *depth* of power (1 Year, 10 Years, 60 Years/1 Cycle).
-- **Rules for Neigong Gain**:
-  - **Daily Routine**: Meditation, walking, or breathing exercises do **NOT** increase Neigong Years. (They only restore MP).
-  - **Elixirs**: Gaining Neigong from elixirs takes time to absorb. 
-  - **Major Breakthroughs**: Only grant Neigong Years (+1, +5, etc.) for *Epiphanies*, *Rare Elixirs*, or *Transfers*.
+  - **MP (Internal Energy Pool)**: Expendable energy used for skills. Recovers via rest/meditation.
+  - **Neigong (Years of Cultivation)**: The *capital*, *capacity*, and *depth* of power (1 Year, 10 Years, 60 Years).
+- **Rules for Neigong Gain (VERY SLOW)**:
+  - **Routine Training**: Meditation, walking, sword practice, or breathing exercises do **NOT** increase Neigong Years. (They only restore MP).
+  - **Combat**: Winning a fight grants *Experience* or *Skill Proficiency*, but **NEVER** increases Neigong Years.
+  - **Time Skip (REQUIRED)**: Generates +1 Year only if the narrative says "Several months passed" or "Secluded training for a year".
+  - **Elixirs/Epiphanies**: Only grant major Neigong Years (+5, +10) for *Rare Elixirs* (consumed) or *Heaven-shaking Epiphanies*.
 - **FORBIDDEN (Consumption)**: 
   - **NEVER** decrease 'neigong' (Years) for using skills or fighting. Skill usage ONLY consumes 'mp'.
   - **EXCEPTION**: Neigong (Years) is ONLY lost via "Crippling Injury", "Dantian Destruction", or "Transferring Power to another".
-- **FORBIDDEN (Gain)**: Do NOT grant 'neigong' (Years) for simple rest or travel. Only grant 'mp' recovery.
+- **FORBIDDEN (Gain)**: Do NOT grant 'neigong' (Years) for simple rest, travel, or winning a duel. Only grant 'mp' recovery and 'exp'.
+
 
 [Personality Stats Guidelines]
 - Personality Stats (-100 to 100):

@@ -43,7 +43,15 @@ export class AgentRetriever {
                 if (charData.relationshipInfo?.speechStyle) speechStyle = charData.relationshipInfo.speechStyle;
                 else if (JSON.stringify(charData).includes("존댓말")) speechStyle = "Polite/Honorific";
 
-                context += `- ${candidate.name} (${charData.title})\n  Identity: ${desc} | Faction: ${faction} | Rank: ${rank}\n  Appearance: ${appearance}\n  Personality: ${pVal}\n  Speech: ${speechStyle}\n`;
+                // [Score Check]
+                const isStrong = candidate.score >= 5;
+                const strongTag = isStrong ? " [STRONG CANDIDATE - HIGH PRIORITY]" : "";
+
+                context += `- ${candidate.name} (${charData.title})${strongTag}\n  Identity: ${desc} | Faction: ${faction} | Rank: ${rank}\n  Appearance: ${appearance}\n  Personality: ${pVal}\n  Speech: ${speechStyle}\n`;
+
+                if (isStrong) {
+                    context += `  >> INSTRUCTION: This character has a high relevance score (${candidate.score}). You MUST actively foreshadow (bait) or introduce them if the scene allows.\n`;
+                }
 
                 // [NEW] Memory Injection (Top 3)
                 if (charData.memories && charData.memories.length > 0) {
