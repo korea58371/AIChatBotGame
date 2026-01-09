@@ -559,7 +559,7 @@ ${finalGoalGuide}
         if (activeInjuries.length > 0) {
             guides.push(`\n[INJURY STATUS]: Player has active injuries: ${JSON.stringify(activeInjuries)}`);
             guides.push("- REQUIREMENT: If the user rests, sleeps, or seeks treatment, explicitly describe the healing process and relief.");
-            guides.push("- REQUIREMENT: If the user ignores pain and exerts force, describe the worsening condition.");
+            guides.push("- NARRATIVE: If user moves/fights, describe PAIN/STRUGGLE. Do NOT imply structural damage unless they fail the action mechanically.");
 
             // Minor injury passive healing hint
             const hasMinor = activeInjuries.some((inj: string) =>

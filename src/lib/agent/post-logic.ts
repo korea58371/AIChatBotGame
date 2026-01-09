@@ -73,6 +73,7 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **ACTION**: IGNORE IT. Do not output anything. 
   - **Reasoning**: This is a *description* of current state, not a *change* in state.
   - **Exception**: Only record if the text EXPLICITLY says the injury "worsened", "tore open", "deepened", or a "new" injury occurred.
+  - **NO DOT RULE**: Do NOT deduct HP for "pain", "bleeding", or "throbbing" of existing injuries. Current HP represents the state *with* the injury. Only new hits reduce HP.
 
 - **Injury Consolidation (NO STACKING)**:
   - **Rule**: You MUST NOT have multiple injuries of the same type at different severities (e.g., both "Internal Injury" and "Severe Internal Injury").
@@ -101,7 +102,9 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **Note**: You do not need an exact string match if the *meaning* is clear.
   - **STRICT RULE**: If you cannot find a matching injury to heal, return an empty list.
 
-- **Worsening/Mutation**: If player ignores an injury and strains themselves, REMOVE the old injury and ADD a worse one.
+- **Worsening/Mutation**: 
+  - **Restrictive Rule**: Only worsen an injury if the narrative describes a **CRITICAL FAILURE** or a **DIRECT HIT** to the wound.
+  - **Do NOT** worsen injuries for standard combat or movement (Exertion is just pain).
   - Example (Fracture -> Disabled): 
     - "resolved_injuries": ["Right Arm Fracture"]
     - "new_injuries": ["Right Arm Permanent Disability"]

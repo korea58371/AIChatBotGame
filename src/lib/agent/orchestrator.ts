@@ -122,6 +122,8 @@ ${retrievedContext}
 
 [Player Action]
 ${userInput}
+
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 8000자 분량의 내용을 작성하세요.
 `;
 
         // [Critical] Scrub <선택지> tags from History to prevent the model from learning to generate them again.
