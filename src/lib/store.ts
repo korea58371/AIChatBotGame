@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { get, set, del } from 'idb-keyval'; // [IndexedDB]
 import { ScriptSegment } from '@/lib/script-parser';
 import { MoodType } from '@/data/prompts/moods';
 import { DataManager, GameData } from './data-manager';
@@ -776,16 +777,57 @@ export const useGameStore = create<GameState>()(
           displayHistory: lightweightDisplayHistory
         };
       },
+      storage: {
+        getItem: async (name: string) => {
+          // 1. Try IndexedDB first
+          try {
+            const idbValue = await get(name);
+            if (idbValue) {
+              // console.log(`[Store] Loaded ${name} from IndexedDB`);
+              return idbValue;
+            }
+          } catch (e) {
+            console.error('[Store] Failed to load from IDB:', e);
+          }
+
+          // 2. Fallback: Migration from localStorage
+          const localStr = localStorage.getItem(name);
+          if (localStr) {
+            try {
+              console.log(`[Store] Migrating ${name} from localStorage to IndexedDB...`);
+              const parsed = JSON.parse(localStr);
+              // Save to IDB for next time
+              await set(name, parsed);
+              // Clear old data to free up space (Safety: Only after parse success)
+              localStorage.removeItem(name);
+              return parsed;
+            } catch (e) {
+              console.error('[Store] Failed to migrate corrupted localStorage data:', e);
+              localStorage.removeItem(name); // It's bad anyway
+              return null;
+            }
+          }
+          return null;
+        },
+        setItem: async (name: string, value: any) => {
+          try {
+            // [Fix] DataCloneError prevention
+            // IndexedDB cannot clone functions. Since we were using localStorage (JSON),
+            // using JSON serialization here is safe and effectively strips all functions/proxies.
+            const sanitized = JSON.parse(JSON.stringify(value));
+            await set(name, sanitized);
+          } catch (e) {
+            console.error('[Store] Failed to save to IDB:', e);
+          }
+        },
+        removeItem: async (name: string) => {
+          await del(name);
+        },
+      },
       onRehydrateStorage: () => (state) => {
-        console.log("[Store] Rehydrating...", state ? "Found State" : "No State");
+        console.log("[Store] Rehydration Finished.", state ? "Success" : "No State");
         if (state) {
-          console.log("[Store] Hydrated Choices:", state.choices);
-          console.log("[Store] Hydrated Queue:", state.scriptQueue?.length);
-        }
-        // On rehydration, we need to reload the non-persisted functions
-        // logic handled by component mounting
-        if (state && state.activeGameId) {
-          // We don't verify game ID here to avoid side effects during hydration
+          useGameStore.setState({ isDataLoaded: true }); // Ensure flag is set
         }
       }
     }

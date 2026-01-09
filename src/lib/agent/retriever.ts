@@ -53,9 +53,12 @@ export class AgentRetriever {
                     context += `  >> INSTRUCTION: This character has a high relevance score (${candidate.score}). You MUST actively foreshadow (bait) or introduce them if the scene allows.\n`;
                 }
 
-                // [NEW] Memory Injection (Top 3)
-                if (charData.memories && charData.memories.length > 0) {
-                    const recentMemories = charData.memories.slice(0, 3);
+                // [NEW] Memory Injection (Top 3) - Dynamic State Lookup
+                const dynamicChar = state.characterData?.[candidate.id] || state.characterData?.[charData?.id];
+                const memories = dynamicChar?.memories || charData.memories || [];
+
+                if (memories && memories.length > 0) {
+                    const recentMemories = memories.slice(0, 3);
                     context += `  Memories: ${recentMemories.join(" / ")}\n`;
                 }
             });

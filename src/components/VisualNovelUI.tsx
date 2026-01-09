@@ -1949,6 +1949,7 @@ export default function VisualNovelUI() {
                         const usageTable = Object.entries(mergedResult.allUsage).map(([model, usage]: [string, any]) => ({
                             Model: model,
                             'In Tokens': usage.promptTokens,
+                            'Cached Tokens': usage.cachedTokens || 0,
                             'Out Tokens': usage.completionTokens,
                             'Total Tokens': usage.totalTokens,
                             'Cost ($)': `$${(usage.cost || 0).toFixed(6)}`

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useGameStore, GameState } from '@/lib/store';
 import { DataManager } from '@/lib/data-manager';
+import { get, set, del } from 'idb-keyval';
 
 interface SaveSlot {
     id: number;
@@ -59,36 +60,59 @@ const compressState = (state: GameState): Partial<GameState> => {
 export function useSaveLoad({ showSaveLoad, setShowSaveLoad, t, resetGame, addToast }: UseSaveLoadProps) {
     const [saveSlots, setSaveSlots] = useState<SaveSlot[]>([]);
 
-    // Load slots on mount or when modal opens
+    // [Async] Load slots on mount or when modal opens
     useEffect(() => {
-        const slots: SaveSlot[] = [];
-        for (let i = 1; i <= 3; i++) {
-            const data = localStorage.getItem(`vn_save_${i}`);
-            if (data) {
+        const loadSlots = async () => {
+            const slots: SaveSlot[] = [];
+            for (let i = 1; i <= 3; i++) {
+                const key = `vn_save_${i}`;
+                let data: any = null;
+
+                // 1. Try IndexedDB
                 try {
-                    const parsed = JSON.parse(data);
+                    data = await get(key);
+                } catch (e) { console.warn("IDB Read Error", e); }
+
+                // 2. Fallback to LocalStorage (Migration Check)
+                if (!data) {
+                    const localExec = localStorage.getItem(key);
+                    if (localExec) {
+                        try {
+                            data = JSON.parse(localExec);
+                            // Auto Migrate
+                            console.log(`[SaveLoad] Migrating Slot ${i} to IDB...`);
+                            await set(key, data);
+                            localStorage.removeItem(key);
+                        } catch (e) {
+                            console.error(`[SaveLoad] Corrupted LS Slot ${i}`, e);
+                        }
+                    }
+                }
+
+                if (data) {
                     slots.push({
                         id: i,
-                        date: new Date(parsed.timestamp).toLocaleString(),
-                        summary: parsed.summary || 'No summary'
+                        date: new Date(data.timestamp).toLocaleString(),
+                        summary: data.summary || 'No summary'
                     });
-                } catch (e) {
-                    console.error("Failed to parse save slot", i, e);
-                    slots.push({ id: i, date: 'Error', summary: 'Corrupted Data' });
+                } else {
+                    slots.push({ id: i, date: 'Empty', summary: '-' });
                 }
-            } else {
-                slots.push({ id: i, date: 'Empty', summary: '-' });
             }
+            setSaveSlots(slots);
+        };
+
+        if (showSaveLoad) {
+            loadSlots();
         }
-        setSaveSlots(slots);
     }, [showSaveLoad]);
 
-    const saveGame = (slotId: number) => {
+    const saveGame = async (slotId: number) => {
         try {
             const state = useGameStore.getState();
             const summary = `${state.playerName || 'Unknown'} / Turn: ${state.turnCount || 0} / ${state.playerStats?.playerRank || 'Unknown'}`;
 
-            // Compress state by removing static data
+            // Compress state
             const compressedState = compressState(state);
 
             const saveData = {
@@ -97,11 +121,13 @@ export function useSaveLoad({ showSaveLoad, setShowSaveLoad, t, resetGame, addTo
                 state: compressedState
             };
 
-            localStorage.setItem(`vn_save_${slotId}`, JSON.stringify(saveData));
+            // Save to IDB
+            await set(`vn_save_${slotId}`, saveData);
+
             addToast(t.gameSaved.replace('{0}', slotId.toString()), 'success');
             setShowSaveLoad(false);
 
-            // Refresh slots to show new save immediately
+            // Refresh UI
             setSaveSlots(prev => prev.map(s =>
                 s.id === slotId
                     ? { id: slotId, date: new Date().toLocaleString(), summary }
@@ -110,35 +136,29 @@ export function useSaveLoad({ showSaveLoad, setShowSaveLoad, t, resetGame, addTo
 
         } catch (e) {
             console.error("Save failed", e);
-            if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                addToast("Save failed: Storage limit exceeded. Delete old saves.", 'error');
-            } else {
-                addToast("Save failed", 'error');
-            }
+            addToast("Save failed", 'error');
         }
     };
 
     const loadGame = async (slotId: number) => {
-        const data = localStorage.getItem(`vn_save_${slotId}`);
-        if (!data) return;
-
         if (confirm(t.confirmLoad.replace('{0}', slotId.toString()))) {
             try {
-                const parsed = JSON.parse(data);
-                const savedState = parsed.state as Partial<GameState>;
+                // Load from IDB
+                const data = await get(`vn_save_${slotId}`);
+                if (!data) {
+                    addToast("Save file not found.", 'warning');
+                    return;
+                }
 
-                // Hydrate static data if we have an activeGameId
-                // Default to 'wuxia' if missing (legacy saves)
+                const savedState = data.state as Partial<GameState>;
+
+                // Hydrate static data
                 const gameId = savedState.activeGameId || 'wuxia';
-
-                // Show loading toast? Or assume fast enough?
-                // DataManager.loadGameData is async
                 const staticData = await DataManager.loadGameData(gameId);
 
                 // Reconstruct full state
                 const hydratedState = {
                     ...savedState,
-                    // Re-attach static data
                     lore: staticData.lore,
                     wikiData: staticData.wikiData,
                     constants: staticData.constants,
@@ -150,12 +170,8 @@ export function useSaveLoad({ showSaveLoad, setShowSaveLoad, t, resetGame, addTo
                     backgroundMappings: staticData.backgroundMappings,
                     characterMap: staticData.characterMap,
                     extraMap: staticData.extraMap,
-
-                    // Re-attach functions
                     getSystemPromptTemplate: staticData.getSystemPromptTemplate,
                     getRankInfo: staticData.getRankInfo,
-
-                    // Ensure core flags
                     isDataLoaded: true,
                 };
 
@@ -169,9 +185,9 @@ export function useSaveLoad({ showSaveLoad, setShowSaveLoad, t, resetGame, addTo
         }
     };
 
-    const deleteGame = (slotId: number) => {
+    const deleteGame = async (slotId: number) => {
         if (confirm(t.confirmDelete.replace('{0}', slotId.toString()))) {
-            localStorage.removeItem(`vn_save_${slotId}`);
+            await del(`vn_save_${slotId}`);
             setSaveSlots(prev => prev.map(s => s.id === slotId ? { ...s, date: 'Empty', summary: '-' } : s));
             addToast(t.gameDeleted.replace('{0}', slotId.toString()), 'info');
         }

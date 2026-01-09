@@ -145,6 +145,14 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **EXCEPTION**: Neigong (Years) is ONLY lost via "Crippling Injury", "Dantian Destruction", or "Transferring Power to another".
 - **FORBIDDEN (Gain)**: Do NOT grant 'neigong' (Years) for simple rest, travel, or winning a duel. Only grant 'mp' recovery and 'exp'.
 
+[Anti-Double Count Rule (CRITICAL for Rank Ups)]
+- **Scenario**: The system forces a "Rank Up" event, and the narrative describes it ("You feel a surge of power as you break through to the next realm!").
+- **Constraint**: This narrative is a *result* of a stat change, not a *cause*.
+- **ACTION**: If the text describes a breakthrough/rank-up:
+  - **DO NOT** output 'playerRank' update (It's already done).
+  - **DO NOT** award extra 'neigong' or 'level' (The surge is visual/textual only).
+  - **Exception**: Only award stats if an *external* item was consumed *during* the breakthrough (e.g., "You ate a pill while breaking through").
+
 
 [Personality Stats Guidelines]
 - Personality Stats (-100 to 100):
@@ -479,6 +487,17 @@ Generate the JSON output.
             }
           }
           json.stat_updates = filteredStats;
+        }
+
+        // [Safety Guard] Prevent AI from overriding System (Cultivation) Ranks
+        // The AI often hallucinates "Hwagyeong" from "Rebirth" descriptions.
+        // Cultivation Ranks must ONLY be updated by 'processRealmProgression' in VisualNovelUI.
+        if (json.playerRank) {
+          const CULTIVATION_RANKS = new Set(['삼류', '이류', '일류', '절정', '초절정', '화경', '현경', '생사경']);
+          if (CULTIVATION_RANKS.has(json.playerRank)) {
+            console.warn(`[AgentPostLogic] BLOCKED implicit Cultivation Rank update: ${json.playerRank}. This is System-Managed.`);
+            delete json.playerRank;
+          }
         }
 
         // [Safety Clamp & Diminishing Returns] Check Relationship Inertia

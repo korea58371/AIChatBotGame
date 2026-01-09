@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+
 import { Message } from './store';
 import { PromptManager } from './prompt-manager';
 import { LoreConverter } from './lore-converter';
@@ -54,6 +55,34 @@ function shouldRetry(error: any): boolean {
     return msg.includes('500') || msg.includes('503') || msg.includes('429') || msg.includes('internal error') || msg.includes('fetch failed') || msg.includes('overloaded');
 }
 
+// [NEW] Helper: Get or Create Cache
+// Gemini requires minimal 32k tokens for caching. Standard logic prompts are too small (~5k).
+// Only Story Prompt (~35k) validates for caching.
+// [Refactor] Dynamic Import Wrapper
+async function getOrUpdateCache(
+    apiKey: string,
+    cacheKey: string,
+    systemInstruction: string,
+    modelName: string
+): Promise<string | null> {
+    // 1. Environment Check
+    if (typeof window !== 'undefined') {
+        console.warn("[GeminiCache] Attempted to access CacheManager from Client Side. Skipping.");
+        return null; // Client side cannot cache
+    }
+
+    try {
+        // 2. Dynamic Import of Server-Only Module
+        // @ts-ignore - Build time check bypass
+        const { getOrUpdateCache: serverGetOrUpdateCache } = await import('./gemini-server');
+        return await serverGetOrUpdateCache(apiKey, cacheKey, systemInstruction, modelName);
+
+    } catch (error) {
+        console.error("[GeminiCache] Failed to load server module:", error);
+        return null;
+    }
+}
+
 export async function generateResponse(
     apiKey: string,
     history: Message[],
@@ -100,13 +129,39 @@ export async function generateResponse(
     // 정적(Static) 프롬프트와 동적(Dynamic) 프롬프트를 합치지 마세요.
     // Static = systemInstruction (캐시됨, 비용 절감)
     // Dynamic = 유저 메시지의 일부 (캐시 안됨, 매번 변경)
-    // Static = systemInstruction (캐시됨, 비용 절감)
-    // Dynamic = 유저 메시지의 일부 (캐시 안됨, 매번 변경)
     const systemInstruction = staticPrompt;
 
     // [Fix] Use passed modelName if available, otherwise default to config
     // Also ensuring no variable shadowing in loop
     const targetModel = modelName || MODEL_CONFIG.STORY;
+
+    // [CACHE IMPLEMENTATION - STORY MODEL ONLY]
+    // We try to get a valid cache name.
+    let cachedContentName: string | null = null;
+
+    // Determine the Cache Key: Same logic as PromptManager but cleaner
+    const overrideKey = gameState.personaOverride ? `_PERSONA_${gameState.personaOverride}` : '';
+    // Use a simpler display name that matches PromptManager's logic but safer for display name (no spaces if possible, though Gemini allows)
+    // PromptManager Key: PROMPT_CACHE_{GameID}_SHARED_{Version}
+    // We reuse PromptManager's public method logic if possible, or replicate it.
+    // Let's replicate the key structure: `CACHE_{GameID}_STORY_{Version}`
+    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v1_3${overrideKey}`;
+
+    // Only attempt caching if the prompt is substantial (Static Prompt is huge)
+    // And only for Story models (Logic is too small)
+    console.log(`[GeminiCache] Static Prompt Length: ${systemInstruction.length} chars.`);
+
+    if (systemInstruction.length > 30000) { // Lowered to 30k chars as safety margin for 32k tokens (which is roughly ~100k chars? No, tokens > chars/4 usually? Korean is distinct.)
+        // Actually 1 token ~= 1.5-3 chars for Korean? 
+        // 32k tokens * 2 chars = 64k chars. 
+        // If 34k tokens total input, and static is 90% of it, it should be huge.
+        // Let's rely on the server to reject if too small.
+        console.log(`[GeminiCache] Attempting to retrieve/create cache for key: ${cacheDisplayName}`);
+        cachedContentName = await getOrUpdateCache(apiKey, cacheDisplayName, systemInstruction, targetModel);
+        console.log(`[GeminiCache] getOrUpdateCache Result: ${cachedContentName}`);
+    } else {
+        console.log(`[GeminiCache] Static Prompt length (${systemInstruction.length} chars) below threshold (30000). Skipping Cache.`);
+    }
 
     const modelsToTry = [
         targetModel,
@@ -126,8 +181,6 @@ export async function generateResponse(
             };
 
             // [Gemini 3 최적화] Native Thinking 활성화
-            // gemini-3-pro-preview, gemini-3-flash-preview 등 'gemini-3'가 포함된 모델에 적용
-            // gemini-3-pro-preview, gemini-3-flash-preview 등 'gemini-3'가 포함된 모델에 적용
             if (currentModel.includes('gemini-3') || currentModel.includes('thinking')) {
                 modelConfig.thinkingConfig = {
                     includeThoughts: true, // [User Request] 생각 과정 로그 확인을 위해 True 설정
@@ -135,14 +188,28 @@ export async function generateResponse(
                 };
             }
 
-            // [수정] 캐시 적중(Cache Hit)을 유지하기 위해 '정적 컨텍스트'만 시스템 지침으로 전달합니다.
-            modelConfig.systemInstruction = systemInstruction;
+            // [CRITICAL] CACHE INJECTION
+            // If we have a valid cache, we supply 'cachedContent' and REMOVE 'systemInstruction'.
+            // The SDK pattern for cached content:
+            if (cachedContentName && currentModel === targetModel) { // Only use cache for the target model it was created for
+                console.log(`[Gemini] USING CACHED CONTENT: ${cachedContentName}`);
+                modelConfig.cachedContent = { name: cachedContentName };
+                // systemInstruction MUST BE REMOVED if cachedContent is present? 
+                // Actually, the cache *contains* the systemInstruction. 
+                // We should NOT pass it again as 'systemInstruction' property if it's in cache.
+            } else {
+                console.log(`[Gemini] Using Standard System Instruction (No Cache)`);
+                modelConfig.systemInstruction = systemInstruction;
+            }
 
-            // [DYNAMIC MODEL] Override model if provided
-            // [DYNAMIC MODEL] Override model if provided
-            if (currentModel) {
+            // [DYNAMIC MODEL] Override model if provided (already handled by logic above, ensuring key matches)
+            // But if we are falling back to LOGIC model in the loop, we shouldn't use the Story Cache (model mismatch)
+            if (currentModel !== targetModel && modelConfig.cachedContent) {
+                delete modelConfig.cachedContent;
+                modelConfig.systemInstruction = systemInstruction; // Restore system prompt for fallback
                 modelConfig.model = currentModel;
             }
+
 
             const model = genAI.getGenerativeModel(modelConfig);
 
@@ -260,6 +327,10 @@ export async function generateGameLogic(
 
             const staticLogicPrompt = getStaticLogicPrompt(gameState.activeGameId, rankCriteria, romanceGuide, combatGuide);
 
+            // [NOTE] Logic Model is usually too small for Context Caching (<32k)
+            // So we skip the getOrUpdateCache step here to save latency. 
+            // If Logic contexts ever get huge, use the same pattern as generateResponse.
+
             const model = genAI.getGenerativeModel({
                 model: modelName,
                 safetySettings,
@@ -358,6 +429,7 @@ export async function generateGameLogic(
 
                         // Attach debug info
                         json._debug_prompt = prompt;
+                        json._debug_static_prompt = staticLogicPrompt;
                         json._debug_raw_response = text;
 
                         return json;
@@ -502,6 +574,20 @@ export async function preloadCache(apiKey: string, initialState: any) {
         // 1. Get the Exact Same Static Prompt as normal requests
         const staticPrompt = await PromptManager.getSharedStaticContext(initialState, initialState.activeChars, initialState.spawnCandidates);
 
+        // [CACHE WARMUP FIX]
+        // Instead of dummy generating, we should try to create the cache object itself here if possible.
+        // But for consistency, let's just trigger the normal flow or call getOrUpdateCache directly.
+        // We need 'modelName' which is MODEL_CONFIG.STORY.
+
+        // This won't actually "warm" the model inferencing, but it might create the cache entry.
+        const modelName = MODEL_CONFIG.STORY;
+        const overrideKey = initialState.personaOverride ? `_PERSONA_${initialState.personaOverride}` : '';
+        const cacheDisplayName = `CACHE_${initialState.activeGameId}_STORY_v1.3${overrideKey}`;
+
+        if (staticPrompt.length > 50000) {
+            await getOrUpdateCache(apiKey, cacheDisplayName, staticPrompt, modelName);
+            console.log("[Gemini] Cache Entry Verified/Created during warmup.");
+        }
 
         // 2. Configure Model
         // MATCH THE MAIN MODEL: MODEL_CONFIG.STORY
@@ -654,10 +740,16 @@ export async function handleGameTurn(
 
     // 1. Story Cost
     if (storyResult.usageMetadata) {
+        // [FIX] We need to report the cached tokens to the calculator if they existed
+        // Our 'storyResult.totalTokenCount' is a sum, but cost needs specific breakdown.
+        // UsageMetadata has 'cachedContentTokenCount' (if supported by backend).
+        // Let's ensure we account for it.
+        const meta = storyResult.usageMetadata;
         totalCost += calculateCost(
             storyResult.usedModel || MODEL_CONFIG.STORY,
-            storyResult.usageMetadata.promptTokenCount || 0,
-            storyResult.usageMetadata.candidatesTokenCount || 0
+            meta.promptTokenCount || 0,
+            meta.candidatesTokenCount || 0,
+            meta.cachedContentTokenCount || 0
         );
     }
 
