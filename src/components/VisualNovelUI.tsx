@@ -870,7 +870,7 @@ export default function VisualNovelUI() {
 
                     // [Fix] Clean Time String (Remove Day part to avoid duplication in HUD)
                     // "2일차 07:00 (아침)" -> "07:00 (아침)"
-                    const cleanTime = rawContent.replace(/(\d+)(일차|Day)\s*/i, '').trim();
+                    const cleanTime = rawContent.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
                     if (cleanTime) {
                         useGameStore.getState().setTime(cleanTime);
                     }
@@ -4140,7 +4140,7 @@ export default function VisualNovelUI() {
                 {/* Fallback for stuck state or Start Screen */}
                 {
                     isMounted && !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-auto z-[100]">
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
                             {/* [Fix] Use turnCount === 0 to prioritize Creation Wizard even if logs exist */}
                             {turnCount === 0 ? (
                                 // Creation or Start Screen
@@ -4388,7 +4388,7 @@ Instructions:
                                         }
 
                                         return (
-                                            <div className="bg-[#1e1e1e]/95 p-8 rounded-xl border border-[#333] text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center max-w-2xl w-full relative overflow-hidden">
+                                            <div className="bg-[#1e1e1e]/95 p-8 rounded-xl border border-[#333] text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center max-w-2xl w-full relative overflow-hidden pointer-events-auto">
                                                 {/* Decorative Top Line */}
                                                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#D4AF37]/50 to-transparent" />
 
@@ -4524,7 +4524,7 @@ Instructions:
                                     // [Fix] Wuxia Data Integrity Guard
                                     if (activeGameId === 'wuxia' && (!creationQuestions || creationQuestions.length === 0)) {
                                         return (
-                                            <div className="bg-black/90 p-12 rounded-xl border-2 border-red-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center animate-pulse">
+                                            <div className="bg-black/90 p-12 rounded-xl border-2 border-red-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center animate-pulse pointer-events-auto">
                                                 <h1 className="text-3xl font-bold text-red-500 mb-2">⚠ 데이터 로드 실패</h1>
                                                 <p className="text-gray-300">
                                                     캐릭터 생성 데이터를 불러오지 못했습니다.<br />
@@ -4550,7 +4550,7 @@ Instructions:
                                     }
 
                                     return (
-                                        <div className="bg-black/80 p-12 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center">
+                                        <div className="bg-black/80 p-12 rounded-xl border-2 border-yellow-500 text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center pointer-events-auto">
                                             <h1 className="text-4xl font-bold text-yellow-400 mb-2">Game Title</h1>
                                             <p className="text-gray-300 text-lg">Welcome to the interactive story.</p>
 
@@ -4607,7 +4607,7 @@ Instructions:
                                 })()
                             ) : isLogicPending ? (
                                 // [Fix] Show simplified pending state instead of Error if waiting for AI
-                                <div className="bg-black/80 p-6 rounded-xl border border-yellow-500 text-center shadow-2xl backdrop-blur-md animate-pulse">
+                                <div className="bg-black/80 p-6 rounded-xl border border-yellow-500 text-center shadow-2xl backdrop-blur-md animate-pulse pointer-events-auto">
                                     <h2 className="text-xl font-bold text-yellow-500 mb-2">{t.fateIsWeaving}</h2>
                                     <p className="text-gray-300 text-sm">{t.generatingChoices}</p>
                                 </div>
@@ -4615,7 +4615,7 @@ Instructions:
                                 // Error/Paused Screen
                                 // [Fix] Safe fallback to Start Screen check
                                 (turnCount === 0 && !currentSegment) ? (
-                                    <div className="bg-black/80 p-8 rounded-xl border border-blue-500 text-center shadow-2xl backdrop-blur-md animate-in fade-in zoom-in duration-300">
+                                    <div className="bg-black/80 p-8 rounded-xl border border-blue-500 text-center shadow-2xl backdrop-blur-md animate-in fade-in zoom-in duration-300 pointer-events-auto">
                                         <h2 className="text-2xl font-bold text-blue-400 mb-4">게임 준비 완료</h2>
                                         <p className="text-gray-300 mb-6">시작하려면 아래 버튼을 클릭하세요.</p>
                                         <button
@@ -4633,16 +4633,15 @@ Instructions:
                                     // [Fix] Data not loaded logic handled by top-level guard, but if here safely return null
                                     null
                                 ) : (
-                                    <div className="bg-black/80 p-8 rounded-xl border border-red-500 text-center shadow-2xl backdrop-blur-md">
-                                        <h2 className="text-2xl font-bold text-red-500 mb-4">{t.scenePaused}</h2>
-                                        <p className="text-gray-300 mb-6">{t.noActiveDialogue}</p>
+                                    <div className="bg-black/90 p-8 rounded-xl border border-yellow-600/50 text-center shadow-[0_0_30px_rgba(202,138,4,0.2)] backdrop-blur-md relative overflow-hidden pointer-events-auto">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent" />
+                                        <h2 className="text-2xl font-bold text-yellow-500 mb-4 font-serif tracking-wide flex items-center justify-center gap-2">
+                                            <span className="text-yellow-500/50 text-lg">❖</span>
+                                            {t.scenePaused}
+                                            <span className="text-yellow-500/50 text-lg">❖</span>
+                                        </h2>
+                                        <p className="text-gray-300 mb-6 font-medium">{t.noActiveDialogue}</p>
                                         <div className="flex gap-4 justify-center">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleNewGame(); }}
-                                                className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded font-bold text-white shadow-lg hover:scale-105 transition-transform"
-                                            >
-                                                {t.resetGame}
-                                            </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setIsInputOpen(true); }}
                                                 className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded font-bold text-white shadow-lg hover:scale-105 transition-transform"
