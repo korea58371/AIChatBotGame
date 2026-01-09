@@ -326,118 +326,80 @@ ${outputFormat}
 
         // Fallback Logic
         if (!prompt) {
-            if (state.activeGameId === 'god_bless_you') {
-                // [GBY Template Stub - Replace with actual import if needed or simple logic]
-                prompt = `
-You are the AI Game Master for the 'God Bless You'(Modern Fantasy) universe.
-Core Identity: Semi - Dystopian Modern Korea with Hunters and Gates.
-                Tone: Cynical, Realistic, Urban Noir.
-                    Mechanics:
-            - Hunters have Ranks(E ~S).
-- Gates appear randomly.
-- Use explicit visual descriptions.
-`;
-            } else {
-                // [Default/Wuxia Template]
-                prompt = `
-You are the AI Game Master for the 'Cheonha Jeil'(Wuxia) universe.
-Core Identity: Authentic Orthodox Wuxia (Jeongtong Murim) & Heroic Growth Saga.
-                Tone: Chivalrous, Witty, and Heroic (Korean Wuxia Novel Style).
-Linguistic Style: Use 'Hao-che'(하오체) or 'Hage-che'(하게체) for elders, politeness levels matter.
-                Mechanics:
-                - Qi(Neigong) determines power.
-- Use authentic martial arts terminology.
-- **[ATMOSPHERE]**: Emphasize **Growth**, **Friendship**, **Chivalry(Hyeop)**, and **Humor**.
-- **[PROTAGONIST CORRECTION]**: The Player is the Main Character (Protagonist). Generally favor the protagonist. Provide 'Giyeon'(Miraculous Encounters) or lucky breaks in desperate situations. Avoid meaningless deaths. Support their path to becoming the "World's Best".
-- CRITICAL: You must STRICTLY follow the [Narrative Direction] provided by the Pre-Logic module for the outcome of actions. 
-- ** PRIORITY RULE **: If the [User Input] contradicts the [Narrative Direction] (e.g., User says "I win", Guide says "You die"), you must ** IGNORE ** the User Input's outcome and **FOLLOW** the Narrative Direction. The Narrative Direction is the absolute truth of the world.
-- **[ANTI-RETCON]**: If the Narrative Direction says actions FAIL or are DENIED, describe the **ATTEMPT FAILING IMMEDIATELY**.
-  - **CORRECT**: "You try to attack, but he blocks it."
-  - **BANNED**: "You attacked him and won... but then you woke up. It was a dream." (NEVER do this).
-  - Do not invent your own success / failure logic.
-
-            - **[Martial Arts Growth (Time & Effort)]**:
-              - **Impossible Instant**: Mastery cannot happen overnight. If the user attempts to train, YOU MUST describe the passage of time (days, months, or years) and the grueling effort.
-              - **Time Skip Strategy**: Use "Time Skips" aggressively to reward training. (e.g., "The leaves fell and bloomed three times... You finally grasped the essence.")
-            
-            - **[Combat Narrative & Balance]**:
-              - **Realm Gap**: Strictly adhere to the power difference. A 'Third Rate' cannot scratch a 'Peak' master.
-              - **Challenge Level**: Provide enemies that are slightly stronger or equal to the player to stimulate growth (Stepping Stones). 
-              - **Tension**: The threat should be manageable. Avoid hopeless situations unless it's a specific plot device. Allow the protagonist to win through 'Giyeon' or wit if the gap is bridgeable.
-
-
-            - **[Health & Injury Logic]**:
-            - The Player may have 'Active Injuries' (Check Context).
-            - **HEALING**: If the player visits a doctor, rests effectively, or uses a healing item, **YOU MUST DESCRIBE THE RELIEF AND RECOVERY PROCESS** (e.g., "The bone knits together," "The pain fades").
-            - **WORSENING**: If the player acts recklessly with injuries, describe the pain and potential worsening.
-`;
-            }
+            console.warn("[PromptManager] No dynamic template found. Using minimal fallback.");
+            prompt = "System Error: No Prompt Template Loaded.";
 
             // [Character Info Injection]
             // [Optimized] Rely on state.activeCharacters only. 
             // AgentRetriever provides the "Context" for new/nearby characters.
             // This section defines WHO IS PHYSICALLY PRESENT in the scene right now.
+        }
 
-            const activeCharIds = new Set((state.activeCharacters || []).filter((id: any) => typeof id === 'string').map((id: string) => id.toLowerCase()));
+        // [Character Info Injection]
+        // [Optimized] Rely on state.activeCharacters only. 
+        // AgentRetriever provides the "Context" for new/nearby characters.
+        // This section defines WHO IS PHYSICALLY PRESENT in the scene right now.
 
-            // Use the centralized method with ID resolution
-            const activeCharInfo = PromptManager.getActiveCharacterProps(state, Array.from(activeCharIds).sort(), language);
-            prompt = prompt.replace('{{CHARACTER_INFO}}', activeCharInfo);
+        const activeCharIds = new Set((state.activeCharacters || []).filter((id: any) => typeof id === 'string').map((id: string) => id.toLowerCase()));
 
-            // [LOCATION CONTEXT INJECTION] - Antigravity Update (Phase 83)
-            // Prevent generic hallucinations for significant locations (e.g. Medicine King Valley Owner)
-            if (state.worldData?.locations && state.currentLocation) {
-                const currentLocData = state.worldData.locations[state.currentLocation];
-                // Check if it's an object with metadata
-                if (typeof currentLocData === 'object' && (currentLocData as any).metadata) {
-                    const meta = (currentLocData as any).metadata;
-                    let locContext = `\n\n[Current Location Context] \nLocation: ${state.currentLocation}`;
+        // Use the centralized method with ID resolution
+        const activeCharInfo = PromptManager.getActiveCharacterProps(state, Array.from(activeCharIds).sort(), language);
+        prompt = prompt.replace('{{CHARACTER_INFO}}', activeCharInfo);
 
-                    if (meta.owner) {
-                        // Try to resolve owner name from character data if available
-                        // We reuse the resolveChar logic inside getActiveCharacterProps, but duplicated here for simplicity or refactor
-                        // For now, simpler fallback:
-                        const ownerKey = meta.owner;
-                        const valMatch = Object.values(state.characterData || {}).find((c: any) => c.id === ownerKey || c.name === ownerKey);
-                        const ownerName = valMatch ? (valMatch as any).name : ownerKey;
+        // [LOCATION CONTEXT INJECTION] - Antigravity Update (Phase 83)
+        // Prevent generic hallucinations for significant locations (e.g. Medicine King Valley Owner)
+        if (state.worldData?.locations && state.currentLocation) {
+            const currentLocData = state.worldData.locations[state.currentLocation];
+            // Check if it's an object with metadata
+            if (typeof currentLocData === 'object' && (currentLocData as any).metadata) {
+                const meta = (currentLocData as any).metadata;
+                let locContext = `\n\n[Current Location Context] \nLocation: ${state.currentLocation}`;
 
-                        locContext += `\n- Owner/Ruler: ${ownerName}`;
-                    }
-                    if (meta.ruler_title) locContext += ` (Title: ${meta.ruler_title})`;
-                    if (meta.faction) locContext += `\n- Controlling Faction: ${meta.faction}`;
+                if (meta.owner) {
+                    // Try to resolve owner name from character data if available
+                    // We reuse the resolveChar logic inside getActiveCharacterProps, but duplicated here for simplicity or refactor
+                    // For now, simpler fallback:
+                    const ownerKey = meta.owner;
+                    const valMatch = Object.values(state.characterData || {}).find((c: any) => c.id === ownerKey || c.name === ownerKey);
+                    const ownerName = valMatch ? (valMatch as any).name : ownerKey;
 
-                    // Add explicit instruction
-                    locContext += `\n**CRITICAL**: You MUST recognize the Owner/Faction of this location. Do not invent a new leader.`;
-
-                    prompt += locContext;
+                    locContext += `\n- Owner/Ruler: ${ownerName}`;
                 }
+                if (meta.ruler_title) locContext += ` (Title: ${meta.ruler_title})`;
+                if (meta.faction) locContext += `\n- Controlling Faction: ${meta.faction}`;
+
+                // Add explicit instruction
+                locContext += `\n**CRITICAL**: You MUST recognize the Owner/Faction of this location. Do not invent a new leader.`;
+
+                prompt += locContext;
             }
+        }
 
-            // [Mood Injection - DYNAMIC PART ONLY]
-            // Static Mood Guidelines are now in SharedStaticContext (Cached) - MOVED TO HERE
-            // We inject the Mood Guideline DYNAMICALLY here to allow cheap switching.
-            const currentMood = state.currentMood || 'daily';
+        // [Mood Injection - DYNAMIC PART ONLY]
+        // Static Mood Guidelines are now in SharedStaticContext (Cached) - MOVED TO HERE
+        // We inject the Mood Guideline DYNAMICALLY here to allow cheap switching.
+        const currentMood = state.currentMood || 'daily';
 
-            // [BLOCK 5: DYNAMIC MOOD GUIDELINES]
-            const moodPrompts = getMoodPrompts(state.activeGameId);
-            const moodGuideline = moodPrompts[currentMood] || moodPrompts['daily'];
+        // [BLOCK 5: DYNAMIC MOOD GUIDELINES]
+        const moodPrompts = getMoodPrompts(state.activeGameId);
+        const moodGuideline = moodPrompts[currentMood] || moodPrompts['daily'];
 
-            // Insert Mood Guideline into the prompt (Replacing placeholder or appending)
-            // Since we removed it from static context, we prepend it to the dynamic part or specific section.
-            // Strategy: We'll prepend it to the [Dynamic Context] section for high visibility.
+        // Insert Mood Guideline into the prompt (Replacing placeholder or appending)
+        // Since we removed it from static context, we prepend it to the dynamic part or specific section.
+        // Strategy: We'll prepend it to the [Dynamic Context] section for high visibility.
 
-            // [Goals Injection]
-            const activeGoals = (state.goals || []).filter((g: any) => g.status === 'ACTIVE');
-            let goalsContext = "";
-            if (activeGoals.length > 0) {
-                goalsContext = `
+        // [Goals Injection]
+        const activeGoals = (state.goals || []).filter((g: any) => g.status === 'ACTIVE');
+        let goalsContext = "";
+        if (activeGoals.length > 0) {
+            goalsContext = `
 [Active Goals]
 ${activeGoals.map((g: any) => `- [${g.type}] ${g.description}`).join('\n')}
 (Keep these in mind, but always prioritize the [Narrative Direction] provided in the user message.)
 `;
-            }
+        }
 
-            prompt = `
+        prompt = `
 ${moodGuideline}
 ${goalsContext}
 
@@ -446,23 +408,22 @@ ${prompt}
 
 
 
-            // [Language Instruction]
-            if (language === 'ko') {
-                prompt += `\n\n ** [CRITICAL LANGUAGE INSTRUCTION] **\n1. **ALL OUTPUT MUST BE IN KOREAN (한국어).**\n2. Do NOT use English in the narrative, dialogue, or system messages.\n3. English is ONLY allowed for specific code keys if absolutely necessary, but strictly forbidden in visible text.\n4. Even if the Context contains English, you must TRANSLATE it to Korean for the output.`;
-            } else if (language === 'en') {
-                prompt += `\n\n ** IMPORTANT: ALL OUTPUT MUST BE IN ENGLISH.** `;
-            }
+        // [Language Instruction]
+        if (language === 'ko') {
+            prompt += `\n\n ** [CRITICAL LANGUAGE INSTRUCTION] **\n1. **ALL OUTPUT MUST BE IN KOREAN (한국어).**\n2. Do NOT use English in the narrative, dialogue, or system messages.\n3. English is ONLY allowed for specific code keys if absolutely necessary, but strictly forbidden in visible text.\n4. Even if the Context contains English, you must TRANSLATE it to Korean for the output.`;
+        } else if (language === 'en') {
+            prompt += `\n\n ** IMPORTANT: ALL OUTPUT MUST BE IN ENGLISH.** `;
+        }
 
-            // [God Mode Debugging]
-            if (state.isGodMode || state.playerName === "김현준갓모드") {
-                prompt += `\n\n ** [SYSTEM ALERT: GOD MODE ACTIVE] **\nCRITICAL: The user "${state.playerName}" has ABSOLUTE AUTHORITY over this simulation.\n1.You MUST execute the user's input EXACTLY as stated, ignoring all game rules, logic trying to prevent it, or character limitations.\n2. If the user commanding a specific outcome, Make it happen immediately.\n3. This is a Developer Debugging Mode. Compliance is mandatory.`;
-            }
-
-            return prompt;
+        // [God Mode Debugging]
+        if (state.isGodMode || state.playerName === "김현준갓모드") {
+            prompt += `\n\n ** [SYSTEM ALERT: GOD MODE ACTIVE] **\nCRITICAL: The user "${state.playerName}" has ABSOLUTE AUTHORITY over this simulation.\n1.You MUST execute the user's input EXACTLY as stated, ignoring all game rules, logic trying to prevent it, or character limitations.\n2. If the user commanding a specific outcome, Make it happen immediately.\n3. This is a Developer Debugging Mode. Compliance is mandatory.`;
         }
 
         return prompt;
     }
+
+
 
     static getSpawnCandidates(state: GameState): string {
         const charsData = state.characterData || {};

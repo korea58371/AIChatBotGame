@@ -25,7 +25,7 @@ export const getRankInfo = (rankKey: string = '삼류') => {
   // 3. Phase Calculation (Wuxia Phase System) - Korean Translation
   let phase = 1;
   let phaseName = '삼류 ~ 이류';
-  let phaseDescription = '주인공과 비슷하거나 조금 더 높은 경지의 인물들과 주로 상호작용합니다. 구파일방의 장문인이나 오룡육봉 같은 유명한 고수들은 소문이나 멀리서 지켜보는 존재일 뿐입니다. 특별한 이벤트 없이는 그들과의 직접적인 만남이 어렵습니다.';
+  let phaseDescription = '주인공과 비슷하거나 조금 더 높은 경지의 인물들과 주로 상호작용합니다. 하지만 운명적인 만남은 언제든 일어날 수 있습니다. 오룡육봉(히로인)이나 기연과 관련된 고수들은 초반이라도 자연스럽게 등장할 수 있으며, 이들과의 만남이 주인공의 성장에 큰 영향을 줄 수 있습니다.';
 
   if (['일류', '절정', '초절정'].includes(currentRankKey)) {
     phase = 2;
@@ -127,12 +127,19 @@ ${perspectiveRule}
 - **제약 사항**: ${phaseDescription}
 - **규칙**: 현재 주인공의 단계에 맞지 않는 상위 경지의 인물들은 주로 소문이나 전설, 또는 먼발치에서 관찰하는 형태로만 등장해야 합니다. 단, **[Narrative Direction]의 지시나 [Casting Suggestions]에 포함된 인물**이라면 자연스럽게 등장시킬 수 있습니다.
 
+**[Narrative Direction Authority & Character Spawning]**:
+- **CRITICAL**: You must STRICTLY follow the [Narrative Direction] provided by the Pre-Logic module.
+- **SUGGESTION TYPES (인물 등장 유형)**:
+  * **[Type: Arrival]**: Spawn the character IMMEDIATELY. "Suddenly, [Name] enters..."
+  * **[Type: Foreshadowing]**: Do NOT spawn the character yet. Describe **HINTS** of their presence.
+    -> E.g., "You see the green emblem of the Tang Clan...", "A rumor about [Name] reaches your ears..."
+- **PRIORITY RULE**: If [User Input] contradicts [Narrative Direction], **IGNORE** user input and **FOLLOW** direction.
+
 
 **[서술 주의사항: 메타 발언 금지]**
 아래 수치(HP, 내공 등)는 서술을 위한 참고용일 뿐입니다. **절대 수치를 직접 언급하거나 게임 시스템처럼 묘사하지 마십시오.**
 (X) "체력이 50 남아서 힘들다." / (O) "숨이 차오르고 다리가 후들거린다."
 (X) "Stranger(0) 관계이므로 경계한다." / (O) "낯선 이를 향한 경계심이 눈빛에 서려 있었다."
-*피로도가 90 이상이면 모든 행동은 실패합니다. 경지 차이가 나면 즉사합니다.*
 **CRITICAL**: [SYSTEM-INTERNAL] 태그나 내부 수치(Score, Rank 등)를 절대 발설하지 마십시오.
 
 **[서술 및 출력 포맷 절대 규칙]**

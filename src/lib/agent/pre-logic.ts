@@ -266,17 +266,17 @@ STEP 4: **Final Judgment**
 [Guide Generation Instructions]
 1. **Combat Guide**: If intent is 'combat', compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
 2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
-3. **Character Suggestion Protocol** (INDEPENDENT PRIORITY):
-   - **MANDATORY CHECK**: Review [Casting Suggestions] immediately.
-   - **PRIORITY**: Allies, Companions, Heroines > Neutrals > Enemies.
+3. **Character Suggestion Protocol** (Balanced Pacing):
+   - **GOAL**: Introduce characters naturally, avoiding "Guest of the Week" fatigue.
    - **TRIGGER RULE**:
-     1. IF a high-scoring candidate exists (especially Companions/Heroines) AND is NOT present:
-        -> **AGGRESSIVELY SUGGEST** an appearance event.
-        -> "Suddenly, [Name] arrives...", "[Name] steps in to help...", "[Name] calls out from behind...".
-     2. **DO NOT** wait for "stagnant scenes". Be proactive.
-     3. **EVEN IN COMBAT**: Allies can arrive as reinforcements.
-     4. **EVEN IN DIALOGUE**: Rivals/Friends can interrupt.
-   - **Narrative Hook**: Provide the *HOW*. "Suggest: Yeon Hwa-rin blocks the enemy's attack with ice."
+     1. **Crisis/Combat**: Allies/Rivals can arrive SUDDENLY to help/interfere. (Direct Arrival).
+     2. **Calm/Exploration**: 
+        - If High Affection (>40) / Known Character: They can "bump into" the player.
+        - If **Stranger/New**: Do NOT spawn immediately. **FORESHADOW** first.
+          -> Narrative: "You recall [Faction] operates here...", "You hear a rumor about [Name]...", "You spot a distinctive [Item]..."
+          -> Suggestion: "Suggest: Player notices signs of [Name]'s presence (Foreshadowing)."
+     3. **Only spawn** if it adds drama or resolves a boring scene.
+   - **Mandatory Format**: "Suggest: [Name] - [Type: Arrival/Foreshadowing] because [Reason]."
 4. **Goal Guide**: Check [Active Goals]. Advise on progress.
 5. **Active Event Guide**: Check [ACTIVE EVENT]. 
    - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED based on user input.
@@ -285,7 +285,18 @@ STEP 4: **Final Judgment**
      * "ignored": User explicitly ignored the event or moved away. (This will clear the event).
    - If "active", you MUST guide the narrative to align with the event.
 6. **Location Guide**: If [Location Context] is vague (e.g. just a room name without Region), **INFER** the likely Region/City from history/context.
-   - Guide the narrator to describe the atmosphere of that region (e.g. "Humid and spicy air of Sichuan", "Cold winds of North").
+    - Guide the narrator to describe the atmosphere of that region (e.g. "Humid and spicy air of Sichuan", "Cold winds of North").
+
+[Narrative Guide Requirements]
+1. **Action Result**: Clearly state the IMMEDIATE outcome of the input. Did it fail? Succeed? How?
+2. **Combat Detail**: If Combat, compare Ranks/Stats. 
+   - "Player(3rd Rate) vs Enemy(2nd Rate): Disadvantage. Enemy is faster and stronger. Player must rely on dirty tricks."
+3. **Affection/Interaction**: If Dialogue, check Affection/Relationship.
+   - "Affection 80 (Lover): She blushes and speaks softly."
+   - "Affection 10 (Stranger): She answers coldly."
+4. **Suggestion Reasoning**: For every [Character Suggestion], you MUST explain WHY in the log.
+   - Format: "Suggest: [Name] because [Reason] (e.g. 'He is a rival', 'She loves the player', 'Adds tension')."
+
 `.trim();
 
         // 갓 모드 체크

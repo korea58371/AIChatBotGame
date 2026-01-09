@@ -167,11 +167,12 @@ export default function VisualNovelUI() {
 
         if (nextRankName) {
             const nextRealmConfig = (martialArtsLevels as any)[nextRankName];
-            const energyReq = nextRealmConfig?.조건?.최소_내공 || 9999; // Default high if missing
+            // [Fix] Handle 0 correctly with ?? operator (though constant has 10 for Second Rate)
+            const energyReq = nextRealmConfig?.조건?.최소_내공 ?? 9999;
 
             // [Rule 1: Energy Cap] 
             // "Internal energy cannot pile up beyond what level allows."
-            const energyCap = energyReq;
+            // const energyCap = energyReq;
 
             // [Rule 2: Level Cap Enforcement]
             // STRICT Enforcement: If not promoted, Level CANNOT exceed maxLevelForRealm.
@@ -180,6 +181,7 @@ export default function VisualNovelUI() {
                 const canPromote = (stats.neigong >= energyReq);
 
                 if (canPromote) {
+                    console.log(`[Realm] Promoting ${currentRankName} -> ${nextRankName}. Neigong: ${stats.neigong} (Req: ${energyReq})`);
                     // PROMOTE!
                     stats.playerRank = nextRankName;
                     stats.level = Math.max(stats.level, currentLevelMap.max + 1); // Ensure we bump up
@@ -207,28 +209,8 @@ export default function VisualNovelUI() {
 
             // [Rule 3: Enforce Energy Cap if not promoted]
             // If Level is stuck at Cap, Energy is also capped at Next Req?
-            // "Internal energy also cannot pile up beyond level allows."
-            // If my Level is capped at 39 (Peak Max), and I have 60 Neigong... I should have promoted above.
-            // If I have 59 Neigong, I am fine.
-            // If I gain +2 -> 61 Neigong.
-            // Loop runs: Level 39. Neigong 61 > 60.
-            // -> Promote? Yes.
-
-            // What if I am Level 30 (Peak Start). Neigong 61.
-            // Level is NOT > maxLevelForRealm (39).
-            // So we don't enter the Promotion Block above.
-            // But Neigong 61 > 60 (Req for Transcendent).
-            // "Energy cannot pile up beyond level allows".
-            // Since Level 30 < 39, can I have Transcendent Energy?
-            // Usually no. You need to be at the bottleneck.
-            // But if I have 60y energy at Lv 30, I am OP.
-            // Let's cap Energy at Next Req if Level is not Maxed?
-            // Or just allow Energy to stack up to the trigger point?
-            // User says: "Internal energy also cannot pile up beyond level allows."
-            // This suggests strict sync.
-            // Let's Cap Neigong at `energyReq` if we are NOT promoting.
-
             if (stats.playerRank === currentRankName && stats.neigong > energyReq) {
+                console.warn(`[Realm] Capping Neigong. Rank: ${currentRankName}, Neigong: ${stats.neigong} -> ${energyReq}`);
                 stats.neigong = energyReq;
                 // addToastCallback(`내공 과잉: 현재 경지에서는 ${energyReq}년 이상 쌓을 수 없습니다.`, 'warning');
             }
