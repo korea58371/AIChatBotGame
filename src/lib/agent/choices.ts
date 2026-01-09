@@ -133,15 +133,6 @@ ${activeCharContext}
 [Known Skills]
 ${skillList}
 
-[User Playstyle History]
-${(() => {
-                // [Adaptive Logic] Summarize History
-                const history = gameState.choiceHistory || [];
-                if (history.length === 0) return "No prior history. Assume neutral stance.";
-                const recent = history.slice(-5); // Use last 5 for immediate context
-                return recent.map((h: any) => `- [${h.type === 'input' ? 'Direct' : 'Selected'}] ${h.text}`).join('\n');
-            })()}
-
 [Previous Action]
 ${userInput}
 
