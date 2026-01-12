@@ -4,79 +4,65 @@ import { getDynamicSkillPrompt } from '../skills';
 // Helper to get Rank Info (Exported for Static Context)
 // Helper to get Rank Info (Exported for Static Context)
 export const getRankInfo = (fame: number) => {
-    // [Mod Request] 서술의 일관성을 위해 페이즈별 특수 정보를 제거하고 일반인 기준으로 고정.
-    let playerRank = '일반인 (미각성)';
-    let phase = 'Phase 0: 미각성';
+   // [Mod Request] 서술의 일관성을 위해 페이즈별 특수 정보를 제거하고 일반인 기준으로 고정.
+   let playerRank = '일반인 (미각성)';
+   let phase = 'Phase 0: 미각성';
 
-    let rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하거나 두려워하며 살아가는 일상. 곧 다가올 각성(Awakening)의 순간을 기다리고 있다.";
-    let rankKeywords = "#일상물 #각성전 #두려움";
-    let rankGiftDesc = "기프트 없음 (일반인).";
-    let rankConflict = `
-    - 생활고 (알바, 월세).
-    - 헌터들에 대한 막연한 동경과 공포.
-    - 무력함.`;
+   let rankLogline = "평범하지만 행복한 일반인. 블레서들과 얽히며 벌어지는 유쾌하고 설레는 일상 드라마.";
+   let rankKeywords = "#일상물 #힐링 #러브코미디 #소확행";
+   let rankGiftDesc = "기프트 없음 (일반인). 하지만 요리와 청소에는 재능이 있을지도?";
+   let rankConflict = `
+    - 오늘 저녁 메뉴 결정하기.
+    - 여동생의 잔소리 피하기.
+    - 알바비로 사고 싶은 피규어 사기.`;
 
-    return { playerRank, rankLogline, rankKeywords, rankGiftDesc, rankConflict, phase };
+   return { playerRank, rankLogline, rankKeywords, rankGiftDesc, rankConflict, phase };
 };
 
 export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja' | null = 'ko') => {
-    const stats = state.playerStats || {};
-    const inventory = state.inventory || [];
-    const fame = stats.fame ?? 0;
+   const stats = state.playerStats || {};
+   const inventory = state.inventory || [];
+   const fame = stats.fame ?? 0;
 
-    // Use Helper
-    const { playerRank, rankGiftDesc, rankConflict, phase } = getRankInfo(fame);
+   // Use Helper
+   const { playerRank, rankGiftDesc, rankConflict, phase } = getRankInfo(fame);
 
-    const statusDescription = state.statusDescription || "건강함 (정보 없음)";
-    const personalityDescription = state.personalityDescription || "평범함 (정보 없음)";
+   const statusDescription = state.statusDescription || "건강함 (정보 없음)";
+   const personalityDescription = state.personalityDescription || "평범함 (정보 없음)";
 
-    let currencySymbol = '원';
-    if (language === 'en') currencySymbol = '$';
-    else if (language === 'ja') currencySymbol = '엔';
+   let currencySymbol = '원';
+   if (language === 'en') currencySymbol = '$';
+   else if (language === 'ja') currencySymbol = '엔';
 
-    // [Dynamic Skill Injection] - Controls spoilers based on Phase
-    const skillList = getDynamicSkillPrompt(phase, stats.skills || []);
+   // [Dynamic Skill Injection] - Controls spoilers based on Phase
+   const skillList = getDynamicSkillPrompt(phase, stats.skills || []);
 
-    // [Constraint for Direct Input]
-    const directInputConstraints = state.isDirectInput
-        ? `
-[유저 직접 입력 시 '절대' 제약 사항 - ANTI-GOD MODE & REALITY CHECK]
-1. 유저는 게임 속 '플레이어'일 뿐이며, '신(God)'이나 '작가(Author)'가 아닙니다.
-2. **입력 검증 0순위: 개연성(Probability) 및 맥락(Context) 체크**
-   - 유저의 입력이 이전 상황과 논리적/물리적으로 연결되지 않는다면(예: 갑자기 하늘에서 돈이 떨어짐, 모르는 사람이 이름을 불렀다고 바로 나타남), **해당 입력을 '망상'이나 '헛소리'로 취급하고 무시하십시오.**
-   - **NPC 소환 금지**: 유저가 특정 캐릭터를 호명한다고 해서 그 캐릭터가 나타나지 않습니다. 현재 위치에 그 캐릭터가 있을 만한 타당한 이유가 없다면, "아무리 불러도 대답이 없다"고 서술하십시오.
-3. **능력 및 아이템 창조 금지**:
-   - 유저가 자신의 프로필(Status)에 없는 스킬이나 아이템을 사용하는 묘사를 하면, **"그런 능력은 없다"**라며 행동을 실패 처리하십시오. (예: 마법을 못 쓰는 캐릭터가 "파이어볼 발사" 입력 -> "허공에 손을 휘적거렸지만 아무 일도 일어나지 않았다.")
-4. **결과 확정 시도 무시**:
-   - 타인의 반응("그녀가 반했다"), 우연적 이득("돈을 주웠다"), 전투 결과("적을 단칼에 베었다") 등 결과를 포함한 입력은 **'의도(Intent)'만 파악하고 결과는 AI가 다시 계산하십시오.**
-5. 위 수칙을 위반한 입력은 **"현실은 냉혹했다..."** 라는 뉘앙스로 처참하게 실패시키거나, 주변 인물들이 이상한 사람 취급하게 만드십시오.
-6. **[REALISTIC SURVIVAL RULES - DYNAMIC CHECK]**:
-   - **자본주의 (Money)**: 유저가 대가 지불 없이 정보를 얻거나 치료를 받으려 하면, "계좌 잔액 부족" 또는 "돈도 없는 거지가 어디서..."라며 거부하십시오.
-   - **주제 파악 (Rank Awareness)**: 유저(F급)가 S급에게 건방지게 굴거나 동등하게 대우받으려 하면, **그 즉시 강력한 물리력으로 제압하거나 살해하십시오.** 경고는 사치입니다.
-7. 오직 **주인공의 의도와 신체적 행동의 시도**만을 입력으로 받아들이십시오.
-`
-        : "";
+   // [Constraint for Direct Input]
+   // [Constraint for Direct Input]
+   // Removed as per user request (Handled by Pre-Logic)
+   const directInputConstraints = "";
 
-    // [Location Details]
-    const worldData = state.worldData || { locations: {}, items: {} };
-    const locData = worldData.locations?.[state.currentLocation];
-    let locationDesc = "알 수 없는 장소";
-    let locationSecrets = "";
 
-    if (typeof locData === 'string') {
-        locationDesc = locData;
-    } else if (locData) {
-        locationDesc = locData.description || "설명 없음";
-        if (locData.secrets && locData.secrets.length > 0) {
-            locationSecrets = `\n  - **특이사항(비밀)**: ${locData.secrets.join(', ')}`;
-        }
-    }
+   // [Location Details]
+   const worldData = state.worldData || { locations: {}, items: {} };
+   const locData = worldData.locations?.[state.currentLocation];
+   let locationDesc = "알 수 없는 장소";
+   let locationSecrets = "";
 
-    // [Narrative Perspective]
-    const perspective = stats.narrative_perspective || '1인칭';
+   if (typeof locData === 'string') {
+      locationDesc = locData;
+   } else if (locData) {
+      locationDesc = locData.description || "설명 없음";
+      if (locData.secrets && locData.secrets.length > 0) {
+         locationSecrets = `\n  - **특이사항(비밀)**: ${locData.secrets.join(', ')}`;
+      }
+   }
 
-    const perspectiveRule = perspective.includes('1인칭')
-        ? `
+   // [Narrative Perspective]
+   const perspective = stats.narrative_perspective || '1인칭';
+
+   const perspectiveRule = perspective.includes('1인칭')
+      ? `
 **[서술 시점: 1인칭 주인공 시점 (First Person)]**
 - **규칙**: 모든 서술은 주인공의 눈('나', '내')을 통해서만 이루어져야 합니다.
 - **금지**: '당신', '김현준' 등 3인칭 지칭 절대 금지.
@@ -84,7 +70,7 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
   (X) 당신은 숨을 골랐다. 
   (O) 나는 거친 숨을 몰아쉬었다. 심장이 터질 것 같았다.
 `
-        : `
+      : `
 **[서술 시점: 3인칭 전지적 작가 시점 (Third Person)]**
 - **규칙**: 서술자는 관찰자로서 '주인공 이름'이나 '그'를 사용하여 서술합니다.
 - **금지**: '나'를 주어로 사용 금지 (대사 제외).
@@ -109,12 +95,12 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
 - **대응 원칙**: 특정 정보가 기재되어 있지 않다면, '알 수 없음'이나 '평범함'으로 처리하십시오. 빈 공간을 당신의 상상력으로 채우는 것은 '서술(Narration)'이지 '설정 파괴(Lore Breaking)'여서는 안 됩니다.
 `;
 
-    // Inventory Text
-    const inventoryDesc = inventory.length > 0
-        ? inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ')
-        : "없음";
+   // Inventory Text
+   const inventoryDesc = inventory.length > 0
+      ? inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ')
+      : "없음";
 
-    return `
+   return `
 # [5. CURRENT GAME STATE (INJECTED)]
 *이 정보는 현재 턴의 상황입니다. 최우선으로 반영하여 서술하십시오.*
 
