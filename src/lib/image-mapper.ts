@@ -81,7 +81,22 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
     // Must be checked BEFORE extraOverrides to prevent "Seong-jun" being caught as a generic extra
     // Note: isHiddenProtagonist handles its own aliasing checks usually, but passing resolvedName is safer?
     // Actually, isHiddenProtagonist checks 'Name' vs 'PlayerName'.
-    if (isHiddenProtagonist(koreanName, state.playerName || '', state.protagonistImageOverride)) {
+    const isHidden = isHiddenProtagonist(koreanName, state.playerName || '', state.protagonistImageOverride);
+
+    // [Debug] Log intended override behavior
+    if (koreanName.includes('주인공') || state.protagonistImageOverride) {
+        console.log(`[ImageMapper] Protagonist Check: name="${koreanName}", override="${state.protagonistImageOverride}", isHidden=${isHidden}`);
+        console.log(`[ImageMapper] Available Extras Sample:`, availableExtraImages.slice(0, 5));
+    }
+
+    if (isHidden) {
+        // [Fix] Check if the override image is in ExtraCharacters (e.g. Generated Protagonists)
+        // or in Characters (e.g. Hidden Named Protagonists like Im Seong-jun)
+        if (state.protagonistImageOverride && (availableExtraImages.includes(state.protagonistImageOverride) || availableExtraImages.includes(state.protagonistImageOverride + '.png'))) {
+            console.log(`[ImageMapper] Found Override in Extras: ${extraBasePath}/${state.protagonistImageOverride}.png`);
+            return `${extraBasePath}/${state.protagonistImageOverride}.png`;
+        }
+        console.log(`[ImageMapper] Defaulting Override to CharPath: ${charBasePath}/${state.protagonistImageOverride}.png`);
         return `${charBasePath}/${state.protagonistImageOverride}.png`;
     }
 
@@ -99,6 +114,12 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
         const combinedKey = `${overrideKey}_${koreanEmotion}`;
         if (availableExtraImages.includes(combinedKey)) {
             return `${extraBasePath}/${combinedKey}.png`;
+        }
+
+        // 3. Check just the filename as is (if override directly points to an image file basename)
+        // This handles cases where overrideKey is "유쾌한주인공2" directly
+        if (availableExtraImages.includes(overrideKey)) {
+            return `${extraBasePath}/${overrideKey}.png`;
         }
     }
 

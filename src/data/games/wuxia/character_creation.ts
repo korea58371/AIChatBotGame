@@ -343,3 +343,44 @@ export function getHiddenSettings(name: string): {
 
     return null;
 }
+
+/**
+ * Selects the protagonist image based on character creation data.
+ */
+export function selectProtagonistImage(
+    name: string,
+    gender: 'male' | 'female',
+    creationData: Record<string, any>
+): string {
+    const trimmedName = name.trim();
+
+    // 1. Check for Hidden Character Overrides (Specific Names)
+    if (trimmedName === '임성준') return '임성준';
+    if (trimmedName === '남강혁') return '남강혁';
+    // 2. Check for Appearance/Personality Choices
+    const personality = creationData?.['personality_tone'];
+    if (personality) {
+        const mappings: Record<string, string[]> = {
+            'humorous': ['유쾌한주인공1', '유쾌한주인공2', '유쾌한주인공3', '유쾌한주인공4'],
+            'serious': ['원칙적주인공', '성실한주인공', '냉철한주인공'],
+            'cynical': ['계산적주인공1', '계산적주인공2', '계산적주인공3', '영악한주인공1', '영악한주인공2'],
+            'timid': ['소심형주인공'],
+            'domineering': ['패도형주인공1', '패도형주인공2', '패도형주인공3', '패도형주인공4', '패도형주인공5']
+        };
+
+        const candidates = mappings[personality];
+        if (candidates && candidates.length > 0) {
+            // Deterministic random based on name to keep it consistent if re-run? 
+            // Or just random. creationData usually doesn't change after finish.
+            const index = Math.floor(Math.random() * candidates.length);
+            return candidates[index];
+        }
+    }
+
+    // 3. Fallback Defaults
+    if (gender === 'male') {
+        return 'protagonist_wuxia_male_default';
+    } else {
+        return 'protagonist_wuxia_female_default';
+    }
+}

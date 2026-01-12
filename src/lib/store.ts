@@ -3,6 +3,11 @@ import { persist } from 'zustand/middleware';
 import { get, set, del } from 'idb-keyval'; // [IndexedDB]
 import { ScriptSegment } from '@/lib/script-parser';
 import { MoodType } from '@/data/prompts/moods';
+import { GameRegistry } from '@/lib/registry/GameRegistry'; // [Refactor]
+// Import Configs to register them (Side-effect)
+// This ensures they are registered before store is used.
+import '@/data/games/wuxia/config';
+import '@/data/games/god_bless_you/config';
 import { DataManager, GameData } from './data-manager';
 import { PromptManager } from './prompt-manager';
 import { MODEL_CONFIG } from './model-config';
@@ -134,7 +139,7 @@ export interface GameState {
   setTime: (time: string) => void;
   incrementDay: () => void;
 
-  resetGame: () => void;
+  resetGame: (forceId?: string) => void;
 
   // [NEW] Story Model Selection
   storyModel: string;
@@ -142,7 +147,7 @@ export interface GameState {
 
   // Loaded Game Logic Functions (Not persisted, reloaded on init)
   getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
-  getRankInfo?: (fame: number) => any;
+  getRankInfo?: (input: string | number) => any;
   backgroundMappings?: Record<string, string>;
   events?: any[]; // Dynamic events list
   initialScenario?: string;
@@ -292,7 +297,7 @@ const INITIAL_STATS: PlayerStats = {
   hp: 100, maxHp: 100,
   mp: 50, maxMp: 50,
   gold: 0,
-  level: 1, exp: 0,
+  level: 0, exp: 0, // [Modified] Start at Level 0 (Ordinary Person)
   fame: 0,
   fate: 0,
   playerRank: '삼류',
@@ -318,7 +323,7 @@ const INITIAL_STATS: PlayerStats = {
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      activeGameId: 'wuxia', // Default
+      activeGameId: 'god_bless_you', // Default
       storyModel: MODEL_CONFIG.STORY, // Default to Configured Model
       isDataLoaded: false,
 
@@ -344,22 +349,39 @@ export const useGameStore = create<GameState>()(
           }
 
           // Transform for State
+          const existingCharData = get().characterData || {};
           const charState = Object.values(initialCharacterData).reduce((acc: any, char: any) => {
-            acc[char.name] = { ...char, id: char.id || char.name }; // ID is English ID if exists, else Name
+            const key = char.name;
+            const existing = existingCharData[key] || {};
+
+            acc[key] = {
+              ...char,
+              id: char.id || char.name, // ID is English ID if exists, else Name
+              // [Fix] Preserve Dynamic Fields from Persistence
+              relationship: existing.relationship ?? char.relationship ?? 0,
+              memories: existing.memories?.length ? existing.memories : (char.memories || []),
+              relationshipInfo: existing.relationshipInfo || char.relationshipInfo || { status: null, speechStyle: null },
+            };
             return acc;
           }, {});
+
+          // [Refactor] Load Logic from Registry
+          const config = GameRegistry.get(id);
+          if (!config) {
+            console.error(`[Store] Unknown Game ID: ${id}`);
+            // Fallback to DataManager default logic or error handling
+          }
 
           set({
             activeGameId: id,
             worldData: data.world,
             characterData: charState,
-            // We also need to store functions/mappings transiently or in state?
-            // Functions cannot be persisted by default.
-            // We will need to re-load them when the app starts if we persist state.
-            // For now, we will add them to the state but exclude from persistence.
-            getSystemPromptTemplate: data.getSystemPromptTemplate,
-            getRankInfo: data.getRankInfo,
-            backgroundMappings: data.backgroundMappings,
+            // Logic Injection via Registry (Priority) or DataManager (Fallback)
+            getSystemPromptTemplate: config?.getSystemPromptTemplate || data.getSystemPromptTemplate,
+            getRankInfo: config?.getRankInfo || data.getRankInfo,
+
+            // Assets
+            backgroundMappings: config?.assets.backgroundMap || data.backgroundMappings,
             events: data.events, // Load events
             isDataLoaded: true,
 
@@ -680,16 +702,21 @@ export const useGameStore = create<GameState>()(
         return { choiceHistory: newHistory.slice(-20) };
       }),
 
-      resetGame: () => {
+      resetGame: (forceId?: string) => {
         PromptManager.clearPromptCache();
+        // [Fix] Capture current ID to ensure it persists explicitly
+        // If forceId is provided (e.g. from session recovery), use it.
+        const currentActiveGameId = forceId || get().activeGameId;
+
         set({
+          activeGameId: currentActiveGameId, // [Fix] Re-assert activeGameId
           chatHistory: [],
           displayHistory: [],
           currentBackground: 'default',
           characterExpression: 'normal',
           activeCharacters: [],
           currentLocation: 'home',
-          playerName: '주인공', // [Fix] Reset player name
+          // playerName: '주인공', // [Modified] Preserve playerName on reset (User request)
           scenarioSummary: '',
           turnCount: 0,
           day: 1,
@@ -701,7 +728,14 @@ export const useGameStore = create<GameState>()(
           lastTurnSummary: '',
           statusDescription: '건강함',
           personalityDescription: '평범함',
-          playerStats: JSON.parse(JSON.stringify(INITIAL_STATS)), // [Fix] Deep clone to prevent polluted reference
+          playerStats: (() => {
+            const stats = JSON.parse(JSON.stringify(INITIAL_STATS));
+            if (currentActiveGameId === 'god_bless_you') {
+              stats.gold = 100000;
+              stats.level = 0; // Ensure Level 0
+            }
+            return stats;
+          })(), // [Fix] Deep clone to prevent polluted reference
           inventory: [],
           scriptQueue: [],
           currentSegment: null,
@@ -743,6 +777,7 @@ export const useGameStore = create<GameState>()(
           availableBackgrounds,
           availableCharacterImages,
           availableExtraImages,
+          backgroundMappings,
 
           // Ephemeral execution state (no need to persist, should reset on reload)
           // scriptQueue, // [Persisted]

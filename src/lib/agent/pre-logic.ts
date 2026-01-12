@@ -14,6 +14,7 @@ export interface PreLogicOutput {
         mp?: number; // 내공/마력 변화량
         stamina?: number; // 기력 변화량
         fate?: number; // [NEW] 운명 점수 변화량 (획득 - 소모)
+        gold?: number; // [NEW] 골드 변화량 (+/-)
         location?: string; // 위치 이동 발생 시
         item_changes?: string[]; // 아이템 획득/소실
         factionChange?: string; // [NEW] 소속 변경 (e.g. "Mount Hua Sect")
@@ -134,7 +135,16 @@ User can spend 'Fate Points' to bend reality.
 
 [Personality Logic (CRITICAL for Dialogue)]
 - **Resonance (Bonus)**: If Player and Target share traits, APPLY +1 Bonus.
-- **Dissonance (Penalty)**: If traits clash, negotiation is harder (Narrative Resistance).`;
+- **Dissonance (Penalty)**: If traits clash, negotiation is harder (Narrative Resistance).
+
+[Romance & Intimacy Protection Protocol]
+**TRIGGER**: IF the current mood is 'romance' OR the user is engaging in intimate physical contact/confession (kissing, hugging, flirting, sex).
+1. **ABSOLUTE PRIVACY**:
+   - **DO NOT** suggest new characters. Set "character_suggestion": "None".
+   - **DO NOT** trigger random combat or events.
+   - **DO NOT** let existing background characters interrupt unless they are *directly* addressed or it is a 'Comedy' scene.
+2. **Focus**: Maximize the emotional connection. Interpret "Risk" as "Emotional Vulnerability", not physical danger.
+3. **Interrupt Block**: If a random event tries to trigger, **SUPPRESS IT** (set event_status: "ignored") unless it is a life-or-death emergency.`;
 
     // [출력 포맷 (JSON Schema)]
     // AI가 반환해야 할 JSON 구조를 정의합니다.
@@ -152,6 +162,7 @@ User can spend 'Fate Points' to bend reality.
     "narrative_guide": "Specific instructions for the narrator.",
     "state_changes": { 
         "hp": -10, 
+        "gold": 100,
         "fate": number, // Calculated Net Change (Gain - Usage)
         "factionChange": "New Faction Name",
         "playerRank": "New Rank Title"
@@ -281,6 +292,7 @@ STEP 4: **Final Judgment**
 1. **Combat Guide**: If intent is 'combat', compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
 2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
 3. **Character Suggestion Protocol** (Balanced Pacing & Foreshadowing):
+   - **EXCEPTION (ROMANCE)**: IF [Romance Protocol] is active -> **SUGGEST "None"**. (Let them have their moment).
    - **GOAL**: Introduce characters naturally. Avoid "Guest of the Week".
    - **STRONG CANDIDATE RULE**: If a character is marked **[STRONG CANDIDATE]** in the context:
      - **PRIORITY**: You MUST address this character.
@@ -319,8 +331,29 @@ STEP 4: **Final Judgment**
 
 `.trim();
 
-        // 갓 모드 체크
+
         let enhancedInstruction = systemInstruction;
+
+        // [GOD BLESS YOU Special Tone Logic]
+        if (gameState.activeGameId === 'god_bless_you') {
+            enhancedInstruction += `
+\n[SPECIAL MODE: God Bless You (Modern Urban Fantasy / Comedy)]
+**TONE & MANNER**: Lighter, humorous, Manzai-style (Banter).
+1. **FAILURE = COMEDY**:
+   - If User fails (Score 2-3), DO NOT inflict serious injury or despair.
+   - **INSTEAD**: Inflict "Embarrassment", "Slapstick Fall", or "Social Awkwardness".
+   - Example directly from User Request: "More lighthearted than Wuxia. Avoid unnecessary tension."
+2. **MANZAI (Banter) PROTOCOL**:
+   - If [Jeong Hansu] or [Han Gaeul] is present:
+     - They must react to protagonist's failure with Tsundere or Sarcastic comments (Manzai).
+     - **Goal**: Turn the failure into a joke.
+3. **PENALTY RELAXATION**:
+   - Remove "Dissonance Penalty". In this genre, weird behavior is just "Concept/Chuunibyou".
+   - **Score Buffer**: Treat "Risky" actions (Score 4) as "Lucky Success" if it fits the comedy.
+`;
+        }
+
+        // 갓 모드 체크
         if (gameState.isGodMode || gameState.playerName === "김현준갓모드") {
             enhancedInstruction += `
 \n\n[SYSTEM ALERT: GOD MODE ACTIVE]

@@ -59,6 +59,39 @@ export function resolveBackground(tag: string): string {
     }
 
     // ---------------------------------------------------------
+    // 전략 1.5: [NEW] 범용 지역명 폴백 (사용자 요청)
+    // ---------------------------------------------------------
+    // "지역명_장소" (예: 안휘_산길)가 없을 경우, "강호_산길", "공용_산길" 등으로 대체 시도
+    // 특정 지역에 얽매이지 않고 범용 배경을 사용하도록 함.
+    if (query.includes('_')) {
+        const parts = query.split('_');
+        // 첫 번째 단어(지역명)를 제외한 나머지(장소)를 추출
+        // 예: "안휘_산길" -> suffix="산길", "사천_성도_시장" -> suffix="성도_시장"
+        const suffix = parts.slice(1).join('_');
+
+        // 시도할 접두어 목록 (우선순위 순)
+        const fallbackPrefixes = ['강호', '공용', '중원', '마을', '산'];
+
+        for (const prefix of fallbackPrefixes) {
+            const fallbackKey = `${prefix}_${suffix}`;
+
+            // 1. 매핑에서 확인
+            if (backgroundMappings[fallbackKey]) {
+                console.log(`[BackgroundManager] 범용 지역 폴백 (매핑): "${query}" -> "${fallbackKey}" -> "${backgroundMappings[fallbackKey]}"`);
+                return `${basePath}/${backgroundMappings[fallbackKey]}`;
+            }
+
+            // 2. 파일 목록에서 확인 (확장자 고려)
+            const fallbackFile = fallbackKey + '.jpg';
+            // availableBackgrounds에는 보통 파일명(확장자 포함)이 들어있음
+            if (backgroundFiles.includes(fallbackFile)) {
+                console.log(`[BackgroundManager] 범용 지역 폴백 (파일): "${query}" -> "${fallbackFile}"`);
+                return `${basePath}/${fallbackFile}`;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
     // 전략 2: 퍼지 매핑 (매핑 키와 대조)
     // ---------------------------------------------------------
     // AI가 "반지하" 대신 "반지하방"이라고 할 때 유용함

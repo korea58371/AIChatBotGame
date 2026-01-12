@@ -11,7 +11,7 @@ export interface GameData {
     scenario: string;
     backgroundMappings: Record<string, string>;
     getSystemPromptTemplate: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
-    getRankInfo: (fame: number) => any;
+    getRankInfo: (input: string | number) => any;
     wikiData?: any;
     characterMap?: Record<string, string>;
     extraMap?: Record<string, string>;

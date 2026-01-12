@@ -8,6 +8,7 @@ export const GBY_SKILL_PROMPT = `
 All progression maps to the 'Hunter Rank' system.
 
 [Level to Rank Mapping]
+- Level 0: ${r.rank_none} - [CRITICAL RESTRICTION] No EXP gain from daily life. Level up (0->1) ONLY possible via 'Awakening Event' or 'Combat with Otherworld Species'.
 - Level 1~9: ${r.rank_f} (Civilian / Weak Awakened)
 - Level 10~19: ${r.rank_e} (Novice Hunter)
 - Level 20~29: ${r.rank_d} (Competent Hunter)

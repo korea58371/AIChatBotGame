@@ -180,6 +180,7 @@ export const translations = {
         },
         god_bless_you: {
             ranks: {
+                rank_none: "Civilian",
                 rank_f: "F-Rank",
                 rank_e: "E-Rank",
                 rank_d: "D-Rank",
@@ -374,6 +375,7 @@ export const translations = {
         },
         god_bless_you: {
             ranks: {
+                rank_none: "일반인",
                 rank_f: "F급",
                 rank_e: "E급",
                 rank_d: "D급",

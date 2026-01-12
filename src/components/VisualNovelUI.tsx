@@ -14,17 +14,19 @@ import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/model-config';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
-import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping';
-import { GOD_BLESS_YOU_BGM_MAP, GOD_BLESS_YOU_BGM_ALIASES } from '@/data/games/god_bless_you/bgm_mapping';
 import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP, REALM_ORDER, WUXIA_IM_SEONG_JUN_SCENARIO, WUXIA_NAM_GANG_HYEOK_SCENARIO } from '@/data/games/wuxia/constants'; // [New] UI Constants
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants'; // [New] UI Constants
 import wikiData from '@/data/games/wuxia/wiki_data.json'; // [NEW] Wiki Data Import
+import { GameRegistry } from '@/lib/registry/GameRegistry'; // [Refactor]
+// Import Configs to register them (Side-effect)
+import '@/data/games/wuxia/config';
+import '@/data/games/god_bless_you/config';
 
 
 import { submitGameplayLog } from '@/app/actions/log';
 import { deleteAccount } from '@/app/actions/auth';
 import { translations } from '@/data/translations';
-import { checkNameValidity, getHiddenSettings } from '@/data/games/wuxia/character_creation';
+import { checkNameValidity, getHiddenSettings, selectProtagonistImage } from '@/data/games/wuxia/character_creation';
 
 // [Refactoring] New Components & Hooks
 import SaveLoadModal from './visual_novel/ui/SaveLoadModal';
@@ -53,8 +55,7 @@ import Link from 'next/link';
 // [Refactoring] New Components & Hooks
 import { useVNState } from './visual_novel/hooks/useVNState';
 import { useVNAudio } from './visual_novel/hooks/useVNAudio';
-import ModernHUD from './visual_novel/ui/ModernHUD';
-import WuxiaHUD from './visual_novel/ui/WuxiaHUD';
+// HUDs are now loaded via Registry
 import CharacterProfile from './visual_novel/ui/CharacterProfile';
 import SettingsModal from './visual_novel/ui/SettingsModal';
 import ResponseTimer from './visual_novel/ui/common/ResponseTimer';
@@ -87,24 +88,7 @@ const formatText = (text: string) => {
 };
 
 
-// Helper to select Protagonist Image based on Personality Tone
-function selectProtagonistImage(personality: string): string {
-    // Mappings based on extra_map.json
-    const mappings: Record<string, string[]> = {
-        'humorous': ['유쾌한주인공1', '유쾌한주인공2', '유쾌한주인공3', '유쾌한주인공4'],
-        'serious': ['원칙적주인공', '성실한주인공', '냉철한주인공'],
-        'cynical': ['계산적주인공1', '계산적주인공2', '계산적주인공3', '영악한주인공1', '영악한주인공2'],
-        'timid': ['소심형주인공'],
-        'domineering': ['패도형주인공1', '패도형주인공2', '패도형주인공3', '패도형주인공4', '패도형주인공5']
-    };
 
-    const candidates = mappings[personality];
-    if (candidates && candidates.length > 0) {
-        return candidates[Math.floor(Math.random() * candidates.length)];
-    }
-    // Fallback default
-    return '성실한주인공';
-}
 
 
 
@@ -292,11 +276,25 @@ export default function VisualNovelUI() {
     } = useGameStore();
 
     useEffect(() => {
+        // [Fix] Race Condition Guard
+        // If a force reset is pending, strictly SKIP all default initialization.
+        // The Force Reset Effect (lines 586+) will handle everything.
+        if (sessionStorage.getItem('vn_force_reset') === 'true') return;
 
         // [Fix] Ensure Game Data is Loaded on Mount (especially after New Game reset)
         if (!isDataLoaded) {
             console.log("[Initialization] Data not loaded, triggering setGameId for:", activeGameId);
             useGameStore.getState().setGameId(activeGameId);
+        }
+
+        // [Failsafe] Enforce GBY Initial Settings if Turn 0 and Gold != 100k
+        const currentState = useGameStore.getState();
+        if (activeGameId === 'god_bless_you' && currentState.turnCount === 0) {
+            // Logic: If Gold is not 100k (e.g. 0 or default 1000), force it.
+            if (currentState.playerStats.gold !== 100000) {
+                console.log("[Failsafe] GBY Initial Settings incorrect. Force applying 100k Gold & Level 0.");
+                useGameStore.getState().setPlayerStats({ gold: 100000, level: 0 });
+            }
         }
     }, [turnCount, characterCreationQuestions, activeGameId, isDataLoaded, scriptQueue, choices]);
 
@@ -586,6 +584,36 @@ export default function VisualNovelUI() {
     // const [isMounted, setIsMounted] = useState(false); // Moved to useVNState
     const [turnSummary, setTurnSummary] = useState<string | null>(null); // [NEW] Summary State
 
+    // [Fix] Force Reset Check (Persistence Fix)
+    // [Fix] Force Reset Check (Persistence Fix)
+    useEffect(() => {
+        const performForceReset = async () => {
+            if (sessionStorage.getItem('vn_force_reset') === 'true') {
+                console.log("[VisualNovelUI] Detected Force Reset Flag. Resetting Game State...");
+
+                // [Critical Fix] Restore correct Game ID from session, solving the "Return to GBY" bug
+                const targetGameId = sessionStorage.getItem('vn_reset_game_id');
+                const state = useGameStore.getState();
+
+                // [Critical Fix] Order swapped: Reset FIRST, then Load Data.
+                // Otherwise resetGame() wipes the characterData we just loaded.
+                state.resetGame(targetGameId || undefined);
+
+                if (targetGameId) {
+                    console.log(`[VisualNovelUI] Restoring Active Game ID: ${targetGameId}`);
+                    await state.setGameId(targetGameId); // [Fix] Await Async Load
+                }
+
+                sessionStorage.removeItem('vn_force_reset');
+                sessionStorage.removeItem('vn_reset_game_id');
+
+                // [Safety] Force reload page one last time if we suspect data is still stale? 
+                // No, setGameId should handle it.
+            }
+        };
+        performForceReset();
+    }, []);
+
     // Initialize Session ID
     // [Logging] Hydrate lastStoryOutput from history on mount (in case of refresh)
     useEffect(() => {
@@ -601,6 +629,8 @@ export default function VisualNovelUI() {
 
         // [Safeguard] Enforce Data Loading (Fix for Character Creation Bypass)
         const checkDataLoaded = async () => {
+            if (sessionStorage.getItem('vn_force_reset') === 'true') return; // [Fix] Skip if reset pending
+
             const state = useGameStore.getState();
             // If activeGameId exists but important data is missing, force reload
             // (especially characterCreationQuestions which are critical for start)
@@ -668,12 +698,15 @@ export default function VisualNovelUI() {
 
             // 2. Clear Session Storage (Optional but recommended)
             sessionStorage.removeItem('vn_session_id');
+            sessionStorage.setItem('vn_force_reset', 'true');
+            // [Fix] Store activeGameId to prevent race condition defaulting to GBY
+            sessionStorage.setItem('vn_reset_game_id', useGameStore.getState().activeGameId || 'wuxia');
 
             // 3. Wait for IDB Persistence (Critical Fix)
             // Give Zustand persist middleware enough time to write the empty state to IndexedDB
             setTimeout(() => {
                 window.location.reload();
-            }, 1000);
+            }, 2500);
         }
     };
 
@@ -731,10 +764,23 @@ export default function VisualNovelUI() {
 
     // Helper Functions
     const getBgUrl = (bg: string) => {
-        const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
+        const state = useGameStore.getState();
+        const gameId = state.activeGameId || 'god_bless_you';
+
         if (!bg) return `/assets/${gameId}/backgrounds/Home_Entrance.jpg`; // Default fallback
         if (bg.startsWith('http') || bg.startsWith('/')) return bg; // Return absolute paths directly
-        return `/assets/${gameId}/backgrounds/${encodeURIComponent(bg)}.jpg`; // Fallback for legacy simple names
+
+        // [New] Resolve Mapping first
+        let filename = bg;
+        if (state.backgroundMappings && state.backgroundMappings[bg]) {
+            filename = state.backgroundMappings[bg];
+        }
+
+        // [Fix] Avoid Double Extension
+        if (filename.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+            return `/assets/${gameId}/backgrounds/${filename}`;
+        }
+        return `/assets/${gameId}/backgrounds/${encodeURIComponent(filename)}.jpg`; // Fallback for legacy simple names
     };
 
     const getCharUrl = (charExpression: string) => {
@@ -769,29 +815,31 @@ export default function VisualNovelUI() {
         return charExpression;
     };
 
+
     // [리팩토링] BGM 재생 헬퍼 함수
     const playBgm = (moodKey: string) => {
         if (!moodKey) return;
         let validKey = moodKey.trim();
 
-        // [Logic] Select BGM Map based on Game ID
+        // [Logic] Select BGM Map based on Game ID via Registry
         const state = useGameStore.getState();
         const gameId = state.activeGameId || 'god_bless_you';
 
-        let map: Record<string, string[]> = {};
-        let aliases: Record<string, string> = {};
-        let assetPath = '';
+        // [Registry Lookup]
+        const config = GameRegistry.get(gameId);
 
-        if (gameId === 'wuxia') {
-            map = WUXIA_BGM_MAP;
-            aliases = WUXIA_BGM_ALIASES;
-            assetPath = '/assets/wuxia/BGM/';
-        } else {
-            // Default: God Bless You
-            map = GOD_BLESS_YOU_BGM_MAP;
-            aliases = GOD_BLESS_YOU_BGM_ALIASES;
-            assetPath = '/assets/god_bless_you/BGM/';
+        if (!config) {
+            console.warn(`[VisualNovelUI] Config not found for game: ${gameId}`);
+            return;
         }
+
+        const map = config.assets.bgmMap;
+        const aliases = config.assets.bgmAliases;
+
+        // Asset Path strategy is currently implicit in the folder structure logic or can be added to config.
+        // For now, we derive it from ID, but ideally it should be in config.
+        // Let's assume standard structure: `/assets/${gameId}/BGM/`
+        const assetPath = `/assets/${gameId}/BGM/`;
 
         // 별칭 확인 (부분 키가 사용된 경우)
         if (aliases[validKey]) validKey = aliases[validKey];
@@ -831,7 +879,14 @@ export default function VisualNovelUI() {
 
         if (isHiddenProtagonist) {
             const gameId = state.activeGameId || 'wuxia';
-            const expectedPath = `/assets/${gameId}/characters/${pOverride}.png`;
+
+            // [Fix] Check ExtraImages for correct path construction (Support Generated Protagonists)
+            const availableExtras = state.availableExtraImages || [];
+            const isExtra = availableExtras.includes(pOverride) || availableExtras.includes(pOverride + '.png');
+
+            const expectedPath = isExtra
+                ? `/assets/${gameId}/ExtraCharacters/${pOverride}.png`
+                : `/assets/${gameId}/characters/${pOverride}.png`;
 
             // If current display is wrong (different path or empty), force update
             if (characterExpression !== expectedPath) {
@@ -2414,6 +2469,8 @@ export default function VisualNovelUI() {
                 addToast("😇 God Mode Activated", "success");
             }
 
+
+
             // Replace Placeholder with Real Name
             const effectiveName = (playerName === '김현준갓모드' ? '김현준' : playerName) || '성현우';
             const processedScenario = (initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
@@ -2525,7 +2582,18 @@ export default function VisualNovelUI() {
                     } else if (extraMap && extraMap[charName] && !isHiddenProtagonist) {
                         imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
                     } else {
-                        imagePath = getCharacterImage(charName, emotion);
+                        // [Fix] Protagonist Override Handling
+                        // If this IS the protagonist, and we have an override, use the override key for lookup
+                        if (isHiddenProtagonistMatch && state.protagonistImageOverride) {
+                            console.log(`[ImageDebug] Protagonist Override Match! Name: ${first.character}, OverrideKey: ${state.protagonistImageOverride}`);
+                            // If override is a direct path (rare), use it. otherwise treat as key.
+                            // Usually override is like 'protagonist_wuxia_male_default'
+                            imagePath = getCharacterImage(state.protagonistImageOverride, emotion);
+                            console.log(`[ImageDebug] Resolved Path via Override: ${imagePath}`);
+                        } else {
+                            imagePath = getCharacterImage(charName, emotion);
+                            console.log(`[ImageDebug] Standard Resolution. Name: ${charName} -> Path: ${imagePath}`);
+                        }
                     }
                     setCharacterExpression(imagePath);
                 }
@@ -2716,6 +2784,9 @@ export default function VisualNovelUI() {
             }
         }
 
+        if (logicResult.goldChange) {
+            newStats.gold = Math.max(0, (newStats.gold || 0) + logicResult.goldChange);
+        }
         // [Fix] REMOVED Redundant Fame & Fate Logic Update
         // Similar to HP/MP, these are now handled via tags or were duplicated above.
         // if (logicResult.fameChange) {
@@ -2970,7 +3041,7 @@ export default function VisualNovelUI() {
         }
 
         // Final Commit
-        if (Object.keys(logicResult).some(k => k === 'hpChange' || k === 'mpChange' || k === 'statChange' || k === 'personalityChange' || k === 'relationshipChange') || hasInjuryChanges) {
+        if (Object.keys(logicResult).some(k => k === 'hpChange' || k === 'mpChange' || k === 'goldChange' || k === 'statChange' || k === 'personalityChange' || k === 'relationshipChange') || hasInjuryChanges) {
             useGameStore.getState().setPlayerStats(newStats);
         }
 
@@ -3207,6 +3278,18 @@ export default function VisualNovelUI() {
                             const label = (t as any)[key] || key;
                             addToast(`${label} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
                         }
+                    } else if (['hp', 'mp', 'gold', 'fame', 'neigong'].includes(key)) {
+                        // [Fix] Handle Core Stats in stat_updates
+                        const currentVal = (currentStats as any)[key] || 0;
+                        const newVal = Math.max(0, currentVal + (val as number));
+
+                        // Apply update immediately
+                        const updatePayload: any = {};
+                        updatePayload[key] = newVal;
+
+                        // Ensure we use the latest state structure
+                        const freshStats = useGameStore.getState().playerStats;
+                        useGameStore.getState().setPlayerStats({ ...freshStats, ...updatePayload });
                     }
                 });
 
@@ -3769,28 +3852,7 @@ export default function VisualNovelUI() {
                 </div>
 
                 {/* [무협 UI 개선] HUD 레이어 */}
-                {activeGameId === 'wuxia' ? (
-                    <WuxiaHUD
-                        playerName={playerName}
-                        playerStats={playerStats}
-                        onOpenProfile={() => setShowCharacterInfo(true)}
-                        onOpenWiki={() => setShowWiki(true)}
-                        language={language || 'ko'}
-                        day={day}
-                        time={time}
-                        location={currentLocation || 'Unknown'}
-                    />
-                ) : (
-                    <ModernHUD
-                        playerName={playerName}
-                        playerStats={playerStats}
-                        onOpenPhone={() => setIsPhoneOpen(true)}
-                        onOpenProfile={() => setShowCharacterInfo(true)}
-                        day={day}
-                        time={time}
-                        location={currentLocation || 'Unknown'}
-                    />
-                )}
+                {/* [Legacy HUD Removed] Replaced by Modular HUD Layer via GameRegistry */}
                 {/* [Common UI] Top-Right Controls (Tokens, Settings, Debug) */}
                 <div className="absolute top-4 right-4 z-[60] flex items-center gap-3 pointer-events-auto">
                     {/* Token Display */}
@@ -4255,6 +4317,14 @@ Instructions:
                                                 // Actually, let's just use handleSend but maybe show a different toast.
 
                                                 // [Fix] Update Player Stats with Start Choices (Optimistic)
+                                                // [Protagonist Image Selection]
+                                                const gender = useGameStore.getState().playerStats.gender || 'male';
+                                                const finalImage = selectProtagonistImage(finalName, gender, updatedData);
+                                                if (finalImage) {
+                                                    console.log(`[CharacterCreation] Setting Protagonist Image: ${finalImage}`);
+                                                    useGameStore.getState().setHiddenOverrides({ protagonistImage: finalImage });
+                                                }
+
                                                 // [CRITICAL] RESET ALL PERSISTENT DATA FOR NEW GAME
                                                 const newStats = {
                                                     ...useGameStore.getState().playerStats,
@@ -4321,14 +4391,7 @@ Instructions:
                                                 }
                                                 newStats.personality = pLink;
 
-                                                // [New] Protagonist Image Selection
-                                                const protoImage = selectProtagonistImage(pTone);
-                                                if (protoImage) {
-                                                    const currentOverrides = useGameStore.getState().extraOverrides || {};
-                                                    // Bind to PLAYER NAME for persistence (ImageMapper resolves '주인공' -> PlayerName)
-                                                    useGameStore.getState().setExtraOverride(finalName, protoImage);
-                                                    console.log("[Creation] Selected Protagonist Image:", protoImage, "for", finalName);
-                                                }
+
 
                                                 // [Bonus Application] Final Goal (5문)
                                                 // Stored for Narrative Guidance in PreLogic
@@ -4816,20 +4879,32 @@ Instructions:
                     )}
                 </AnimatePresence>
 
-                {/* [NEW] HUD Layer (Always visible in Wuxia mode) */}
-                {isMounted && activeGameId === 'wuxia' && (
-                    <WuxiaHUD
-                        playerName={playerName}
-                        playerStats={playerStats}
-                        onOpenProfile={() => setShowCharacterInfo(true)}
-                        onOpenWiki={() => setShowWiki(true)}
-                        language={language || 'ko'}
-                        day={day}
-                        time={time}
-                        location={currentLocation}
-                        turnCount={turnCount}
-                    />
-                )}
+                {/* [NEW] Modular HUD Layer */}
+                {isMounted && (() => {
+                    const gameId = activeGameId || 'god_bless_you';
+
+                    // [Debug] Check Registry State - Removed after verification
+
+                    const config = GameRegistry.get(gameId);
+
+                    if (config && config.components.HUD) {
+                        const HUDComponent = config.components.HUD;
+                        return (
+                            <HUDComponent
+                                playerName={playerName}
+                                playerStats={playerStats}
+                                onOpenProfile={() => setShowCharacterInfo(true)}
+                                onOpenWiki={() => setShowWiki(true)}
+                                language={language || 'ko'}
+                                day={day}
+                                time={time}
+                                location={currentLocation}
+                                turnCount={turnCount}
+                            />
+                        );
+                    }
+                    return null;
+                })()}
 
                 {/* History Modal */}
                 <HistoryModal

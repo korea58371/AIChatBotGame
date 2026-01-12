@@ -9,10 +9,11 @@ export const GAME_EVENTS: GameEvent[] = [
         once: true,
         name: 'F급 각성',
         condition: (state) => {
-            // 3턴 이상, 아직 랭크가 없거나 '일반인'인 경우
+            // 6턴 이상, 아직 랭크가 없거나 '일반인' 혹은 'F급'인 경우 (레벨 매핑으로 인해 이미 F급일 수 있음)
             const turn = state.turnCount || 0;
             const rank = state.playerStats?.playerRank || '일반인';
-            return turn >= 3 && rank === '일반인';
+            // [Fix] F급도 포함 (Level 1 자동 매핑 대응)
+            return turn >= 6 && (rank === '일반인' || rank === 'F급' || rank === 'F-Rank');
         },
         prompt: `
         ## [EVENT: F급의 각성 (Awakening of the F-Class)]

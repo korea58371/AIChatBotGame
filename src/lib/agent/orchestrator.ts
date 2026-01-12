@@ -320,8 +320,9 @@ ${userInput}
                     };
                 }
 
-                // If ID is Wuxia, we use EventManager
-                if (gameId === 'wuxia') {
+                // [Refactor] Enabled for ALL games (Removed 'wuxia' check)
+                // if (gameId === 'wuxia') { <--- Previous Limitation
+                {
                     // Rehydration Attempt if needed (Server-side safety)
                     let loadedEvents = events;
                     if (!events || events.length === 0) {
@@ -331,51 +332,56 @@ ${userInput}
                             if (eventsModule && eventsModule.GAME_EVENTS) {
                                 loadedEvents = eventsModule.GAME_EVENTS;
                             }
-                        } catch (e) { console.warn("[Orchestrator] Event Rehydration Failed", e); }
-                    }
-                    console.log(`[Orchestrator] Events Loaded: ${loadedEvents?.length || 0}`);
-
-                    const { mandatory, randomCandidates } = EventManager.scan(loadedEvents, gameState);
-                    console.log(`[Orchestrator] Scan Result - Mandatory: ${mandatory.length}, Random: ${randomCandidates.length}`);
-                    console.log(`[Orchestrator] Client Triggered Events: ${gameState.triggeredEvents?.length || 0} (${JSON.stringify(gameState.triggeredEvents?.slice(-5) || [])})`);
-
-                    const resultOut = {
-                        triggerEventId: null as string | null,
-                        currentEvent: null as string | null,
-                        type: null as string | null,
-                        candidates: {
-                            mandatory: mandatory.map(m => m.id),
-                            random: randomCandidates.map(r => r.id)
-                        },
-                        debug: {
-                            serverGameId: gameId,
-                            status: 'SCANNED',
-                            loadedEventsCount: loadedEvents?.length || 0
+                        } catch (e) {
+                            // Squelch error for games that don't have events yet
+                            // console.warn("[Orchestrator] Event Rehydration Failed", e); 
                         }
-                    };
-
-                    // Logic: Mandatory > Random Pick (2) > None
-                    if (mandatory.length > 0) {
-                        resultOut.triggerEventId = mandatory[0].id;
-                        resultOut.currentEvent = mandatory[0].prompt;
-                        resultOut.type = 'MANDATORY';
-                        return resultOut;
                     }
+                    console.log(`[Orchestrator] Events Loaded for ${gameId}: ${loadedEvents?.length || 0}`);
 
-                    if (randomCandidates.length > 0) {
-                        // Weighted Random
-                        const picked = EventManager.pickRandom(randomCandidates, 1);
-                        if (picked.length > 0) {
-                            // "Next Turn" trigger
-                            resultOut.triggerEventId = picked[0].id;
-                            resultOut.currentEvent = picked[0].prompt;
-                            resultOut.type = 'RANDOM';
+                    if (loadedEvents && loadedEvents.length > 0) {
+                        const { mandatory, randomCandidates } = EventManager.scan(loadedEvents, gameState);
+                        console.log(`[Orchestrator] Scan Result - Mandatory: ${mandatory.length}, Random: ${randomCandidates.length}`);
+                        console.log(`[Orchestrator] Client Triggered Events: ${gameState.triggeredEvents?.length || 0} (${JSON.stringify(gameState.triggeredEvents?.slice(-5) || [])})`);
+
+                        const resultOut = {
+                            triggerEventId: null as string | null,
+                            currentEvent: null as string | null,
+                            type: null as string | null,
+                            candidates: {
+                                mandatory: mandatory.map(m => m.id),
+                                random: randomCandidates.map(r => r.id)
+                            },
+                            debug: {
+                                serverGameId: gameId,
+                                status: 'SCANNED',
+                                loadedEventsCount: loadedEvents?.length || 0
+                            }
+                        };
+
+                        // Logic: Mandatory > Random Pick (2) > None
+                        if (mandatory.length > 0) {
+                            resultOut.triggerEventId = mandatory[0].id;
+                            resultOut.currentEvent = mandatory[0].prompt;
+                            resultOut.type = 'MANDATORY';
                             return resultOut;
                         }
+
+                        if (randomCandidates.length > 0) {
+                            // Weighted Random
+                            const picked = EventManager.pickRandom(randomCandidates, 1);
+                            if (picked.length > 0) {
+                                // "Next Turn" trigger
+                                resultOut.triggerEventId = picked[0].id;
+                                resultOut.currentEvent = picked[0].prompt;
+                                resultOut.type = 'RANDOM';
+                                return resultOut;
+                            }
+                        }
+                        return resultOut;
                     }
-                    return resultOut;
+                    return null;
                 }
-                return null;
             })())
         ]);
 

@@ -189,7 +189,7 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
    - humor: -100 (Serious) <-> 100 (Jester)
    - lust: -100 (Ascetic) <-> 100 (Hedonist)
 
-- Physical/Mental Stats: hp, mp, str, agi, int, vit, luk, fame.
+- Physical/Mental Stats: hp, mp, gold, str, agi, int, vit, luk, fame.
 
 - **CRITICAL**: Do NOT invent other stats (e.g. "stamina", "karma", "stress"). Use ONLY the keys defined above.
 
@@ -508,7 +508,7 @@ Generate the JSON output.
         if (json.stat_updates) {
           const ALLOWED_STATS = new Set([
             // Core
-            'hp', 'mp', 'str', 'agi', 'int', 'vit', 'luk', 'fame', 'neigong',
+            'hp', 'mp', 'gold', 'str', 'agi', 'int', 'vit', 'luk', 'fame', 'neigong',
             // Personality
             'morality', 'courage', 'energy', 'decision', 'lifestyle',
             'openness', 'warmth', 'eloquence', 'leadership', 'humor', 'lust'
