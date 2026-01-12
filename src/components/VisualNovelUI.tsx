@@ -15,6 +15,7 @@ import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from '@/data/games/wuxia/bgm_mapping';
+import { GOD_BLESS_YOU_BGM_MAP, GOD_BLESS_YOU_BGM_ALIASES } from '@/data/games/god_bless_you/bgm_mapping';
 import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP, REALM_ORDER, WUXIA_IM_SEONG_JUN_SCENARIO, WUXIA_NAM_GANG_HYEOK_SCENARIO } from '@/data/games/wuxia/constants'; // [New] UI Constants
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants'; // [New] UI Constants
 import wikiData from '@/data/games/wuxia/wiki_data.json'; // [NEW] Wiki Data Import
@@ -656,21 +657,23 @@ export default function VisualNovelUI() {
 
 
 
+    const [isResetting, setIsResetting] = useState(false); // [Fix] Reset State
+
     const handleNewGame = () => {
         if (confirm(t.confirmNewGame)) {
+            setIsResetting(true); // Show overlay
+
+            // 1. Reset Internal State
             resetGame();
-            // Explicitly clear storage using Zustand's API
-            useGameStore.persist.clearStorage();
 
-            // [Fix] Clear Session ID to ensure fresh telemetry/log session
-            if (typeof sessionStorage !== 'undefined') {
-                sessionStorage.removeItem('vn_session_id');
-            }
+            // 2. Clear Session Storage (Optional but recommended)
+            sessionStorage.removeItem('vn_session_id');
 
-            // Force reload to ensure fresh data (JSONs) are loaded if they were changed
+            // 3. Wait for IDB Persistence (Critical Fix)
+            // Give Zustand persist middleware enough time to write the empty state to IndexedDB
             setTimeout(() => {
                 window.location.reload();
-            }, 100);
+            }, 1000);
         }
     };
 
@@ -770,20 +773,40 @@ export default function VisualNovelUI() {
     const playBgm = (moodKey: string) => {
         if (!moodKey) return;
         let validKey = moodKey.trim();
-        // 별칭 확인 (부분 키가 사용된 경우)
-        if (WUXIA_BGM_ALIASES[validKey]) validKey = WUXIA_BGM_ALIASES[validKey];
 
-        const candidates = WUXIA_BGM_MAP[validKey];
+        // [Logic] Select BGM Map based on Game ID
+        const state = useGameStore.getState();
+        const gameId = state.activeGameId || 'god_bless_you';
+
+        let map: Record<string, string[]> = {};
+        let aliases: Record<string, string> = {};
+        let assetPath = '';
+
+        if (gameId === 'wuxia') {
+            map = WUXIA_BGM_MAP;
+            aliases = WUXIA_BGM_ALIASES;
+            assetPath = '/assets/wuxia/BGM/';
+        } else {
+            // Default: God Bless You
+            map = GOD_BLESS_YOU_BGM_MAP;
+            aliases = GOD_BLESS_YOU_BGM_ALIASES;
+            assetPath = '/assets/god_bless_you/BGM/';
+        }
+
+        // 별칭 확인 (부분 키가 사용된 경우)
+        if (aliases[validKey]) validKey = aliases[validKey];
+
+        const candidates = map[validKey];
         if (!candidates || candidates.length === 0) {
-            console.warn(`[BGM] 해당 분위기 키에 대한 BGM을 찾을 수 없음: ${moodKey}`);
+            console.warn(`[BGM] 해당 분위기 키에 대한 BGM을 찾을 수 없음: ${moodKey} (Game: ${gameId})`);
             return;
         }
 
         const filename = candidates[Math.floor(Math.random() * candidates.length)];
         // 참고: useVNAudio는 경로가 '/'로 시작하면 그대로 사용하고, 그렇지 않으면 /bgm/을 접두어로 붙임
-        const bgmPath = `/assets/wuxia/BGM/${filename}.mp3`;
+        const bgmPath = `${assetPath}${filename}.mp3`;
 
-        console.log(`[BGM] 재생 전환: ${filename} (무드: ${moodKey})`);
+        console.log(`[BGM] 재생 전환: ${filename} (무드: ${moodKey}, Game: ${gameId})`);
 
         setBgm(bgmPath);
     };
@@ -1330,6 +1353,7 @@ export default function VisualNovelUI() {
                 playerName: currentState.playerName,
                 activeCharacters: currentState.activeCharacters,
                 characterData: currentState.characterData,
+                goals: currentState.goals, // [FIX] Pass Goals to Server for Logic Model Analysis
                 worldData: currentState.worldData,
                 // [OPTIMIZATION] Static Asset Lists are Hydrated on Server
                 // availableBackgrounds: currentState.availableBackgrounds,
@@ -1502,36 +1526,18 @@ export default function VisualNovelUI() {
                     // But we aren't waiting for the background thread to finish to show text.
                     // However, if the user wants "Story -> (Logic + Summary)", we should start both promises at the top.
 
+                    // [Summary Agent] Defer Execution until AFTER Logic
+                    // We prepare variables but execute later to avoid Rate Limit contention
                     const currentTurnCount = useGameStore.getState().turnCount;
                     const BG_SUMMARY_THRESHOLD = 10;
                     let summaryPromise: Promise<string | null> = Promise.resolve(null);
+                    const shouldSummarize = (currentTurnCount > 0 && currentTurnCount % BG_SUMMARY_THRESHOLD === 0);
 
-                    if (currentTurnCount > 0 && currentTurnCount % BG_SUMMARY_THRESHOLD === 0) {
-                        const latestHistory = useGameStore.getState().chatHistory;
-                        const messagesToSummarize = latestHistory.slice(-BG_SUMMARY_THRESHOLD * 2);
-                        console.log(`[Background] Triggering Memory Summarization (Turn ${currentTurnCount})...`);
-
-                        addToast(`Summarizing memories (Turn ${currentTurnCount})...`, "info");
-                        const prevSummary = useGameStore.getState().scenarioSummary;
-
-                        summaryPromise = serverGenerateSummary(prevSummary, messagesToSummarize)
-                            .then(newSummary => {
-                                useGameStore.getState().setScenarioSummary(newSummary);
-                                console.log("%c[Scenario Summary Updated]", "color: orange; font-weight: bold;", newSummary);
-                                addToast("Memory updated!", "success");
-                                return newSummary;
-                            })
-                            .catch(err => {
-                                console.error("Summary Generation Failed:", err);
-                                return null;
-                            });
-                    }
 
                     // Start Phase 2 Logic & Summary concurrently
                     const p2Start = Date.now();
 
-                    // [Parallel] Run Logic (Await) + Summary (Fire/Forget)
-                    // We do not wait for summaryPromise here to improve perceived latency.
+                    // [Parallel] Run Logic (Await) - Give full priority to Logic
                     const p2Result = await serverAgentTurnPhase2(
                         currentHistory,
                         text,
@@ -1539,7 +1545,36 @@ export default function VisualNovelUI() {
                         cleanStoryText,
                         language
                     );
-                    // Summary Promise runs in background (started above)
+
+                    // [Summary Agent] Execute Deferred Summary (Fire-and-Forget)
+                    // Now that Logic is done, we can safely trigger summary without slowing down the UI
+                    if (shouldSummarize) {
+                        // Use FRESH history including the just-generated story if possible?
+                        // Actually, `serverAgentTurnPhase2` results (finalStoryText) are more accurate than `cleanStoryText` (Phase 1).
+                        // So we reconstruct the dialogue using the FINAL text.
+
+                        const latestHistory = useGameStore.getState().chatHistory;
+                        // Append the *AI Response* we just got (p2Result.finalStoryText || cleanStoryText)
+                        // Wait, `latestHistory` doesn't have it yet? `updateLastMessage` is called LATER (line 1687).
+                        // So we must manually construct the list.
+
+                        const aiResponseText = p2Result.finalStoryText || cleanStoryText;
+                        const tempHistory = [...latestHistory, { role: 'model', text: aiResponseText } as any];
+                        const messagesToSummarize = tempHistory.slice(-BG_SUMMARY_THRESHOLD * 2);
+
+                        console.log(`[Background] Triggering Deferred Memory Summarization (Turn ${currentTurnCount})...`);
+                        // Don't toast "Summarizing..." to avoid distracting user. Silent update.
+
+                        const prevSummary = useGameStore.getState().scenarioSummary;
+                        serverGenerateSummary(prevSummary, messagesToSummarize)
+                            .then(newSummary => {
+                                useGameStore.getState().setScenarioSummary(newSummary);
+                                console.log("%c[Scenario Summary Updated]", "color: orange; font-weight: bold;", newSummary);
+                                // addToast("Memory updated!", "success"); // Silent
+                            })
+                            .catch(err => console.error("Summary Generation Failed:", err));
+                    }
+
 
                     const p2Duration = Date.now() - p2Start;
 
@@ -5233,9 +5268,15 @@ Instructions:
                         </div>
                     )
                 }
-            </div >
-
-
+                {/* [Fix] Resetting Overlay */}
+                {isResetting && (
+                    <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center pointer-events-auto">
+                        <Loader2 className="w-16 h-16 text-red-500 animate-spin mb-4" />
+                        <h2 className="text-2xl font-bold text-white mb-2">게임 초기화 중...</h2>
+                        <p className="text-gray-400">데이터를 정리하고 있습니다. 잠시만 기다려주세요.</p>
+                    </div>
+                )}
+            </div>
 
             {/* Debug Popup */}
             {

@@ -98,10 +98,38 @@ export class AgentOrchestrator {
         };
         const t4 = Date.now();
 
-        // Mood Override
-        let effectiveGameState = gameState;
+        // Mood Override & New Character Injection
+        let effectiveGameState = { ...gameState };
+
         if (preLogicOut.mood_override) {
-            effectiveGameState = { ...gameState, currentMood: preLogicOut.mood_override };
+            effectiveGameState.currentMood = preLogicOut.mood_override;
+        }
+
+        // [New] PreLogic Auto-Injection of Characters
+        if (preLogicOut.new_characters && preLogicOut.new_characters.length > 0) {
+            const currentActive = new Set<string>(effectiveGameState.activeCharacters || []);
+            const charData = effectiveGameState.characterData || {};
+
+            preLogicOut.new_characters.forEach((name: string) => {
+                // Find ID by Name (Exact match first, then partial)
+                let foundId = Object.keys(charData).find(id => charData[id].name === name);
+
+                // If not found, try partial match if name is long enough
+                if (!foundId && name.length > 2) {
+                    foundId = Object.keys(charData).find(id => charData[id].name && charData[id].name.includes(name));
+                }
+
+                if (foundId) {
+                    if (!currentActive.has(foundId)) {
+                        currentActive.add(foundId);
+                        console.log(`[Orchestrator] PreLogic Auto-Inject Active Character: ${name} -> ${foundId}`);
+                    }
+                } else {
+                    console.warn(`[Orchestrator] PreLogic Suggested Character '${name}' not found in database.`);
+                }
+            });
+
+            effectiveGameState.activeCharacters = Array.from(currentActive);
         }
 
         // 5. Story Generation

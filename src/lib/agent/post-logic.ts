@@ -2,6 +2,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MODEL_CONFIG } from '../model-config';
 import { RelationshipManager } from '../relationship-manager';
+import { translations } from '../../data/translations'; // [NEW] Import translations
 
 export interface PostLogicOutput {
   mood_update?: string;
@@ -37,7 +38,10 @@ export interface PostLogicOutput {
 export class AgentPostLogic {
   private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
 
-  private static readonly SYSTEM_PROMPT = `
+  static getSystemPrompt(language: 'ko' | 'en' = 'ko'): string {
+    const t = translations[language]?.systemPrompt || translations['ko'].systemPrompt;
+
+    return `
 You are the [Post-Logic Analyst].
 Your job is to read the generated story turn and identify IMPLICIT changes in the game state.
 Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS, and GOALS.
@@ -45,11 +49,11 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 [Memory Logic] (Strict Filtering)
 - **Do NOT record trivial events.** (e.g. "We ate dinner", "He smiled at me", "I felt sad", "Walked together", "Had a small chat") -> These are handled by Relationship Score.
 - **Record ONLY Long-term Significant Facts:**
-  1. **Promises/Contracts:** "Promised to meet at the teahouse at noon", "Agreed to kill the Demon King".
-  2. **Permanent Changes:** "Lost a left arm", "Acquired the Legendary Sword", "Housing burned down".
-  3. **Skill/Growth:** "Learned the Flying Dragon Fist", "Realized the Dao of Empty Sky".
-  4. **Major Secrets:** "Learned that the Player is actually the King", "Discovered the spy".
-  5. **Life-Changing Events:** "Saved from death", "Betrayed by best friend".
+  1. **Promises/Contracts:** ${t.약속_예시}.
+  2. **Permanent Changes:** ${t.영구적_변화_예시}.
+  3. **Skill/Growth:** ${t.스킬_성장_예시}.
+  4. **Major Secrets:** ${t.주요_비밀_예시}.
+  5. **Life-Changing Events:** ${t.인생_변화_예시}.
 - **Format:** Keep it concise. "Promise: Meet at Teahouse", "Injury: Lost Left Eye".
 - **CRITICAL:** If the event is just a conversation without a major outcome, DO NOT RECORD IT.
 
@@ -59,7 +63,7 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   1. Does the current story complete this goal? -> Set status: "COMPLETED"
   2. Does the current story make this goal impossible, OR has the narrative direction shifted away from it (Opportunity Lost)? -> Set status: "FAILED"
 - **CRITICAL**: Use the **EXACT ID** from the [Active Goals] list. Do NOT invent new IDs.
-- Identify if the player creates a NEW Goal ("I will become the Alliance Leader") -> Add to 'new_goals'.
+- Identify if the player creates a NEW Goal (${t.목표_생성_예시}) -> Add to 'new_goals'.
 
 
 [Health & Status Logic] (TOP PRIORITY)
@@ -98,7 +102,7 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - If the text says "Your arm is better", and active_injuries has "Fractured Left Arm" -> **MATCH** (Resolve it).
     - If the text says "You feel healthy again", and active_injuries has ["Internal Injury", "Bruise"] -> **MATCH ALL** (Resolve both).
     - If the text implies **Functional Recovery** (e.g., Player runs fast despite "Broken Leg"), assume it healed during the time skip -> **MATCH** (Resolve "Broken Leg").
-  - OUTPUT: "resolved_injuries": ["Fractured Left Arm", "Internal Injury"]
+  - OUTPUT: "resolved_injuries": [${t.부상_회복_예시}]
   - **Note**: You do not need an exact string match if the *meaning* is clear.
   - **STRICT RULE**: If you cannot find a matching injury to heal, return an empty list.
 
@@ -107,15 +111,18 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **Do NOT** worsen injuries for standard combat or movement (Exertion is just pain).
   - Example (Fracture -> Disabled): 
     - "resolved_injuries": ["Right Arm Fracture"]
-    - "new_injuries": ["Right Arm Permanent Disability"]
+    - "new_injuries": [${t.치명적_부상_예시}]
 
 - **New Injury Logic (STRICT)**:
   - **Target**: **ONLY** record injuries for the **Player ({playerName})**. Do not record injuries for NPCs here.
   - **Threshold**: Only record **SIGNIFICANT** physical damage. 
     - **INCLUDE**: Cuts, Fractures, Internal Injuries, Poison, Burns, Deep Wounds, "Backlash" (Ju-hwa-ip-ma).
     - **EXCLUDE**: Scratches, Bruises, Muscle Aches, Fatigue, "Feeling weak".
-  - **Format**: Be descriptive but concise. "Left Arm Fracture", "Internal Injury (Mild)", "Poisoned (Snake)".
+  - **Format**: Be descriptive but concise. ${t.부상_설명_예시}.
   - **Ambiguity Rule**: If you are not 100% sure it is a lasting injury, **IGNORE IT**.
+  - **Language Rule**: Output **ONLY** in the target language (Korean). **absolutley DO NOT** include the English name in parentheses.
+    - Bad: "골절 (Fracture)", "화상 (Burn)"
+    - Good: "골절", "화상", "내상 (경미)"
 
 - **Recovery Logic (HP & MP)**:
   - **1. Natural Recovery (Passing Time / Travel)**: 
@@ -153,6 +160,20 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **DO NOT** award extra 'neigong' or 'level' (The surge is visual/textual only).
   - **Exception**: Only award stats if an *external* item was consumed *during* the breakthrough (e.g., "You ate a pill while breaking through").
 
+[State Cleanup & Deduplication] (MANDATORY HOUSEKEEPING)
+- **Problem**: The 'active_injuries' list may contain DUPLICATES or DIFFERENT LANGUAGES for the same injury.
+  - Example: ["Chronic Hunger", "만성적인 허기", "Acute Hunger"] -> These are the SAME thing.
+- **Deduplication Rule**:
+  - If you see synonyms or translated duplicates in 'active_injuries', you MUST RESOLVE the "redundant" ones immediately.
+  - **Target**: Keep the MOST DESCRIPTIVE Korean version. Remove English or vague versions.
+  - **Action**: Add the redundant strings to 'resolved_injuries'.
+  - **Example**:
+    - Input: ["Broken Leg", "다리 골절"]
+    - Output: "resolved_injuries": ["Broken Leg"] (Keep "다리 골절")
+- **Semantic Consolidation**:
+  - If a new injury covers an old one (e.g. "Internal Injury" -> "Severe Internal Injury"), REMOVE the old one.
+  - Output: "resolved_injuries": ["Internal Injury"]
+
 
 [Personality Stats Guidelines]
 - Personality Stats (-100 to 100):
@@ -182,7 +203,7 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **Legendary (Jianghu)**: Defeating a Peak Master, Changing the fate of a Sect. (+1000+)
 - **Witness Factor**:
   - Public events = 100% Fame.
-  - Private events (features only dead witnesses) = 0% Fame (Unless clues are left).
+  - Private events = 0% Fame (Unless clues are left).
 - **Instruction**: Even if the text does not explicitly say "Fame increased", you MUST update the 'fame' stat if the achievements warrant it.
 
 [Personality Update Guidelines] (Consistency & Inertia)
@@ -236,8 +257,8 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 - Unlike 'Relationship Score' (which is numeric), this tracks the **DEFINED STATUS** and **SPEECH STYLE**.
 - **When to update:** ONLY when the narrative EXPLICITLY changes these.
 - **Fields:**
-  - **status**: The defined social role. (e.g., "Friend", "Lover", "Disciple", "Master", "Enemy", "Stranger", "Business Partner").
-  - **speech_style**: The tone of voice used towards the player. (e.g., "Polite", "Informal", "Archaic", "Honorific", "Cold").
+  - **status**: The defined social role. (${t.관계_상태_예시}).
+  - **speech_style**: The tone of voice used towards the player. (${t.말투_예시}).
 - **Language**: MUST be in **KOREAN** (한국어).
 - **Trigger Examples**:
   - "Let's drop the honorifics." -> speech_style: "반말" (Informal)
@@ -261,15 +282,15 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 
 [Location Updates]
 - Identify if the characters have moved to a NEW significant location.
-- **Format:** "Region_Place" in KOREAN (e.g., "사천_성도", "하북_팽가", "중원_객잔", "북해_빙궁").
-- **CRITICAL**: For generic locations (Mountain Path, Forest, Inn, Market) that exist within a specific region, YOU MUST PREFIX the region name.
-  - Example: If moving from 'Shaanxi_MountHua' to a mountain path, output '섬서_산길' (Shaanxi_Mountain Path), NOT just '산길'.
+- **Format**: ${t.지역_업데이트_설명}.
+- **CRITICAL**: ${t.지역_업데이트_설명}.
+  - Example: ${t.지역_예시}.
 - Use standard Wuxia region names: 중원, 사천, 하북, 산동, 북해, 남만, 서역, 등.
 - If no change, return null.
 
 [Faction & Rank Updates]
-- **factionChange**: If the narrative explicitly states the player has joined or left a faction/sect (e.g. "You have formally become a disciple of Mount Hua").
-- **playerRank**: If the narrative explicitly awards a new title or martial rank (e.g. "You have reached the level of a First Rate Warrior" or "People now call you the Sword Demon").
+- **factionChange**: If the narrative explicitly states the player has joined or left a faction/sect (${t.소속_변경_설명}).
+- **playerRank**: If the narrative explicitly awards a new title or martial rank (${t.등급_변경_설명}).
 - **Constraint**: Only valid if explicitly confirmed in the text. Do not guess.
 
 
@@ -284,8 +305,8 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
       "chilsung": ["Player defeated me", "Player gave me a healing potion"] 
   },
   "inline_triggers": [
-      { "quote": "The bandit's blade grazed my arm!", "tag": "<Stat hp='-5'>" },
-      { "quote": "She laughed at my joke.", "tag": "<Rel char='NamgungSeAh' val='5'>" }
+      { "quote": ${t.인라인_인용_예시}, "tag": "<Stat hp='-5'>" },
+      { "quote": ${t.인라인_태그_예시}, "tag": "<Rel char='NamgungSeAh' val='5'>" }
   ],
 
   "resolved_injuries": ["Broken Arm"], // Optional
@@ -311,6 +332,8 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 [Relationship Tiers Guide]
 ${RelationshipManager.getPromptContext()}
 `;
+  }
+
 
   static async analyze(
     userMessage: string,
@@ -339,7 +362,7 @@ ${RelationshipManager.getPromptContext()}
 
     // [Context Caching]
     // Split Static (System Instruction) and Dynamic (User Message)
-    let staticSystemPrompt = this.SYSTEM_PROMPT;
+    let staticSystemPrompt = this.getSystemPrompt(language || 'ko'); // [CHANGE] Use getSystemPrompt
 
     // [God Mode Protocol]
     if (gameState.isGodMode || gameState.playerName === "김현준갓모드") {
@@ -454,6 +477,20 @@ Generate the JSON output.
 
       try {
         const json = JSON.parse(text);
+
+        // [Sanitization] Bilingual Injury Scrubber
+        // Regex to remove English in parens: "골절 (Fracture)" -> "골절"
+        // But KEEP Korean/Numbers in parens: "내상 (경미)", "중독 (2단계)"
+        const sanitizeInjury = (injury: string) => {
+          return injury.replace(/\s*\([a-zA-Z\s]+\)/g, "").trim();
+        };
+
+        if (json.new_injuries && Array.isArray(json.new_injuries)) {
+          json.new_injuries = json.new_injuries.map(sanitizeInjury);
+        }
+        if (json.resolved_injuries && Array.isArray(json.resolved_injuries)) {
+          json.resolved_injuries = json.resolved_injuries.map(sanitizeInjury);
+        }
 
         // [Validation] Ensure inline_triggers exist
         if (!json.inline_triggers) json.inline_triggers = [];

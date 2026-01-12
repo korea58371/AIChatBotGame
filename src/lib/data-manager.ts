@@ -84,8 +84,21 @@ export class DataManager {
                             worldModule = { default: { locations: {}, items: {} } };
                         }
 
-                        console.log('- Importing characters.json...');
-                        charactersModule = await import('@/data/games/god_bless_you/jsons/characters.json');
+                        console.log('- Importing characters/characters_main.json & supporting...');
+                        const charsMain = await import('@/data/games/god_bless_you/jsons/characters/characters_main.json');
+                        let charsSupporting = {};
+                        try {
+                            const charsSuppModule = await import('@/data/games/god_bless_you/jsons/characters/characters_supporting.json');
+                            charsSupporting = charsSuppModule.default || charsSuppModule;
+                        } catch (e) {
+                            console.warn('[DataManager] characters_supporting.json not found for GBY');
+                        }
+
+                        // Merge supporting into main (Main overrides if collision)
+                        charactersModule = {
+                            ...(charsSupporting as object),
+                            ...(charsMain.default || charsMain)
+                        };
 
                         // bgListModule loaded above via action
 

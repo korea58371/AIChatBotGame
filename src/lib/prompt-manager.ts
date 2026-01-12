@@ -114,7 +114,7 @@ export class PromptManager {
 
     // [CACHE CONFIG]
     private static readonly CACHE_PREFIX = 'PROMPT_CACHE_';
-    private static readonly CACHE_VERSION = 'v1.3'; // Increment this to invalidate all caches
+    private static readonly CACHE_VERSION = 'v1.5'; // Increment this to invalidate all caches
 
     // [New] Cache Management Methods
     static async clearPromptCache(gameId?: string) {
@@ -133,6 +133,20 @@ export class PromptManager {
             });
             console.log(`[PromptManager] Cleared all prompt caches.`);
         }
+    }
+
+    static async getGameIdentity(state: GameState): Promise<string> {
+        let identity = "";
+
+        if (state.activeGameId === 'wuxia') {
+            const { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES } = await import('../data/games/wuxia/constants');
+            identity = `${WUXIA_IDENTITY}\n\n[GAME MECHANICS & STRICT RULES]\n${WUXIA_BEHAVIOR_RULES}`;
+        } else if (state.activeGameId === 'god_bless_you') {
+            const { GBY_IDENTITY, GBY_BEHAVIOR_RULES } = await import('../data/games/god_bless_you/constants');
+            identity = `${GBY_IDENTITY}\n\n[GAME MECHANICS & STRICT RULES]\n${GBY_BEHAVIOR_RULES}`;
+        }
+
+        return identity;
     }
 
     static async getSharedStaticContext(

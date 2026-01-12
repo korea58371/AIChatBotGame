@@ -29,6 +29,7 @@ export interface PreLogicOutput {
     combat_analysis?: string; // [NEW] 전투 분석 (승산, 강함 비교)
     emotional_context?: string; // [NEW] 감정 상태 요약 (숨겨진 감정 포함)
     character_suggestion?: string; // [NEW] 등장 제안 인물
+    new_characters?: string[]; // [NEW] 새로 등장한 캐릭터 목록 (이름)
     goal_guide?: string; // [NEW] 목표 달성 가이드
     location_inference?: string; // [NEW] 위치 추론 (Region Inference)
 }
@@ -185,9 +186,15 @@ User can spend 'Fate Points' to bend reality.
     ): Promise<PreLogicOutput> {
         if (!this.apiKey) return this.fallbackLogic(userInput);
 
+        // [Worldview & Atmosphere]
+        const gameIdentity = await PromptManager.getGameIdentity(gameState);
+
         // [Unified System Prompt]
         // Router 기능(의도 파악) + PreLogic 기능(판정) 통합
         const systemInstruction = `
+[Worldview & Identity (TONE & MANNER)]
+${gameIdentity}
+
 You are the [Dungeon Master & Reality Judge] of a text-based Wuxia RPG.
 Your job is to:
 1. **CLASSIFY** the user's intent (Combat, Dialogue, Action, System).
@@ -239,6 +246,12 @@ STEP 4: **Final Judgment**
      * Emotional -> Effective on Intimate relationships.
     - Outcome: Target reacts favorably vs Refuses/Gets angry.
 
+[Alignment & Faction Logic (Morality System)]
+**Check Player's Morality (if available in Context/Stats)**
+- **High Morality (>50)**: 'Orthodox (White Faction/Murim Alliance)' NPCs are FRIENDLY/Respectful. 'Unorthodox (Black Faction)' NPCs are HOSTILE/Wary.
+- **Low Morality (<-50 or Evil Actions)**: 'Unorthodox' NPCs are FRIENDLY/Respectful (Brotherhood). 'Orthodox' NPCs are HOSTILE/Disgusted.
+- **Guidance Rule**: If Player tries to persuade a faction OPPOSITE to their alignment -> **Apply Penalty to Score (-2)** and describe inherent distrust.
+
 3. IF Intent == 'action' (Use [Reality Judge]):
    - Focus: CAUSALITY & PHYSICALITY.
    - Analyze: Does the player have the tool/skill? Is it physically possible?
@@ -254,6 +267,7 @@ STEP 4: **Final Judgment**
     "combat_analysis": "Compare Player vs Target strength. Estimate winning chance.",
     "emotional_context": "Summarize active character sentiments (Hidden/Overt). e.g. 'A loves B, B is curious about A'.",
     "character_suggestion": "Suggest a relevant character to appear/react if appropriate. Or 'None'.",
+    "new_characters": ["Name1", "Name2"], // [New] List of characters to ADD to the scene immediately (e.g. ['Cheon Seoyun'])
     "goal_guide": "Tips for the Story Model to advance Active Goals based on current situation.",
     "success": boolean,
     "narrative_guide": "Specific instructions for the narrator.",
@@ -282,6 +296,7 @@ STEP 4: **Final Judgment**
      1. **Crisis/Combat**: Allies/Rivals can arrive SUDDENLY.
      2. **Calm**: Use [Foreshadowing] first for Strangers. Use [Direct Encounter] for Friends.
    - **Mandatory Format**: "Suggest: [Name] - [Type: Arrival/Foreshadowing] because [Reason] (Score: High)."
+   - **[New] NEW_CHARACTERS Field**: If you suggest a Direct Arrival, add their exact Name to the 'new_characters' array.
 
 4. **Goal Guide**: Check [Active Goals]. Advise on progress.
 5. **Active Event Guide**: Check [ACTIVE EVENT]. 

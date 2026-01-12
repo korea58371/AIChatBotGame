@@ -1,5 +1,37 @@
 export const translations = {
     en: {
+        systemPrompt: {
+            // [Memory & Logic]
+            약속_예시: '"Promised to meet at the teahouse at noon", "Agreed to kill the Demon King"',
+            영구적_변화_예시: '"Lost a left arm", "Acquired the Legendary Sword", "Housing burned down"',
+            스킬_성장_예시: '"Learned the Flying Dragon Fist", "Realized the Dao of Empty Sky"',
+            주요_비밀_예시: '"Learned that the Player is actually the King", "Discovered the spy"',
+            인생_변화_예시: '"Saved from death", "Betrayed by best friend"',
+
+            // [Injury & Healing]
+            부상_설명_예시: '"Left Arm Fracture", "Internal Injury (Mild)", "Poisoned (Snake)"',
+            부상_회복_예시: '"Fractured Left Arm", "Internal Injury"',
+            치명적_부상_예시: '"Right Arm Permanent Disability"',
+
+            // [Relationships]
+            관계_상태_예시: '"Friend", "Lover", "Disciple", "Master", "Enemy", "Stranger", "Business Partner"',
+            말투_예시: '"Polite", "Informal", "Archaic", "Honorific", "Cold"',
+
+            // [Location]
+            지역_예시: '"Shaanxi_MountHua"',
+            지역_업데이트_설명: '"Region_Place" in KOREAN (e.g., "사천_성도", "하북_팽가"). For generic locations, PREFIX the region name.',
+
+            // [Faction & Rank]
+            소속_변경_설명: 'e.g. "You have formally become a disciple of Mount Hua"',
+            등급_변경_설명: 'e.g. "You have reached the level of a First Rate Warrior" or "People now call you the Sword Demon"',
+
+            // [Goals]
+            목표_생성_예시: '"I will become the Alliance Leader"',
+
+            // [Inline Tags]
+            인라인_인용_예시: '"The bandit\'s blade grazed my arm!"',
+            인라인_태그_예시: '"She laughed at my joke."'
+        },
         chatHistory: "Chat History",
         close: "Close",
         you: "You",
@@ -160,6 +192,38 @@ export const translations = {
         },
     },
     ko: {
+        systemPrompt: {
+            // [Memory & Logic]
+            약속_예시: '"정오에 찻집에서 만나기로 약속함", "마왕을 처치하기로 맹세함"',
+            영구적_변화_예시: '"왼팔 절단", "전설의 검 획득", "집이 불탐"',
+            스킬_성장_예시: '"비룡권 습득", "공산의 도를 깨달음"',
+            주요_비밀_예시: '"플레이어가 사실 왕이라는 것을 알게 됨", "첩자를 발견함"',
+            인생_변화_예시: '"죽음에서 구조됨", "가장 친한 친구에게 배신당함"',
+
+            // [Injury & Healing]
+            부상_설명_예시: '"왼팔 골절", "내상 (경미)", "중독 (뱀독)"',
+            부상_회복_예시: '"왼팔 골절", "내상"',
+            치명적_부상_예시: '"오른팔 영구 장애"',
+
+            // [Relationships]
+            관계_상태_예시: '"친구", "연인", "제자", "스승", "적", "타인", "사업 파트너"',
+            말투_예시: '"정중", "반말", "고풍", "존댓말", "냉담"',
+
+            // [Location]
+            지역_예시: '"섬서_화산"',
+            지역_업데이트_설명: '"Region_Place" in KOREAN (예: "사천_성도", "하북_팽가"). 일반적인 장소(숲, 객잔)라면 반드시 지역명을 앞에 붙일 것.',
+
+            // [Faction & Rank]
+            소속_변경_설명: '예: "화산파의 정식 제자가 되었다"',
+            등급_변경_설명: '예: "일류 무사 수준에 도달했다", "사람들이 당신을 검마라고 부르기 시작했다"',
+
+            // [Goals]
+            목표_생성_예시: '"무림맹주가 되겠다"',
+
+            // [Inline Tags]
+            인라인_인용_예시: '"산적의 칼이 내 팔을 스쳤다!"',
+            인라인_태그_예시: '"그녀는 내 농담에 웃었다."'
+        },
         chatHistory: "대화 기록",
         close: "닫기",
         you: "당신",
@@ -318,6 +382,22 @@ export const translations = {
                 rank_a: "A급",
                 rank_s: "S급",
                 rank_ss: "SS급"
+            },
+            skills: {
+                화염구: "화염구(Fireball)",
+                참격: "참격(Slash)",
+                은신: "은신(Stealth)",
+                마나실드: "마나 실드(Mana Shield)",
+                상급: "상급(Greater)",
+                하급: "하급(Lesser)",
+                궁극: "궁극(Ultimate)",
+                암흑: "암흑(Dark)",
+                신성: "신성(Holy)",
+                마나하트: "마나 하트(Mana Heart)",
+                강철피부: "강철 피부(Iron Skin)",
+                제6감: "제6감(Sixth Sense)",
+                이연참: "이연참",
+                마나장벽: "마나 장벽"
             }
         }
     }

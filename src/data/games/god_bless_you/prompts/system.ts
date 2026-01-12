@@ -4,75 +4,17 @@ import { getDynamicSkillPrompt } from '../skills';
 // Helper to get Rank Info (Exported for Static Context)
 // Helper to get Rank Info (Exported for Static Context)
 export const getRankInfo = (fame: number) => {
-    let playerRank = '일반인';
+    // [Mod Request] 서술의 일관성을 위해 페이즈별 특수 정보를 제거하고 일반인 기준으로 고정.
+    let playerRank = '일반인 (미각성)';
     let phase = 'Phase 0: 미각성';
 
-    // Phase Logic
-    if (fame >= 10000) {
-        playerRank = 'S급 블레서 (국가권력급)';
-        phase = 'Phase 3: 폭풍의 눈';
-    } else if (fame >= 1000) {
-        playerRank = 'D~B급 블레서 (루키)';
-        phase = 'Phase 2: 도약과 자격';
-    } else if (fame >= 10) {
-        playerRank = 'F급 블레서';
-        phase = 'Phase 1: 시궁창의 생존자';
-    } else {
-        playerRank = '일반인 (미각성)';
-        phase = 'Phase 0: 미각성';
-    }
-
-    let rankLogline = "";
-    let rankKeywords = "";
-    let rankGiftDesc = "";
-    let rankConflict = "";
-
-    switch (phase.split(':')[0]) {
-        case 'Phase 0':
-            rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하거나 두려워하며 살아가는 일상. 곧 다가올 각성(Awakening)의 순간을 기다리고 있다.";
-            rankKeywords = "#일상물 #각성전 #두려움";
-            rankGiftDesc = "기프트 없음 (일반인).";
-            rankConflict = `
+    let rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하거나 두려워하며 살아가는 일상. 곧 다가올 각성(Awakening)의 순간을 기다리고 있다.";
+    let rankKeywords = "#일상물 #각성전 #두려움";
+    let rankGiftDesc = "기프트 없음 (일반인).";
+    let rankConflict = `
     - 생활고 (알바, 월세).
     - 헌터들에 대한 막연한 동경과 공포.
     - 무력함.`;
-            break;
-        case 'Phase 1':
-            rankLogline = "아무런 능력도 없이 평범한 일반인이 었던 주인공이 F급 쓰레기 기프트 '처세술'을 각성하게되면서 절망적인 세상 속에서 소중한 인연을 만들고, 동료들과의 유대를 통해 무한히 성장하며 지구를 위협하는 거대한 재앙에 맞서 싸우는 이야기. 어디에도 처세술이라는 기프트에 대해 알려진 정보가 없다.";
-            rankKeywords = "#F급의반란 #시리어스 #생존물";
-            rankGiftDesc = `- **기프트**: **처세술 (F급)**
-    - **설명**: F급이고, 아무 쓸모도 없어보이는, 남에게 아부하는데 특화된 느낌.`;
-            rankConflict = `
-    - 페이즈 1 제약: 강남 진입 불가, 상위 랭커 만남 불가.
-    - 경제적 빈곤 (월세 독촉, 끼니 걱정).
-    - F급에 대한 사회적 멸시와 생존 위협.`;
-            break;
-        case 'Phase 2':
-            rankLogline = "무한한 잠재력을 개화하기 시작한 루키. 업계의 주목을 받으며 급성장하는 주인공이 더 큰 무대를 향해 도약하는 이야기.";
-            rankKeywords = "#루키 #급성장 #주목받는신예 #라이벌";
-            rankGiftDesc = `- **기프트**: **처세술 (진화 중)**
-    - **설명**: 단순한 아부가 아닌, 타인과의 유대를 통해 타인의 기프트의 잠재력을 끌어낸다.`;
-            rankConflict = `
-                - 급성장하는 주인공을 향한 기존 세력의 견제와 질투.
-                - 감당하기 힘든 기대와 책임감.
-                - 더 강력해진 적들과의 조우.`;
-            break;
-        case 'Phase 3':
-            rankLogline = "절망에 빠진 인류를 구원할 유일한 희망. 전설이 된 주인공이 모든 블레서들을 이끌고 최후의 재앙에 맞서는 영웅 서사시.";
-            rankKeywords = "#영웅 #구원자 #전설 #최후의결전";
-            rankGiftDesc = `- **기프트**: **왕의 권능 (EX급)**
-    - **설명**: 모든 블레서의 정점에 선 지배자의 힘. 타인의 능력을 완벽하게 이해하고 통합하여 기적을 행함. 깊은 유대감을 통해 대상의 기프트를 강화하고, 대상의 능력을 복제, 공유받아 무한히 성장한다.`;
-            rankConflict = `
-                - 세계의 멸망을 막아야 하는 절대적인 사명감.
-                - 근원적인 악과의 최종 결전.`;
-            break;
-        default:
-            rankLogline = "평범한 일반인인 주인공이 블레서들을 동경하며 살아가는 이야기.";
-            rankKeywords = "#일상물";
-            rankGiftDesc = "일반인입니다. 특별한 능력이 없습니다.";
-            rankConflict = ``;
-            break;
-    }
 
     return { playerRank, rankLogline, rankKeywords, rankGiftDesc, rankConflict, phase };
 };
@@ -156,10 +98,15 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
   - 상태창 확인 -> "자신의 몸 상태를 직관적으로 깨달았다"
 - **주인공은 이 세계를 '게임'이 아닌 '현실'로 인식해야 합니다.**
 
-**[설정 준수 (Lore Compliance)]**
-- **절대 금지**: 위 [CURRENT GAME STATE]나 [LORE DATA]에 명시되지 않은 설정, 무공, 스킬, 아이템, 정보를 임의로 창조하거나 사용하는 것.
-- **원칙**: 모든 정보는 제공된 로어북(Lore Data)에 기반해야 하며, 없는 내용은 '알 수 없음'으로 처리하거나 묘사를 회피하십시오.
-- **예외**: 일상적인 사물이나 일반적인 배경 묘사는 허용되나, **고유 명사가 붙은 설정**은 반드시 로어북을 따르십시오.
+**[STRICT NO-HALLUCINATION & LORE COMPLIANCE]**
+- **CORE RULE**: YOU SHALL NOT INVENT FACTS. (제공되지 않은 정보를 창조하지 마시오)
+- **절대 금지 사항**:
+  1. **없는 설정 창조**: 로어북(Lore Data)이나 [Current Location] 정보에 없는 '비밀 장소', '숨겨진 창고', '고유 명사(NPC 이름, 단체명)'를 멋대로 지어내지 마십시오.
+     - (X) "이곳은 B섹터의 비밀 무기 창고인 것 같다." (근거 없음)
+     - (O) "창고처럼 보이는 낡은 공간이다." (관찰 기반)
+  2. **과도한 의미 부여**: 단순한 오브젝트에 대단한 복선이나 비밀이 있는 척 서술하지 마십시오.
+  3. **위치 왜곡**: 현재 있는 장소의 [설명(Description)]과 [특이사항(Secrets)]에 명시된 것만 묘사하십시오.
+- **대응 원칙**: 특정 정보가 기재되어 있지 않다면, '알 수 없음'이나 '평범함'으로 처리하십시오. 빈 공간을 당신의 상상력으로 채우는 것은 '서술(Narration)'이지 '설정 파괴(Lore Breaking)'여서는 안 됩니다.
 `;
 
     // Inventory Text
@@ -186,6 +133,44 @@ ${directInputConstraints}
 (X) "HP가 10 남아서 위험하다." / (O) "시야가 흐려지고 다리에 힘이 풀린다."
 *HP나 MP가 0이 되면 모든 행동은 실패하고 'BAD ENDING'으로 직결됩니다.*
 
+**[진행 단계: 등장인물 출현 규칙]**
+- **현재 단계**: ${phase}
+- **규칙**: 현재 주인공의 단계에 맞지 않는 상위 경지의 인물들은 주로 소문이나 전설, 또는 먼발치에서 관찰하는 형태로만 등장해야 합니다. 단, **[Narrative Direction]의 지시나 [Casting Suggestions]에 포함된 인물**이라면 자연스럽게 등장시킬 수 있습니다.
+
+**[Narrative Direction Authority & Character Spawning]**:
+- **CRITICAL**: You must STRICTLY follow the [Narrative Direction] provided by the Pre-Logic module.
+- **SUGGESTION TYPES (인물 등장 유형)**:
+  * **[Type: Arrival]**: Spawn the character IMMEDIATELY. "Suddenly, [Name] enters..."
+  * **[Type: Foreshadowing]**: Do NOT spawn the character yet. Describe **HINTS** of their presence.
+    -> E.g., "You feel the chilling aura of [Name]...", "A breaking news about [Name] appears on TV..."
+- **PRIORITY RULE**: If [User Input] contradicts [Narrative Direction], **IGNORE** user input and **FOLLOW** direction.
+
+**[서술 주의사항: 메타 발언 금지]**
+아래 수치(HP, MP 등)는 서술을 위한 참고용일 뿐입니다. **절대 수치를 직접 언급하거나 게임 시스템처럼 묘사하지 마십시오.**
+(X) "HP가 10 남아서 위험하다." / (O) "시야가 흐려지고 다리에 힘이 풀린다."
+(X) "Stranger(0) 관계이므로 경계한다." / (O) "낯선 이를 향한 경계심이 눈빛에 서려 있었다."
+**CRITICAL**: [SYSTEM-INTERNAL] 태그나 내부 수치(Score, Rank 등)를 절대 발설하지 마십시오.
+
+**[서술 및 출력 포맷 절대 규칙]**
+1. **주인공 대사 태그 고정**:
+   - 주인공의 대사 출력 시, 태그의 이름은 무조건 **'${state.playerName || '주인공'}'**이어야 합니다.
+   - **절대 금지**: <대사>나_기쁨, <대사>주인공_기쁨, <대사>Me_Happy 등 대명사 사용 금지.
+   - **올바른 예시**: <대사>${state.playerName || '주인공'}_기쁨: "이봐, 거기 서!"
+   - 이유: 시스템이 이미지를 바인딩하기 위해 정확한 키(Player Name)가 필요합니다.
+
+2. **서술(나레이션) 시점 준수**:
+   - 위 [서술 시점] 규칙(1인칭/3인칭)에 따라 본문 서술을 진행하십시오. 단, 대사 태그만큼은 시점과 무관하게 '이름'을 써야 합니다.
+
+- **현재 시간**: ${state.day || 1}일차 ${(state.time || '14:00').replace(/(\d+)(일차|Day)\s*/gi, '').trim()}
+- **현재 위치**: ${state.currentLocation}
+  - **설명**: ${locationDesc}${locationSecrets}
+- **주인공 상태 (유저에게 비공개)**: [HP: ${stats.hp || 100}], [MP: ${stats.mp || 100}], [등급: ${playerRank}]
+  - **소지금**: ${stats.gold}${currencySymbol} (부족함)
+  - **상세**: ${statusDescription}
+  - **마음가짐**: ${personalityDescription}
+- **보유 능력(스킬)**: ${skillList}
+- **소지품**: ${inventoryDesc}
+
 **[LORE PRIORITY GUIDELINES (Context-Aware)]**
 상황에 따라 로어북의 다음 항목들을 최우선으로 참고하여 서술의 디테일을 살리십시오:
 1. **[전투/액션 (Combat)]**: '### Power System & Realms' & '### Special Martial Arts Skills'
@@ -196,17 +181,6 @@ ${directInputConstraints}
    - 세금(특별 방위세)이나 경제적 불평등을 자연스럽게 언급하십시오.
 3. **[로맨스/내면 (Intimacy)]**: '## [Romance & Interaction Guidelines]' & 캐릭터의 'Secret' 항목
    - **[Secret]** 항목(내밀한 취향)과 **[내면 성격]**을 반영하십시오.
-- **현재 진행 단계(Story Phase)**: **[${phase}]**
-  > **경고**: [STORY PROGRESSION PHASES] 규칙에 따라 현재 페이즈의 제약(잠금된 지역/캐릭터 등)을 엄수하십시오.
-- **현재 시간**: ${state.day || 1}일차 ${state.time || '14:00'}
-- **현재 위치**: ${state.currentLocation}
-  - **설명**: ${locationDesc}${locationSecrets}
-- **주인공 상태**: [HP: ${stats.hp || 100}], [MP(정신력): ${stats.mp || 100}], [등급: ${playerRank}]
-  - **소지금**: ${stats.gold}${currencySymbol} (부족함)
-  - **상세**: ${statusDescription}
-  - **마음가짐**: ${personalityDescription}
-- **보유 능력(스킬)**: ${skillList}
-- **소지품**: ${inventoryDesc}
 
 **[행동/전투 가이드라인]**:
 주인공은 현재 **'${phase}'** 단계에 있습니다.
@@ -218,8 +192,6 @@ ${directInputConstraints}
 - **활성 이벤트**: ${state.currentEvent ? state.currentEvent.name : "없음"}
 ${state.currentEvent ? `  - **이벤트 지침**: ${state.currentEvent.prompt}` : ""}
 - **현재 시나리오**: ${state.scenarioSummary || "이야기가 계속됩니다."}
-
-
 
 ### [⚡ 중요: 이벤트 - 최우선 실행]
 **위 '활성 이벤트'가 비어있지 않다면, 다른 어떤 맥락보다 최우선으로 해당 내용을 실행하라.**

@@ -1,4 +1,4 @@
-import { characters_main_typed, characters_supporting_typed, CharacterData, SystemLogic } from '../../data/games/wuxia/jsons/characters';
+import { CharacterData } from '../../data/games/wuxia/jsons/characters';
 
 export interface CastingCandidate {
     id: string;
@@ -61,8 +61,11 @@ export class AgentCasting {
             return 0;
         };
 
-        const allCharacters = { ...characters_main_typed, ...characters_supporting_typed };
-        const mainCharacterIds = new Set(Object.keys(characters_main_typed)); // [NEW] Track Main Heroines
+        // [MODIFIED] Use GameState provided characters instead of hardcoded Wuxia imports
+        // This supports God Bless You and other games dynamically.
+        // [Fix] Server Actions hydrate 'characterData', not 'gameData'.
+        const allCharacters = gameState.gameData?.characters || gameState.characterData || {};
+        const mainCharacterIds = new Set(Object.keys(allCharacters)); // For now treat all loaded as potential candidates
 
         for (const [id, char] of Object.entries(allCharacters)) {
             const cAny = char as any;
@@ -137,10 +140,10 @@ export class AgentCasting {
             }
 
             // 3. Affection/Relation (Active)
-            if (userInput.includes(kName)) {
-                actScore += 10.0;
-                actReasons.push("User Mentioned (+10.0)");
-            }
+            // if (userInput.includes(kName)) {
+            //    actScore += 10.0;
+            //    actReasons.push("User Mentioned (+10.0)");
+            // }
 
             // [Refinement] Removed redundant logging block since we added it above directly
             // ...
@@ -207,7 +210,7 @@ export class AgentCasting {
                 const charGender = cAny.profile?.성별 || '남성'; // Default to male if unknown
 
                 if (isRighteous && charGender === targetGender) {
-                    actScore += 5.0;
+                    actScore += 3.0;
                     actReasons.push(`Early Game Companion (${charGender} Righteous)`);
                 }
             }

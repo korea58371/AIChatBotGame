@@ -826,9 +826,8 @@ export const useGameStore = create<GameState>()(
       },
       onRehydrateStorage: () => (state) => {
         console.log("[Store] Rehydration Finished.", state ? "Success" : "No State");
-        if (state) {
-          useGameStore.setState({ isDataLoaded: true }); // Ensure flag is set
-        }
+        // [Fix] Do NOT force isDataLoaded: true. 
+        // We need VisualNovelUI to trigger setGameId to re-bind non-persisted functions.
       }
     }
   )

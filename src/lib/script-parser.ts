@@ -114,7 +114,9 @@ export function parseScript(text: string): ScriptSegment[] {
             });
 
         } else if (tagName === '시스템팝업' || tagName === '시스템') {
-            segments.push({ type: 'system_popup', content: content });
+            // [Refactor] Use parseInlineContent to handle inline tags like <Stat>
+            const inlineSegments = parseInlineContent(content, { type: 'system_popup' });
+            segments.push(...inlineSegments);
 
         } else if (tagName === '나레이션') {
             // Clean Markdown (Bold)
@@ -228,12 +230,12 @@ export function parseScript(text: string): ScriptSegment[] {
                 if (h) header = h;
             }
 
-            segments.push({
+            const inlineSegments = parseInlineContent(msgContent, {
                 type: 'text_message',
                 character: sender,
-                expression: header,
-                content: msgContent
+                expression: header
             });
+            segments.push(...inlineSegments);
 
         } else if (tagName === '답장') {
             // <답장>Receiver_Header: Content
@@ -250,12 +252,12 @@ export function parseScript(text: string): ScriptSegment[] {
                 if (h) header = h;
             }
 
-            segments.push({
+            const inlineSegments = parseInlineContent(msgContent, {
                 type: 'text_reply',
                 character: receiver,
-                expression: header,
-                content: msgContent
+                expression: header
             });
+            segments.push(...inlineSegments);
 
         } else if (tagName === '전화') {
             // <전화>Caller_Status: Content
@@ -272,12 +274,12 @@ export function parseScript(text: string): ScriptSegment[] {
                 if (s) status = s;
             }
 
-            segments.push({
+            const inlineSegments = parseInlineContent(msgContent, {
                 type: 'phone_call',
                 character: caller,
-                expression: status,
-                content: msgContent
+                expression: status
             });
+            segments.push(...inlineSegments);
 
         } else if (tagName === 'TV뉴스') {
             // <TV뉴스>Character_Background: Content
@@ -299,12 +301,12 @@ export function parseScript(text: string): ScriptSegment[] {
                 }
             }
 
-            segments.push({
+            const inlineSegments = parseInlineContent(msgContent, {
                 type: 'tv_news',
                 character: anchor,
-                expression: background,
-                content: msgContent
+                expression: background
             });
+            segments.push(...inlineSegments);
 
         } else if (tagName === '기사') {
             // <기사>Title_Source: Content
@@ -321,12 +323,12 @@ export function parseScript(text: string): ScriptSegment[] {
                 if (s) source = s;
             }
 
-            segments.push({
+            const inlineSegments = parseInlineContent(body, {
                 type: 'article',
                 character: title,
-                expression: source,
-                content: body
+                expression: source
             });
+            segments.push(...inlineSegments);
 
         } else if (tagName === '떠남') {
             // Special Tag: Character Exit

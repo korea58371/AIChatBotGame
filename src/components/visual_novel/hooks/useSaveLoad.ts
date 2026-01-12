@@ -54,7 +54,8 @@ const compressState = (state: GameState): Partial<GameState> => {
         });
     }
 
-    return compressed;
+    // [Fix] DataCloneError: Strip all functions and non-serializable data
+    return JSON.parse(JSON.stringify(compressed));
 };
 
 export function useSaveLoad({ showSaveLoad, setShowSaveLoad, t, resetGame, addToast }: UseSaveLoadProps) {

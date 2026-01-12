@@ -1,7 +1,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MODEL_CONFIG } from '../model-config';
-import { WUXIA_CHOICE_RULES } from '../../data/games/wuxia/constants';
+// import { WUXIA_CHOICE_RULES } from '../../data/games/wuxia/constants'; // [Removed] Generic Refactor
 
 // Define Interface for Output
 export interface ChoiceOutput {
@@ -72,12 +72,27 @@ export class AgentChoices {
             activeCharContext = "None (Only Protagonist present)";
         }
 
-        // System Prompt: Choice Specialist
+        // [3] Genre/World Rule Extraction (Dynamic from Lorebook)
+        const worldRules = gameState.lore?.worldRules || gameState.constants?.CORE_RULES || "";
+        const choiceRules = gameState.lore?.choiceRules || gameState.constants?.CHOICE_RULES || gameState.constants?.choiceRules ||
+            "- Option 1: Bold/Active (Progress the plot)\n- Option 2: Cautious/Observant (Gather info)\n- Option 3: Creative/Roleplay (Character specific)";
+
+        // System Prompt: Generic Choice Specialist
         const systemPrompt = `
-You are the [Choice Generator] for a text-based Wuxia RPG.
+You are the [Choice Generator] for a text-based RPG.
 Your ONLY role is to read the provided story segment and generate 3 branching options for the player.
 
-${WUXIA_CHOICE_RULES}
+[Choice Generation Rules]
+${choiceRules}
+
+[CRITICAL INSTRUCTION - TIMING & LOCATION]
+- **The [Current Story Segment] is the ABSOLUTE TRUTH.**
+- Focus strictly on the **LAST PARAGRAPH** of the narrative.
+- **IF THE PLAYER LEAVES A LOCATION:** (e.g., "leaves the room", "steps outside"):
+  - You MUST ABANDON all interactions with characters effectively left behind.
+  - DO NOT generate choices to talk to someone who is no longer in the same space.
+  - Choices must reflect the NEW environment/goal.
+- **IF A CONVERSATION ENDED:** Do not continue the topic unless the player explicitly chooses to.
 
 [CRITICAL INSTRUCTION - PLAYER ONLY]
 - You must ONLY generate choices for the protagonist (${gameState.playerName || 'Protagonist'}).
@@ -89,9 +104,7 @@ ${WUXIA_CHOICE_RULES}
 - The choices should be ACTIONS or DIALOGUE that the PLAYER can choose to do.
 
 [CRITICAL INSTRUCTION - CONTEXT AWARENESS]
-- **Active Characters Only**: You CANNOT interact with characters who are NOT in the [Active Characters] list.
-  - If [Active Characters] says "None", do NOT generate choices to talk to "Soso" or "Namgung".
-  - If the story segment implies someone left, do not chase them unless the story allows.
+- **Active Characters Only**: check [Active Characters] but ignore them if the narrative says the player moved away.
 - **Location Awareness**: Use [Location Context]. If in a "Cave", do not "Walk into the busy street".
 
 [Output Requirements]
@@ -109,15 +122,15 @@ ${WUXIA_CHOICE_RULES}
         const skills = gameState.playerStats?.skills || gameState.skills || [];
         const skillList = skills.length > 0
             ? skills.map((s: any) => `- [${s.name}] (${s.rank}): ${s.description}`).join('\n')
-            : "No known martial arts skills.";
+            : "No known skills.";
 
         // Construct Dynamic Prompt
         const dynamicPrompt = `
 [Player Info]
 Name: ${gameState.playerName || 'Protagonist'}
-Identity: ${gameState.playerStats?.playerRank || 'Unknown'} Rank Martial Artist
-Personality: ${gameState.playerStats?.personalitySummary || 'Modern Earthling possessing a body (Calculator, Pragmatic)'}
-Final Goal: ${gameState.playerStats?.final_goal || 'Survival (Avoid Bad Ending)'}
+Identity: ${gameState.playerStats?.playerRank || 'Unknown'} Rank
+Personality: ${gameState.playerStats?.personalitySummary || 'Unknown'}
+Final Goal: ${gameState.playerStats?.final_goal || 'Survival'}
 Current Status: ${gameState.statusDescription || 'Normal'}
 Active Injuries: ${(() => {
                 const injuries = gameState.playerStats?.active_injuries || [];
@@ -127,11 +140,15 @@ Active Injuries: ${(() => {
 [Location Context]
 ${locationContext}
 
-[Active Characters] (Only these people are here!)
+[Active Characters]
 ${activeCharContext}
+(Note: These characters are present in the general scene, but if the narrative says the player moved away, ignore them.)
 
 [Known Skills]
 ${skillList}
+
+[World Rules / Guidelines]
+${worldRules}
 
 [Previous Action]
 ${userInput}
@@ -140,28 +157,22 @@ ${userInput}
 ${storyText}
 
 [Task]
-Generate 3 distinct choices based on the [Current Story Segment] for [${gameState.playerName}].
-- Choice 1: Active/Aggressive/Bold (Align with [Final Goal] and martial spirit). *If combat/danger, suggest using a [Known Skill].*
-- Choice 2: Cautious/Observant/Pragmatic (Reflecting a modern transmigrator's wit).
+Generate 3 distinct choices based on the **IMMEDIATE END STATE** of the [Current Story Segment] for [${gameState.playerName}].
+- Choice 1: Active/Aggressive/Bold (Align with [Final Goal]).
+- Choice 2: Cautious/Observant/Pragmatic.
 - Choice 3: Creative/Social/Humorous (Reflecting the specific [Personality]).
 
-[WUXIA GENRE BIAS - CRITICAL]
-- **INJURY OVERRIDE**: If [Active Injuries] is NOT 'None', OR the story describes pain/damage:
-  - **YOU MUST PRIORTIZE [Recovery/Healing]**.
-  - Suggest choices like "운기조식하여 상처를 다스린다", "휴식을 취하며 내공으로 회복한다".
-  - **DO NOT** suggest strenuous Training if it would worsen the injury.
-  
-- If the [Current Story Segment] implies **downtime, rest, or safety** AND [Active Injuries] is 'None':
-  - **YOU MUST INCLUDE at least one choice related to [Training/Growth] (e.g., "운기조식하여 내공을 쌓는다", "검법의 초식을 연마한다").**
-  - This is a Wuxia game; the player expects opportunities to grow stronger constantly.
-
-- If the situation matches the player's [Final Goal], provide a choice that aggressively pursues it.
+[GENRE/SITUATION BIAS]
+- Check the LAST sentence. Where is the player? Who is with them?
+- If the player just LEFT, focus on the destination or the journey.
+- If [Active Injuries] is present, prioritize recovery options if applicable.
+- If situation is peaceful, allow training or character interaction.
+- If situation is combat, offer combat options using [Known Skills].
 
 [Constraint Check]
 - Does the choice describe *someone else's* action? -> REJECT.
 - Is it the Player's action? -> ACCEPT.
 - Is the target character present in [Active Characters]? -> If NO, REJECT.
-
 `;
         try {
             const result = await model.generateContent(dynamicPrompt);
