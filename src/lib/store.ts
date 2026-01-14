@@ -11,6 +11,7 @@ import '@/data/games/god_bless_you/config';
 import { DataManager, GameData } from './data-manager';
 import { PromptManager } from './prompt-manager';
 import { MODEL_CONFIG } from './model-config';
+import { normalizeCharacterId } from './utils/character-id'; // [NEW] ID Normalization
 
 export interface Message {
   role: 'user' | 'model';
@@ -282,6 +283,7 @@ export interface GameCharacterData {
   relationship?: number;
   memories?: string[];
   relationshipInfo?: RelationshipInfo; // [NEW] Explicit Social Contract
+  lastActiveTurn?: number; // [NEW] Fatigue System: Last turn character was active (on-stage)
   [key: string]: any; // Allow extensibility
 }
 
@@ -351,12 +353,16 @@ export const useGameStore = create<GameState>()(
           // Transform for State
           const existingCharData = get().characterData || {};
           const charState = Object.values(initialCharacterData).reduce((acc: any, char: any) => {
-            const key = char.name;
-            const existing = existingCharData[key] || {};
+            // [Fix] Use Normalized Key (Defaulting to 'ko' if not set yet, or rely on internal store check)
+            // But we can check get().language
+            const lang = get().language || undefined;
+            const normalizedKey = normalizeCharacterId(char.id || char.name, lang);
 
-            acc[key] = {
+            const existing = existingCharData[normalizedKey] || {};
+
+            acc[normalizedKey] = {
               ...char,
-              id: char.id || char.name, // ID is English ID if exists, else Name
+              id: normalizedKey, // Enforce Normalized ID inside object
               // [Fix] Preserve Dynamic Fields from Persistence
               relationship: existing.relationship ?? char.relationship ?? 0,
               memories: existing.memories?.length ? existing.memories : (char.memories || []),
@@ -471,7 +477,35 @@ export const useGameStore = create<GameState>()(
 
       activeCharacters: [],
       deadCharacters: [], // [NEW] Added for death tracking
-      setActiveCharacters: (chars) => set({ activeCharacters: chars }),
+      setActiveCharacters: (chars) => set((state) => {
+        // [New] Fatigue System Tracking
+        // Update 'lastActiveTurn' for all characters currently becoming active.
+        const updates: Record<string, GameCharacterData> = {};
+        const currentTurn = state.turnCount;
+
+        chars.forEach(id => {
+          const normalizedId = normalizeCharacterId(id, state.language || undefined);
+          const existing = state.characterData[normalizedId];
+
+          // Only update if it changes or is new (to avoid infinite re-renders if used in effects, though this is set state)
+          // Actually we MUST update it every turn if they remain active? 
+          // The logic says "turnsSinceExit". So we only need to record the LAST turn they were seen.
+          // If they are active NOW (Turn 10), set lastActiveTurn = 10.
+          // Next turn (Turn 11), if they are NOT active, turnsSinceExit = 11 - 10 = 1.
+          updates[normalizedId] = {
+            ...(existing || { id: normalizedId, name: normalizedId, relationship: 0, memories: [] }),
+            lastActiveTurn: currentTurn
+          };
+        });
+
+        return {
+          activeCharacters: chars,
+          characterData: {
+            ...state.characterData,
+            ...updates
+          }
+        };
+      }),
       addDeadCharacter: (id) => set((state) => ({ deadCharacters: [...(state.deadCharacters || []), id] })),
       currentLocation: '폐가', // Default Wuxia Start (Abandoned House)
       setCurrentLocation: (loc) => set({ currentLocation: loc }),
@@ -500,18 +534,22 @@ export const useGameStore = create<GameState>()(
 
       characterData: {}, // Initialized empty, filled by setGameId
       updateCharacterRelationship: (charId, value) => set((state) => {
-        const char = state.characterData[charId];
-        if (!char) return {};
+        const normalizedId = normalizeCharacterId(charId, state.language || undefined);
+        const char = state.characterData[normalizedId];
+        // Auto-create if missing (Safe Fallback)
+        const effectiveChar = char || { id: normalizedId, name: normalizedId, relationship: 0, memories: [] };
+
         return {
           characterData: {
             ...state.characterData,
-            [charId]: { ...char, relationship: value }
+            [normalizedId]: { ...effectiveChar, relationship: value }
           }
         };
       }),
       addCharacterMemory: (charId, memory) => set((state) => {
-        const currentData = state.characterData[charId] || {
-          id: charId, name: charId, relationship: 0, memories: []
+        const normalizedId = normalizeCharacterId(charId, state.language || undefined);
+        const currentData = state.characterData[normalizedId] || {
+          id: normalizedId, name: normalizedId, relationship: 0, memories: []
         };
         const currentMemories = currentData.memories || [];
 
@@ -521,7 +559,6 @@ export const useGameStore = create<GameState>()(
         let newMemories = [...currentMemories, memory];
 
         // [Safety] Hard Limit Cap to prevent infinite bloat (50 max)
-        // Summarization should happen before this, but this is a failsafe.
         if (newMemories.length > 50) {
           newMemories = newMemories.slice(-50);
         }
@@ -529,7 +566,7 @@ export const useGameStore = create<GameState>()(
         return {
           characterData: {
             ...state.characterData,
-            [charId]: {
+            [normalizedId]: {
               ...currentData,
               memories: newMemories
             }
@@ -538,10 +575,10 @@ export const useGameStore = create<GameState>()(
       }),
       // [NEW] Update Explicit Relationship Status & Speech Style
       updateCharacterRelationshipInfo: (charId, info) => set((state) => {
-        const char = state.characterData[charId];
-        // If character doesn't exist yet, we might want to create it or just return.
-        // Usually should exist if we are interacting. If not, auto-create basic entry.
-        const effectiveChar = char || { id: charId, name: charId, relationship: 0, memories: [] };
+        const normalizedId = normalizeCharacterId(charId, state.language || undefined);
+        const char = state.characterData[normalizedId];
+
+        const effectiveChar = char || { id: normalizedId, name: normalizedId, relationship: 0, memories: [] };
 
         const currentInfo = effectiveChar.relationshipInfo || { status: null, speechStyle: null };
         const newInfo = { ...currentInfo, ...info };
@@ -549,7 +586,7 @@ export const useGameStore = create<GameState>()(
         return {
           characterData: {
             ...state.characterData,
-            [charId]: {
+            [normalizedId]: {
               ...effectiveChar,
               relationshipInfo: newInfo
             }
@@ -557,12 +594,13 @@ export const useGameStore = create<GameState>()(
         };
       }),
       updateCharacterData: (id, data) => set((state) => {
-        const existingChar = state.characterData[id];
+        const normalizedId = normalizeCharacterId(id, state.language || undefined);
+        const existingChar = state.characterData[normalizedId];
         if (!existingChar) return {};
         return {
           characterData: {
             ...state.characterData,
-            [id]: { ...existingChar, ...data }
+            [normalizedId]: { ...existingChar, ...data }
           }
         };
       }),

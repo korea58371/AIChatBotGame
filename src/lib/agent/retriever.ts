@@ -50,7 +50,7 @@ export class AgentRetriever {
                 context += `- ${candidate.name} (${charData.title})${strongTag}\n  Identity: ${desc} | Faction: ${faction} | Rank: ${rank}\n  Appearance: ${appearance}\n  Personality: ${pVal}\n  Speech: ${speechStyle}\n`;
 
                 if (isStrong) {
-                    context += `  >> INSTRUCTION: This character has a high relevance score (${candidate.score}). You MUST actively foreshadow (bait) or introduce them if the scene allows.\n`;
+                    context += `  >> INSTRUCTION: This character has a high relevance score (${candidate.score}). Consider introducing them if it advances the plot. Avoid repetitive entry/exit patterns.\n`;
                 }
 
                 // [NEW] Memory Injection (Top 3) - Dynamic State Lookup

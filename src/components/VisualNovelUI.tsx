@@ -11,6 +11,7 @@ import { isHiddenProtagonist } from '@/lib/utils/character-utils';
 import { resolveBackground } from '@/lib/background-manager';
 import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
 import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/model-config';
+import { normalizeCharacterId } from '@/lib/utils/character-id'; // [NEW] ID Normalization
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
@@ -1074,27 +1075,29 @@ export default function VisualNovelUI() {
                     try {
                         const data = JSON.parse(nextSegment.content);
                         if (data.charId && data.value) {
+                            // [Fix] Normalize ID
+                            const canonicalId = normalizeCharacterId(data.charId, useGameStore.getState().language || 'ko');
                             const val = Number(data.value);
-                            console.log(`[Command] Update Rel: ${data.charId} += ${val}`);
+                            console.log(`[Command] Update Rel: ${canonicalId} (User: ${data.charId}) += ${val}`);
 
                             // [Fix] Update PlayerStats (Primary Data Source for UI)
                             const currentStats = useGameStore.getState().playerStats;
-                            const currentRel = currentStats.relationships[data.charId] || 0;
+                            const currentRel = currentStats.relationships[canonicalId] || 0;
                             const newRel = currentRel + val;
 
                             useGameStore.getState().setPlayerStats({
                                 relationships: {
                                     ...currentStats.relationships,
-                                    [data.charId]: newRel
+                                    [canonicalId]: newRel
                                 }
                             });
 
                             // [Fix] Sync CharacterData (Secondary)
-                            useGameStore.getState().updateCharacterRelationship(data.charId, newRel);
+                            useGameStore.getState().updateCharacterRelationship(canonicalId, newRel);
 
                             // Try to resolve name for toast
-                            const charData = useGameStore.getState().characterData[data.charId];
-                            const name = charData ? charData.name : data.charId;
+                            const charData = useGameStore.getState().characterData[canonicalId];
+                            const name = charData ? charData.name : canonicalId;
                             addToast(`${name} 호감도 ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
                         }
                     } catch (e) {
@@ -1833,8 +1836,9 @@ export default function VisualNovelUI() {
                                     try {
                                         const d = JSON.parse(seg.content || '{}');
                                         if (d.charId && d.value) {
+                                            const normalizedId = normalizeCharacterId(d.charId, useGameStore.getState().language || 'ko');
                                             const val = Number(d.value);
-                                            futureTagSum.relationships[d.charId] = (futureTagSum.relationships[d.charId] || 0) + val;
+                                            futureTagSum.relationships[normalizedId] = (futureTagSum.relationships[normalizedId] || 0) + val;
                                         }
                                     } catch (e) { }
                                 }
@@ -2861,7 +2865,9 @@ export default function VisualNovelUI() {
         // Relationships
         if (logicResult.relationshipChange) {
             logicResult.relationshipChange.forEach((rel: any) => {
-                newStats.relationships[rel.characterId] = (newStats.relationships[rel.characterId] || 0) + rel.change;
+                // [Fix] Normalize ID
+                const normalizedId = normalizeCharacterId(rel.characterId);
+                newStats.relationships[normalizedId] = (newStats.relationships[normalizedId] || 0) + rel.change;
             });
         }
 
@@ -2914,6 +2920,18 @@ export default function VisualNovelUI() {
             }
 
             if (changed) {
+                // [Sanitization] Auto-clean invalid injuries (Psychological, duplicates)
+                const INVALID_KEYWORDS = ['심리적', '정신적', '공포', '두려움', '위축', '긴장', '불안', '경직', '뻐근함'];
+                currentInjuries = currentInjuries.filter(inj => {
+                    // 1. Check Blacklist
+                    if (INVALID_KEYWORDS.some(kw => inj.includes(kw))) return false;
+                    // 2. Check Empty/Short
+                    if (!inj || inj.trim().length < 2) return false;
+                    return true;
+                });
+                // Deduplicate
+                currentInjuries = Array.from(new Set(currentInjuries));
+
                 newStats.active_injuries = currentInjuries;
                 hasInjuryChanges = true;
             }
@@ -3122,17 +3140,20 @@ export default function VisualNovelUI() {
         // Character Updates (Bio & Memories)
         if (logicResult.characterUpdates && logicResult.characterUpdates.length > 0) {
             logicResult.characterUpdates.forEach((char: any) => {
+                // [Fix] Normalize ID
+                const normalizedId = normalizeCharacterId(char.id, useGameStore.getState().language || 'ko');
+                const updateData = { ...char, id: normalizedId };
+
                 // If memories are provided, they REPLACE the old list (AI manages the list)
                 // Otherwise, keep existing memories
-                const updateData = { ...char };
                 if (!updateData.memories) {
                     delete updateData.memories; // Don't overwrite with undefined
                 } else {
-                    addToast(`Memories Updated: ${char.name}`, 'info');
+                    addToast(`Memories Updated: ${normalizedId}`, 'info');
                 }
 
-                useGameStore.getState().updateCharacterData(char.id, updateData);
-                if (!updateData.memories) addToast(`Character Updated: ${char.name}`, 'info');
+                useGameStore.getState().updateCharacterData(normalizedId, updateData);
+                if (!updateData.memories) addToast(`Character Updated: ${normalizedId}`, 'info');
             });
         }
 

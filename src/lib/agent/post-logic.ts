@@ -102,6 +102,8 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - If the text says "Your arm is better", and active_injuries has "Fractured Left Arm" -> **MATCH** (Resolve it).
     - If the text says "You feel healthy again", and active_injuries has ["Internal Injury", "Bruise"] -> **MATCH ALL** (Resolve both).
     - If the text implies **Functional Recovery** (e.g., Player runs fast despite "Broken Leg"), assume it healed during the time skip -> **MATCH** (Resolve "Broken Leg").
+    - **Auto-Resolve Minor**: If an active injury is minor (e.g., "Bruise", "Contusion", "Slight Pain") and is **NOT mentioned** in the current text, mark it as RESOLVED.
+      - Reason: Minor injuries fade quickly if not aggravated.
   - OUTPUT: "resolved_injuries": [${t.부상_회복_예시}]
   - **Note**: You do not need an exact string match if the *meaning* is clear.
   - **STRICT RULE**: If you cannot find a matching injury to heal, return an empty list.
@@ -117,7 +119,8 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - **Target**: **ONLY** record injuries for the **Player ({playerName})**. Do not record injuries for NPCs here.
   - **Threshold**: Only record **SIGNIFICANT** physical damage. 
     - **INCLUDE**: Cuts, Fractures, Internal Injuries, Poison, Burns, Deep Wounds, "Backlash" (Ju-hwa-ip-ma).
-    - **EXCLUDE**: Scratches, Bruises, Muscle Aches, Fatigue, "Feeling weak".
+    - **EXCLUDE**: Scratches, Bruises, Muscle Aches, Fatigue, "Feeling weak", "Stiffness", "Numbness".
+    - **FORBIDDEN (Mental)**: Do NOT record psychological states as injuries. (e.g., "Psychological Atrophy", "Mental Shock", "Fear", "Tension"). These belong in 'mood' or 'personality', NOT 'active_injuries'.
   - **Format**: Be descriptive but concise. ${t.부상_설명_예시}.
   - **Ambiguity Rule**: If you are not 100% sure it is a lasting injury, **IGNORE IT**.
   - **Language Rule**: Output **ONLY** in the target language (Korean). **absolutley DO NOT** include the English name in parentheses.
@@ -324,7 +327,8 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 }
 [Critically Important]
 - **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'character_memories', 'factionChange', 'playerRank') MUST be in KOREAN (한국어).
-- For 'activeCharacters', list EVERY character ID that speaks or performs an action in the text.
+- For 'activeCharacters', list EVERY character ID that is **CURRENTLY PRESENT** at the **END** of the turn.
+  - **CRITICAL EXCLUSION**: If a character explicitly **LEAVES**, **EXITS**, or **DISAPPEARS** during the turn, **DO NOT** include them in this list.
 - For 'character_memories', extract 1 key memory per active character if they had significant interaction with the player this turn.
 - For 'dead_character_ids', list IDs of ANY character who died or was permanently incapacitated/killed in this turn.
 - The 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.

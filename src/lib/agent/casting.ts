@@ -24,9 +24,10 @@ export class AgentCasting {
     private static readonly REGION_MISMATCH_PENALTY = 0.2; // [NEW] Soft Filter
     private static readonly LIFECYCLE_PENALTY = 0.1; // [NEW] Soft Filter for Phase
     private static readonly TAG_BONUS = 0.5;
-    private static readonly RELATIONSHIP_BONUS = 1.0; // [NEW] Bonus for existing relationships
+    private static readonly RELATIONSHIP_BONUS = 4.0; // [NEW] Significant bonus for existing relationships
     private static readonly USER_MENTION_BONUS = 10.0; // [CRITICAL] Force include if mentioned
     private static readonly CONTEXT_MENTION_BONUS = 5.0; // [NEW] Narrative consistency
+    private static readonly LOCATION_TAG_BONUS = 2.0; // [NEW] Bonus if tag matches location
     private static readonly THRESHOLD = 0.01; // [Modified] Low threshold for multi-tiered filtering
 
     static async analyze(
@@ -49,16 +50,27 @@ export class AgentCasting {
 
         // Helper: Parse Rank
         const getRankFromString = (rankStr: string): number => {
-            if (!rankStr) return 0;
-            if (rankStr.includes('현경') || rankStr.includes('신화') || rankStr.includes('SS')) return 7;
-            if (rankStr.includes('화경') || rankStr.includes('탈각') || rankStr.includes('S')) return 6;
-            if (rankStr.includes('초절정') || rankStr.includes('A')) return 5;
-            if (rankStr.includes('절정') || rankStr.includes('B')) return 4;
-            if (rankStr.includes('일류') || rankStr.includes('C')) return 3;
-            if (rankStr.includes('이류') || rankStr.includes('D')) return 2;
-            if (rankStr.includes('삼류') || rankStr.includes('E') || rankStr.includes('F')) return 1;
-            if (rankStr.includes('삼류') || rankStr.includes('E') || rankStr.includes('F')) return 1;
-            return 0;
+            if (!rankStr) return 1; // Default min
+            if (rankStr.includes('현경') || rankStr.includes('신화') || rankStr.includes('SS')) return 8; // Increased granularity
+            if (rankStr.includes('화경') || rankStr.includes('탈각') || rankStr.includes('S')) return 7;
+            if (rankStr.includes('초절정') || rankStr.includes('A')) return 6;
+            if (rankStr.includes('절정') || rankStr.includes('B')) return 5;
+            if (rankStr.includes('일류') || rankStr.includes('C')) return 4;
+            if (rankStr.includes('이류') || rankStr.includes('D')) return 3;
+            if (rankStr.includes('삼류') || rankStr.includes('E')) return 2;
+            if (rankStr.includes('일반') || rankStr.includes('F')) return 1;
+            return 1; // Default min
+        };
+
+        // Helper: Get Rank from Level (Aligned with getRankFromString)
+        const getRankFromLevel = (level: number): number => {
+            if (level >= 80) return 7; // S
+            if (level >= 60) return 6; // A
+            if (level >= 40) return 5; // B
+            if (level >= 30) return 4; // C
+            if (level >= 20) return 3; // D
+            if (level >= 10) return 2; // E
+            return 1; // F
         };
 
         // [MODIFIED] Use GameState provided characters instead of hardcoded Wuxia imports
@@ -83,7 +95,7 @@ export class AgentCasting {
 
 
             const kName = cAny.이름 || cAny.name || cAny.profile?.이름 || cAny.profile?.name || id;
-            const rankStr = cAny.강함?.등급 || cAny.profile?.등급 || cAny.등급 || "삼류";
+            const rankStr = cAny.강함?.등급 || cAny.profile?.등급 || cAny.등급 || "F급";
             const charLevel = getRankFromString(rankStr);
 
             // --- Base Scoring (Common) ---
@@ -108,94 +120,84 @@ export class AgentCasting {
                 baseReasons.push(`Base (0.5)`);
             }
 
-            // Condition 2: Crisis Intervention (Values 'Righteous' or 'Main')
-            // If player is dying, someone MUST save them.
-            if (playerHpPct < 30) {
-                const isRighteous = cAny.profile?.성향?.includes('정파') || cAny.profile?.alignment?.includes('Good');
-                if (mainCharacterIds.has(id) || isRighteous) {
-                    baseScore += 5.0; // Crisis Savior Bonus
-                    baseReasons.push(`Crisis Intervention Protocol (+5.0)`);
-                }
-            }
-
-            // Region Logic
-            const region = cAny.profile?.거주지 || cAny.region || "";
-            // const regionReasons: string[] = []; // Removed separate array to unify
-            if (fullLocation.includes(region)) {
-                baseScore += 1.0;
-                baseReasons.push("Base Region Match (+1.0)");
-            }
-
-            // --- Active Scoring ---
+            // --- Active Scoring (For Scene Participation) ---
             let actScore = baseScore;
             const actReasons: string[] = [...baseReasons];
 
-            // 1. Rank Penalty (Moved to End)
-
-            // 2. Location/Tag Bonus (Active)
-            const affiliationStr = cAny.profile?.소속 || cAny.소속 || "";
-            if (affiliationStr && fullLocation && (fullLocation.includes(affiliationStr) || affiliationStr.includes(fullLocation))) {
-                actScore += 3.0; // User Request: +3.0
-                actReasons.push("Location/Tag Match (+3.0)");
+            // 1. User Input Resonance (Top Priority)
+            if (userInput.includes(kName) || userInput.includes(id)) {
+                actScore += AgentCasting.USER_MENTION_BONUS;
+                actReasons.push(`User Mentioned (+${AgentCasting.USER_MENTION_BONUS})`);
             }
 
-            // 3. Affection/Relation (Active)
-            // if (userInput.includes(kName)) {
-            //    actScore += 10.0;
-            //    actReasons.push("User Mentioned (+10.0)");
-            // }
-
-            // [Refinement] Removed redundant logging block since we added it above directly
-            // ...
-
-            // 4. Tag Resonance (Active) [NEW]
-            let tags = [...(cAny.system_logic?.tags || [])];
-
-            // [Auto-Include] Affiliation & Nicknames as Tags
-            if (cAny.profile?.소속) {
-                const affiliationTags = cAny.profile.소속.split(/[\/,]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-                tags.push(...affiliationTags);
-            }
-            if (cAny.profile?.별명) {
-                const nicknameTags = cAny.profile.별명.split(/[\/,]/).map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-                tags.push(...nicknameTags);
+            // 2. Summary/Context Resonance
+            if (summary.includes(kName)) {
+                actScore += AgentCasting.CONTEXT_MENTION_BONUS;
+                actReasons.push(`Context Mentioned (+${AgentCasting.CONTEXT_MENTION_BONUS})`);
             }
 
-            if (tags.length > 0) {
-                for (const tag of tags) {
-                    if (!tag) continue;
-                    // [Fix] Balance Issue: Single character tags (e.g. '공', '용', '일') trigger too easily.
-                    // Ignore them unless specifically whitelisted (none for now).
-                    if (tag.length < 2) continue;
+            // 3. Location/Region Logic
+            const region = cAny.profile?.거주지 || cAny.profile?.소속 || cAny.활동지역 || "";
+            const affiliationStr = cAny.profile?.소속 || "";
 
-                    // User Input Match (Strong)
-                    if (userInput.includes(tag)) {
-                        actScore += 1.5;
-                        actReasons.push(`Tag Resonance [${tag}] (User) (+1.5)`);
-                    }
-                    // Summary Match (Weak) - only if not already matched by user input to avoid double counting? 
-                    // Let's allow stacking but maybe smaller weight or just distinct reasons.
-                    else if (summary.includes(tag)) {
-                        actScore += 0.5;
-                        actReasons.push(`Tag Resonance [${tag}] (Story) (+0.5)`);
-                    }
+            // Normalize for comparison
+            const locNorm = fullLocation.replace(/_/g, " ");
+
+            if (locNorm && region && locNorm.includes(region)) {
+                actScore += 2.0;
+                actReasons.push("Region Match (+2.0)");
+            } else if (region === 'Korea' || region === '무림' || region === 'Everywhere') {
+                // Generic region match (weak)
+                actScore += 0.2;
+                actReasons.push("Broad/Wildcard Region (+0.2)");
+            }
+
+            // 4. Tag Resonance
+            // [Fix] Weighted tags?
+            const tags = cAny.system_logic?.tags || [];
+            let tagScore = 0;
+            for (const tag of tags) {
+                if (userInput.includes(tag)) {
+                    tagScore += 1.5; // Strong resonance
+                    actReasons.push(`Tag Resonance [User] (+1.5)`);
+                }
+                if (summary.includes(tag)) {
+                    tagScore += 0.5;
+                    actReasons.push(`Tag Resonance [Context] (+0.5)`);
+                }
+                // [NEW] Location Context Tag
+                // If current location contains the tag (e.g. "Convenience Store"), gives bonus
+                if (locNorm.includes(tag)) {
+                    tagScore += AgentCasting.LOCATION_TAG_BONUS;
+                    actReasons.push(`Location Tag Match [${tag}] (+${AgentCasting.LOCATION_TAG_BONUS})`);
+                }
+            }
+            actScore += tagScore;
+
+            // 5. Existing Relationship Bonus (Critical for Early Game Friends)
+            const relationships = cAny.인간관계 || cAny.relationships || {};
+            // Check for explicit "주인공" or "Player" key in relationships
+            // Or look for keywords in values if needed, but Key is safest.
+            const hasDirectRelation = relationships['주인공'] || relationships['Player'] || relationships['player'];
+
+            if (hasDirectRelation) {
+                actScore += AgentCasting.RELATIONSHIP_BONUS;
+                actReasons.push(`Existing Relationship (+${AgentCasting.RELATIONSHIP_BONUS})`);
+            }
+
+
+            // 6. Crisis Intervention (High Level Characters)
+            // If player HP is low < 30%, summon Help
+            // Only if Alignment is Good
+            if (playerHpPct < 30) {
+                // Check alignment... simplified
+                if (!tags.includes('마교') && charLevel >= 4) { // B-Rank or higher
+                    actScore += 3.0; // Savior bonus
+                    actReasons.push(`Crisis Intervention (+3.0)`);
                 }
             }
 
-            // RELATION CHECK
-            const activeCharIdsArr = Array.from(activeCharIds);
-            const relations = cAny.인간관계 || {};
-            for (const activeId of activeCharIdsArr) {
-                if (relations[activeId]) {
-                    actScore += 2.0;
-                    actReasons.push(`Related to ${activeId}`);
-                }
-            }
-
-
-            // -----------------------------------------------------------------------
             // 7. [NEW] Early Game Helper Bias (Opposite Sex + Righteous)
-            // -----------------------------------------------------------------------
             const playerGender = gameState.playerStats?.gender || 'male';
             const isEarlyGame = (gameState.turnCount || 0) < 30;
 
@@ -207,45 +209,99 @@ export class AgentCasting {
                 const isSapa = region?.home?.includes('사파') || region?.home?.includes('패천맹') || tags.includes('녹림') || tags.includes('악당');
 
                 const isRighteous = !isMagyo && !isSapa;
-                const charGender = cAny.profile?.성별 || '남성'; // Default to male if unknown
+
+                // [FIX] Gender Inference Fallback
+                let charGender = cAny.profile?.성별;
+
+                if (!charGender) {
+                    // Try to infer from Tags or Title
+                    const indicators = (cAny.title || "") + " " + tags.join(" ");
+                    if (indicators.match(/여성|소녀|누나|언니|여제|성녀|마녀|퀸카|히로인|Lady|Girl|Princess/i)) {
+                        charGender = '여성';
+                    } else if (indicators.match(/남성|소년|형|오빠|황제|왕|Hero|Boy/i)) {
+                        charGender = '남성';
+                    } else {
+                        charGender = '남성'; // Ultimate default
+                    }
+                }
 
                 if (isRighteous && charGender === targetGender) {
                     actScore += 3.0;
                     actReasons.push(`Early Game Companion (${charGender} Righteous)`);
+                } else {
+                    // Debug Log for missed companion (Only log if score is relatively high to reduce noise)
+                    if (baseScore >= 1.5) {
+                        // actReasons.push(`Debug: Missed Companion (G:${charGender} vs T:${targetGender}, R:${isRighteous})`);
+                    }
                 }
             }
 
+
+            // 7.5. [NEW] Progressive Fatigue (Cooldown) System
+            // Prevents characters from "flickering" (Exit -> Immediate Re-entry)
+            const lastActive = gameState.characterData?.[id]?.lastActiveTurn;
+            // Only apply if they are NOT currently active (we don't penalize staying in scene)
+            if (lastActive !== undefined && !activeCharIds.has(id.toLowerCase())) {
+                const turnsSinceExit = turnCount - lastActive;
+
+                // Exceptions: 
+                // 1. User explicitly mentioned them (Strong Narrative Demand)
+                // 2. We are at their "Home" (e.g. Store Clerk at Store)
+                const isUserDemand = userInput.includes(kName) || userInput.includes(id);
+                // "isHomeGround" is not fully calculated here yet, but we have 'region' and 'locNorm'
+                const isHome = locNorm && region && locNorm.includes(region);
+
+                if (!isUserDemand) {
+                    if (turnsSinceExit <= 1) {
+                        // Just left 1 turn ago. Heavy Penalty.
+                        // Unless it's their Home, then slight penalty (maybe they just went to back room)
+                        if (isHome) {
+                            actScore *= 0.5;
+                            actReasons.push(`Fatigue (Home, 1T) (x0.5)`);
+                        } else {
+                            actScore *= 0.1;
+                            actReasons.push(`Fatigue (Exit 1T ago) (x0.1)`);
+                        }
+                    } else if (turnsSinceExit === 2) {
+                        // Left 2 turns ago. Moderate Penalty.
+                        actScore *= 0.5;
+                        actReasons.push(`Fatigue (Exit 2T ago) (x0.5)`);
+                    } else {
+                        // 3+ turns: Recovered. No Penalty.
+                        // actReasons.push(`Fatigue Recovered (3T+)`);
+                    }
+                } else {
+                    actReasons.push(`Fatigue Bypassed (User Demand)`);
+                }
+            }
 
             // -----------------------------------------------------------------------
             // 8. FINAL: Rank Penalty (Dynamic)
             // -----------------------------------------------------------------------
             // Apply AFTER all bonuses to strictly gate content.
-            const pRankVal = AgentCasting.getRankFromLevel(playerLevel);
+            const pRankVal = getRankFromLevel(playerLevel);
             const rankGap = charLevel - pRankVal;
 
             // [New Formula] Penalty = 1 / (Gap * 2)
-            // e.g. Gap 2 -> 1/4 = 0.25
-            // e.g. Gap 3 -> 1/6 = 0.16
+            // e.g. Gap 2 -> 1/4 = 0.25 (Only 25% of score remains)
             // e.g. Gap 4 -> 1/8 = 0.125
-            if (rankGap >= 2) {
-                // Too Strong (Anti-Bullying)
-                // Exception: If explicitly mentioned by user, we allow it slightly more (already +10 bonus).
+
+            // Only apply penalty if the character wasn't explicitly mentioned or in crisis.
+            const isUserInvoked = actReasons.some(r => r.includes('User Mentioned'));
+            const isCrisis = actReasons.some(r => r.includes('Crisis'));
+
+            if (!isUserInvoked && !isCrisis && rankGap >= 2) {
+                // Too Strong (Anti-Bullying/Gating)
                 const penaltyMp = 1.0 / (rankGap * 2.0);
                 actScore *= penaltyMp;
-                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Strong] (x${penaltyMp.toFixed(2)})`);
-            } else if (rankGap <= -2) {
-                // Too Weak
-                // Use same formula for symmetry or keep static?
-                // User said "The bigger the difference, the lower the probability".
-                // Let's apply symmetric logic for purely keeping balance, but usually weaklings are fine fodder.
-                // However, "Too Weak" was 0.5. Let's keep it 0.5 for now unless user asked for symmetric.
-                // User input: "grade difference... probability drops" implies both ways, but context usually implies "Too Strong".
-                // Let's stick to the specific request formula for "Gap".
-                // Assuming absolute gap for now.
+                actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Penalty (x${penaltyMp.toFixed(2)})`);
+            } else if (!isUserInvoked && rankGap <= -3) {
+                // Too Weak (Fodder) - Only separate if gap is huge
+                // Gap -3 (e.g. Player A vs F)
                 const absGap = Math.abs(rankGap);
-                const penaltyMp = 1.0 / (absGap * 2.0);
+                const penaltyMp = 1.0 / (absGap * 1.5);
                 actScore *= penaltyMp;
-                actReasons.push(`Rank Gap(${rankGap}) Penalty [Too Weak] (x${penaltyMp.toFixed(2)})`);
+                actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Penalty [Weak] (x${penaltyMp.toFixed(2)})`);
             }
 
 
@@ -262,11 +318,17 @@ export class AgentCasting {
             }
 
             // 3. Active Relation Bonus for Background too
-            for (const activeId of activeCharIdsArr) {
-                if (relations[activeId]) {
+            for (const activeId of activeCharIds) {
+                if (relationships[activeId]) {
                     bgScore += 2.0;
-                    bgReasons.push(`Related to ${activeId}`);
+                    bgReasons.push(`Related to Active(${activeId})`);
                 }
+            }
+
+            // 4. Background specific Relationship Bonus
+            if (hasDirectRelation) {
+                bgScore += AgentCasting.RELATIONSHIP_BONUS;
+                bgReasons.push(`Existing Relationship (+${AgentCasting.RELATIONSHIP_BONUS})`);
             }
 
             allCandidates.push({
@@ -312,7 +374,8 @@ export class AgentCasting {
                 r.includes("User Mentioned") ||
                 r.includes("Context Mentioned") ||
                 r.includes("Tag Match") ||
-                r.includes("Region Match") // [Fix] Allow simple region matches
+                r.includes("Region Match") ||
+                r.includes("Existing Relationship") // [Fix] Include Relationship
             );
             // Special case: If score is very high (e.g. > 3.0), keep it even if reason logic misses (shouldn't happen but safeguard)
             // Also allow if we don't have enough candidates? No, better to have valid ones.
@@ -359,27 +422,11 @@ export class AgentCasting {
     }
 
     // Helper Methods (if needed to restore deleted ones)
-    static getRankFromLevel(level: number): number {
-        if (level >= 80) return 7;
-        if (level >= 60) return 6;
-        if (level >= 40) return 5;
-        if (level >= 30) return 4;
-        if (level >= 20) return 3;
-        if (level >= 10) return 2;
-        if (level >= 1) return 1;
-        return 0;
-    }
-
-    static parseRank(rankStr: string): number {
-        if (!rankStr) return 0;
-        if (rankStr.includes('현경') || rankStr.includes('신화') || rankStr.includes('SS')) return 7;
-        if (rankStr.includes('화경') || rankStr.includes('탈각') || rankStr.includes('S')) return 6;
-        if (rankStr.includes('초절정') || rankStr.includes('A')) return 5;
-        if (rankStr.includes('절정') || rankStr.includes('B')) return 4;
-        if (rankStr.includes('일류') || rankStr.includes('C')) return 3;
-        if (rankStr.includes('이류') || rankStr.includes('D')) return 2;
-        if (rankStr.includes('삼류') || rankStr.includes('E') || rankStr.includes('F')) return 1;
-        return 0;
-    }
+    // The getRankFromLevel and parseRank methods are now local to analyze for consistency with the instruction.
+    // If they were intended to be static, they should be moved outside analyze.
+    // For now, I'm keeping the static ones as they were, and the instruction's versions are local.
+    // However, the instruction's `getRankFromLevel` is used as `getRankFromLevel(playerLevel)` which implies a local function.
+    // The original static `getRankFromLevel` and `parseRank` are now redundant if the local ones are used.
+    // To avoid confusion, I will remove the old static `getRankFromLevel` and `parseRank` and assume the new local ones are the intended helpers.
+    // If the user wants them static, they should specify.
 }
-

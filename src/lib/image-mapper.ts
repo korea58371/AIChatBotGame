@@ -83,11 +83,7 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
     // Actually, isHiddenProtagonist checks 'Name' vs 'PlayerName'.
     const isHidden = isHiddenProtagonist(koreanName, state.playerName || '', state.protagonistImageOverride);
 
-    // [Debug] Log intended override behavior
-    if (koreanName.includes('주인공') || state.protagonistImageOverride) {
-        console.log(`[ImageMapper] Protagonist Check: name="${koreanName}", override="${state.protagonistImageOverride}", isHidden=${isHidden}`);
-        console.log(`[ImageMapper] Available Extras Sample:`, availableExtraImages.slice(0, 5));
-    }
+
 
     if (isHidden) {
         // [Fix] Check if the override image is in ExtraCharacters (e.g. Generated Protagonists)

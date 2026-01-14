@@ -152,6 +152,15 @@ ${retrievedContext}
 ${userInput}
 
 나레이션 가이드와 기존 설정 및 규칙을 참고하여 6000자 분량의 내용을 작성하세요.
+
+[Thinking Process Required]
+답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
+1. 현재 상황(Context)과 모순되는 점이 없는가?
+2. 등장인물의 말투(Speech Pattern)는 설정과 일치하는가?
+3. 이번 턴의 주요 사건(Key Events)은 무엇인가?
+4. 캐릭터들의 기억 정보와 현재 네러티브의 개연성/핍진성이 유지되는가?
+
+그 후, <Output> 태그 안에 본문을 작성하세요.
 `;
 
         // [Critical] Scrub <선택지> tags from History to prevent the model from learning to generate them again.
@@ -177,7 +186,19 @@ ${userInput}
         const t5 = Date.now();
 
         // Scrubbing
-        let cleanStoryText = storyResult.text
+        // [Thinking/Output Parsing]
+        let rawText = storyResult.text || "";
+
+        // 1. Extract <Output> content if present
+        const outputMatch = rawText.match(/<Output>([\s\S]*?)<\/Output>/i);
+        if (outputMatch && outputMatch[1]) {
+            rawText = outputMatch[1];
+        } else {
+            // Fallback: Remove <Thinking> tags if Output tag is missing
+            rawText = rawText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '').trim();
+        }
+
+        let cleanStoryText = rawText
             .replace(/\[Stat[^\]]*\]/gi, '')
             .replace(/<Stat[^>]*>/gi, '')
             .replace(/\[Rel[^\]]*\]/gi, '')
