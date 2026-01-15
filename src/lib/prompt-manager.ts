@@ -5,6 +5,7 @@ import { GameState } from './store';
 import { LEVEL_TO_REALM_MAP, FAME_TITLES } from '../data/games/wuxia/constants';
 import { LEVEL_TO_RANK_MAP } from '../data/games/god_bless_you/constants';
 import { translations } from '../data/translations';
+import wuxiaLocations from '../data/games/wuxia/jsons/locations.json';
 
 interface SpawnRules {
     locations?: string[];
@@ -863,7 +864,33 @@ ${spawnCandidates || "None"}
     static getAvailableBackgrounds(state: GameState): string {
         // [Universal] Support for Key-based Mappings (Wuxia & GBY)
         if (state.backgroundMappings && Object.keys(state.backgroundMappings).length > 0) {
-            const keys = Object.keys(state.backgroundMappings).sort();
+            let keys = Object.keys(state.backgroundMappings).sort();
+
+            // [Wuxia Region Localization]
+            // If we are in Wuxia and have a valid Region, we "Localize" the generic keys
+            // to guide the AI to use <배경>Region_Key format.
+            if (state.activeGameId === 'wuxia') {
+                const region = PromptManager.resolveWuxiaRegion(state.currentLocation);
+                if (region) {
+                    keys = keys.map(key => {
+                        // 1. "공용_" -> Replace with "Region_" (e.g. 공용_특실 -> 하남_특실)
+                        if (key.startsWith('공용_')) {
+                            return `${region}_${key.substring(3)}`;
+                        }
+                        // 2. Generic Categories -> Prepend "Region_" (e.g. 객잔_객실 -> 하남_객잔_객실)
+                        // Categories: 객잔, 기루, 마을, 산, 강호, 의원, 상점 etc.
+                        // We filter by common prefixes that are NOT specific place names.
+                        const genericPrefixes = ['객잔', '기루', '마을', '산', '강호', '시장', '저잣거리', '빈객실', '감옥'];
+                        const startsWithGeneric = genericPrefixes.some(p => key.startsWith(p));
+
+                        if (startsWithGeneric) {
+                            return `${region}_${key}`;
+                        }
+
+                        return key;
+                    });
+                }
+            }
 
             // Group by Prefix (e.g. "객잔_")
             const groups: Record<string, string[]> = {};
@@ -1482,5 +1509,35 @@ ${spawnCandidates || "None"}
         }
 
         return lines.join('\n');
+    }
+
+    private static resolveWuxiaRegion(currentLocation: string): string | null {
+        if (!currentLocation) return null;
+
+        // locations.json Structure: { regions: { "하남": { zones: { "무림맹": ... } } } }
+        // We iterate regions to find if currentLocation matches a Zone or Spot.
+
+        const regions = wuxiaLocations.regions || {};
+
+        for (const [regionName, regionData] of Object.entries(regions)) {
+            const zones = (regionData as any).zones || {};
+
+            // Check Zones
+            for (const [zoneName, zoneData] of Object.entries(zones)) {
+                // 1. Exact Zone Match (e.g. "무림맹")
+                if (currentLocation.includes(zoneName)) return regionName;
+
+                // 2. Spot Match
+                const spots = (zoneData as any).spots || [];
+                if (spots.some((spot: string) => currentLocation.includes(spot))) {
+                    return regionName;
+                }
+            }
+
+            // 3. Fallback: Check if location string simply starts with Region name
+            if (currentLocation.startsWith(regionName)) return regionName;
+        }
+
+        return null;
     }
 }

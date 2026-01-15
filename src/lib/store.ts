@@ -24,6 +24,8 @@ export interface GameState {
   activeGameId: string;
   setGameId: (id: string) => Promise<void>;
   isDataLoaded: boolean;
+  isHydrated: boolean; // [NEW] Track IDB Rehydration status
+  setHydrated: (hydrated: boolean) => void;
 
   // Event System State
   triggeredEvents: string[];
@@ -52,6 +54,10 @@ export interface GameState {
 
   currentBgm: string | null; // [New] Persisted BGM State
   setBgm: (bgm: string | null) => void;
+  bgmVolume: number; // 0.0 to 1.0
+  setBgmVolume: (vol: number) => void;
+  sfxVolume: number; // 0.0 to 1.0
+  setSfxVolume: (vol: number) => void;
 
   characterExpression: string;
   setCharacterExpression: (expr: string) => void;
@@ -328,6 +334,9 @@ export const useGameStore = create<GameState>()(
       activeGameId: 'god_bless_you', // Default
       storyModel: MODEL_CONFIG.STORY, // Default to Configured Model
       isDataLoaded: false,
+      isHydrated: false, // Start false
+
+      setHydrated: (hydrated) => set({ isHydrated: hydrated }),
 
       setStoryModel: (model) => set({ storyModel: model }),
 
@@ -466,6 +475,10 @@ export const useGameStore = create<GameState>()(
 
       currentBgm: null,
       setBgm: (bgm) => set({ currentBgm: bgm }),
+      bgmVolume: 0.5,
+      setBgmVolume: (vol) => set({ bgmVolume: Math.max(0, Math.min(1, vol)) }),
+      sfxVolume: 0.5,
+      setSfxVolume: (vol) => set({ sfxVolume: Math.max(0, Math.min(1, vol)) }),
 
       characterExpression: 'normal',
       setCharacterExpression: (expr) => set({ characterExpression: expr }),
@@ -792,6 +805,9 @@ export const useGameStore = create<GameState>()(
           deadCharacters: [], // [Fix] Add missing reset for dead characters
           isGodMode: false, // [Fix] Reset debug mode
           currentBgm: null, // [Fix] Reset BGM
+          // Keep volume settings across resets (User might have set them)
+          // bgmVolume: 0.5, 
+          // sfxVolume: 0.5,
           personaOverride: undefined,
           scenarioOverride: undefined,
           disabledEvents: [],
@@ -899,8 +915,10 @@ export const useGameStore = create<GameState>()(
       },
       onRehydrateStorage: () => (state) => {
         console.log("[Store] Rehydration Finished.", state ? "Success" : "No State");
-        // [Fix] Do NOT force isDataLoaded: true. 
-        // We need VisualNovelUI to trigger setGameId to re-bind non-persisted functions.
+        // [Fix] Signal availability using the Store Instance directly
+        // 'state' here is the rehydrated JSON (no methods), so state.setHydrated is undefined.
+        // We must reach into the store to set the flag on the opaque state.
+        useGameStore.getState().setHydrated(true);
       }
     }
   )

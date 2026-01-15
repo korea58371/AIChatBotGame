@@ -6,8 +6,15 @@ import { useGameStore } from '@/lib/store';
 let globalAudioInstance: HTMLAudioElement | null = null;
 
 export function useVNAudio(currentBgm: string | null) {
-    // We do not need a local ref anymore if we use the singleton
-    // But to force re-renders or safety, we can keep using the hook structure.
+    const bgmVolume = useGameStore(state => state.bgmVolume);
+    const sfxVolume = useGameStore(state => state.sfxVolume);
+
+    // [New] Dynamic Volume Update Effect
+    useEffect(() => {
+        if (globalAudioInstance) {
+            globalAudioInstance.volume = bgmVolume;
+        }
+    }, [bgmVolume]);
 
     useEffect(() => {
         // [Logic] Handle Stop / Null
@@ -44,6 +51,10 @@ export function useVNAudio(currentBgm: string | null) {
 
             // If matches (ends with), ignore
             if (currentSrc.endsWith(targetPath) || currentSrc.includes(targetPath)) {
+                // [Fix] Ensure volume is correct if we are just re-verifying
+                if (Math.abs(globalAudioInstance.volume - bgmVolume) > 0.01) {
+                    globalAudioInstance.volume = bgmVolume;
+                }
                 return;
             }
         }
@@ -82,7 +93,6 @@ export function useVNAudio(currentBgm: string | null) {
 
         // Fade In
         const interval = 50;
-        const targetVol = 0.3;
         const volumeStep = 0.02; // Smooth fade in
 
         const fadeIn = setInterval(() => {
@@ -91,9 +101,15 @@ export function useVNAudio(currentBgm: string | null) {
                 clearInterval(fadeIn);
                 return;
             }
-            if (newAudio.volume < targetVol) {
-                newAudio.volume = Math.min(targetVol, newAudio.volume + volumeStep);
+
+            // [Fix] Fetch fresh target volume from store state to support live adjustment
+            const currentTargetVol = useGameStore.getState().bgmVolume;
+
+            if (newAudio.volume < currentTargetVol) {
+                newAudio.volume = Math.min(currentTargetVol, newAudio.volume + volumeStep);
             } else {
+                // If we reached target (or target dropped below current because user lowered it), we stop fading
+                newAudio.volume = currentTargetVol;
                 clearInterval(fadeIn);
             }
         }, interval);
@@ -105,11 +121,12 @@ export function useVNAudio(currentBgm: string | null) {
             // The next component mount will pick it up via singleton check.
         };
 
-    }, [currentBgm]);
+    }, [currentBgm]); // Note: We do NOT rely on bgmVolume in dependency here to avoid restarting track on volume change
 
     const playSfx = (sfxName: string) => {
         const sfx = new Audio(`/sfx/${sfxName}`);
-        sfx.volume = 0.5;
+        // [Fix] Use current SFX volume
+        sfx.volume = useGameStore.getState().sfxVolume;
         sfx.play().catch(e => console.warn("SFX play failed:", e));
     };
 

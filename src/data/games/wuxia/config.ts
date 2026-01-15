@@ -4,6 +4,7 @@ import { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT } from './con
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from './bgm_mapping';
 import { getSystemPromptTemplate, getRankInfo } from './prompts/system';
 import { MOOD_PROMPTS_WUXIA } from '@/data/prompts/moods';
+import { backgroundMappings } from './backgroundMappings';
 
 export const WuxiaConfig: GameConfig = {
     id: 'wuxia',
@@ -26,7 +27,7 @@ export const WuxiaConfig: GameConfig = {
     assets: {
         bgmMap: WUXIA_BGM_MAP,
         bgmAliases: WUXIA_BGM_ALIASES,
-        backgroundMap: {}
+        backgroundMap: backgroundMappings
     },
 
     getMoodPrompts: () => MOOD_PROMPTS_WUXIA

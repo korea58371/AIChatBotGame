@@ -65,28 +65,44 @@ export function resolveBackground(tag: string): string {
     // 특정 지역에 얽매이지 않고 범용 배경을 사용하도록 함.
     if (query.includes('_')) {
         const parts = query.split('_');
-        // 첫 번째 단어(지역명)를 제외한 나머지(장소)를 추출
-        // 예: "안휘_산길" -> suffix="산길", "사천_성도_시장" -> suffix="성도_시장"
-        const suffix = parts.slice(1).join('_');
+        const fallbackPrefixes = ['강호', '공용', '중원', '마을', '산', '객잔'];
 
-        // 시도할 접두어 목록 (우선순위 순)
-        const fallbackPrefixes = ['강호', '공용', '중원', '마을', '산'];
+        // [Strategy 1.5 Recursive] Iterate all suffixes
+        // Example: "중원_시장_허름한객잔2"
+        // 1. "중원_시장_허름한객잔2" (Already checked above)
+        // 2. "시장_허름한객잔2" -> Check "공용_시장_허름한객잔2" etc.
+        // 3. "허름한객잔2" -> Check "마을_허름한객잔2" (Success!)
 
-        for (const prefix of fallbackPrefixes) {
-            const fallbackKey = `${prefix}_${suffix}`;
+        // Start from 1 to skip full query (checked in Strategy 1)
+        for (let i = 1; i < parts.length; i++) {
+            const suffix = parts.slice(i).join('_');
+            if (suffix.length < 2) continue; // Skip single chars
 
-            // 1. 매핑에서 확인
-            if (backgroundMappings[fallbackKey]) {
-                console.log(`[BackgroundManager] 범용 지역 폴백 (매핑): "${query}" -> "${fallbackKey}" -> "${backgroundMappings[fallbackKey]}"`);
-                return `${basePath}/${backgroundMappings[fallbackKey]}`;
+            // A. Check Suffix Directly (e.g. "객잔_특실")
+            if (backgroundMappings[suffix]) {
+                console.log(`[BackgroundManager] Suffix 매치: "${query}" -> "${suffix}" -> "${backgroundMappings[suffix]}"`);
+                return `${basePath}/${backgroundMappings[suffix]}`;
             }
 
-            // 2. 파일 목록에서 확인 (확장자 고려)
-            const fallbackFile = fallbackKey + '.jpg';
-            // availableBackgrounds에는 보통 파일명(확장자 포함)이 들어있음
-            if (backgroundFiles.includes(fallbackFile)) {
-                console.log(`[BackgroundManager] 범용 지역 폴백 (파일): "${query}" -> "${fallbackFile}"`);
-                return `${basePath}/${fallbackFile}`;
+            // B. Check Suffix + Fallback Prefixes
+            for (const prefix of fallbackPrefixes) {
+                const fallbackKey = `${prefix}_${suffix}`;
+
+                // Check Mapping
+                if (backgroundMappings[fallbackKey]) {
+                    console.log(`[BackgroundManager] Suffix+Prefix 매치: "${query}" -> "${fallbackKey}" -> "${backgroundMappings[fallbackKey]}"`);
+                    return `${basePath}/${backgroundMappings[fallbackKey]}`;
+                }
+
+                // Check File Existence (for unmapped files)
+                if (activeGameId === 'wuxia') { // Limit explicit file checks to wuxia for now or valid context
+                    // Only check if it looks like a valid specific asset name
+                    const fallbackFile = fallbackKey + '.jpg';
+                    if (backgroundFiles.includes(fallbackFile)) {
+                        console.log(`[BackgroundManager] Suffix+Prefix 파일 매치: "${query}" -> "${fallbackFile}"`);
+                        return `${basePath}/${fallbackFile}`;
+                    }
+                }
             }
         }
     }

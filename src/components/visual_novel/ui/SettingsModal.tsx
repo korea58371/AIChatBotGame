@@ -19,6 +19,12 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
     const storyModel = useGameStore(state => state.storyModel);
     const setStoryModel = useGameStore(state => state.setStoryModel);
 
+    // [New] Volume State
+    const bgmVolume = useGameStore(state => state.bgmVolume);
+    const setBgmVolume = useGameStore(state => state.setBgmVolume);
+    const sfxVolume = useGameStore(state => state.sfxVolume);
+    const setSfxVolume = useGameStore(state => state.setSfxVolume);
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -61,6 +67,45 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                 <p className="text-xs text-gray-500 text-center">
                                     * 언어 변경 시 UI 텍스트가 즉시 반영됩니다.
                                 </p>
+                            </div>
+
+                            {/* Sound Settings */}
+                            <div className="space-y-4 pt-4 border-t border-gray-700">
+                                <h3 className="text-lg font-bold text-gray-300 border-b border-gray-700 pb-2">{(t as any).sound || "Sound"}</h3>
+
+                                {/* BGM Slider */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm text-gray-400">
+                                        <span>BGM Volume</span>
+                                        <span className="font-mono text-blue-400">{Math.round(bgmVolume * 100)}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.01"
+                                        value={bgmVolume}
+                                        onChange={(e) => setBgmVolume(parseFloat(e.target.value))}
+                                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-colors"
+                                    />
+                                </div>
+
+                                {/* SFX Slider */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm text-gray-400">
+                                        <span>SFX Volume</span>
+                                        <span className="font-mono text-blue-400">{Math.round(sfxVolume * 100)}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.01"
+                                        value={sfxVolume}
+                                        onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400 transition-colors"
+                                    />
+                                </div>
                             </div>
 
                             {/* AI Model Settings */}

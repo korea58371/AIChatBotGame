@@ -320,7 +320,7 @@ export class AgentCasting {
             // 3. Active Relation Bonus for Background too
             for (const activeId of activeCharIds) {
                 if (relationships[activeId]) {
-                    bgScore += 2.0;
+                    bgScore += 4.0;
                     bgReasons.push(`Related to Active(${activeId})`);
                 }
             }

@@ -274,6 +274,8 @@ export default function VisualNovelUI() {
         activeGameId, // [Refactor] Add activeGameId
         currentLocation, // [Fix] Add currentLocation for HUD updates
         isDataLoaded,
+        isHydrated, // [Fix] Hydration Status
+        goals, // [New] Goals for Choice Panel
     } = useGameStore();
 
     useEffect(() => {
@@ -281,6 +283,31 @@ export default function VisualNovelUI() {
         // If a force reset is pending, strictly SKIP all default initialization.
         // The Force Reset Effect (lines 586+) will handle everything.
         if (sessionStorage.getItem('vn_force_reset') === 'true') return;
+
+        // [Fix] Wait for IDB Hydration
+        // If we proceed before hydration, we might use the default 'god_bless_you' ID
+        // and overwrite the user's actual game (e.g. 'wuxia').
+        if (!isHydrated) {
+            // console.log("[Initialization] Waiting for IDB Hydration...");
+            return;
+        }
+
+        // [Heuristic Recovery] Detect Wuxia State in GBY Mode (Fix for corrupted IDB)
+        // If the user was affected by the "Reset to GBY" bug, their ActiveGameId is GBY, 
+        // but their stats/rank are still Wuxia. We auto-correct this.
+        if (activeGameId === 'god_bless_you') {
+            const state = useGameStore.getState();
+            // Check for Wuxia Ranks or Neigong
+            const wuxiaRanks = ['삼류', '이류', '일류', '절정', '초절정', '화경', '현경', '생사경', '자연경'];
+            const currentRank = state.playerStats?.playerRank;
+
+            // Heuristic: If Rank is Wuxia-style OR Neigong exists (>0), it's Wuxia.
+            if (wuxiaRanks.includes(currentRank) || (state.playerStats.neigong && state.playerStats.neigong > 0)) {
+                console.warn("[Recovery] Detected Wuxia data in GBY mode. Auto-restoring 'wuxia' ID...");
+                useGameStore.getState().setGameId('wuxia');
+                return; // Trigger re-render with new ID
+            }
+        }
 
         // [Fix] Ensure Game Data is Loaded on Mount (especially after New Game reset)
         if (!isDataLoaded) {
@@ -297,7 +324,7 @@ export default function VisualNovelUI() {
                 useGameStore.getState().setPlayerStats({ gold: 100000, level: 0 });
             }
         }
-    }, [turnCount, characterCreationQuestions, activeGameId, isDataLoaded, scriptQueue, choices]);
+    }, [turnCount, characterCreationQuestions, activeGameId, isDataLoaded, isHydrated, scriptQueue, choices]);
 
 
 
@@ -447,7 +474,7 @@ export default function VisualNovelUI() {
 
         try {
             const audio = new Audio(audioPath);
-            audio.volume = 0.5; // Adjust volume as needed
+            audio.volume = useGameStore.getState().sfxVolume; // [Fix] Use global SFX volume
             audio.play().catch(e => console.warn(`[Audio] Failed to play damage fx: ${audioPath}`, e));
             // No need to store in ref if we just fire and forget, but if we want to stop overlapping...
             // For damage, overlapping is usually fine/better.
@@ -768,6 +795,9 @@ export default function VisualNovelUI() {
         const state = useGameStore.getState();
         const gameId = state.activeGameId || 'god_bless_you';
 
+        // [Debug] Log Background Resolution
+        // console.log(`[UI] getBgUrl: Input="${bg}", GameId="${gameId}"`);
+
         if (!bg) return `/assets/${gameId}/backgrounds/Home_Entrance.jpg`; // Default fallback
         if (bg.startsWith('http') || bg.startsWith('/')) return bg; // Return absolute paths directly
 
@@ -775,6 +805,7 @@ export default function VisualNovelUI() {
         let filename = bg;
         if (state.backgroundMappings && state.backgroundMappings[bg]) {
             filename = state.backgroundMappings[bg];
+            // console.log(`[UI] Mapped "${bg}" -> "${filename}"`);
         }
 
         // [Fix] Avoid Double Extension
@@ -2864,10 +2895,16 @@ export default function VisualNovelUI() {
 
         // Relationships
         if (logicResult.relationshipChange) {
-            logicResult.relationshipChange.forEach((rel: any) => {
+            // [Fix] Defensive check for AI hallucination (returning object instead of array)
+            const changes = Array.isArray(logicResult.relationshipChange)
+                ? logicResult.relationshipChange
+                : [logicResult.relationshipChange];
+
+            changes.forEach((rel: any) => {
+                if (!rel || !rel.characterId) return;
                 // [Fix] Normalize ID
                 const normalizedId = normalizeCharacterId(rel.characterId);
-                newStats.relationships[normalizedId] = (newStats.relationships[normalizedId] || 0) + rel.change;
+                newStats.relationships[normalizedId] = (newStats.relationships[normalizedId] || 0) + (rel.change || 0);
             });
         }
 
@@ -2880,7 +2917,11 @@ export default function VisualNovelUI() {
 
             // Add
             if (logicResult.injuriesUpdate.add) {
-                logicResult.injuriesUpdate.add.forEach((injury: string) => {
+                const addList = Array.isArray(logicResult.injuriesUpdate.add)
+                    ? logicResult.injuriesUpdate.add
+                    : [logicResult.injuriesUpdate.add];
+
+                addList.forEach((injury: string) => {
                     if (!currentInjuries.includes(injury)) {
                         currentInjuries.push(injury);
                         addToast(`부상 발생(Injury): ${injury}`, 'warning');
@@ -2895,7 +2936,11 @@ export default function VisualNovelUI() {
                 const initialLen = currentInjuries.length;
                 const toRemove = new Set<string>();
 
-                logicResult.injuriesUpdate.remove.forEach((targetInj: string) => {
+                const removeList = Array.isArray(logicResult.injuriesUpdate.remove)
+                    ? logicResult.injuriesUpdate.remove
+                    : [logicResult.injuriesUpdate.remove];
+
+                removeList.forEach((targetInj: string) => {
                     // 1. Exact Match
                     if (currentInjuries.includes(targetInj)) {
                         toRemove.add(targetInj);
@@ -4174,6 +4219,39 @@ export default function VisualNovelUI() {
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[60] p-4">
                                 <div className="flex flex-col gap-3 md:gap-4 w-[85vw] md:w-[min(50vw,800px)] items-center pointer-events-auto">
                                     {/* [NEW] Turn Summary Display */}
+                                    {/* [Modified] Active Goals Display (Top Priority) */}
+                                    {(() => {
+                                        const activeGoals = (goals || [])
+                                            .filter(g => g.status === 'ACTIVE')
+                                            .sort((a, b) => b.createdTurn - a.createdTurn) // Newest first
+                                            .slice(0, 3);
+
+                                        if (activeGoals.length === 0) return null;
+
+                                        return (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="bg-black/80 border border-yellow-500/50 rounded-2xl p-5 mb-4 backdrop-blur-md shadow-[0_0_15px_rgba(234,179,8,0.2)] 
+                                                w-[85vw] md:w-[min(50vw,1200px)]
+                                                flex flex-col gap-3"
+                                            >
+                                                <h4 className="text-yellow-500 text-sm md:text-base font-bold uppercase tracking-widest flex items-center gap-2 border-b border-yellow-500/30 pb-2">
+                                                    <span>🎯</span> 현재 목표 (Current Objectives)
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    {activeGoals.map(goal => (
+                                                        <div key={goal.id} className="flex items-start gap-3 text-gray-100 text-base md:text-lg font-medium leading-snug">
+                                                            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-yellow-400 shadow-[0_0_5px_#fbbf24] shrink-0" />
+                                                            <span>{goal.description}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })()}
+
+                                    {/* [NEW] Turn Summary Display - Displayed below Goals if present */}
                                     {turnSummary && (
                                         <motion.div
                                             initial={{ opacity: 0, y: -10 }}
@@ -4966,24 +5044,33 @@ Instructions:
                                             <span className="text-xs bg-yellow-900/50 text-yellow-200 px-2 py-0.5 rounded-full border border-yellow-500/30">
                                                 보유: {playerStats.fate || 0}
                                             </span>
+                                            {fateUsage > 0 && (
+                                                <span className="text-xs bg-red-900/50 text-red-200 px-2 py-0.5 rounded-full border border-red-500/30 font-bold animate-pulse">
+                                                    -{fateUsage * fateUsage} 차감
+                                                </span>
+                                            )}
                                         </div>
                                         <span className="text-gray-400 text-xs block mt-1">불가능을 가능으로 바꿉니다. (소모값 선택)</span>
                                     </div>
                                     <div className="flex gap-1">
-                                        {[0, 1, 2, 3].map(val => (
-                                            <button
-                                                key={val}
-                                                onClick={() => setFateUsage(val)}
-                                                disabled={(playerStats.fate || 0) < val}
-                                                className={`w-8 h-8 rounded-lg font-bold border transition-all ${fateUsage === val
-                                                    ? 'bg-yellow-500 text-black border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)] scale-110'
-                                                    : 'bg-gray-800 text-gray-400 border-gray-600 hover:border-yellow-500/50 hover:text-white'
-                                                    } ${(playerStats.fate || 0) < val ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                            >
-                                                {val}
-                                            </button>
-                                        ))}
-                                    </div>
+                                        {[0, 1, 2, 3, 4, 5].map(val => {
+                                            const cost = val * val;
+                                            const canAfford = (playerStats.fate || 0) >= cost;
+                                            return (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setFateUsage(val)}
+                                                    disabled={!canAfford && val !== 0}
+                                                    className={`px-3 h-8 rounded-lg font-bold border transition-all text-xs ${fateUsage === val
+                                                        ? 'bg-yellow-500 text-black border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)] scale-110'
+                                                        : 'bg-gray-800 text-gray-400 border-gray-600 hover:border-yellow-500/50 hover:text-white'
+                                                        } ${!canAfford && val !== 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                    title={val > 0 ? `레벨 ${val} (비용: ${cost} Fate)` : '사용 안 함'}
+                                                >
+                                                    {val === 0 ? '0' : `${val}`}
+                                                </button>
+                                            );
+                                        })}                                            </div>
                                 </div>
 
                                 <div className="bg-red-900/30 border border-red-500/50 rounded p-3 mb-4 text-sm text-red-200">

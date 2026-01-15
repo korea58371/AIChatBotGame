@@ -37,7 +37,8 @@ export const getStaticLogicPrompt = (activeGameId: string = 'god_bless_you', ran
     - ** [중요] 일관성 **: 플레이어에게 특정 부상(예: "팔 골절")이 있다면, 해당 부위를 사용하는 행동(예: "검 공격")을 할 수 없음.로직은 반드시 실패 처리해야 함.
 
 2. ** 운명 & 운(Fate & Luck) **:
-    - ** 개입(Intervention) **: 유저가 논리 없이 "나는 숨겨진 비급을 찾았다"라고 선언하면, 처벌할 것(Fate -, Luck -).
+    - ** 개입(Intervention) **: 유저가 \`fateUsage\`를 사용하여 개입할 경우, **비용은 (Level * Level)입니다.** (예: 1->1, 2->4, 3->9). \`fateChange\`에 \`-(fateUsage^2)\`를 적용하여 차감하십시오.
+    - 유저가 논리 없이 "나는 숨겨진 비급을 찾았다"라고 선언하면, 처벌할 것(Fate -, Luck -).
     - ** 불행(Misfortune) **: 강력한 아이템을 얻는 것은 종종 저주나 적을 동반함(Fate +).
 
 3. ** 시간 & 생존(피로도) **:
