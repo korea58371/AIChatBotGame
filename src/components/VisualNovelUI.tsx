@@ -61,7 +61,7 @@ import { useVNAudio } from './visual_novel/hooks/useVNAudio';
 import CharacterProfile from './visual_novel/ui/CharacterProfile';
 import SettingsModal from './visual_novel/ui/SettingsModal';
 import ResponseTimer from './visual_novel/ui/common/ResponseTimer';
-import AdButton from './visual_novel/ui/common/AdButton';
+import { AdBanner } from './AdBanner'; // [New] Import AdBanner
 
 
 
@@ -4452,20 +4452,17 @@ Instructions:
                                         1. Add `adState` (idle, playing, rewarded) to VisualNovelUI state.
                                         2. Implement the UI here.
                                     */}
-                                    <AdButton
-                                        onReward={() => {
-                                            const newCoins = userCoins + 50;
-                                            setUserCoins(newCoins);
-
-                                            // Update DB
-                                            if (session?.user) {
-                                                if (supabase && session?.user?.id) {
-                                                    supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id).then();
-                                                }
-                                            }
-                                            addToast("광고 보상: 50 골드 지급 완료!", "success");
-                                        }}
-                                    />
+                                    {/* Real AdSense Banner (Start Only) */}
+                                    <div className="flex flex-col items-center gap-2 w-full px-4">
+                                        <AdBanner
+                                            dataAdSlot="9593102689"
+                                            format="auto"
+                                            responsive={true}
+                                            className="w-full min-h-[100px] overflow-hidden rounded-lg shadow-lg bg-black/20"
+                                            style={{ display: 'block' }}
+                                        />
+                                        <p className="text-[10px] text-[#444] font-mono">ADVERTISEMENT</p>
+                                    </div>
                                 </div>
 
                                 {/* [NEW] System Menu Bar (Available during Generation) */}

@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { deleteAccount } from '@/app/actions/auth';
-import { Zap, Star, Cpu } from 'lucide-react';
+import { Zap, Star, Cpu, CreditCard, Heart } from 'lucide-react';
+import { usePortOne } from '@/hooks/usePortOne';
 import { MODEL_CONFIG } from '@/lib/model-config';
 
 interface SettingsModalProps {
@@ -25,6 +26,43 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
     const sfxVolume = useGameStore(state => state.sfxVolume);
     const setSfxVolume = useGameStore(state => state.setSfxVolume);
 
+    // [New] Payment Hook
+    const { requestPayment } = usePortOne();
+
+    const handleDonation = async (amount: number) => {
+        try {
+            const response = await requestPayment({
+                pg: "kakaopay", // Default for testing
+                pay_method: "card",
+                name: `${amount} KRW 후원`,
+                amount: amount,
+            });
+
+            if (response.success) {
+                // Verify on server
+                const verifyRes = await fetch("/api/payments/verify", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        imp_uid: response.imp_uid,
+                        merchant_uid: response.merchant_uid,
+                        expectedAmount: amount
+                    })
+                });
+                const result = await verifyRes.json();
+                if (result.success) {
+                    alert("후원해주셔서 감사합니다! (테스트 결제 성공)");
+                } else {
+                    alert(`검증 실패: ${result.message}`);
+                }
+            } else {
+                alert(`결제 실패: ${response.error_msg}`);
+            }
+        } catch (e: any) {
+            console.error(e);
+            alert("결제 시스템 오류: " + e.message);
+        }
+    };
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -40,7 +78,7 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                             <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">×</button>
                         </div>
 
-                        <div className="p-8 space-y-8">
+                        <div className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
                             {/* Language Settings */}
                             <div className="space-y-4">
                                 <h3 className="text-lg font-bold text-gray-300 border-b border-gray-700 pb-2">Language</h3>
@@ -153,6 +191,38 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                             <div className="ml-auto w-2 h-2 bg-purple-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
                                         )}
                                     </button>
+                                </div>
+                            </div>
+
+                            {/* Donation Settings (New) */}
+                            <div className="space-y-4 pt-4 border-t border-gray-700">
+                                <h3 className="text-lg font-bold text-gray-300 border-b border-gray-700 pb-2 flex items-center gap-2">
+                                    <Heart className="w-5 h-5 text-pink-500" />
+                                    Support Developer
+                                </h3>
+                                <div className="bg-gradient-to-br from-pink-900/20 to-purple-900/20 p-4 rounded-lg border border-pink-900/50">
+                                    <p className="text-gray-400 text-sm mb-4">
+                                        개발자에게 후원하고 더 좋은 서비스를 만들어주세요!
+                                    </p>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => handleDonation(1000)}
+                                            className="flex-1 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                                        >
+                                            <CreditCard className="w-4 h-4" />
+                                            1,000원 후원
+                                        </button>
+                                        <button
+                                            onClick={() => handleDonation(5000)}
+                                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                                        >
+                                            <Heart className="w-4 h-4 fill-current" />
+                                            5,000원 후원
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2 text-center">
+                                        * 테스트 모드에서는 실제로 청구되지 않습니다.
+                                    </p>
                                 </div>
                             </div>
 
