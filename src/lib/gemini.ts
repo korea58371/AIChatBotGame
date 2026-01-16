@@ -289,6 +289,119 @@ export async function generateResponse(
     throw lastError || new Error("All story models failed.");
 }
 
+// [STREAMING IMPLEMENTATION]
+// Identical logic to generateResponse, but uses sendMessageStream and returns a generator
+export async function* generateResponseStream(
+    apiKey: string,
+    history: Message[],
+    userMessage: string,
+    gameState: any,
+    language: 'ko' | 'en' | null,
+    modelName: string = MODEL_CONFIG.STORY
+): AsyncGenerator<string | { usageMetadata: any, systemPrompt: string, finalUserMessage: string, usedModel: string, totalTokenCount: number }, void, unknown> {
+    if (!apiKey) throw new Error('API Key is missing');
+
+    console.log(`[GeminiStream] generateResponseStream called. Model: ${modelName}`);
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    // [Rehydration Check]
+    if (!gameState.getSystemPromptTemplate && gameState.activeGameId) {
+        try {
+            const systemModule = await import(`@/data/games/${gameState.activeGameId}/prompts/system`);
+            if (systemModule && systemModule.getSystemPromptTemplate) {
+                gameState.getSystemPromptTemplate = systemModule.getSystemPromptTemplate;
+            }
+        } catch (e) { console.warn("Stream Rehydration failed", e); }
+    }
+
+    const staticPrompt = await PromptManager.getSharedStaticContext(gameState);
+    const dynamicPrompt = PromptManager.generateSystemPrompt(gameState, language, userMessage);
+    const systemInstruction = staticPrompt;
+    const targetModel = modelName || MODEL_CONFIG.STORY;
+
+    // [Cache Logic]
+    let cachedContentName: string | null = null;
+    const overrideKey = gameState.personaOverride ? `_PERSONA_${gameState.personaOverride}` : '';
+    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v1_3${overrideKey}`;
+
+    if (systemInstruction.length > 30000) {
+        cachedContentName = await getOrUpdateCache(apiKey, cacheDisplayName, systemInstruction, targetModel);
+    }
+
+    const modelsToTry = [targetModel, MODEL_CONFIG.LOGIC];
+    let lastError;
+
+    for (const currentModel of modelsToTry) {
+        try {
+            console.log(`Trying stream story model: ${currentModel}`);
+            const modelConfig: any = { model: currentModel, safetySettings };
+
+            if (currentModel.includes('gemini-3') || currentModel.includes('thinking')) {
+                modelConfig.thinkingConfig = { includeThoughts: true, thinkingLevel: "high" };
+            }
+
+            if (cachedContentName && currentModel === targetModel) {
+                modelConfig.cachedContent = { name: cachedContentName };
+            } else {
+                modelConfig.systemInstruction = systemInstruction;
+            }
+
+            if (currentModel !== targetModel && modelConfig.cachedContent) {
+                delete modelConfig.cachedContent;
+                modelConfig.systemInstruction = systemInstruction;
+                modelConfig.model = currentModel;
+            }
+
+            const model = genAI.getGenerativeModel(modelConfig);
+
+            // History Filtering
+            let effectiveHistory = history;
+            if (gameState.scenarioSummary && gameState.scenarioSummary.length > 50) {
+                effectiveHistory = history.slice(-10);
+            }
+            let processedHistory = effectiveHistory.map(msg => ({
+                role: msg.role,
+                parts: [{ text: msg.text || "..." }],
+            }));
+            if (processedHistory.length > 0 && processedHistory[0].role === 'model') {
+                processedHistory = [{ role: 'user', parts: [{ text: "..." }] }, ...processedHistory];
+            }
+
+            const chatSession = model.startChat({ history: processedHistory });
+            const finalUserMessage = `${dynamicPrompt}\n\n${userMessage}`;
+
+            // STREAMING CALL
+            const result = await chatSession.sendMessageStream(finalUserMessage);
+
+            let accumulatedText = "";
+
+            for await (const chunk of result.stream) {
+                const chunkText = chunk.text();
+                accumulatedText += chunkText;
+                yield chunkText; // Yield partial text
+            }
+
+            const response = await result.response; // Wait for full completion to get metadata
+
+            // Yield Final Metadata Object as the last item
+            yield {
+                usageMetadata: response.usageMetadata,
+                systemPrompt: systemInstruction,
+                finalUserMessage: finalUserMessage,
+                usedModel: currentModel,
+                totalTokenCount: (response.usageMetadata?.promptTokenCount || 0) + (response.usageMetadata?.candidatesTokenCount || 0)
+            };
+
+            return; // Success, exit loop
+        } catch (error: any) {
+            console.warn(`Stream Story Model ${currentModel} failed:`, error.message);
+            lastError = error;
+        }
+    }
+    throw lastError || new Error("All stream story models failed.");
+}
+
 // Logic Model: Gemini 2.5 Flash (Optimized for speed & JSON)
 export async function generateGameLogic(
     apiKey: string,

@@ -12,6 +12,7 @@ import { resolveBackground } from '@/lib/background-manager';
 import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
 import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/model-config';
 import { normalizeCharacterId } from '@/lib/utils/character-id'; // [NEW] ID Normalization
+import { fetchAgentTurnStream } from '@/lib/network/stream-client'; // [Stream] Client
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
@@ -95,6 +96,9 @@ const formatText = (text: string) => {
 
 
 export default function VisualNovelUI() {
+    // [Stream] Track active segment index (consumed count) for syncing stream with UI
+    const activeSegmentIndexRef = useRef(0);
+
     // [Refactor] UI State Hook
     const {
         showHistory, setShowHistory,
@@ -117,6 +121,7 @@ export default function VisualNovelUI() {
     // [리팩토링 메모] UI 상태 관리 로직(모달, 입력, 디버그 등)은 `hooks/useVNState.ts`로 이동되었습니다.
 
     const [fateUsage, setFateUsage] = useState<number>(0);
+
     const router = useRouter();
     const wikiKeys = useMemo(() => Object.keys(wikiData), []); // [Performance] Memoize keys
 
@@ -929,6 +934,9 @@ export default function VisualNovelUI() {
     }, [currentSegment, characterExpression, useGameStore.getState().protagonistImageOverride]);
 
     const advanceScript = () => {
+        // [Stream] Increment consumed count
+        activeSegmentIndexRef.current += 1;
+
         // Handle Character Exit (Exit Tag Logic)
         if (currentSegment?.characterLeave) {
             console.log("Character leaving based on <떠남> tag.");
@@ -1214,6 +1222,13 @@ export default function VisualNovelUI() {
             setChoices(newChoices);
             setScriptQueue(currentQueue.slice(i));
             setCurrentSegment(null);
+
+            // [Fix] Apply Pending Logic when Reaching Choices (End of Turn)
+            if (pendingLogic) {
+                console.log("[VisualNovelUI] Applying Pending Logic at Choice Boundary", pendingLogic);
+                applyGameLogic(pendingLogic);
+                setPendingLogic(null);
+            }
             return;
         }
 
@@ -1467,7 +1482,8 @@ export default function VisualNovelUI() {
             console.log(`[VisualNovelUI] Payload ActiveEvent:`, sanitizedState.activeEvent ? sanitizedState.activeEvent.id : "NULL");
 
             // Race Condition for Timeout
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out")), 300000));
+
+
             // [Logging] Track costs across steps
             let storyCost = 0;
 
@@ -1482,67 +1498,8 @@ export default function VisualNovelUI() {
             const storyModel = useGameStore.getState().storyModel;
             console.log(`[VisualNovelUI] Using Story Model: ${storyModel}`);
 
-            // 2. [Split Execution] Phase 1 - Story Generation (Immediate)
-            const p1Start = Date.now();
-            // Call Phase 1
-            const p1Result: any = await Promise.race([
-                serverAgentTurnPhase1(
-                    currentHistory,
-                    text,
-                    sanitizedState, // [FIX] Use sanitizedState (with tension) instead of prunedState
-                    language,
-                    storyModel || MODEL_CONFIG.STORY,
-                    isDirectInput
-                ),
-                timeoutPromise
-            ]);
-            const p1Duration = Date.now() - p1Start;
+            // [Phase 1 Removed] Stream handles generation.
 
-            // [Phase 1 Output]
-            const cleanStoryText = p1Result.cleanStoryText;
-            const routerOut = p1Result.routerOut; // [Fix] router -> routerOut
-            const preLogicDebug = p1Result.preLogicOut; // [Fix] logic -> preLogicOut
-            const usageMetadataP1 = p1Result.usageMetadata; // Note: Orchestrator returns usage object, might need shallow merge if structured differently
-            const effectiveGameState = p1Result.effectiveGameState;
-
-            // [Debug] Check PreLogic Out for Fate
-            console.log("[VisualNovelUI] PreLogic Out:", preLogicDebug);
-            if (preLogicDebug?.state_changes?.fate) {
-                console.log("[VisualNovelUI] Fate Change detected in PreLogic:", preLogicDebug.state_changes.fate);
-            }
-
-            // [Summary Agent] Update UI (Phase 1 might not have summary, usually Phase 2)
-            // Check if Phase 1 returned summary? (Likely not, Logic phase does summary)
-
-            // [UX Improvement] Clear Character Image
-            setCharacterExpression(''); // Clear before new story
-
-            // 3. Render Story Immediately
-            // [Fix] Data Flow Consistency: Use clean text for immediate display
-
-            // [Fate System] Reset Usage after successful send
-            setFateUsage(0);
-            const textToParse = cleanStoryText;
-            const segments = parseScript(textToParse);
-            setScriptQueue(segments); // Start playing story
-            setLastStoryOutput(textToParse);
-
-            // Update History Immediately with Clean Text
-            // We assume user wants to see the story log immediately.
-
-            // [Fix] Capture Snapshot for Rewind
-            // We capture the state BEFORE the new text is processed/stats applied?
-            // Wait, the "Rewind" goes back to the START of this turn. 
-            // So we need the state AS IT WAS before this turn's logic ran.
-            // However, we are in `handleSend`. Logic runs in background (Phase 2), but Phase 1 might resolve some logic?
-            // Actually, `addMessage` is called here.
-            // If we restore this snapshot, we want to be in the state exactly as it is NOW (before Phase 2 logic applies).
-            // But wait, Phase 1 logic (`applyGameLogic` call below) might have already run if `p1Result.logic` exists.
-            // `p1Result.logic` is applied at line 1050. `addMessage` is at 1041.
-            // So this is the perfect place. We capture state BEFORE Phase 1 Logic applies to the store (if any).
-            // Actually line 1050 is *after* this.
-
-            // What about `useGameStore.getState()`? It gets current state.
             const snapshotState = useGameStore.getState();
             const snapshot: Partial<typeof snapshotState> = {
                 playerStats: JSON.parse(JSON.stringify(snapshotState.playerStats)),
@@ -1573,837 +1530,421 @@ export default function VisualNovelUI() {
                 currentBackground: snapshotState.currentBackground,
             };
 
-            addMessage({ role: 'model', text: cleanStoryText, snapshot });
+            // [Stream Init]
+            activeSegmentIndexRef.current = 0;
+            let accumulatedText = "";
+            let streamStarted = false;
+            setCharacterExpression('');
+            setFateUsage(0);
+            const p1Start = Date.now();
 
-            // Apply PreLogic State Changes (Immediate)
-            if (p1Result.logic) {
-                // Note: We used `applyGameLogic` before for `combinedLogic`.
-                // Here we only have PreLogic.
-                // We should apply it to reflect "Cost" or "Instant Effects".
-                // However, `applyGameLogic` expects a fuller object? 
-                // It handles partials fine usually.
-                applyGameLogic({ logic: p1Result.preLogicOut });
-            }
+            // [Safety] Race with Timeout
+            let timeoutId: NodeJS.Timeout;
+            const timeoutRace = new Promise((_, reject) => {
+                timeoutId = setTimeout(() => reject(new Error("Request Timed Out")), 300000);
+            });
 
-            // [UX] Unlock UI (Partially)
-            // setIsProcessing(false) happens in finally block.
-            // We set logic pending state.
-            setIsLogicPending(true);
-
-            // [Refactor] Reset Inline Accumulator for New Turn
-            inlineAccumulatorRef.current = {
-                hp: 0,
-                mp: 0,
-                relationships: {},
-                personality: {}
-            };
-
-
-
-            // 4. [Split Execution] Phase 2 - Backend Logic (Background)
-            (async () => {
-                try {
-
-                    // [Summary Agent] Background Execution (Phase 2)
-                    // Moved from Phase 1 to prevent blocking story generation.
-                    // [Parallelization] Now runs concurrently with serverAgentTurnPhase2
-                    // We define the promise here but await it later or let it run detached?
-                    // The user wants it parallel.
-                    // But we are inside an async IIFE that IS background.
-                    // Wait, if we await Phase 2 Logic first, THEN do summary, it is sequential within the background thread.
-                    // This delays the "Total Turn Completion" if we were waiting for it.
-                    // But we aren't waiting for the background thread to finish to show text.
-                    // However, if the user wants "Story -> (Logic + Summary)", we should start both promises at the top.
-
-                    // [Summary Agent] Defer Execution until AFTER Logic
-                    // We prepare variables but execute later to avoid Rate Limit contention
-                    const currentTurnCount = useGameStore.getState().turnCount;
-                    const BG_SUMMARY_THRESHOLD = 10;
-                    let summaryPromise: Promise<string | null> = Promise.resolve(null);
-                    const shouldSummarize = (currentTurnCount > 0 && currentTurnCount % BG_SUMMARY_THRESHOLD === 0);
-
-
-                    // Start Phase 2 Logic & Summary concurrently
-                    const p2Start = Date.now();
-
-                    // [Parallel] Run Logic (Await) - Give full priority to Logic
-                    const p2Result = await serverAgentTurnPhase2(
-                        currentHistory,
-                        text,
-                        effectiveGameState, // Pass state with Mood Override
-                        cleanStoryText,
-                        language
-                    );
-
-                    // [Summary Agent] Execute Deferred Summary (Fire-and-Forget)
-                    // Now that Logic is done, we can safely trigger summary without slowing down the UI
-                    if (shouldSummarize) {
-                        // Use FRESH history including the just-generated story if possible?
-                        // Actually, `serverAgentTurnPhase2` results (finalStoryText) are more accurate than `cleanStoryText` (Phase 1).
-                        // So we reconstruct the dialogue using the FINAL text.
-
-                        const latestHistory = useGameStore.getState().chatHistory;
-                        // Append the *AI Response* we just got (p2Result.finalStoryText || cleanStoryText)
-                        // Wait, `latestHistory` doesn't have it yet? `updateLastMessage` is called LATER (line 1687).
-                        // So we must manually construct the list.
-
-                        const aiResponseText = p2Result.finalStoryText || cleanStoryText;
-                        const tempHistory = [...latestHistory, { role: 'model', text: aiResponseText } as any];
-                        const messagesToSummarize = tempHistory.slice(-BG_SUMMARY_THRESHOLD * 2);
-
-                        console.log(`[Background] Triggering Deferred Memory Summarization (Turn ${currentTurnCount})...`);
-                        // Don't toast "Summarizing..." to avoid distracting user. Silent update.
-
-                        const prevSummary = useGameStore.getState().scenarioSummary;
-                        serverGenerateSummary(prevSummary, messagesToSummarize)
-                            .then(newSummary => {
-                                useGameStore.getState().setScenarioSummary(newSummary);
-                                console.log("%c[Scenario Summary Updated]", "color: orange; font-weight: bold;", newSummary);
-                                // addToast("Memory updated!", "success"); // Silent
-                            })
-                            .catch(err => console.error("Summary Generation Failed:", err));
-                    }
-
-
-                    const p2Duration = Date.now() - p2Start;
-
-                    const postLogicOut = p2Result.postLogicOut; // [Fix] Restore definition
-                    const finalStoryText = p2Result.finalStoryText; // [Fix] Restore definition
-
-                    // Construct Combined Logic for Application & Logging
-                    // (Reusing logic from original code, adapted for split sources)
-
-                    // Deduplication Logic
-                    const inlineDeltas: Record<string, number> = {};
-                    if (postLogicOut && postLogicOut.inline_triggers && postLogicOut.inline_triggers.length > 0) {
-                        postLogicOut.inline_triggers.forEach((trigger: any) => {
-                            const statMatch = trigger.tag.match(/<Stat\s+([^=]+)=['"]?(-?\d+)['"]?.*?>/i);
-                            if (statMatch) {
-                                const key = statMatch[1].toLowerCase();
-                                const val = parseInt(statMatch[2], 10);
-                                if (!isNaN(val)) inlineDeltas[key] = (inlineDeltas[key] || 0) + val;
-                            }
-                        });
-                    }
-
-                    // Source HP
-                    // Source HP
-                    const maHp = p2Result.martialArtsOut?.stat_updates?.hp || 0;
-                    const sourceHp = (preLogicDebug?.state_changes?.hpChange || 0) + maHp;
-                    const inlineHp = inlineDeltas['hp'] || 0;
-                    let finalHpChange = (sourceHp !== 0) ? sourceHp - inlineHp : 0;
-
-                    const maMp = p2Result.martialArtsOut?.stat_updates?.mp || 0;
-                    const sourceMp = (preLogicDebug?.state_changes?.mpChange || 0) + maMp;
-                    const inlineMp = inlineDeltas['mp'] || 0;
-                    let finalMpChange = (sourceMp !== 0) ? sourceMp - inlineMp : 0;
-
-                    const plPersonality: Record<string, number> = {};
-                    if (postLogicOut && postLogicOut.stat_updates) {
-                        Object.entries(postLogicOut.stat_updates).forEach(([k, v]) => {
-                            const key = k.toLowerCase();
-                            if (key === 'hp' || key === 'mp') return;
-                            plPersonality[key] = (v as number) - (inlineDeltas[key] || 0);
-                        });
-                    }
-
-                    const combinedLogic = {
-                        ...(preLogicDebug?.state_changes || {}),
-                        hpChange: finalHpChange,
-
-                        // [Debug] Ensure Fate is preserved
-                        fate: preLogicDebug?.state_changes?.fate,
-
-                        mpChange: finalMpChange,
-                        personalityChange: plPersonality,
-                        mood: postLogicOut?.mood_update,
-                        location: postLogicOut?.location_update,
-                        new_memories: postLogicOut?.new_memories,
-                        activeCharacters: postLogicOut?.activeCharacters,
-
-                        // [Fix] Map Injuries & Generic Stats from PostLogic
-                        injuriesUpdate: {
-                            add: postLogicOut?.new_injuries,
-                            remove: postLogicOut?.resolved_injuries
+            try {
+                await Promise.race([
+                    fetchAgentTurnStream(
+                        {
+                            history: currentHistory,
+                            userInput: text,
+                            gameState: sanitizedState,
+                            language: language,
+                            modelName: storyModel || MODEL_CONFIG.STORY
                         },
-                        stat_updates: postLogicOut?.stat_updates,
+                        {
+                            onToken: (token) => {
+                                if (!streamStarted) {
+                                    streamStarted = true;
+                                    // [UX] First token received: Transition from "Thinking" to "Playing"
+                                    setIsProcessing(false); // Stop "Processing" spinner
+                                    setIsTyping(false); // Stop typing dots
+                                    setIsLogicPending(true); // Lock heavy interactions until Logic finishes
 
-                        goal_updates: postLogicOut?.goal_updates,
-                        new_goals: postLogicOut?.new_goals,
-                        post_logic: {
-                            ...(postLogicOut || {}),
-                            stat_updates: plPersonality
-                        },
-                        character_memories: postLogicOut?.character_memories,
-                        martial_arts: p2Result.martialArtsOut ? {
-                            ...p2Result.martialArtsOut,
-                            stat_updates: {
-                                ...(p2Result.martialArtsOut.stat_updates || {}),
-                                hp: 0, mp: 0
-                            }
-                        } : p2Result.martialArtsOut,
-                        _debug_router: routerOut,
+                                    // [Metrics] Update Average Response Time (TTFT)
+                                    // User Request: Progress bar should track "Time to Start", not "Time to Finish".
+                                    const ttft = Date.now() - startTime;
+                                    console.log(`[Metrics] TTFT: ${ttft}ms`);
+                                    setAvgResponseTime(prev => Math.round((prev * 0.7) + (ttft * 0.3)));
+                                }
 
-                        // [NEW] Event System Integration
-                        triggerEventId: (p2Result.eventOut as any)?.triggerEventId,
-                        currentEvent: (p2Result.eventOut as any)?.currentEvent,
-                        candidates: (p2Result.eventOut as any)?.candidates,
-                        event_debug_info: (p2Result.eventOut as any)?.debug // Pass debug info
-                    } as any;
+                                accumulatedText += token;
 
-                    // [Fix] Defer Logic Application to End of Script
-                    // Instead of applying immediately, we set it as pending.
-                    // This ensures the stats update after the text has finished reading.
-                    // IMPORTANT: We must NOT re-apply PreLogic changes (costs) if they ran at Phase 1.
+                                // [Filter] Client-side visibility filter for Thinking/Output tags
+                                // We keep accumulatedText as the RAW buffer.
+                                // We derive 'visText' for the parser and UI.
+                                let visText = accumulatedText;
 
-                    const deferredLogic = { ...combinedLogic };
+                                // 1. Remove closed Thinking blocks
+                                visText = visText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '');
 
-                    // If PreLogic successfully ran in Phase 1, remove its changes from the deferred object
-                    // to prevent double-application (e.g. paying mana twice).
-                    if (preLogicDebug?.state_changes && preLogicDebug.success) {
-                        delete deferredLogic.hpChange; // Handled in P1 or calculated in finalHpChange?
-                        delete deferredLogic.mpChange;
-                        // Actually, finalHpChange = sourceHp - inlineHp.
-                        // sourceHp = preLogic + postLogic.
-                        // If PreLogic was applied, we only want to apply (PostLogic - Inline).
-                        // So we need to subtract PreLogic from finalHpChange.
+                                // 2. Hide partial Thinking blocks (prevent flash)
+                                // If we have an open <Thinking tag that isn't closed yet, hide everything after it.
+                                const openThink = visText.indexOf('<Thinking');
+                                if (openThink !== -1) {
+                                    visText = visText.substring(0, openThink);
+                                }
 
-                        const preHp = preLogicDebug.state_changes.hpChange || 0;
-                        const preMp = preLogicDebug.state_changes.mpChange || 0;
+                                // 3. Remove Output container tags (Robust Regex)
+                                visText = visText.replace(/<Output[^>]*>/gi, '').replace(/<\/Output>/gi, '');
 
-                        if (deferredLogic.hpChange !== undefined) deferredLogic.hpChange -= preHp;
-                        if (deferredLogic.mpChange !== undefined) deferredLogic.mpChange -= preMp;
 
-                        // Remove other explicit state changes from PreLogic if they exist
-                        // (Currently PreLogic mostly does HP/MP cost).
-                    }
+                                const allSegments = parseScript(visText);
 
-                    // applyGameLogic(combinedLogic); // <-- OLD IMMEDIATE CALL
+                                // [Stream] Auto-Advance Logic
+                                // We track 'activeSegmentIndexRef' as the index of the segment currently being shown (or just finished).
+                                // Logic: Scan from current index. If command/bg/bgm, execute & increment. If content, set & break.
 
-                    // New Deferred Call (via State)
-                    // [Fix] Subtract Inline Applied values (from Client Loop)
-                    // We trust the Client Loop (inlineApplied) more than server inline_triggers.
-                    // Note: If 'finalHpChange' already subtracted 'inlineDeltas' (Server Tags),
-                    // and 'inlineApplied' matches 'inlineDeltas', we might double-subtract.
-                    // However, we assume user added the manual loop because Server Tags were unreliable.
-                    // To be safe, we subtract what we ACTUALLY applied.
+                                let currentIndex = activeSegmentIndexRef.current;
 
-                    const finalDeferred = { ...deferredLogic };
+                                // Safety check
+                                if (currentIndex == null) currentIndex = 0;
 
-                    // [Fix] Update History with Final Text (including Choices)
-                    // This ensures that 'Rewind' (History Modal) can parse choices correctly.
-                    if (finalStoryText) {
-                        useGameStore.getState().updateLastMessage(finalStoryText);
-                        console.log("[VisualNovelUI] Updated History with Final Text (Choices included)");
-                    }
+                                while (currentIndex < allSegments.length) {
+                                    const seg = allSegments[currentIndex];
 
-                    // [Refactor] Script Replacement & Tag Deduction Strategy
-                    // We need to switch the active script to `finalStoryText` (which contains tags)
-                    // AND ensure we don't double-count stats (Tags + PendingLogic).
+                                    if (seg.type === 'background' || seg.type === 'bgm' || seg.type === 'command') {
+                                        // Execute Command
+                                        if (seg.type === 'background') {
+                                            // [Helpers] We assume resolveBackground is available (it was in legacy)
+                                            try {
+                                                const resolvedBg = resolveBackground(seg.content);
+                                                setBackground(resolvedBg);
+                                                setCharacterExpression('');
+                                            } catch (e) { console.error(e); }
+                                        } else if (seg.type === 'bgm') {
+                                            playBgm(seg.content);
+                                        } else if (seg.type === 'command') {
+                                            // Minimal Stat Parsing (Sync with onComplete logic accumulator)
+                                            if (seg.commandType === 'update_stat') {
+                                                try {
+                                                    const stats = JSON.parse(seg.content || '{}');
+                                                    Object.entries(stats).forEach(([k, v]) => {
+                                                        const val = Number(v);
+                                                        if (isNaN(val)) return;
+                                                        const key = k.toLowerCase();
 
-                    const finalSegments = parseScript(finalStoryText);
-                    const currentScriptQueue = useGameStore.getState().scriptQueue;
-                    const currentSeg = useGameStore.getState().currentSegment;
+                                                        // Accumulate
+                                                        if (key === 'hp') inlineAccumulatorRef.current.hp += val;
+                                                        else if (key === 'mp') inlineAccumulatorRef.current.mp += val;
+                                                        else inlineAccumulatorRef.current.personality[key] = (inlineAccumulatorRef.current.personality[key] || 0) + val;
 
-                    // 1. Find Cut Point (Where are we?)
-                    let matchIndex = -1;
-
-                    // Strategy: Look for the *next* segment in our queue within the new segments.
-                    const nextQueueSeg = currentScriptQueue.length > 0 ? currentScriptQueue[0] : null;
-
-                    if (nextQueueSeg) {
-                        // Scan finalSegments for a matching content
-                        // We filter for content-bearing types (dialogue, narration) to match
-                        matchIndex = finalSegments.findIndex(s =>
-                            (s.type === nextQueueSeg.type) &&
-                            // Lenient match (trim/contains) in case tags altered whitespace
-                            (s.content?.trim() === nextQueueSeg.content?.trim())
-                        );
-                    } else if (currentSeg) {
-                        // If queue is empty (user reading last line), match current segment
-                        // And resume from AFTER it.
-                        const currentMatch = finalSegments.findIndex(s =>
-                            (s.type === currentSeg.type) &&
-                            (s.content?.trim() === currentSeg.content?.trim())
-                        );
-                        if (currentMatch !== -1) {
-                            matchIndex = currentMatch + 1; // Start from next
-                        }
-                    } else {
-                        // Script finished? or not started?
-                        matchIndex = 0; // Replace all if nothing playing?
-                        // If nothing playing, queue is empty.
-                    }
-
-                    // 2. Calculate Future Tags (What will run if we replace queue)
-                    const futureTagSum = {
-                        hp: 0, mp: 0, relationships: {} as Record<string, number>, personality: {} as Record<string, number>
-                    };
-
-                    let newQueue: ScriptSegment[] = [];
-
-                    if (matchIndex !== -1 && matchIndex < finalSegments.length) {
-                        newQueue = finalSegments.slice(matchIndex);
-
-                        // Sum tags in the new queue
-                        newQueue.forEach(seg => {
-                            if (seg.type === 'command') {
-                                if (seg.commandType === 'update_stat') {
-                                    try {
-                                        const stats = JSON.parse(seg.content || '{}');
-                                        Object.entries(stats).forEach(([k, v]) => {
-                                            const key = k.toLowerCase();
-                                            const val = Number(v);
-                                            if (!isNaN(val)) {
-                                                if (key === 'hp') futureTagSum.hp += val;
-                                                else if (key === 'mp') futureTagSum.mp += val;
-                                                else if (key !== 'hp' && key !== 'mp') {
-                                                    futureTagSum.personality[key] = (futureTagSum.personality[key] || 0) + val;
-                                                }
+                                                        // Visual Update
+                                                        applyGameLogic({
+                                                            hpChange: key === 'hp' ? val : 0,
+                                                            mpChange: key === 'mp' ? val : 0,
+                                                            personalityChange: (key !== 'hp' && key !== 'mp') ? { [key]: val } : {}
+                                                        });
+                                                    });
+                                                } catch (e) { }
+                                            } else if (seg.commandType === 'update_relationship') {
+                                                try {
+                                                    const d = JSON.parse(seg.content || '{}');
+                                                    if (d.charId && d.value) {
+                                                        const val = Number(d.value);
+                                                        const normalizedId = normalizeCharacterId(d.charId);
+                                                        inlineAccumulatorRef.current.relationships[normalizedId] = (inlineAccumulatorRef.current.relationships[normalizedId] || 0) + val;
+                                                        // Visual
+                                                        useGameStore.getState().updateCharacterRelationship(normalizedId, val);
+                                                        addToast(`${normalizedId} 호감도 ${val > 0 ? '+' : ''}${val}`, 'info');
+                                                    }
+                                                } catch (e) { }
+                                            } else if (seg.commandType === 'set_time') {
+                                                // Handle Time
+                                                useGameStore.getState().setTime(seg.content);
                                             }
-                                        });
-                                    } catch (e) { }
-                                } else if (seg.commandType === 'update_relationship') {
-                                    try {
-                                        const d = JSON.parse(seg.content || '{}');
-                                        if (d.charId && d.value) {
-                                            const normalizedId = normalizeCharacterId(d.charId, useGameStore.getState().language || 'ko');
-                                            const val = Number(d.value);
-                                            futureTagSum.relationships[normalizedId] = (futureTagSum.relationships[normalizedId] || 0) + val;
                                         }
-                                    } catch (e) { }
-                                }
-                            }
-                        });
 
-                        console.log(`[Script Replacement] Seamless Switch! resuming from index ${matchIndex}. Future Tags:`, futureTagSum);
+                                        // Advance
+                                        currentIndex++;
+                                        activeSegmentIndexRef.current = currentIndex;
+                                    } else {
+                                        // Content (Dialogue/Narration/Choice)
+                                        // Update current segment to reflect latest buffer (in case text grew)
+                                        if (allSegments[currentIndex]) {
+                                            setCurrentSegment(allSegments[currentIndex]);
+                                        }
 
-                        // Apply Replacement
-                        setScriptQueue(newQueue);
+                                        // Handle Choices Lookahead
+                                        if (seg.type === 'choice') {
+                                            const newChoices = [];
+                                            let tempIdx = currentIndex;
+                                            while (tempIdx < allSegments.length && allSegments[tempIdx].type === 'choice') {
+                                                newChoices.push(allSegments[tempIdx]);
+                                                tempIdx++;
+                                            }
+                                            setChoices(newChoices);
+                                            setCurrentSegment(null); // Clear text box for choices
+                                        }
 
-                        // [UX Check] If current segment matches exactly, do we need to refresh it?
-                        // No, let user finish reading current line. ScriptQueue handles the NEXT.
+                                        // Update Queue for Next Click
+                                        // If choice, we don't queue choices again? 
+                                        // Standard logic: choices are handled by clicks.
+                                        // But if "next" is clicked, we need queue?
+                                        // Actually, if choice is displayed, script stops.
+                                        // We should setQueue to remainder AFTER choices.
 
-                    } else {
-                        console.warn("[Script Replacement] Could not match stream position. Fallback: dump all logic at end, do not replace script visual.");
-                        // Fallback: We don't replace queue (user reads Clean Text).
-                        // Future Tags = 0 (since we don't add tags to queue).
-                        // Logic runs as pending at end.
-                    }
+                                        let queueStart = currentIndex + 1;
+                                        if (seg.type === 'choice' && allSegments.length > 0) {
+                                            // Skip all choice segments in queue
+                                            while (queueStart < allSegments.length && allSegments[queueStart].type === 'choice') {
+                                                queueStart++;
+                                            }
+                                        }
 
-                    // 3. Deduct Future Tags from Deferred Logic
-                    // deferredLogic = Total - (InlineAppliedSoFar + FutureTags)
-                    // Note: PreLogic was already subtracted from deferredLogic above if applicable.
-                    // inlineAccumulatorRef tracks what user ALREADY saw/clicked (if any tags existed).
-
-                    const acc = inlineAccumulatorRef.current; // What ran so far
-
-                    if (finalDeferred.hpChange !== undefined) {
-                        finalDeferred.hpChange -= (acc.hp + futureTagSum.hp);
-                    }
-                    if (finalDeferred.mpChange !== undefined) {
-                        finalDeferred.mpChange -= (acc.mp + futureTagSum.mp);
-                    }
-
-                    if (finalDeferred.personalityChange) {
-                        // Deduct Accumulator
-                        Object.entries(acc.personality).forEach(([k, v]) => {
-                            if (finalDeferred.personalityChange && finalDeferred.personalityChange[k] !== undefined) {
-                                finalDeferred.personalityChange[k] -= v;
-                            }
-                        });
-                        // Deduct Future Tags
-                        Object.entries(futureTagSum.personality).forEach(([k, v]) => {
-                            if (finalDeferred.personalityChange && finalDeferred.personalityChange[k] !== undefined) {
-                                finalDeferred.personalityChange[k] -= (v as number);
-                            }
-                        });
-                    }
-
-                    // [Refactor] Apply Logic via processRealmProgression
-                    // First, construct the 'next' stats candidate
-                    let tempStats = { ...useGameStore.getState().playerStats };
-
-                    // Apply HP/MP/Personality first (Standard Logic)
-                    if (finalDeferred.hpChange) tempStats.hp = Math.min(tempStats.maxHp, Math.max(0, tempStats.hp + finalDeferred.hpChange));
-                    if (finalDeferred.mpChange) tempStats.mp = Math.min(tempStats.maxMp, Math.max(0, tempStats.mp + finalDeferred.mpChange));
-                    // Note: 'mp' in standard stats might be 'neigong' in Wuxia context?
-                    // User prompt uses 'neigong' (years). Store has 'neigong'.
-                    // PostLogic 'stat_updates' might imply 'mp' as 'inner power'?
-                    // If PostLogic sends 'mp', does it mean 'neigong'? 
-                    // Usually 'mp' is Mana/Activity. 'neigong' is Year stats.
-                    // Let's check if PostLogic sends 'neigong'. The schema allows 'stat_updates' dictionary.
-                    // If PostLogic sends { "neigong": 1 }, it goes into 'personalityChange' (catch-all) or separate?
-                    // Lines 1387-1393 puts everything except 'hp','mp' into 'personalityChange'.
-                    // So 'neigong' is in 'personalityChange'.
-
-                    // Apply Personality/Misc including Neigong
-                    if (finalDeferred.personalityChange) {
-                        const pDelta = finalDeferred.personalityChange;
-                        // Handle Neigong specifically if present
-                        if (pDelta.neigong) {
-                            tempStats.neigong = (tempStats.neigong || 0) + pDelta.neigong;
-                            delete pDelta.neigong; // Remote from personality map
-                        }
-
-                        // Handle Level/Exp if present
-                        if (pDelta.exp) {
-                            tempStats.exp = (tempStats.exp || 0) + pDelta.exp;
-                            // Simple Level Up (Base)
-                            const expReq = tempStats.level * 100;
-                            if (tempStats.exp >= expReq) {
-                                // Potential Level Up (ProcessRealmProgression will enforce caps)
-                                tempStats.level += 1;
-                                tempStats.exp -= expReq;
-                            }
-                            delete pDelta.exp;
-                        }
-
-                        // Apply others to personality
-                        Object.entries(pDelta).forEach(([k, v]) => {
-                            if (typeof v === 'number') {
-                                // Check if it matches a root stat (str, agi...) or personality
-                                if (['str', 'agi', 'int', 'vit', 'luk', 'fame', 'gold'].includes(k)) {
-                                    (tempStats as any)[k] = ((tempStats as any)[k] || 0) + v;
-                                } else if (tempStats.personality && (k in tempStats.personality)) {
-                                    (tempStats.personality as any)[k] += v;
-                                }
-                            }
-                        });
-                    }
-
-                    // Now Run Realm Check on the TempStats
-                    const logicProgression = processRealmProgression(tempStats, addToast);
-                    if (logicProgression.narrativeEvent) {
-                        const currentSummary = useGameStore.getState().lastTurnSummary || "";
-                        setLastTurnSummary(currentSummary + "\n" + logicProgression.narrativeEvent);
-                    }
-
-                    // Update the final stats in store
-                    const finalStatsToSet = logicProgression.stats;
-
-                    // Also merge other deferred logic
-                    // We need to actually CALL applyGameLogic-like steps or set store directly?
-                    // The original code passed 'finalDeferred' to `applyGameLogic`.
-                    // But `applyGameLogic` is not shown here (it's likely defined later).
-                    // We must assume `applyGameLogic` exists and handles the rest (mood, memories, goals).
-                    // BUT we already modified stats.
-                    // So we should update stats manually here, and pass rest to applyGameLogic?
-                    // OR: Pass 'stats' to applyGameLogic if it accepts it.
-                    // Standard `applyGameLogic` handles `hp`, `mp`.
-                    // We handled them here. So set hpChange/mpChange/personalityChange to null/empty in `finalDeferred`?
-
-                    // Update Store with Stats
-                    useGameStore.getState().setPlayerStats(finalStatsToSet);
-
-                    // Clear applied changes from deferred logic so applyGameLogic doesn't double apply
-                    finalDeferred.hpChange = 0;
-                    finalDeferred.mpChange = 0;
-                    finalDeferred.personalityChange = {};
-                    // (We kept non-stat changes like memories, clues)
-
-                    // [Security] Strip playerRank from deferred logic to ensure processRealmProgression is the System Authority
-                    if (finalDeferred.playerRank) delete finalDeferred.playerRank;
-                    if (finalDeferred.post_logic?.playerRank) delete finalDeferred.post_logic.playerRank;
-
-                    applyGameLogic(finalDeferred);
-
-
-                    if (finalDeferred.post_logic?.relationship_updates) {
-                        const rels = finalDeferred.post_logic.relationship_updates;
-                        // Deduct Accumulator
-                        Object.entries(acc.relationships).forEach(([char, val]) => {
-                            if (rels[char] !== undefined) rels[char] -= val;
-                        });
-                        // Deduct Future Tags
-                        Object.entries(futureTagSum.relationships).forEach(([char, val]) => {
-                            if (rels[char] !== undefined) rels[char] -= val;
-                        });
-                    }
-
-                    setPendingLogic(finalDeferred);
-
-
-
-                    // [Logging] Reconstruct & Log
-                    const mergedResult = {
-                        reply: finalStoryText,
-                        raw_story: cleanStoryText,
-                        router: routerOut,
-                        logic: {
-                            ...preLogicDebug,
-                            triggerEventId: (p2Result.eventOut as any)?.triggerEventId,
-                            candidates: (p2Result.eventOut as any)?.candidates,
-                            event_debug_info: (p2Result.eventOut as any)?.debug,
-                            currentEvent: (p2Result.eventOut as any)?.currentEvent
-                        },
-                        post_logic: postLogicOut,
-                        martial_arts: p2Result.martialArtsOut,
-
-                        allUsage: { ...p1Result.usage, ...p2Result.usage }, // [Fix] Merge usage objects manually
-                        latencies: { ...p1Result.latencies, ...p2Result.latencies, total: p1Duration + p2Duration },
-                        cost: (p1Result.costs?.total || 0) + (p2Result.costs?.total || 0),
-                        usedModel: p1Result.usedModel
-                    };
-
-                    // [Telemetry & Debug Logging]
-                    // Consolidated Log for Split Agent Execution (Phase 1 + Phase 2)
-
-                    // 0. Prepare Debug Objects
-
-                    // preLogicDebug is already defined in outer scope
-                    const postLogicDebug = (p2Result as any).postLogicOut;
-                    const castingDebug = (p1Result as any).suggestions; // [Fix] executeStoryPhase returns 'suggestions'
-                    const maDebug = (p2Result as any).martialArtsOut;
-
-
-                    // Latencies & Cost
-                    const totalCost = (mergedResult.cost || 0);
-                    const totalWon = Math.round(totalCost * KRW_PER_USD);
-
-                    // Estimate latencies based on available data or reconstruction
-                    // P1 has discrete latencies in result? p1Result usually has them attached if server returns them.
-                    // If not, we use the client-side delta.
-                    const p1Latencies = (p1Result as any).latencies || {};
-                    const p2Latencies = (p2Result as any).latencies || {};
-
-                    console.log(`%c[Telemetry] Async Phase 2 Done. Total Latency: ${mergedResult.latencies.total}ms | Cost: $${totalCost.toFixed(6)} (₩${totalWon.toLocaleString()})`, 'color: gray;');
-
-                    // [New] Detailed Token Usage Log
-                    if (mergedResult.allUsage) {
-                        const usageTable = Object.entries(mergedResult.allUsage).map(([model, usage]: [string, any]) => ({
-                            Model: model,
-                            'In Tokens': usage.promptTokens,
-                            'Cached Tokens': usage.cachedTokens || 0,
-                            'Out Tokens': usage.completionTokens,
-                            'Total Tokens': usage.totalTokens,
-                            'Cost ($)': `$${(usage.cost || 0).toFixed(6)}`
-                        }));
-                        console.table(usageTable);
-                    }
-
-
-
-                    // 1.5 Casting Log
-                    if (castingDebug) {
-                        const candidateCount = castingDebug.length;
-                        console.groupCollapsed(`%c[Step 1.5] Casting Director (${candidateCount} candidates scanned)`, candidateCount > 0 ? 'color: purple; font-weight: bold;' : 'color: gray;');
-
-                        if (candidateCount === 0) {
-                            console.log("No candidates found (All filtered by Phase/Region/Active). check AgentCasting logic.");
-                        } else {
-                            // Display Top 15
-                            console.log(`%c[Context Info]`, 'color: gray;', {
-                                Location: effectiveGameState.currentLocation,
-                                PlayerRank: effectiveGameState.playerStats?.playerRank,
-                                PlayerLevel: effectiveGameState.playerStats?.level,
-                                Phase: effectiveGameState.phase
-                            });
-                            console.log(`%c[Leaderboard (Top 15)]`, 'color: purple; font-weight: bold;', castingDebug.slice(0, 15).map((c: any) => ({
-                                Name: c.name,
-                                Score: c.score.toFixed(2),
-                                Reasons: c.reasons.join(', ')
-                            })));
-                        }
-                        console.groupEnd();
-                    }
-
-                    // 2. Pre-Logic Log
-                    if (preLogicDebug) {
-                        const scoreText = preLogicDebug.plausibility_score ? `Score: ${preLogicDebug.plausibility_score}/10` : (preLogicDebug.success ? 'Success' : 'Failure');
-                        // [Debug] Force Expand if Fate changed (or just exist)
-                        const fateChangeValue = preLogicDebug.state_changes?.fate;
-                        if (fateChangeValue !== undefined) {
-                            console.log(`%c[Fate System] PreLogic returned Fate Change: ${fateChangeValue} (Score: ${preLogicDebug.plausibility_score})`, 'color: gold; font-size: 14px; font-weight: bold;');
-                        }
-
-                        console.groupCollapsed(`%c[Step 2] Pre-Logic (${p1Latencies.preLogic || '?'}ms) (${scoreText})`, 'color: magenta; font-weight: bold;');
-                        console.log(`%c[Input]`, 'color: gray; font-weight: bold;', preLogicDebug._debug_prompt);
-                        console.log(`%c[Output]`, 'color: magenta; font-weight: bold;', {
-                            Score: preLogicDebug.plausibility_score,
-                            Analysis: preLogicDebug.judgment_analysis,
-                            Guide: preLogicDebug.narrative_guide,
-                            Mechanics: preLogicDebug.mechanics_log,
-                            Changes: preLogicDebug.state_changes
-                        });
-                        console.groupEnd();
-                    }
-
-                    // 3. Story Log
-                    console.groupCollapsed(`%c[Step 3] Story Writer (${p1Latencies.story || '?'}ms)`, 'color: green; font-weight: bold;');
-                    if ((p1Result as any).systemPrompt) {
-                        console.log(`%c[Input - Static (Cached)]`, 'color: gray; font-weight: bold;', (p1Result as any).systemPrompt);
-                    }
-                    if ((p1Result as any).finalUserMessage) {
-                        console.log(`%c[Input - Dynamic (Logic + User)]`, 'color: blue; font-weight: bold;', (p1Result as any).finalUserMessage);
-                    }
-                    // Use clean text for log readability, or raw if preferred
-                    console.log(`%c[Output]`, 'color: green; font-weight: bold;', finalStoryText);
-                    console.groupEnd();
-
-                    // 4. Post-Logic Log
-                    if (postLogicDebug) {
-                        console.groupCollapsed(`%c[Step 4] Post-Logic (${p2Latencies.postLogic || '?'}ms)`, 'color: orange; font-weight: bold;');
-                        console.log(`%c[Input]`, 'color: gray; font-weight: bold;', postLogicDebug._debug_prompt);
-                        console.log(`%c[Output]`, 'color: orange; font-weight: bold;', {
-                            Mood: postLogicDebug.mood_update,
-                            Relations: postLogicDebug.relationship_updates,
-                            Stats: postLogicDebug.stat_updates,
-                            Tension: postLogicDebug.tension_update,
-                            NewGoals: postLogicDebug.new_goals,
-                            GoalUpdates: postLogicDebug.goal_updates,
-                            Memories: postLogicDebug.new_memories
-                        });
-                        console.groupEnd();
-                    }
-
-                    // 4.6. Choices Log (Post-Logic Parallel)
-                    if (p2Result.choicesOut) {
-                        console.groupCollapsed(`%c[Step 4.6] Choice Generation`, 'color: cyan; font-weight: bold;');
-                        console.log(`%c[Input]`, 'color: gray; font-weight: bold;', p2Result.choicesOut._debug_prompt);
-                        console.log(`%c[Output]`, 'color: cyan; font-weight: bold;', p2Result.choicesOut.text);
-                        console.groupEnd();
-                    }
-
-
-                    // 4.5. Martial Arts Log
-                    if (maDebug) {
-                        const maResult = p2Result.martialArtsOut;
-                        console.groupCollapsed(`%c[Step 4.5] Martial Arts (${p2Latencies.martial_arts || '?'}ms)`, 'color: red; font-weight: bold;');
-                        console.log(`%c[Input]`, 'color: gray; font-weight: bold;', maDebug._debug_prompt);
-                        console.log(`%c[Output]`, 'color: red; font-weight: bold;', {
-                            LevelDelta: maResult?.level_delta,
-                            NewSkills: maResult?.new_skills,
-                            UpdatedSkills: maResult?.updated_skills,
-                            Audit: maResult?.audit_log,
-                            Stats: maResult?.stat_updates
-                        });
-                        console.groupEnd();
-                    }
-
-
-                    // 4.7. Event System Log
-                    // [New] Log critical event triggering info
-                    if (mergedResult.logic) {
-                        const logicDebug = mergedResult.logic;
-                        const triggerId = logicDebug.triggerEventId; // Legacy (Server)
-                        const { mandatory, randomCandidates } = EventManager.checkEvents(useGameStore.getState()); // Client Check (Reference)
-                        const serverCandidates = logicDebug.candidates; // [NEW] Server Source of Truth
-
-                        // [Fix] Always show log for visibility
-                        console.groupCollapsed(`%c[Step 4.7] Event System (Triggered: ${triggerId || 'None'})`, 'color: gold; font-weight: bold;');
-                        console.log(`%c[Server Trigger]`, 'color: gold; font-weight: bold;', triggerId ? `✅ ${triggerId}` : '❌ None');
-
-                        if (triggerId && logicDebug.currentEvent) {
-                            console.log(`%c[Event Prompt]`, 'color: gray;', logicDebug.currentEvent);
-                        }
-
-                        // [NEW] Server Scan Results (Definitive)
-                        if (serverCandidates) {
-                            if (serverCandidates.mandatory && serverCandidates.mandatory.length > 0) {
-                                console.log(`%c[Server Scan (Mandatory)]`, 'color: cyan;', serverCandidates.mandatory);
-                            } else {
-                                console.log(`%c[Server Scan (Mandatory)]`, 'color: cyan;', "None");
-                            }
-
-                            if (serverCandidates.random && serverCandidates.random.length > 0) {
-                                console.log(`%c[Server Scan (Random)]`, 'color: orange;', `Count: ${serverCandidates.random.length}`, serverCandidates.random);
-                            } else {
-                                console.log(`%c[Server Scan (Random)]`, 'color: orange;', "None");
-                            }
-                        } else {
-                            // Legacy Log
-                            console.log(`%c[Candidates (Client)]`, 'color: gray;', mandatory.length > 0 ? "Blocked by Mandatory" : randomCandidates.map(e => e.id));
-                        }
-                        console.groupEnd();
-                    }
-
-                    // [Fix] Refresh Last Turn Summary with the FINAL story text
-                    // This clears out any temporary "System Events" (like Realm Promotion) that were appended 
-                    // to the previous summary, preventing them from contaminating the next turn's PreLogic.
-                    // We use finalStoryText (cleaned) or cleanStoryText (raw). 
-                    const nextSummary = cleanStoryText || finalStoryText;
-                    if (nextSummary) {
-                        let summaryToSet = nextSummary;
-                        // [Fix] If a NEW Realm Event happened THIS turn, we must carry it forward to the Next Turn
-                        // so PreLogic can see it. But since we are overwriting the summary, we must re-append it.
-                        if (logicProgression && logicProgression.narrativeEvent) {
-                            summaryToSet += "\n" + logicProgression.narrativeEvent;
-                        }
-                        useGameStore.getState().setLastTurnSummary(summaryToSet);
-                        console.log("[VisualNovelUI] Refreshed LastTurnSummary for Next Turn (Event Carried: " + !!logicProgression?.narrativeEvent + ")");
-                    }
-
-                    // (Full logging omitted to save space, but critical data is captured in submitGameplayLog)
-
-                    // Submit Log
-                    submitGameplayLog({
-                        session_id: activeSession?.user?.id || '00000000-0000-0000-0000-000000000000',
-                        game_mode: useGameStore.getState().activeGameId,
-                        turn_count: useGameStore.getState().turnCount,
-                        choice_selected: text,
-                        player_rank: useGameStore.getState().playerStats.playerRank,
-                        location: useGameStore.getState().currentLocation,
-                        timestamp: new Date().toISOString(),
-                        player_name: useGameStore.getState().playerName,
-                        cost: mergedResult.cost,
-                        input_type: isDirectInput ? 'direct' : 'choice',
-                        meta: {
-                            hp: useGameStore.getState().playerStats.hp,
-                            agent_router: routerOut?.intent,
-                            pre_logic_score: preLogicDebug?.plausibility_score,
-                            scenario_summary: useGameStore.getState().scenarioSummary
-                        },
-                        story_output: finalStoryText
-                    });
-
-                } catch (e) {
-                    console.error("[VisualNovelUI] Phase 2 Error:", e);
-                    addToast("Logic Sync Failed (Background)", "error");
-                } finally {
-                    setIsLogicPending(false);
-                }
-            })();
-
-            // Update Average Response Time (Weighted: 70% history, 30% recent)
-            const duration = Date.now() - startTime;
-            setAvgResponseTime(prev => Math.round((prev * 0.7) + (duration * 0.3)));
-
-            // Start playing
-            if (segments.length > 0) {
-                console.log(`[VisualNovelUI] Setting Script Queue (Size: ${segments.length})`);
-                // Skip initial background, command, AND BGM segments
-                let startIndex = 0;
-                while (startIndex < segments.length && (
-                    segments[startIndex].type === 'background' ||
-                    segments[startIndex].type === 'command' ||
-                    segments[startIndex].type === 'bgm'
-                )) {
-                    const seg = segments[startIndex];
-                    if (seg.type === 'background') {
-                        // [Fix] Resolve background properly before setting
-                        const resolvedBg = resolveBackground(seg.content);
-                        setBackground(resolvedBg);
-                    } else if (seg.type === 'command') {
-                        if (seg.commandType === 'set_time') {
-                            const timeStr = seg.content;
-                            useGameStore.getState().setTime(timeStr);
-
-                            // [New] Auto-Parse Day from String (e.g. "2일차")
-                            // Format: "2일차 14:00 (낮)"
-                            const dayMatch = timeStr.match(/(\d+)일차/);
-                            if (dayMatch) {
-                                const newDay = parseInt(dayMatch[1], 10);
-                                if (!isNaN(newDay)) {
-                                    useGameStore.getState().setDay(newDay);
-                                    console.log(`[Time] Auto-update Day: ${newDay}`);
-                                }
-                            }
-                        } else if (seg.commandType === 'update_stat') {
-                            // [Fix] Handle Stat Update (Parsed as Command)
-                            try {
-                                const stats = JSON.parse(seg.content || '{}');
-                                Object.entries(stats).forEach(([k, v]) => {
-                                    const key = k.toLowerCase();
-                                    const val = Number(v);
-                                    if (isNaN(val)) return;
-
-                                    // 1. Apply Immediate
-                                    applyGameLogic({
-                                        hpChange: key === 'hp' ? val : 0,
-                                        mpChange: key === 'mp' ? val : 0,
-                                        personalityChange: (key !== 'hp' && key !== 'mp') ? { [key]: val } : {}
-                                    });
-
-                                    // 2. Visual Feedback
-                                    if (key === 'hp') addToast(`체력 ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'error');
-                                    else if (key === 'mp') addToast(`내공 ${val > 0 ? '+' : ''}${val}`, 'info');
-                                    else addToast(`${key} ${val > 0 ? '+' : ''}${val}`, 'info');
-
-                                    // 3. Track for Pending Deduction (using Ref)
-                                    if (key === 'hp') inlineAccumulatorRef.current.hp += val;
-                                    else if (key === 'mp') inlineAccumulatorRef.current.mp += val;
-                                    else if (key) {
-                                        inlineAccumulatorRef.current.personality[key] = (inlineAccumulatorRef.current.personality[key] || 0) + val;
+                                        setScriptQueue(allSegments.slice(queueStart));
+                                        break; // Stop auto-advance
                                     }
+                                }
+                            },
+                            onComplete: (data) => {
+                                console.log("[Stream] Complete. Data Payload Received. Final Text Length:", data.finalStoryText?.length || 0);
+                                const p2Duration = Date.now() - p1Start;
+
+                                // [Fix] Destructure Correctly based on Orchestrator Payload
+                                const {
+                                    raw_story: cleanStoryText,
+                                    logic: preLogicOut,
+                                    post_logic: postLogicOut,
+                                    martial_arts: martialArtsOut,
+                                    event_debug, // Wrapper
+                                    usage,
+                                    latencies,
+                                    costs,
+                                    reply: finalStoryText // Mapped from 'reply'
+                                } = data;
+
+                                // Extract Event Data specifically
+                                const eventOut = event_debug?.output;
+
+                                // [Debug] Structured Console Logs (Enhanced Readability)
+                                const logStyle = "font-weight: bold; color: #4ade80; background: #064e3b; padding: 2px 5px; border-radius: 3px;";
+                                const subLogStyle = "font-weight: bold; color: #60a5fa;";
+
+                                console.groupCollapsed(`%c[Turn ${currentState.turnCount}] AI Processing Report`, "font-size: 14px; background: #111; color: #fff; padding: 4px; border-radius: 4px;");
+
+                                // 1. Pre-Logic
+                                console.groupCollapsed(`%c1. Pre-Logic [${latencies?.preLogic || 0}ms]`, logStyle);
+                                console.log("%c[Input Prompt]", subLogStyle, preLogicOut?._debug_prompt || "N/A");
+                                console.log("%c[Analysis]", subLogStyle, preLogicOut?.judgment_analysis);
+                                console.log("%c[Narrative Guide]", subLogStyle, preLogicOut?.narrative_guide);
+
+                                // [Auxiliary Fields Log]
+                                if (preLogicOut?.combat_analysis) console.log("%c[Combat Analysis]", subLogStyle, preLogicOut.combat_analysis);
+                                if (preLogicOut?.emotional_context) console.log("%c[Emotional Context]", subLogStyle, preLogicOut.emotional_context);
+                                if (preLogicOut?.character_suggestion) console.log("%c[Char Suggestion]", subLogStyle, preLogicOut.character_suggestion);
+                                if (preLogicOut?.goal_guide) console.log("%c[Goal Guide]", subLogStyle, preLogicOut.goal_guide);
+                                if (preLogicOut?.location_inference) console.log("%c[Loc Inference]", subLogStyle, preLogicOut.location_inference);
+
+                                console.groupEnd();
+
+                                // 2. Story Generation
+                                console.groupCollapsed(`%c2. Story Generation (${cleanStoryText?.length || 0} chars) [${latencies?.story || 0}ms]`, logStyle);
+                                console.log("%c[Static Prompt]", subLogStyle, data.story_static_prompt || "N/A");
+                                console.log("%c[Dynamic Prompt]", subLogStyle, data.story_dynamic_prompt || "N/A");
+                                console.log("%c[Generated Text]", subLogStyle, cleanStoryText);
+                                console.groupEnd();
+
+                                // 3. Game Logic (Post-Logic)
+                                console.groupCollapsed(`%c3. Game Logic & Stats [${latencies?.postLogic || 0}ms]`, logStyle);
+                                console.groupCollapsed("Post-Logic Output");
+                                console.dir(postLogicOut);
+                                console.groupEnd();
+
+                                console.groupCollapsed("Martial Arts Logic");
+                                console.log("System Prompt:", martialArtsOut?._debug_prompt);
+                                console.dir(martialArtsOut);
+                                console.groupEnd();
+                                console.groupEnd();
+
+                                // 4. Events
+                                console.groupCollapsed(`%c4. Event System [${latencies?.postLogic || 0}ms]`, logStyle); // Events run in parallel with PostLogic usually, or part of logic time
+
+                                console.log("Event Data:", eventOut);
+                                console.groupEnd();
+
+                                // 5. Telemetry
+                                console.groupCollapsed(`%c5. Performance & Cost ($${costs?.total?.toFixed(4) || '0.0000'})`, logStyle);
+                                console.log(`%c[Timing Breakdown]`, "font-weight:bold; color: yellow;");
+                                console.log(`- Retriever:  ${latencies?.retriever}ms`);
+                                console.log(`- Pre-Logic:  ${latencies?.preLogic}ms %c(Blocking)`, "color:red");
+                                console.log(`- Story Gen:  ${latencies?.story}ms`);
+                                console.log(`- Post-Logic: ${latencies?.postLogic}ms`);
+                                console.log(`- Total Turn: ${latencies?.total}ms`);
+                                console.table(latencies);
+                                console.log("Usage:", usage);
+                                console.log("Detailed Costs:", costs);
+                                console.groupEnd();
+
+                                console.groupEnd(); // End Main Report
+
+                                // [Fix] Field Name Mismatch Support (Orchestrator uses 'reply', UI expects 'finalStoryText')
+                                const serverFinalText = finalStoryText || data.reply;
+
+                                // [Fix] Update History with FINAL text (server authoritative)
+                                let finalText = serverFinalText || cleanStoryText || accumulatedText;
+
+                                // [Safety] If falling back to accumulatedText, we must scrub tags again (as it is raw)
+                                if (finalText === accumulatedText) {
+                                    finalText = finalText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '')
+                                        .replace(/<Output>/gi, '').replace(/<\/Output>/gi, '');
+                                }
+
+                                if (finalText) {
+                                    setLastStoryOutput(finalText);
+                                    useGameStore.getState().updateLastMessage(finalText);
+                                    // [Snapshot] Store Snapshot in History for Rewind
+                                    // [Snapshot] Store Snapshot in History for Rewind
+                                    addMessage({ role: 'model', text: finalText, snapshot });
+
+                                    // [Fix] Re-Sync Script Queue to include Choices
+                                    // The 'finalText' contains the choices appended by the server.
+                                    // We re-parse it and update the queue, respecting the user's current reading position.
+                                    const finalSegments = parseScript(finalText);
+
+                                    // If the user has already advanced past the stream length, or is at the end:
+                                    // We just replace the queue with the remaining segments from the FINAL text.
+                                    // Index logic: activeSegmentIndexRef points to the currently displayed segment index.
+                                    // New Queue = finalSegments [current + 1 ... end]
+                                    if (activeSegmentIndexRef.current !== null) {
+                                        const remaining = finalSegments.slice(activeSegmentIndexRef.current + 1);
+                                        setScriptQueue(remaining);
+                                        console.log(`[Stream] Queue Resync: Added ${remaining.length} segments (including choices).`);
+                                    }
+                                }
+
+                                // Calculate Logic
+                                // Deduplication Logic
+                                const inlineDeltas: Record<string, number> = {};
+                                if (postLogicOut && postLogicOut.inline_triggers) {
+                                    postLogicOut.inline_triggers.forEach((trigger: any) => {
+                                        const statMatch = trigger.tag.match(/<Stat\s+([^=]+)=['"]?(-?\d+)['"]?.*?>/i);
+                                        if (statMatch) {
+                                            const key = statMatch[1].toLowerCase();
+                                            const val = parseInt(statMatch[2], 10);
+                                            if (!isNaN(val)) inlineDeltas[key] = (inlineDeltas[key] || 0) + val;
+                                        }
+                                    });
+                                }
+
+                                const maHp = martialArtsOut?.stat_updates?.hp || 0;
+                                const sourceHp = maHp;
+                                const inlineHp = inlineDeltas['hp'] || 0;
+                                let finalHpChange = (sourceHp !== 0) ? sourceHp - inlineHp : 0;
+
+                                const maMp = martialArtsOut?.stat_updates?.mp || 0;
+                                const sourceMp = maMp;
+                                const inlineMp = inlineDeltas['mp'] || 0;
+                                let finalMpChange = (sourceMp !== 0) ? sourceMp - inlineMp : 0;
+
+                                const plPersonality: Record<string, number> = {};
+                                if (postLogicOut && postLogicOut.stat_updates) {
+                                    Object.entries(postLogicOut.stat_updates).forEach(([k, v]) => {
+                                        const key = k.toLowerCase();
+                                        if (key === 'hp' || key === 'mp') return;
+                                        plPersonality[key] = (v as number) - (inlineDeltas[key] || 0);
+                                    });
+                                }
+
+                                // [Fate System] Update logic
+                                const fateDelta = preLogicOut?.fate_change || 0;
+                                if (fateDelta !== 0) {
+                                    console.log(`[Fate] Applying Delta: ${fateDelta}`);
+                                }
+
+                                const combinedLogic = {
+                                    hpChange: finalHpChange,
+                                    fate: fateDelta,
+                                    mpChange: finalMpChange,
+                                    personalityChange: plPersonality,
+                                    mood: postLogicOut?.mood_update,
+                                    location: postLogicOut?.location_update,
+                                    new_memories: postLogicOut?.new_memories,
+                                    activeCharacters: postLogicOut?.activeCharacters,
+                                    injuriesUpdate: {
+                                        add: postLogicOut?.new_injuries,
+                                        remove: postLogicOut?.resolved_injuries
+                                    },
+                                    stat_updates: postLogicOut?.stat_updates,
+                                    goal_updates: postLogicOut?.goal_updates,
+                                    new_goals: postLogicOut?.new_goals,
+                                    post_logic: {
+                                        ...(postLogicOut || {}),
+                                        stat_updates: plPersonality
+                                    },
+                                    character_memories: postLogicOut?.character_memories,
+                                    martial_arts: martialArtsOut ? {
+                                        ...martialArtsOut,
+                                        stat_updates: { ...(martialArtsOut.stat_updates || {}), hp: 0, mp: 0 }
+                                    } : martialArtsOut,
+                                    _debug_router: data.routerOut,
+                                    triggerEventId: eventOut?.triggerEventId,
+                                    currentEvent: eventOut?.currentEvent,
+                                    candidates: eventOut?.candidates,
+                                    event_debug_info: eventOut?.debug
+                                };
+
+
+                                // Defer Logic
+                                const deferredLogic = { ...combinedLogic };
+                                // Subtract already applied (Client side accumulator)
+                                const acc = inlineAccumulatorRef.current;
+                                if (deferredLogic.hpChange !== undefined) deferredLogic.hpChange -= acc.hp;
+                                if (deferredLogic.mpChange !== undefined) deferredLogic.mpChange -= acc.mp;
+                                if (deferredLogic.personalityChange) {
+                                    Object.entries(acc.personality).forEach(([k, v]) => {
+                                        if (deferredLogic.personalityChange[k] !== undefined) {
+                                            deferredLogic.personalityChange[k] -= v;
+                                        }
+                                    });
+                                }
+                                // Reset Inline Accumulator
+                                inlineAccumulatorRef.current = { hp: 0, mp: 0, relationships: {}, personality: {} };
+
+                                setPendingLogic(deferredLogic);
+                                setIsLogicPending(false);
+
+                                // Logging
+                                submitGameplayLog({
+                                    session_id: activeSession?.user?.id || '00000000-0000-0000-0000-000000000000',
+                                    game_mode: useGameStore.getState().activeGameId,
+                                    turn_count: useGameStore.getState().turnCount,
+                                    choice_selected: text,
+                                    player_rank: useGameStore.getState().playerStats.playerRank,
+                                    location: useGameStore.getState().currentLocation,
+                                    timestamp: new Date().toISOString(),
+                                    player_name: useGameStore.getState().playerName,
+                                    cost: costs?.total || 0,
+                                    input_type: isDirectInput ? 'direct' : 'choice',
+                                    meta: {
+                                        hp: useGameStore.getState().playerStats.hp,
+                                        pre_logic_score: preLogicOut?.plausibility_score,
+                                        scenario_summary: useGameStore.getState().scenarioSummary
+                                    },
+                                    story_output: finalStoryText || cleanStoryText
                                 });
-                            } catch (e) {
-                                console.warn("[VisualNovelUI] Failed to parse stat update command", e);
-                            }
-                        } else if (seg.commandType === 'update_relationship') {
-                            // [Fix] Handle Relationship Update (Parsed as Command)
-                            try {
-                                const relData = JSON.parse(seg.content || '{}');
-                                const charName = relData.charId || relData.character;
-                                const val = Number(relData.value);
 
-                                if (charName && !isNaN(val)) {
-                                    useGameStore.getState().updateCharacterRelationship(charName, val);
-                                    addToast(`${charName} 호감도 ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'info');
-
-                                    // Track for Pending Deduction (using Ref)
-                                    inlineAccumulatorRef.current.relationships[charName] = (inlineAccumulatorRef.current.relationships[charName] || 0) + val;
-                                }
-                            } catch (e) {
-                                console.warn("[VisualNovelUI] Failed to parse relationship update command", e);
+                                console.log(`%c[Telemetry] Stream Finished. Latency: ${p2Duration}ms`, 'color: green;');
+                            },
+                            onError: (err) => {
+                                console.error("[Stream] Error:", err);
+                                addToast("Error: " + err.message, "error");
+                                setIsProcessing(false);
+                                setIsLogicPending(false);
                             }
                         }
-                    } else if (seg.type === 'bgm') {
-                        // [Fix] Play BGM immediately if it's at the start
-                        playBgm(seg.content);
-                    }
-
-                    startIndex++;
-                }
-
-
-                if (startIndex < segments.length) {
-                    // Check if the restart point is a CHOICE
-                    if (segments[startIndex].type === 'choice') {
-                        const newChoices = [];
-                        let i = startIndex;
-                        while (i < segments.length && segments[i].type === 'choice') {
-                            newChoices.push(segments[i]);
-                            i++;
-                        }
-                        setChoices(newChoices);
-                        setScriptQueue(segments.slice(i));
-                        setCurrentSegment(null);
-                    } else {
-                        // Normal Segment
-                        const first = segments[startIndex];
-                        setCurrentSegment(first);
-                        setScriptQueue(segments.slice(startIndex + 1));
-
-                        if (first.type === 'dialogue' && first.expression) {
-                            if (first.character && first.expression) {
-                                const charName = first.character === playerName ? '주인공' : first.character;
-                                const emotion = first.expression;
-
-                                let imagePath = '';
-                                const combinedKey = `${charName}_${emotion}`;
-
-                                if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
-                                    imagePath = `/assets/ExtraCharacters/${combinedKey}.png`;
-                                } else {
-                                    imagePath = getCharacterImage(charName, emotion);
-                                }
-
-                                setCharacterExpression(imagePath);
-                            }
-                        }
-                    }
-                } else {
-                    // All segments were backgrounds
-                    setScriptQueue([]);
-                    setCurrentSegment(null);
-                }
-            } else {
-                console.warn("handleSend: No segments generated.");
-                addToast("AI returned no content.", "warning");
-                setScriptQueue([]);
-                setCurrentSegment(null);
+                    ), timeoutRace]);
+            } finally {
+                // @ts-ignore
+                if (timeoutId) clearTimeout(timeoutId);
             }
+
+            // [Streaming] Script playback is handled incrementally in onToken.
+
+            // [Streaming] Script playback is handled incrementally in onToken.
+
 
         } catch (error) {
             console.error(error);
@@ -5470,6 +5011,8 @@ Instructions:
                     />
                 )
             }
+
+
         </div >
     );
 }

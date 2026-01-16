@@ -7,7 +7,7 @@ import { AgentPostLogic } from './post-logic';
 import { AgentCasting } from './casting'; // [NEW]
 import { AgentSkills } from './skills'; // [NEW] Renamed from martial-arts
 import { AgentChoices } from './choices'; // [NEW] Parallel Choice Gen
-import { generateResponse } from '../gemini'; // 기존 함수 재사용/리팩토링
+import { generateResponse, generateResponseStream } from '../gemini'; // 기존 함수 재사용/리팩토링
 import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../model-config';
 import { PromptManager } from '../prompt-manager';
@@ -87,10 +87,11 @@ export class AgentOrchestrator {
         const preLogicOut = await AgentPreLogic.analyze(history, retrievedContext, userInput, gameState, lastTurnSummary, [], language);
 
         // [ADAPTER] Create fake router output for UI compatibility
+        // [ADAPTER] Create fake router output for UI compatibility
         const routerOut = {
-            type: preLogicOut.intent || 'action',
+            type: 'action',
             intent: preLogicOut.judgment_analysis || 'Analyzed by PreLogic',
-            target: preLogicOut.target,
+            target: null,
             keywords: [],
             analysis: preLogicOut.judgment_analysis,
             usageMetadata: preLogicOut.usageMetadata,
@@ -134,14 +135,6 @@ export class AgentOrchestrator {
 
         // 5. Story Generation
         const compositeInput = `
-[Narrative Direction]
-${preLogicOut.narrative_guide}
-${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysis}` : ""}
-${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
-${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
-${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
-${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_inference}` : ""}
-${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}
 
 [Context data]
 ${PromptManager.getPlayerContext(effectiveGameState, language)}
@@ -151,7 +144,17 @@ ${retrievedContext}
 [Player Action]
 ${userInput}
 
-나레이션 가이드와 기존 설정 및 규칙을 참고하여 6000자 분량의 내용을 작성하세요.
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 12000자 분량의 내용을 작성하세요.
+
+[Narrative Direction]
+${preLogicOut.narrative_guide}
+${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysis}` : ""}
+${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
+${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
+${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
+${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_inference}` : ""}
+${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}
+
 
 [Thinking Process Required]
 답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
@@ -608,6 +611,238 @@ ${userInput}
             systemPrompt: (p1.storyResult as any).systemPrompt,
             finalUserMessage: (p1.storyResult as any).finalUserMessage
         };
+    }
+
+    // [STREAMING] Hybrid Pipeline: PreLogic (Hidden) -> Story (Stream) -> PostLogic (Hidden) -> Final Payload
+    static async *executeTurnStream(
+        apiKey: string,
+        gameState: any,
+        history: Message[],
+        userInput: string,
+        language: 'ko' | 'en' | null = 'ko',
+        modelName: string = MODEL_CONFIG.STORY
+    ): AsyncGenerator<any, void, unknown> {
+        console.log(`[Orchestrator] Stream Turn Start...`);
+        const startTime = Date.now();
+        const t1 = Date.now();
+
+        // --- PHASE 1: PREPARATION (Hidden) ---
+
+        // 1. Context Preparation
+        let lastContext = gameState.lastSystemMessage || "";
+        if (!lastContext && history.length > 0) {
+            const lastModelMsg = [...history].reverse().find(m => m.role === 'model');
+            if (lastModelMsg) lastContext = lastModelMsg.text;
+        }
+        lastContext = lastContext.replace(/<선택지[^>]*>.*?(\n|$)/g, '').replace(/<배경:[^>]*>/g, '').replace(/<BGM:[^>]*>/g, '').trim();
+
+        const activeCharacterNames: string[] = [];
+        if (gameState.activeCharacters && gameState.characterData) {
+            gameState.activeCharacters.forEach((id: string) => {
+                const char = gameState.characterData[id];
+                if (char && char.name) activeCharacterNames.push(char.name);
+            });
+        }
+        const lastTurnSummary = gameState.lastTurnSummary || "";
+        const playerLevel = gameState.playerStats?.level || 1;
+
+        // 2. Casting
+        const castingResult = await AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel);
+        const { active, background } = castingResult;
+        const suggestions = [...active, ...background];
+
+        // 3. Retriever
+        let retrievedContext = await AgentRetriever.retrieveContext(userInput, gameState, active, background);
+        const t3 = Date.now();
+
+        // 4. Pre-Logic
+        const preLogicOut = await AgentPreLogic.analyze(history, retrievedContext, userInput, gameState, lastTurnSummary, [], language);
+
+        // Router Fake Output
+        const routerOut = {
+            type: 'action',
+            intent: preLogicOut.judgment_analysis || 'Analyzed by PreLogic',
+            target: null,
+            keywords: [],
+            analysis: preLogicOut.judgment_analysis,
+            usageMetadata: preLogicOut.usageMetadata,
+            _debug_prompt: "Merged into PreLogic"
+        };
+        const t4 = Date.now();
+
+        // Pre-Logic State Update
+        let effectiveGameState = { ...gameState };
+        if (preLogicOut.mood_override) effectiveGameState.currentMood = preLogicOut.mood_override;
+        if (preLogicOut.new_characters && preLogicOut.new_characters.length > 0) {
+            const currentActive = new Set<string>(effectiveGameState.activeCharacters || []);
+            const charData = effectiveGameState.characterData || {};
+            preLogicOut.new_characters.forEach((name: string) => {
+                const foundId = Object.keys(charData).find(id => {
+                    const cName = charData[id].name;
+                    return cName === name || (cName && name.length > 2 && cName.includes(name));
+                });
+                if (foundId) currentActive.add(foundId);
+            });
+            effectiveGameState.activeCharacters = Array.from(currentActive);
+        }
+
+        // --- PHASE 2: STORY STREAMING ---
+
+        const compositeInput = `
+[Narrative Direction]
+${preLogicOut.narrative_guide}
+${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysis}` : ""}
+${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
+${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
+${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
+${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_inference}` : ""}
+${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}
+
+[Context data]
+${PromptManager.getPlayerContext(effectiveGameState, language)}
+${PromptManager.getActiveCharacterProps(effectiveGameState, undefined, language)}
+${retrievedContext}
+
+[Player Action]
+${userInput}
+
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 12000자 분량의 내용을 작성하세요.
+
+[Thinking Process Required]
+답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
+1. 현재 상황(Context)과 모순되는 점이 없는가?
+2. 등장인물의 말투(Speech Pattern)는 설정과 일치하는가?
+3. 이번 턴의 주요 사건(Key Events)은 무엇인가?
+4. 캐릭터들의 기억 정보와 현재 네러티브의 개연성/핍진성이 유지되는가?
+
+그 후, <Output> 태그 안에 본문을 작성하세요.
+`;
+
+        const cleanHistory = history.map(msg => msg.role === 'model' ? { ...msg, text: msg.text.replace(/<선택지[^>]*>.*?(\n|$)/g, '').trim() } : msg);
+
+        const streamGen = generateResponseStream(
+            apiKey,
+            cleanHistory,
+            compositeInput,
+            effectiveGameState,
+            language,
+            modelName
+        );
+
+        let fullRawText = "";
+        let storyMetadata: any = null;
+
+        // Yield chunks
+        for await (const chunk of streamGen) {
+            if (typeof chunk === 'string') {
+                fullRawText += chunk;
+                yield { type: 'text', content: chunk };
+            } else {
+                storyMetadata = chunk;
+            }
+        }
+
+        const t5 = Date.now();
+
+        // --- PHASE 3: POST-LOGIC & CLEANUP (Hidden) ---
+
+        // Parsing & Scrubbing (Copied Logic)
+        let cleanStoryText = fullRawText;
+        const outputMatch = fullRawText.match(/<Output>([\s\S]*?)<\/Output>/i);
+        if (outputMatch && outputMatch[1]) {
+            cleanStoryText = outputMatch[1];
+        } else {
+            cleanStoryText = cleanStoryText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '').trim();
+        }
+
+        // Remove Tags for Logical Consistency in Logic Model
+        cleanStoryText = cleanStoryText
+            .replace(/\[Stat[^\]]*\]/gi, '')
+            .replace(/<Stat[^>]*>/gi, '')
+            .replace(/\[Rel[^\]]*\]/gi, '')
+            .replace(/<Rel[^>]*>/gi, '')
+            .replace(/\[Relationship[^\]]*\]/gi, '')
+            .replace(/<Relationship[^>]*>/gi, '')
+            .replace(/\[Tension[^\]]*\]/gi, '')
+            .replace(/<Tension[^>]*>/gi, '')
+            .replace(/<NewInjury[^>]*>/gi, '')
+            .replace(/<Injury[^>]*>/gi, '')
+            .replace(/<Dead[^>]*>/gi, '')
+            .replace(/\[Dead[^\]]*\]/gi, '')
+            .replace(/<Location[^>]*>/gi, '')
+            .replace(/<Faction[^>]*>/gi, '')
+            .replace(/<Rank[^>]*>/gi, '')
+            .replace(/<PlayerRank[^>]*>/gi, '')
+            .replace(/\[PlayerRank[^\]]*\]/gi, '')
+            .replace(/<EventProgress[^>]*>/gi, '')
+            .replace(/\[EventProgress[^\]]*\]/gi, '')
+            .replace(/<ResolvedInjury[^>]*>/gi, '')
+            .replace(/\[ResolvedInjury[^\]]*\]/gi, '');
+
+        if (!cleanStoryText || !cleanStoryText.trim()) cleanStoryText = " ... "; // Fallback
+
+        // Execute Phase 2
+        const p1Costs = { total: calculateCost((storyMetadata as any)?.usedModel || MODEL_CONFIG.STORY, storyMetadata?.usageMetadata?.promptTokenCount || 0, storyMetadata?.usageMetadata?.candidatesTokenCount || 0, storyMetadata?.usageMetadata?.cachedContentTokenCount || 0) };
+        const p1Usage = { preLogic: this.normalizeUsage(preLogicOut.usageMetadata, 0), story: this.normalizeUsage(storyMetadata?.usageMetadata, p1Costs.total) };
+
+        const usedModel = (storyMetadata as any)?.usedModel || modelName;
+        // Inject System/Final prompt for debug if available in storyMetadata (it is)
+        const systemPrompt = (storyMetadata as any)?.systemPrompt;
+        const finalUserMessage = (storyMetadata as any)?.finalUserMessage;
+
+        // Perform Phase 2
+        const p2 = await this.executeLogicPhase(apiKey, effectiveGameState, history, userInput, cleanStoryText, language);
+
+        const totalCost = p1Costs.total + p2.costs.total;
+
+        // Construct Final Legacy Data Object
+        const finalPayload = {
+            reply: p2.finalStoryText, // Has choices appended
+            raw_story: cleanStoryText,
+            logic: {
+                ...preLogicOut,
+                triggerEventId: (p2 as any).eventOut?.triggerEventId,
+                currentEvent: (p2 as any).eventOut?.currentEvent,
+                candidates: (p2 as any).eventOut?.candidates
+            },
+            post_logic: p2.postLogicOut,
+            martial_arts: p2.martialArtsOut,
+            martial_arts_debug: { _debug_prompt: p2.martialArtsOut._debug_prompt },
+            choices_debug: { _debug_prompt: p2.choicesOut._debug_prompt, output: p2.choicesOut.text },
+            event_debug: { output: (p2 as any).eventOut },
+            router: routerOut,
+            casting: suggestions,
+            usageMetadata: storyMetadata?.usageMetadata,
+            usedModel: usedModel,
+            allUsage: {
+                preLogic: p1Usage.preLogic,
+                postLogic: p2.usage.postLogic,
+                story: p1Usage.story,
+                martialArts: p2.usage.martialArts,
+                choices: p2.usage.choices
+            },
+            latencies: {
+                retriever: (t3 - t1), // approx
+                preLogic: (t4 - t3),
+                story: (t5 - t4),
+                postLogic: p2.latencies.postLogic,
+                total: Date.now() - startTime
+            },
+            cost: totalCost,
+            costs: {
+                total: totalCost,
+                breakdown: {
+                    preLogic: p1Costs,
+                    postLogic: p2.costs
+                }
+            },
+            // [Debug Prompts]
+            story_static_prompt: systemPrompt,
+            story_dynamic_prompt: compositeInput
+        };
+
+        // Yield Final Data
+        yield { type: 'data', content: finalPayload };
     }
 
     // [Helper] Normalize Usage Metadata for UI (Gemini -> OpenAI/Generic format)

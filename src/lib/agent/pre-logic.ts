@@ -5,23 +5,8 @@ import { MODEL_CONFIG } from '../model-config';
 import { PromptManager } from '../prompt-manager';
 
 export interface PreLogicOutput {
-    intent?: 'combat' | 'dialogue' | 'action' | 'system'; // [NEW] Integrated Classification
-    target?: string; // [NEW] Integrated Target
-    success: boolean; // 행동 성공 여부 (true: 성공, false: 실패)
     narrative_guide: string; // [가이드] 스토리 작가(Story Model)가 따라야 할 서술 지침
-    state_changes?: {
-        hp?: number; // 체력 변화량
-        mp?: number; // 내공/마력 변화량
-        stamina?: number; // 기력 변화량
-        fate?: number; // [NEW] 운명 점수 변화량 (획득 - 소모)
-        gold?: number; // [NEW] 골드 변화량 (+/-)
-        location?: string; // 위치 이동 발생 시
-        item_changes?: string[]; // 아이템 획득/소실
-        factionChange?: string; // [NEW] 소속 변경 (e.g. "Mount Hua Sect")
-        playerRank?: string; // [NEW] 등급/이칭 변경 (e.g. "First Rate Warrior")
-        // 필요에 따라 더 구체적인 게임 상태 필드 추가
-    };
-    mechanics_log?: string[]; // [로그] 주사위 굴림, 룰 체크 등 기계적 판정의 상세 내역
+    fate_change?: number; // [NEW] 운명 점수 변화량 (획득 - 소모)
     usageMetadata?: any; // [비용] AI 토큰 사용량 메타데이터
     _debug_prompt?: string; // [디버깅] 실제 AI에 전송된 프롬프트 내용
     mood_override?: string; // [분위기 전환] 강제 턴 분위기 변경 (예: Daily -> Combat)
@@ -148,28 +133,7 @@ User can spend 'Fate Points' to bend reality.
 
     // [출력 포맷 (JSON Schema)]
     // AI가 반환해야 할 JSON 구조를 정의합니다.
-    private static readonly OUTPUT_SCHEMA = `
-[Output Schema(JSON)]
-{
-    "mood_override": "daily" | "tension" | "combat" | "romance" | null,
-    "plausibility_score": number, // 1-10 (AFTER Fate Boost)
-    "judgment_analysis": "Brief analysis.",
-    "combat_analysis": "Compare Player vs Target strength. Estimate winning chance.",
-    "emotional_context": "Summarize active character sentiments (Hidden/Overt). e.g. 'A loves B, B is curious about A'.",
-    "character_suggestion": "Suggest a relevant character to appear/react if appropriate. Or 'None'.",
-    "goal_guide": "Tips for the Story Model to advance Active Goals based on current situation.",
-    "success": boolean,
-    "narrative_guide": "Specific instructions for the narrator.",
-    "state_changes": { 
-        "hp": -10, 
-        "gold": 100,
-        "fate": number, // Calculated Net Change (Gain - Usage)
-        "factionChange": "New Faction Name",
-        "playerRank": "New Rank Title"
-    },
-    "mechanics_log": ["Analysis: ...", "Score: X/10"]
-}
-`;
+
 
 
 
@@ -234,100 +198,40 @@ STEP 4: **Final Judgment**
    - Determine Success/Failure.
    - Draft Narrative Guide.
 
-[Intent Classification Rules]
-- **combat**: Attacking, defending, using skills (Martial Arts), fleeing, tactical movement.
-- **dialogue**: Speaking to characters, asking questions, emotional expression.
-- **action**: General physical actions (searching, crafting, moving, sleeping, eating).
-- **system**: UI requests (save, load, status, inventory).
-
-[Mode-Specific Adjudication Rules]
-1. IF Intent == 'combat' (Use [Combat Logic Engine]):
-   - Focus: TACTICAL PLAUSIBILITY. 
-   - Analyze: Is the tactic smart? Does it exploit weakness?
-   - Mechanic: Compare Relative Strength (Rank/Stats).
-     * Player << Enemy (Head-on) -> Fail / Take Damage.
-     * Player << Enemy (Ambush/Trap) -> Potential Success / Escape.
-   - Outcome: Describe specific HIT, IMPACT, or COUNTER.
-
-2. IF Intent == 'dialogue' (Use [Social Logic Adjudicator]):
-   - Focus: EMOTIONAL LOGIC & CONTEXT.
-   - Analyze: Goal (Info/Affection) vs Approach.
-     * Logical/Respectful -> Effective on Scholars/Righteous.
-     * Aggressive/Rough -> Effective on Bandits/Unorthodox.
-     * Emotional -> Effective on Intimate relationships.
-    - Outcome: Target reacts favorably vs Refuses/Gets angry.
-
 [Alignment & Faction Logic (Morality System)]
 **Check Player's Morality (if available in Context/Stats)**
 - **High Morality (>50)**: 'Orthodox (White Faction/Murim Alliance)' NPCs are FRIENDLY/Respectful. 'Unorthodox (Black Faction)' NPCs are HOSTILE/Wary.
 - **Low Morality (<-50 or Evil Actions)**: 'Unorthodox' NPCs are FRIENDLY/Respectful (Brotherhood). 'Orthodox' NPCs are HOSTILE/Disgusted.
 - **Guidance Rule**: If Player tries to persuade a faction OPPOSITE to their alignment -> **Apply Penalty to Score (-2)** and describe inherent distrust.
 
-3. IF Intent == 'action' (Use [Reality Judge]):
-   - Focus: CAUSALITY & PHYSICALITY.
-   - Analyze: Does the player have the tool/skill? Is it physically possible?
-   - Outcome: Success or Consequences of failure.
-
 [Output Schema (JSON)]
 {
-    "intent": "combat" | "dialogue" | "action" | "system",
-    "target": "Target Name/ID (optional, e.g. 'Bandit Leader')",
     "mood_override": "daily" | "tension" | "combat" | "romance" | null,
     "plausibility_score": number, // 1-10
-    "judgment_analysis": "Step-by-step reasoning used.",
-    "combat_analysis": "Compare Player vs Target strength. Estimate winning chance.",
-    "emotional_context": "Summarize active character sentiments (Hidden/Overt). e.g. 'A loves B, B is curious about A'.",
-    "character_suggestion": "Suggest a relevant character to appear/react if appropriate. Or 'None'.",
-    "new_characters": ["Name1", "Name2"], // [New] List of characters to ADD to the scene immediately (e.g. ['Cheon Seoyun'])
-    "goal_guide": "Tips for the Story Model to advance Active Goals based on current situation.",
-    "success": boolean,
-    "narrative_guide": "Specific instructions for the narrator.",
-    "event_status": "active" | "completed" | "ignored" | null, // [New] Event Lifecycle Management
-    "state_changes": { "hp": -10, "stamina": -5, "factionChange": "New Faction", "playerRank": "New Title" },
-    "mechanics_log": ["Analysis: ...", "Score: X/10"],
-    "location_inference": "Inferred Region/Context if unknown (e.g. 'Sichuan - Chengdu')" // [New]
+    "judgment_analysis": "Keywords only. (e.g. 'Rank Gap', 'Illogical').",
+    "combat_analysis": "Keywords. (e.g. 'Win: High', 'Loss: Certain'). Null if safe.",
+    "emotional_context": "Keywords. (e.g. 'A->B: Love', 'B->A: Hate'). Null if neutral.",
+    "character_suggestion": "Name only (e.g. 'Ma Gwang-cheol'). Null if none.",
+    "new_characters": ["Name"], 
+    "goal_guide": "Keywords. (e.g. 'Goal: Find Sword -> Check Shop'). Null if irrelevant.",
+    "narrative_guide": "Short directives. (e.g. 'Success. Funny tone.').",
+    "location_inference": "Keywords. (e.g. 'Sichuan(Hot)'). Null if known."
 }
 
 [Guide Generation Instructions]
-1. **Combat Guide**: If intent is 'combat', compare Player Rank vs Target Rank. Provide a realistic win/loss estimation.
-2. **Emotional Guide**: Analyze active characters. If 'Love' or 'Rivalry' exists, mention it explicitly for the narrator.
-3. **Character Suggestion Protocol** (Balanced Pacing & Foreshadowing):
-   - **EXCEPTION (ROMANCE)**: IF [Romance Protocol] is active -> **SUGGEST "None"**. (Let them have their moment).
-   - **GOAL**: Introduce characters naturally. Avoid "Guest of the Week".
-   - **STRONG CANDIDATE RULE**: If a character is marked **[STRONG CANDIDATE]** in the context:
-     - **PRIORITY**: You MUST address this character.
-     - **Approach**: 
-       1. **Direct Arrival**: If logical (nearby, crisis), spawn them immediately.
-       2. **Foreshadowing (Bait)**: If immediate spawn is awkward, drop "Narrative Bait" (Rumors, specific tracks, sensing their aura, hearing their voice nearby).
-       3. **Preparation**: Build up the narrative so they can appear in the next 1-2 turns.
-   - **Heroine Interaction Rule**: 
-     - IF an [Active Character] is a Heroine (or Love Interest):
-     - **DO NOT** let them just stand there.
-     - **CREATE SCENARIOS**: Trigger jealousy, playful teasing, deep emotional moments, or sudden cooperation requests. Make the scene lively.
-   - **Trigger Logic**:
-     1. **Crisis/Combat**: Allies/Rivals can arrive SUDDENLY.
-     2. **Calm**: Use [Foreshadowing] first for Strangers. Use [Direct Encounter] for Friends.
-   - **Mandatory Format**: "Suggest: [Name] - [Type: Arrival/Foreshadowing] because [Reason] (Score: High)."
-   - **[New] NEW_CHARACTERS Field**: If you suggest a Direct Arrival, add their exact Name to the 'new_characters' array.
+**CRITICAL: EXTREME BREVITY REQUIRED.** 
+- **NO SENTENCES**. Use Keywords/Fragments ONLY.
+- **Example**: "Provides a humorous first meeting to establish personality" (X) -> "Funny entrance" (O).
+- **Example**: "The enemy is too strong for the player to defeat" (X) -> "Enemy OP. Defeat likely." (O).
 
-4. **Goal Guide**: Check [Active Goals]. Advise on progress.
-5. **Active Event Guide**: Check [ACTIVE EVENT]. 
-   - **Lifecycle**: Determine if the event is ONGOING, RESOLVED, or IGNORED.
-     * "active": Guide narrative to align with event.
-     * "completed": User handled it.
-     * "ignored": User moved away.
-6. **Location Guide**: If [Location Context] is vague, **INFER** Region/City.
-    - Describe atmosphere (e.g. "Humid air of Sichuan", "Cold winds of North").
-
-[Narrative Guide Requirements]
-1. **Action Result**: Clearly state the IMMEDIATE outcome of the input. Did it fail? Succeed? How?
-2. **Combat Detail**: If Combat, compare Ranks/Stats. 
-   - "Player(3rd Rate) vs Enemy(2nd Rate): Disadvantage. Enemy is faster and stronger. Player must rely on dirty tricks."
-3. **Affection/Interaction**: If Dialogue, check Affection/Relationship.
-   - "Affection 80 (Lover): She blushes and speaks softly."
-   - "Affection 10 (Stranger): She answers coldly."
-4. **Suggestion Reasoning**: For every [Character Suggestion], you MUST explain WHY in the log.
-   - Format: "Suggest: [Name] because [Reason] (e.g. 'He is a rival', 'She loves the player', 'Adds tension')."
+1. **Combat Guide**: "Player < Enemy. Loss likely." (Null if safe).
+2. **Emotional Guide**: "A loves B." (Null if neutral).
+3. **Character Suggestion**:
+   - **Reasoning**: "Ma Gwang-cheol - Funny entrance." (Keep it under 5 words).
+   - **Romance**: Null.
+4. **Goal Guide**: "Check Shop." (Null if irrelevant).
+5. **Location Guide**: "Sichuan (Hot)." (Null if known).
+6. **Narrative Guide**: "Success. Funny tone. Twist ending." (Focus on Result/Direction ONLY).
 
 `.trim();
 
@@ -504,11 +408,10 @@ ${finalGoalGuide}
 "${userInput}"
 
 [Execution Order]
-1. **CLASSIFY** the User's Intent (Combat/Dialogue/Action/System).
-2. **IDENTIFY** the Target (if any). If the target is in [Casting Suggestions], allow interaction if logical (e.g. shouting).
-3. **JUDGE** the action's Plausibility (1-10). Check Player Capability vs Target Strength.
-4. **GENERATE** the Narrative Guide. **Aggressively suggest** new characters if the scene allows.
-5. **INFER LOCATION**: If unknown, deduce Region/Atmosphere and include in guide.
+1. **IDENTIFY** the Target (if any). If the target is in [Casting Suggestions], allow interaction if logical (e.g. shouting).
+2. **JUDGE** the action's Plausibility (1-10). Check Player Capability vs Target Strength.
+3. **GENERATE** the Narrative Guide. **Aggressively suggest** new characters if the scene allows.
+4. **INFER LOCATION**: If unknown, deduce Region/Atmosphere and include in guide.
 `;
 
         try {
@@ -537,13 +440,11 @@ ${finalGoalGuide}
             const netFateChange = fateGain - fateUsage;
 
             // [Override] Inject calculated fate change
-            if (!data.state_changes) data.state_changes = {};
-            data.state_changes.fate = netFateChange;
+            data.fate_change = netFateChange; // [NEW] Explicit ID
 
             // [Logging] Always Log Debugging Info
             console.log(`[Fate System] Score: ${finalScore}, Used: ${fateUsage}, Gain: ${fateGain} -> Net: ${netFateChange}`);
-            if (!data.mechanics_log) data.mechanics_log = [];
-            data.mechanics_log.push(`Fate Calc: Score(${finalScore}) -> Gain(${fateGain}) - Cost(${fateUsage}) = ${netFateChange}`);
+
 
             return {
                 ...data,
@@ -564,10 +465,8 @@ ${finalGoalGuide}
      */
     private static fallbackLogic(input: string): PreLogicOutput {
         return {
-            success: true,
             narrative_guide: "사용자의 행동을 자연스럽게 진행하십시오. 복잡한 역학은 없습니다.",
-            state_changes: {},
-            mechanics_log: ["폴백 실행 (System Fail Safe)"],
+            fate_change: 0,
             plausibility_score: 5,
             judgment_analysis: "System Fallback: Defaulting to neutral score."
         };
