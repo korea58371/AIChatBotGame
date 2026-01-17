@@ -41,7 +41,7 @@ import { useSaveLoad } from './visual_novel/hooks/useSaveLoad';
 
 
 
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User, Info } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User, Info, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { EventManager } from '@/lib/event-manager';
@@ -62,6 +62,7 @@ import CharacterProfile from './visual_novel/ui/CharacterProfile';
 import SettingsModal from './visual_novel/ui/SettingsModal';
 import ResponseTimer from './visual_novel/ui/common/ResponseTimer';
 import { AdBanner } from './AdBanner'; // [New] Import AdBanner
+import StoreModal from './visual_novel/ui/StoreModal'; // [New] Import StoreModal
 
 
 
@@ -515,7 +516,7 @@ export default function VisualNovelUI() {
     const [session, setSession] = useState<any>(null);
 
 
-    // Character Creation State
+    const [isStoreOpen, setIsStoreOpen] = useState(false); // [New] Store Modal State
     const [creationStep, setCreationStep] = useState(0);
     // [리팩토링 메모] 세션 관리 로직 중 일부는 Store로 통합되었으나, 호환성을 위해 로컬 session 상태도 유지됩니다.
     // [리팩토링 메모] 모달/팝업 관련 상태(`showSaveLoad` 등)는 `useVNState`로 통합되어 제거되었습니다.
@@ -1559,6 +1560,10 @@ export default function VisualNovelUI() {
                                 if (!streamStarted) {
                                     streamStarted = true;
                                     // [UX] First token received: Transition from "Thinking" to "Playing"
+
+                                    // [Fix] Add Placeholder Output Message to prevent Overwriting User Input
+                                    useGameStore.getState().addMessage({ role: 'model', text: '' });
+
                                     setIsProcessing(false); // Stop "Processing" spinner
                                     setIsTyping(false); // Stop typing dots
                                     setIsLogicPending(true); // Lock heavy interactions until Logic finishes
@@ -3469,7 +3474,7 @@ export default function VisualNovelUI() {
                             {userCoins?.toLocaleString() || 0}
                         </span>
                         <button
-                            onClick={(e) => { e.stopPropagation(); setShowRechargePopup(true); }}
+                            onClick={(e) => { e.stopPropagation(); setIsStoreOpen(true); }}
                             className="bg-yellow-600 hover:bg-yellow-500 text-black text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1 transition-colors"
                         >
                             +
@@ -3483,6 +3488,15 @@ export default function VisualNovelUI() {
                         title={(t as any).settings || "Settings"}
                     >
                         <Settings className="w-5 h-5 md:w-6 md:h-6" />
+                    </button>
+
+                    {/* Shop Button */}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setIsStoreOpen(true); }}
+                        className="p-2 bg-black/60 hover:bg-gray-800/80 rounded-full border border-gray-600 text-yellow-400 hover:text-white transition-all shadow-lg"
+                        title="Shop"
+                    >
+                        <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
 
                     {/* Debug Button (Conditional) */}
@@ -4478,6 +4492,7 @@ Instructions:
 
                                         return [
                                             { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => setShowCharacterInfo(true) },
+                                            { icon: <ShoppingBag size={20} />, label: "상점", onClick: () => setIsStoreOpen(true), isActive: false }, // [New] Shop Button
                                             { icon: <History size={20} />, label: t.chatHistory, onClick: () => setShowHistory(true) },
                                             {
                                                 icon: <Book size={20} />,
@@ -4870,6 +4885,12 @@ Instructions:
                     onLoad={loadGame}
                     onDelete={deleteGame}
                     t={t}
+                />
+
+                {/* [New] Store Modal */}
+                <StoreModal
+                    isOpen={isStoreOpen}
+                    onClose={() => setIsStoreOpen(false)}
                 />
 
                 {/* Settings / Reset Modal (Refactored) */}
