@@ -22,7 +22,7 @@ export interface Message {
 export interface GameState {
   // Game Configuration
   activeGameId: string;
-  setGameId: (id: string) => Promise<void>;
+  setGameId: (id: string, reset?: boolean) => Promise<void>;
   isDataLoaded: boolean;
   isHydrated: boolean; // [NEW] Track IDB Rehydration status
   setHydrated: (hydrated: boolean) => void;
@@ -352,7 +352,7 @@ export const useGameStore = create<GameState>()(
       sessionUser: null,
       setSessionUser: (user) => set({ sessionUser: user }),
 
-      setGameId: async (id: string) => {
+      setGameId: async (id: string, reset?: boolean) => {
         console.log("[Store] setGameId called with:", id);
         console.log("[Store] Current Choices BEFORE setGameId:", get().choices);
         set({ isDataLoaded: false });
@@ -427,25 +427,36 @@ export const useGameStore = create<GameState>()(
             lore: data.lore, // Added
             characterCreationQuestions: data.characterCreationQuestions, // Added
 
-            // [Critical Fix] Reset Gameplay State on Game Switch
-            // Prevent Wuxia text/state from leaking into God Bless You
-            chatHistory: [],
-            displayHistory: [],
-            scriptQueue: [],
-            currentSegment: null,
-
-            turnCount: 0, // Reset Turn (0 for Creation Phase)
-            triggeredEvents: [],
-            activeEvent: null,
-            activeCharacters: [], // Clear characters
-
-            // Reset Visuals
-            currentBackground: '', // Will be set by init logic or script
-            currentBgm: null,
-
-            // Reset Meta
-            pendingLogic: null,
           });
+
+          // [Conditional Reset] Only reset state if requested (default true)
+          // If loading an existing session (Continue), skip this block to preserve history.
+          if (reset !== false) {
+            console.log(`[Store] Resetting Game State for new game: ${id}`);
+            set({
+              // [Critical Fix] Reset Gameplay State on Game Switch
+              // Prevent Wuxia text/state from leaking into God Bless You
+              chatHistory: [],
+              displayHistory: [],
+              scriptQueue: [],
+              currentSegment: null,
+
+              turnCount: 0, // Reset Turn (0 for Creation Phase)
+              triggeredEvents: [],
+              activeEvent: null,
+              activeCharacters: [], // Clear characters
+
+              // Reset Visuals
+              currentBackground: '', // Will be set by init logic or script
+              characterExpression: '', // [Fix] Clear character image
+              currentBgm: null,
+
+              // Reset Meta
+              pendingLogic: null,
+            });
+          } else {
+            console.log(`[Store] Preserving Game State for Continue: ${id}`);
+          }
 
           // If we are switching games, we should probably reset the session unless it's just a reload.
           // Logic for "Fresh Start" vs "Reload" needs to be handled by caller.

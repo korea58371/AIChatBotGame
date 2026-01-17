@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Login from '@/components/Login';
 import LanguageSelector from '@/components/LanguageSelector';
 import SettingsModal from '@/components/visual_novel/ui/SettingsModal';
+import StoreModal from '@/components/visual_novel/ui/StoreModal';
 import { useAuthSession } from '@/hooks/useAuthSession';
 
 import { translations } from '@/data/translations';
@@ -31,6 +32,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const [showLogin, setShowLogin] = useState(false);
     const [showLoadModal, setShowLoadModal] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+    const [showStore, setShowStore] = useState(false);
 
     // Game State Checks
     const [hasActiveGame, setHasActiveGame] = useState(false);
@@ -43,6 +45,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const setStoryModel = useGameStore(state => state.setStoryModel);
     const language = useGameStore(state => state.language);
     const setLanguage = useGameStore(state => state.setLanguage);
+    const userCoins = useGameStore(state => state.userCoins);
+    const setUserCoins = useGameStore(state => state.setUserCoins);
 
     // Check Auth State using Shared Hook
     const { session: authSession, user: authUser, loading: authLoading, coins: authCoins } = useAuthSession();
@@ -52,9 +56,10 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
             setUser(authUser);
             setSession(authSession); // [Fix] Sync session
             setCoins(authCoins);
+            setUserCoins(authCoins || 0); // [Sync] Sync DB coins to Store
             setIsLoading(false);
         }
-    }, [authUser, authSession, authLoading, authCoins]);
+    }, [authUser, authSession, authLoading, authCoins, setUserCoins]);
 
     // [Localization]
     const t = (language && translations[language as keyof typeof translations]) || translations.ko;
@@ -132,18 +137,38 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
         setSelectedGameIndex((prev) => (prev - 1 + GAME_MODES.length) % GAME_MODES.length);
     };
 
-    const handleStartGame = async () => {
+    const canContinue = hasActiveGame && activeGameId === selectedGame.id;
+
+    const handleContinue = async () => {
         if (!user) {
             setShowLogin(true);
             return;
         }
-        console.log('[TitleScreen] Starting game:', selectedGame.id);
-
-        // [Robustness] Save to SessionStorage to survive navigation/hydration gaps
+        console.log('[TitleScreen] Continuing game:', selectedGame.id);
         sessionStorage.setItem('selected_game_id', selectedGame.id);
 
-        await setGameId(selectedGame.id);
-        console.log('[TitleScreen] Game ID set in store. Navigating...');
+        // [Fix] Pass false to skip reset and preserve state
+        await setGameId(selectedGame.id, false);
+        router.push('/game');
+    };
+
+    const handleNewGame = async () => {
+        if (!user) {
+            setShowLogin(true);
+            return;
+        }
+
+        if (canContinue) {
+            if (!confirm("새로운 게임을 시작하면 현재 진행 중인 게임 데이터가 초기화됩니다.\n계속하시겠습니까?")) {
+                return;
+            }
+        }
+
+        console.log('[TitleScreen] Starting NEW game:', selectedGame.id);
+        sessionStorage.setItem('selected_game_id', selectedGame.id);
+
+        // [Fix] Pass true to force reset
+        await setGameId(selectedGame.id, true);
         router.push('/game');
     };
 
@@ -186,7 +211,25 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent pointer-events-none" />
 
                 {/* Top Right: Settings & Shop */}
-                <div className="absolute top-6 right-6 flex gap-4 z-20">
+                <div className="absolute top-6 right-6 flex items-center gap-4 z-20">
+                    {/* Store Button & Coins */}
+                    {user && (
+                        <button
+                            onClick={() => setShowStore(true)}
+                            className="hidden md:flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full hover:bg-white/10 hover:border-white/30 transition-all group mr-2"
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="text-amber-400 text-lg">🪙</span>
+                                <span className="text-white font-bold leading-none mt-0.5">{userCoins.toLocaleString()}</span>
+                            </div>
+                            <div className="w-[1px] h-4 bg-white/20" />
+                            <div className="flex items-center gap-2">
+                                <ShoppingBag className="w-5 h-5 text-white/70 group-hover:text-amber-400 transition-colors" />
+                                <span className="text-sm text-white/70 group-hover:text-white transition-colors font-medium">상점</span>
+                            </div>
+                        </button>
+                    )}
+
                     <LanguageSelector />
                     <button
                         onClick={() => setShowSettings(true)}
@@ -233,20 +276,49 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                             </p>
                         </motion.div>
 
-                        {/* Start Button */}
-                        <motion.button
-                            key={`btn-${selectedGame.id}`}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleStartGame}
-                            className={`px-12 py-4 bg-white text-black text-xl font-black tracking-widest uppercase rounded-full shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.6)] transition-all flex items-center gap-3 relative overflow-hidden group`}
-                        >
-                            <span className="relative z-10">{language === 'ko' ? '게임 시작' : 'GAME START'}</span>
-                            <Play className="w-6 h-6 relative z-10" fill="currentColor" />
-                            <div className={`absolute inset-0 bg-gradient-to-r ${selectedGame.themeColor} opacity-0 group-hover:opacity-20 transition-opacity`} />
-                        </motion.button>
+                        {/* Start / Continue Actions */}
+                        <div className="flex flex-col items-center gap-3 w-full">
+                            {canContinue ? (
+                                <div className="flex flex-col gap-3 w-full max-w-sm items-center">
+                                    {/* Primary: Continue */}
+                                    <motion.button
+                                        key={`btn-continue-${selectedGame.id}`}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={handleContinue}
+                                        className={`w-full px-12 py-4 bg-white text-black text-xl font-black tracking-widest uppercase rounded-full shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.6)] transition-all flex items-center justify-center gap-3 relative overflow-hidden group`}
+                                    >
+                                        <span className="relative z-10">{language === 'ko' ? '이어하기' : 'CONTINUE'}</span>
+                                        <div className={`absolute inset-0 bg-gradient-to-r ${selectedGame.themeColor} opacity-0 group-hover:opacity-20 transition-opacity`} />
+                                    </motion.button>
+
+                                    {/* Secondary: New Game */}
+                                    <button
+                                        onClick={handleNewGame}
+                                        className="text-white/40 text-sm hover:text-red-400 transition-colors flex items-center gap-1 hover:underline decoration-red-400/50 underline-offset-4"
+                                    >
+                                        <RotateCcw className="w-3 h-3" />
+                                        {language === 'ko' ? '새로 시작하기 (초기화)' : 'New Game (Reset)'}
+                                    </button>
+                                </div>
+                            ) : (
+                                <motion.button
+                                    key={`btn-start-${selectedGame.id}`}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={handleNewGame}
+                                    className={`px-12 py-4 bg-white text-black text-xl font-black tracking-widest uppercase rounded-full shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.6)] transition-all flex items-center gap-3 relative overflow-hidden group`}
+                                >
+                                    <span className="relative z-10">{language === 'ko' ? '게임 시작' : 'GAME START'}</span>
+                                    <Play className="w-6 h-6 relative z-10" fill="currentColor" />
+                                    <div className={`absolute inset-0 bg-gradient-to-r ${selectedGame.themeColor} opacity-0 group-hover:opacity-20 transition-opacity`} />
+                                </motion.button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -327,7 +399,15 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                     t={t}
                     session={session}
                     onResetGame={resetGameStore}
-                    coins={coins}
+                    coins={userCoins}
+                />
+            )}
+
+            {/* Store Modal */}
+            {showStore && (
+                <StoreModal
+                    isOpen={showStore}
+                    onClose={() => setShowStore(false)}
                 />
             )}
 
