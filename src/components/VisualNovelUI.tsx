@@ -98,6 +98,63 @@ const formatText = (text: string) => {
 
 export default function VisualNovelUI() {
     // [Stream] Track active segment index (consumed count) for syncing stream with UI
+    // [Payment Callback Handling]
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const impSuccess = params.get('imp_success');
+        const errorMsg = params.get('error_msg');
+
+        // Check if returning from payment
+        if (impSuccess !== null || errorMsg) {
+            const pendingPayment = sessionStorage.getItem('pending_payment');
+            if (pendingPayment) {
+                try {
+                    const product = JSON.parse(pendingPayment);
+
+                    if (impSuccess === 'true') {
+                        // Success Logic
+                        // 1. Optimistic Update
+                        const totalAmount = product.amount + product.bonusAmount;
+
+                        if (product.type === 'token') {
+                            const currentCoins = useGameStore.getState().userCoins || 0;
+                            const newCoins = currentCoins + totalAmount;
+                            useGameStore.getState().setUserCoins(newCoins);
+
+                            // DB Sync
+                            const syncDb = async () => {
+                                const supabase = createClient();
+                                const { data: { session } } = await supabase.auth.getSession();
+                                if (session?.user) {
+                                    await supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id);
+                                }
+                            };
+                            syncDb();
+                        } else {
+                            const currentFate = useGameStore.getState().playerStats.fate || 0;
+                            const newFate = currentFate + totalAmount;
+                            useGameStore.getState().setPlayerStats({ ...useGameStore.getState().playerStats, fate: newFate });
+                        }
+
+                        alert(`구매 성공! ${product.name}이(가) 지급되었습니다.`);
+                    } else {
+                        // Failure Logic
+                        // Decode URI component just in case
+                        const msg = decodeURIComponent(errorMsg || '결제가 취소되었습니다.');
+                        alert(`결제 실패: ${msg}`);
+                    }
+                } catch (e) {
+                    console.error('Payment callback handling failed', e);
+                } finally {
+                    // Cleanup
+                    sessionStorage.removeItem('pending_payment');
+                    // Clean URL
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            }
+        }
+    }, []);
     const activeSegmentIndexRef = useRef(0);
 
     // [Refactor] UI State Hook

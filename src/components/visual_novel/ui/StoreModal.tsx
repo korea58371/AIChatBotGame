@@ -30,6 +30,11 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
         try {
             setProcessingId(product.id);
 
+            // Save pending payment context for mobile redirection handling
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('pending_payment', JSON.stringify(product));
+            }
+
             // 1. PortOne Payment Request
             const response = await requestPayment({
                 pg: "kakaopay",
@@ -37,7 +42,13 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                 merchant_uid: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 name: product.name,
                 amount: product.price,
+                m_redirect_url: typeof window !== 'undefined' ? window.location.href : undefined, // Mobile Redirect URL
             });
+
+            // Clean up if returned immediately (PC/Non-redirect)
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('pending_payment');
+            }
 
             // 2. Success Logic
             if (response.success) {

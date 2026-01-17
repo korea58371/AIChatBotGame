@@ -49,8 +49,15 @@ export const usePortOne = () => {
     useEffect(() => {
         // Function to initialize IMP
         const initIMP = () => {
-            if (window.IMP && process.env.NEXT_PUBLIC_PORTONE_USER_CODE) {
-                window.IMP.init(process.env.NEXT_PUBLIC_PORTONE_USER_CODE);
+            const userCode = process.env.NEXT_PUBLIC_PORTONE_USER_CODE;
+
+            if (!userCode) {
+                console.error("PortOne User Code is missing! Check .env.local or Vercel Settings.");
+                return false;
+            }
+
+            if (window.IMP) {
+                window.IMP.init(userCode);
                 setIsSdkLoaded(true);
                 return true;
             }
