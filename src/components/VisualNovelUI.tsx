@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStore, GameState, Skill } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
+import { useAuthSession } from '@/hooks/useAuthSession';
 import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn, serverAgentTurnPhase1, serverAgentTurnPhase2, serverGenerateCharacterMemorySummary } from '@/app/actions/game';
 import { getCharacterImage } from '@/lib/image-mapper';
 import { isHiddenProtagonist } from '@/lib/utils/character-utils';
@@ -53,6 +54,7 @@ import SmartphoneApp from './features/SmartphoneApp';
 import Article from './features/Article';
 import DebugPopup from './features/DebugPopup';
 import Link from 'next/link';
+import LanguageSelector from '@/components/LanguageSelector';
 
 // [Refactoring] New Components & Hooks
 import { useVNState } from './visual_novel/hooks/useVNState';
@@ -97,6 +99,20 @@ const formatText = (text: string) => {
 
 
 export default function VisualNovelUI() {
+    // [Fix] Initialize Supabase Client
+    const supabase = createClient();
+
+    // [AuthDebug] Verify Client-Side Cookie Visibility
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            const cookieNames = document.cookie.split(';').map(c => c.trim().split('=')[0]);
+            console.log("[AuthDebug] VisualNovelUI: Visible Cookies:", cookieNames);
+            const hasAuthToken = cookieNames.some(name => name.startsWith('sb-') && name.includes('-auth-token'));
+            console.log("[AuthDebug] VisualNovelUI: Has Auth Token?", hasAuthToken);
+            console.log("[AuthDebug] VisualNovelUI: Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+        }
+    }, []);
+
     // [Stream] Track active segment index (consumed count) for syncing stream with UI
     // [Payment Callback Handling]
     useEffect(() => {
@@ -202,12 +218,16 @@ export default function VisualNovelUI() {
     const wikiKeys = useMemo(() => Object.keys(wikiData), []); // [Performance] Memoize keys
 
 
+
     // Core Game Store
     useEffect(() => {
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+
+
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
@@ -359,6 +379,35 @@ export default function VisualNovelUI() {
         goals, // [New] Goals for Choice Panel
     } = useGameStore();
 
+    // [Fix] Auto-Start Game Logic (Scenario Injection)
+    // When game switches or resets, scriptQueue is empty. We must parse initialScenario.
+    useEffect(() => {
+        const store = useGameStore.getState();
+        // Condition: Empty Queue, No Segment, Data Loaded, Initial Scenario Exists
+        if (scriptQueue.length === 0 && !currentSegment && store.isDataLoaded && store.initialScenario) {
+
+            // Defensively check if we already have history (don't re-run start scenario if we are just paused)
+            if (chatHistory.length > 0) {
+                console.log("[VisualNovelUI] History exists, skipping bootstrap (Assumed paused/idle).");
+                return;
+            }
+
+            // [Fix] Character Creation Guard
+            // If it's a NEW GAME (turnCount === 0) and we have creation questions,
+            // we MUST yield to the Creation Wizard (lines 3943+). 
+            // Do NOT force-feed the scenario yet.
+            if (turnCount === 0 && store.characterCreationQuestions && store.characterCreationQuestions.length > 0) {
+                console.log("[VisualNovelUI] Detected Character Creation phase. Deferring bootstrap.");
+                return;
+            }
+
+            console.log("[VisualNovelUI] Bootstrapping Initial Scenario...");
+            const initialSegments = parseScript(store.initialScenario);
+            setScriptQueue(initialSegments);
+            console.log(`[VisualNovelUI] Bootstrapped ${initialSegments.length} segments.`);
+        }
+    }, [isDataLoaded, scriptQueue.length, currentSegment, chatHistory.length, turnCount]);
+
     useEffect(() => {
         // [Fix] Race Condition Guard
         // If a force reset is pending, strictly SKIP all default initialization.
@@ -374,8 +423,10 @@ export default function VisualNovelUI() {
         }
 
         // [Heuristic Recovery] Detect Wuxia State in GBY Mode (Fix for corrupted IDB)
+        // [DISABLE] This heuristic prevents starting GBY if Wuxia stats persist.
         // If the user was affected by the "Reset to GBY" bug, their ActiveGameId is GBY, 
         // but their stats/rank are still Wuxia. We auto-correct this.
+        /*
         if (activeGameId === 'god_bless_you') {
             const state = useGameStore.getState();
             // Check for Wuxia Ranks or Neigong
@@ -389,6 +440,7 @@ export default function VisualNovelUI() {
                 return; // Trigger re-render with new ID
             }
         }
+        */
 
         // [Fix] Ensure Game Data is Loaded on Mount (especially after New Game reset)
         if (!isDataLoaded) {
@@ -414,8 +466,6 @@ export default function VisualNovelUI() {
 
 
     const creationQuestions = characterCreationQuestions; // Alias for UI Usage
-
-    const supabase = createClient();
 
     // VN State
     const [isProcessing, setIsProcessing] = useState(false);
@@ -588,7 +638,7 @@ export default function VisualNovelUI() {
     };
 
     // Auth State (Event-Based)
-    const [session, setSession] = useState<any>(null);
+
 
 
     const [isStoreOpen, setIsStoreOpen] = useState(false); // [New] Store Modal State
@@ -612,89 +662,16 @@ export default function VisualNovelUI() {
         }
     };
 
-    // Track Session & Fetch Coins on Mount
+    // [Refactor] Sync Auth State from Hook
+    const { session, coins: authCoins } = useAuthSession();
+
+    // Sync Coins to Global Store when they change
     useEffect(() => {
-        let mounted = true;
-
-        // Initial Fetch (Robust)
-        const fetchInitialSession = async () => {
-            // 1. Try getSession (Local Storage)
-            if (!supabase) return;
-
-            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-            if (mounted && sessionData.session) {
-                console.log("VN: Session found via getSession");
-                setSession(sessionData.session);
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('coins')
-                    .eq('id', sessionData.session.user.id)
-                    .single();
-                // [Fix] Prevent overwriting optimistic payment update on reload
-                const isPayment = new URLSearchParams(window.location.search).get('imp_success');
-                if (mounted && profile && !isPayment) setUserCoins(profile.coins);
-                return;
-            }
-
-            // 2. Fallback to getUser (Server Verification) - vital for persistence issues
-            if (!sessionData.session || sessionError) {
-                console.log("VN: getSession failed/empty, trying getUser...");
-                const { data: userData, error: userError } = await supabase.auth.getUser();
-
-                if (mounted && userData.user) {
-                    console.log("VN: User found via getUser");
-                    // Construct a pseudo-session or just get session again (it might be refreshed)
-                    const { data: refreshedSession } = await supabase.auth.getSession();
-                    if (refreshedSession.session) {
-                        setSession(refreshedSession.session);
-                        const { data: profile } = await supabase
-                            .from('profiles')
-                            .select('coins')
-                            .eq('id', refreshedSession.session.user.id)
-                            .single();
-
-                        const isPayment = new URLSearchParams(window.location.search).get('imp_success');
-                        if (mounted && profile && !isPayment) setUserCoins(profile.coins);
-                    }
-                } else {
-                    console.log("VN: No user found (Guest Mode)");
-                }
-            }
-        };
-        fetchInitialSession();
-
-        // Listen for changes
-        if (!supabase) return;
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, currentSession: any) => {
-            if (mounted) {
-                setSession(currentSession);
-                if (currentSession?.user) {
-                    const { data: profile } = await supabase
-                        .from('profiles')
-                        .select('coins')
-                        .eq('id', currentSession.user.id)
-                        .single();
-                    if (mounted && profile) {
-                        const isPayment = new URLSearchParams(window.location.search).get('imp_success');
-                        if (!isPayment) setUserCoins(profile.coins);
-                    }
-                }
-            }
-        });
-
-        return () => {
-            mounted = false;
-            subscription.unsubscribe();
-        };
-    }, []);
-
-    // ... (Hydration Fix & Asset Loading) ...
-
-    // ... (Rest of component) ...
-
-
-    // Hydration Fix & Asset Loading
+        if (typeof authCoins === 'number') {
+            setUserCoins(authCoins);
+        }
+    }, [authCoins, setUserCoins]);
+    // ------------------------------------------------------------------
     // Hydration Fix & Asset Loading
     const [sessionId, setSessionId] = useState<string>('');
     // const [isMounted, setIsMounted] = useState(false); // Moved to useVNState
@@ -3748,7 +3725,6 @@ export default function VisualNovelUI() {
                                                                     alert(t.logoutError?.replace('{0}', error.message));
                                                                     console.error("Logout error:", error);
                                                                 } else {
-                                                                    setSession(null);
                                                                     window.location.href = '/';
                                                                 }
                                                             }
@@ -4572,9 +4548,10 @@ Instructions:
                                             return null;
                                         })();
 
-                                        return [
+                                        // [Refactor] Language Toggle -> Custom Component Logic
+                                        const systemMenuItems = [
                                             { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => setShowCharacterInfo(true) },
-                                            { icon: <ShoppingBag size={20} />, label: "상점", onClick: () => setIsStoreOpen(true), isActive: false }, // [New] Shop Button
+                                            { icon: <ShoppingBag size={20} />, label: "상점", onClick: () => setIsStoreOpen(true), isActive: false },
                                             { icon: <History size={20} />, label: t.chatHistory, onClick: () => setShowHistory(true) },
                                             {
                                                 icon: <Book size={20} />,
@@ -4587,25 +4564,37 @@ Instructions:
                                                 activeColor: "bg-gradient-to-r from-yellow-600 to-yellow-500 border-yellow-400 text-black shadow-yellow-500/50 animate-pulse"
                                             },
                                             { icon: <Save size={20} />, label: t.saveLoad, onClick: () => setShowSaveLoad(true) },
+                                            // [New] Language Selector (Custom)
+                                            {
+                                                isCustom: true,
+                                                component: <LanguageSelector direction="up" className="shadow-lg" />
+                                            },
                                             { icon: <Settings size={20} />, label: t.settings, onClick: () => setShowResetConfirm(true) },
-                                        ].map((btn, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
-                                                className={`p-3 md:p-3 rounded-full border transition-all backdrop-blur-md shadow-lg group relative
-                                                    ${(btn as any).isActive
-                                                        ? (btn as any).activeColor
-                                                        : 'bg-black/60 border-white/20 text-white hover:bg-white/20 hover:border-white'
-                                                    } hover:scale-110`}
-                                                title={btn.label}
-                                            >
-                                                {btn.icon}
-                                                {/* Tooltip */}
-                                                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
-                                                    {btn.label}
-                                                </span>
-                                            </button>
-                                        ));
+                                        ];
+
+                                        return systemMenuItems.map((item, i) => {
+                                            if ((item as any).isCustom) return <div key={i}>{(item as any).component}</div>;
+
+                                            const btn = item as any;
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
+                                                    className={`p-3 md:p-3 rounded-full border transition-all backdrop-blur-md shadow-lg group relative
+                                                        ${btn.isActive
+                                                            ? btn.activeColor
+                                                            : 'bg-black/60 border-white/20 text-white hover:bg-white/20 hover:border-white'
+                                                        } hover:scale-110`}
+                                                    title={btn.label}
+                                                >
+                                                    {btn.icon}
+                                                    {/* Tooltip */}
+                                                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
+                                                        {btn.label}
+                                                    </span>
+                                                </button>
+                                            );
+                                        });
                                     })()}
                                 </div>
                             </div>
@@ -4627,9 +4616,8 @@ Instructions:
                             <HUDComponent
                                 playerName={playerName}
                                 playerStats={playerStats}
-                                onOpenProfile={() => setShowCharacterInfo(true)}
                                 onOpenWiki={() => setShowWiki(true)}
-                                language={language || 'ko'}
+                                language={(language as any) || 'ko'}
                                 day={day}
                                 time={time}
                                 location={currentLocation}
@@ -4830,7 +4818,7 @@ Instructions:
                             characterData={useGameStore.getState().characterData}
                             activeCharacters={useGameStore.getState().activeCharacters}
                             turnCount={turnCount}
-                            language={language || 'ko'}
+                            language={(language as any) || 'ko'}
                             activeTab={activeProfileTab}
                             onTabChange={setActiveProfileTab}
                         />

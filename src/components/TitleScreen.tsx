@@ -8,6 +8,13 @@ import { MODEL_CONFIG } from '@/lib/model-config';
 import { Settings, Play, Database, ShoppingBag, RotateCcw, Save, X, Cpu, Zap, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Login from '@/components/Login';
+import LanguageSelector from '@/components/LanguageSelector';
+import SettingsModal from '@/components/visual_novel/ui/SettingsModal';
+import { useAuthSession } from '@/hooks/useAuthSession';
+
+import { translations } from '@/data/translations';
+
+// ... (existing imports)
 
 interface TitleScreenProps {
     onLoginSuccess?: () => void;
@@ -18,6 +25,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     // Use the singleton client instance
     const [supabase] = useState(() => createClient());
     const [user, setUser] = useState<any>(null);
+    const [session, setSession] = useState<any>(null); // [Fix] Add session state
     const [coins, setCoins] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [showLogin, setShowLogin] = useState(false);
@@ -33,88 +41,32 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const setGameId = useGameStore(state => state.setGameId);
     const storyModel = useGameStore(state => state.storyModel);
     const setStoryModel = useGameStore(state => state.setStoryModel);
+    const language = useGameStore(state => state.language);
+    const setLanguage = useGameStore(state => state.setLanguage);
 
-    // Check Auth State
+    // Check Auth State using Shared Hook
+    const { session: authSession, user: authUser, loading: authLoading, coins: authCoins } = useAuthSession();
+
     useEffect(() => {
-        let mounted = true;
+        if (!authLoading) {
+            setUser(authUser);
+            setSession(authSession); // [Fix] Sync session
+            setCoins(authCoins);
+            setIsLoading(false);
+        }
+    }, [authUser, authSession, authLoading, authCoins]);
 
-        const checkUser = async () => {
-            try {
-                // Hybrid Approach:
-                // 1. Race getSession against a 1s timeout
-                // 2. Also listen for onAuthStateChange (below)
+    // [Localization]
+    const t = (language && translations[language as keyof typeof translations]) || translations.ko;
 
-                if (!supabase) {
-                    console.log("No Supabase client (Local Mode)");
-                    setIsLoading(false);
-                    return;
-                }
+    // Auto-login success trigger
+    useEffect(() => {
+        if (authUser && onLoginSuccess && !authLoading) {
+            onLoginSuccess();
+            setShowLogin(false);
+        }
+    }, [authUser, onLoginSuccess, authLoading]);
 
-                const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise<{ data: { session: null }, error: any }>((resolve) => {
-                    setTimeout(() => resolve({ data: { session: null }, error: 'timeout' }), 1000);
-                });
-
-                const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
-
-                if (!mounted) return;
-
-                if (session?.user) {
-                    setUser(session.user);
-                    setIsLoading(false); // Found user, unlock immediately
-
-                    // Fetch Coins (Non-blocking)
-                    supabase.from('profiles').select('coins').eq('id', session.user.id).single()
-                        .then(({ data, error }: { data: any; error: any }) => {
-                            if (mounted && data) setCoins(data.coins);
-                        });
-                } else {
-                    // If no session found or timeout, we DON'T force loading=false yet
-                    // unless we are sure. But here we can't be sure if it's just slow.
-                    // However, to prevent infinite load, if timeout hit, we might want to unlock.
-                    if (error === 'timeout') {
-                        console.warn("Auth check timeout - waiting for event or defaulting");
-                        setIsLoading(false);
-                    }
-                    // If regular null session, wait for event or just show guest
-                    if (session === null && !error) {
-                        setIsLoading(false);
-                    }
-                }
-
-            } catch (error) {
-                console.error("Auth check failed:", error);
-                if (mounted) setIsLoading(false);
-            }
-        };
-
-        checkUser();
-
-        // Listen for auth changes
-        if (!supabase) return; // Guard listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-            if (!mounted) return;
-
-            if (session?.user) {
-                setUser(session.user);
-                setIsLoading(false); // Ensure loading stops
-                if (onLoginSuccess) onLoginSuccess();
-                setShowLogin(false);
-
-                // Fetch coins
-                const { data } = await supabase.from('profiles').select('coins').eq('id', session.user.id).single();
-                if (mounted && data) setCoins(data.coins);
-            } else {
-                setUser(null);
-                setIsLoading(false);
-            }
-        });
-
-        return () => {
-            mounted = false;
-            subscription.unsubscribe();
-        };
-    }, [supabase, onLoginSuccess]);
 
     // Check Game State on Mount
     useEffect(() => {
@@ -145,492 +97,259 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
         setSaveSlots(slots);
     }, [showLoadModal]);
 
-    const handleContinue = () => {
-        if (user) {
-            router.push('/game');
-        } else {
-            setShowLogin(true);
+    // Game Modes Configuration
+    const GAME_MODES = [
+        {
+            id: 'wuxia',
+            title: '천하제일',
+            subtitle: 'Infinite Martial Arts',
+            desc: language === 'ko' ? '무한한 성장과 자유도, 정통 무협의 세계' : 'Infinite growth and freedom in the world of martial arts.',
+            video: '/assets/wuxia/Movies/Main.mp4',
+            logo: '/assets/wuxia/interface/title/Title.png',
+            themeColor: 'from-amber-700 to-red-900',
+            accentColor: 'text-amber-500'
+        },
+        {
+            id: 'god_bless_you',
+            title: '갓블레스유',
+            subtitle: 'God Bless You',
+            desc: language === 'ko' ? '현대 판타지와 헌터물의 결합' : 'A fusion of modern fantasy and hunter stories.',
+            video: '/assets/god_bless_you/Movies/Main.mp4',
+            logo: '/assets/god_bless_you/interface/title/Title.png',
+            themeColor: 'from-blue-700 to-purple-900',
+            accentColor: 'text-cyan-400'
         }
+    ];
+
+    const [selectedGameIndex, setSelectedGameIndex] = useState(0);
+    const selectedGame = GAME_MODES[selectedGameIndex];
+
+    const handleNextGame = () => {
+        setSelectedGameIndex((prev) => (prev + 1) % GAME_MODES.length);
     };
 
-    const handleNewGame = () => {
+    const handlePrevGame = () => {
+        setSelectedGameIndex((prev) => (prev - 1 + GAME_MODES.length) % GAME_MODES.length);
+    };
+
+    const handleStartGame = async () => {
         if (!user) {
             setShowLogin(true);
             return;
         }
+        console.log('[TitleScreen] Starting game:', selectedGame.id);
 
-        const proceed = () => {
-            resetGameStore();
-            useGameStore.persist.clearStorage();
-            setTimeout(() => {
-                router.push('/game');
-            }, 100);
-        };
+        // [Robustness] Save to SessionStorage to survive navigation/hydration gaps
+        sessionStorage.setItem('selected_game_id', selectedGame.id);
 
-        if (hasActiveGame) {
-            if (confirm("새 게임을 시작하시겠습니까? 현재 진행 중인 게임은 사라집니다.\n(중요한 진행 상황은 저장 슬롯에 저장해주세요!)")) {
-                proceed();
-            }
-        } else {
-            proceed();
-        }
+        await setGameId(selectedGame.id);
+        console.log('[TitleScreen] Game ID set in store. Navigating...');
+        router.push('/game');
     };
 
-    const handleLoadGame = (slotId: number) => {
-        const data = localStorage.getItem(`vn_save_${slotId}`);
-        if (!data) return;
-
-        if (confirm(`슬롯 ${slotId}을(를) 불러오시겠습니까?`)) {
-            try {
-                const parsed = JSON.parse(data);
-                useGameStore.setState(parsed.state);
-                router.push('/game');
-            } catch (e) {
-                alert("세이브 파일을 불러오는 중 오류가 발생했습니다.");
-            }
-        }
-    };
+    // Preload videos
+    useEffect(() => {
+        GAME_MODES.forEach(mode => {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'video';
+            link.href = mode.video;
+            document.head.appendChild(link);
+        });
+    }, []);
 
     return (
         <div className="relative w-full h-screen bg-black overflow-hidden font-sans select-none flex justify-center">
             {/* Aspect Ratio Container (Max 16:9) */}
             <div className="relative w-full h-full max-w-[177.78vh] shadow-2xl overflow-hidden bg-black">
 
-                {/* Background Video */}
-                <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="absolute inset-0 w-full h-full object-cover opacity-100"
-                    key={`video-${activeGameId}`} // Re-render video on game switch
-                >
-                    <source src={`/assets/${activeGameId}/Movies/Main.mp4`} type="video/mp4" />
-                </video>
+                {/* Dynamic Background Video */}
+                <AnimatePresence mode="wait">
+                    <motion.video
+                        key={selectedGame.video}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1 }}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
+                    >
+                        <source src={selectedGame.video} type="video/mp4" />
+                    </motion.video>
+                </AnimatePresence>
 
-                {/* Overlay Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
+                {/* Overlay Gradient: Removed color overlay as per request */}
+                {/* <div className={`absolute inset-0 bg-gradient-to-b ${selectedGame.themeColor} mix-blend-multiply opacity-60 pointer-events-none`} /> */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent pointer-events-none" />
 
-                {/* Overlay Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 pointer-events-none" />
-
-                {/* Top Right: Settings Button */}
-                <div className="absolute top-6 right-6 z-50">
+                {/* Top Right: Settings & Shop */}
+                <div className="absolute top-6 right-6 flex gap-4 z-20">
+                    <LanguageSelector />
                     <button
                         onClick={() => setShowSettings(true)}
-                        className="p-3 bg-gray-800/50 hover:bg-gray-700/80 rounded-full text-white/70 hover:text-white border border-white/10 hover:border-white/30 transition-all backdrop-blur-md"
+                        className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full hover:bg-white/10 transition-all group"
                     >
-                        <Settings className="w-6 h-6" />
+                        <Settings className="w-6 h-6 text-white/70 group-hover:text-cyan-400 group-hover:rotate-90 transition-all duration-500" />
                     </button>
                 </div>
 
-                {/* Logo Area */}
-                <div className={`absolute top-[30%] w-full flex z-10 pointer-events-none transform -translate-y-1/2 ${activeGameId === 'wuxia' ? 'justify-center' : 'right-0 justify-end pr-10 md:pr-32'}`}>
-                    <motion.img
-                        key={`title-${activeGameId}`} // Re-animate on switch
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 1, delay: 0.5 }}
-                        src={`/assets/${activeGameId}/interface/title/Title.png`}
-                        onError={(e) => {
-                            // Fallback to God Bless You if Wuxia title missing (optional, or just show broken)
-                            // For now, let's allow it to break or fallback to generic if we had one.
-                            // e.currentTarget.src = "/assets/god_bless_you/interface/title/Title.png";
-                        }}
-                        alt="Title"
-                        className={`object-contain ${activeGameId === 'wuxia' ? 'w-[80vw] max-w-[500px] md:w-[730px]' : 'w-[60vw] max-w-[400px] md:w-[560px]'}`}
-                    />
-                </div>
+                {/* Main Content Area */}
+                <div className="absolute inset-0 flex flex-col justify-between z-10 p-8 pb-12">
 
-                {/* Main Action Buttons - Using Navy Tones */}
-                <div className="absolute right-10 md:right-32 bottom-[35vh] md:bottom-[280px] z-20 flex flex-col items-end gap-3">
+                    {/* 1. Top Section: Logo (Positioned at approx 35% height) */}
+                    <div className="flex-1 flex items-start justify-center pt-[25vh]">
+                        <AnimatePresence mode="wait">
+                            <motion.img
+                                key={selectedGame.logo}
+                                src={selectedGame.logo}
+                                alt={selectedGame.title}
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+                                transition={{ duration: 0.6, ease: "backOut" }}
+                                className="h-48 max-w-full object-contain filter drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+                            />
+                        </AnimatePresence>
+                    </div>
 
-                    {isLoading ? (
-                        /* Loading State */
-                        <div className="flex flex-col items-end gap-3 animate-pulse py-6">
-                            <div className="flex items-center gap-3">
-                                <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" />
-                                <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce delay-75" />
-                                <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce delay-150" />
-                            </div>
-                            <span className="text-blue-200 font-mono tracking-[0.2em] text-sm mt-2">SYSTEM IDENTIFYING...</span>
-                        </div>
-                    ) : !user ? (
-                        /* Guest / Login Trigger */
+                    {/* 2. Bottom Section: Description & Actions */}
+                    <div className="flex flex-col items-center gap-8 mb-30">
+                        {/* Game Description */}
+                        <motion.div
+                            key={selectedGame.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="text-center max-w-xl"
+                        >
+                            <h2 className={`text-2xl font-bold mb-2 tracking-widest uppercase ${selectedGame.accentColor}`}>
+                                {selectedGame.subtitle}
+                            </h2>
+                            <p className="text-white/70 text-lg leading-relaxed font-light">
+                                {selectedGame.desc}
+                            </p>
+                        </motion.div>
+
+                        {/* Start Button */}
                         <motion.button
+                            key={`btn-${selectedGame.id}`}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowLogin(true)}
-                            className="w-[80vw] md:w-[min(30vw,500px)] px-12 py-[2.5vh] md:py-[2.5vh] bg-gradient-to-r from-blue-900/50 to-indigo-900/50 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl flex items-center justify-center gap-4 group transition-all duration-300 hover:bg-white/10 hover:border-white/40"
+                            onClick={handleStartGame}
+                            className={`px-12 py-4 bg-white text-black text-xl font-black tracking-widest uppercase rounded-full shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.6)] transition-all flex items-center gap-3 relative overflow-hidden group`}
                         >
-                            <span className="text-[5vw] md:text-[min(1.5vw,36px)] font-bold text-white tracking-widest uppercase drop-shadow-md group-hover:text-blue-200">
-                                Touch to Start
-                            </span>
-                            <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse shadow-[0_0_10px_#60a5fa]" />
+                            <span className="relative z-10">{language === 'ko' ? '게임 시작' : 'GAME START'}</span>
+                            <Play className="w-6 h-6 relative z-10" fill="currentColor" />
+                            <div className={`absolute inset-0 bg-gradient-to-r ${selectedGame.themeColor} opacity-0 group-hover:opacity-20 transition-opacity`} />
                         </motion.button>
-                    ) : (
-                        /* Logged In Menu */
-                        <>
-                            {/* Continue Button */}
-                            <AnimatePresence>
-                                {hasActiveGame && (
-                                    <motion.button
-                                        initial={{ opacity: 0, x: 50, skewX: -12 }}
-                                        animate={{ opacity: 1, x: 0, skewX: -12 }}
-                                        exit={{ opacity: 0, x: 50, skewX: -12 }}
-                                        whileHover={{ scale: 1.05, x: -10, skewX: -12 }}
-                                        whileTap={{ scale: 0.95, skewX: -12 }}
-                                        onClick={handleContinue}
-                                        className="w-[80vw] md:w-[min(25vw,400px)] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-blue-950/60 to-slate-900/60 backdrop-blur-md rounded-2xl border border-blue-400/30 group shadow-lg hover:bg-blue-900/60 hover:border-blue-400/70 transition-all duration-300"
-                                    >
-                                        <div className="w-full flex items-center justify-between skew-x-12">
-                                            <span className="text-[4vw] md:text-[min(1.2vw,28px)] font-bold text-white tracking-widest uppercase group-hover:text-blue-200">
-                                                이어하기
-                                            </span>
-                                            <Play className="w-5 h-5 text-blue-400 group-hover:text-white transition-colors" />
-                                        </div>
-                                    </motion.button>
-                                )}
-                            </AnimatePresence>
-
-                            {/* New Game Button */}
-                            <motion.button
-                                initial={{ opacity: 0, x: 50, skewX: -12 }}
-                                animate={{ opacity: 1, x: 0, skewX: -12 }}
-                                whileHover={{ scale: 1.05, x: -10, skewX: -12 }}
-                                whileTap={{ scale: 0.95, skewX: -12 }}
-                                transition={{ delay: 0.1 }}
-                                onClick={handleNewGame}
-                                className="w-[80vw] md:w-[min(25vw,400px)] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
-                            >
-                                <div className="w-full flex items-center justify-between skew-x-12">
-                                    <span className="text-[4vw] md:text-[min(1.2vw,28px)] font-bold text-white tracking-widest uppercase group-hover:text-gray-200">
-                                        새로 시작
-                                    </span>
-                                    <RotateCcw className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
-                                </div>
-                            </motion.button>
-
-                            {/* Load Game Button */}
-                            <motion.button
-                                initial={{ opacity: 0, x: 50, skewX: -12 }}
-                                animate={{ opacity: 1, x: 0, skewX: -12 }}
-                                whileHover={{ scale: 1.05, x: -10, skewX: -12 }}
-                                whileTap={{ scale: 0.95, skewX: -12 }}
-                                transition={{ delay: 0.2 }}
-                                onClick={() => setShowLoadModal(true)}
-                                className="w-[80vw] md:w-[min(25vw,400px)] px-6 py-[2vh] md:py-[1.5vh] bg-gradient-to-r from-slate-900/60 to-blue-950/60 backdrop-blur-md rounded-2xl border border-white/10 group shadow-lg hover:bg-slate-800/60 hover:border-white/30 transition-all duration-300"
-                            >
-                                <div className="w-full flex items-center justify-between skew-x-12">
-                                    <span className="text-[4vw] md:text-[min(1.2vw,28px)] font-bold text-gray-300 tracking-widest uppercase group-hover:text-white">
-                                        불러오기
-                                    </span>
-                                    <Save className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
-                                </div>
-                            </motion.button>
-                        </>
-                    )}
-                </div>
-
-                {/* Game Selector UI */}
-                <div className="absolute bottom-[16vh] md:bottom-24 w-full flex justify-center gap-6 z-30">
-                    <button
-                        onClick={async () => {
-                            await setGameId('god_bless_you');
-                        }}
-                        className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${activeGameId === 'god_bless_you' ? 'scale-110 opacity-100' : 'scale-100 opacity-50 hover:opacity-80'}`}
-                    >
-                        <div className={`p-4 rounded-full border-2 transition-all duration-300 ${activeGameId === 'god_bless_you' ? 'bg-blue-900/80 border-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.5)]' : 'bg-black/50 border-gray-600'}`}>
-                            <span className="text-2xl">🏰</span>
-                        </div>
-                        <span className={`text-sm font-bold tracking-widest uppercase transition-colors ${activeGameId === 'god_bless_you' ? 'text-blue-300' : 'text-gray-500'}`}>
-                            God Bless You
-                        </span>
-                        {activeGameId === 'god_bless_you' && (
-                            <motion.div
-                                layoutId="activeIndicator"
-                                className="absolute -bottom-2 w-1 h-1 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"
-                            />
-                        )}
-                    </button>
-
-                    <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-600 to-transparent" />
-
-                    <button
-                        onClick={async () => {
-                            await setGameId('wuxia');
-                        }}
-                        className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${activeGameId === 'wuxia' ? 'scale-110 opacity-100' : 'scale-100 opacity-50 hover:opacity-80'}`}
-                    >
-                        <div className={`p-4 rounded-full border-2 transition-all duration-300 ${activeGameId === 'wuxia' ? 'bg-red-900/80 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-black/50 border-gray-600'}`}>
-                            <span className="text-2xl">⚔️</span>
-                        </div>
-                        <span className={`text-sm font-bold tracking-widest uppercase transition-colors ${activeGameId === 'wuxia' ? 'text-red-400' : 'text-gray-500'}`}>
-                            천하제일
-                        </span>
-                        {activeGameId === 'wuxia' && (
-                            <motion.div
-                                layoutId="activeIndicator"
-                                className="absolute -bottom-2 w-1 h-1 bg-red-500 rounded-full shadow-[0_0_10px_#ef4444]"
-                            />
-                        )}
-                    </button>
-                </div>
-
-                {/* Bottom Navigation */}
-                <div className="absolute bottom-[3vh] md:bottom-10 w-full flex justify-center gap-4 z-20">
-                    <div className="text-xs text-gray-500 font-mono tracking-widest">
-                        Selected World: {activeGameId} | SYSTEM READY...
                     </div>
                 </div>
 
-                {/* Login Modal Overlay */}
-                <AnimatePresence>
-                    {showLogin && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-                        >
-                            <div className="relative w-full max-w-sm">
-                                <button
-                                    onClick={() => setShowLogin(false)}
-                                    className="absolute -top-10 right-0 text-white/50 hover:text-white"
-                                >
-                                    Close
-                                </button>
-                                <Login />
+                {/* Navigation Arrows (Fixed Center) */}
+                <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 flex justify-between pointer-events-none z-20">
+                    <button
+                        onClick={handlePrevGame}
+                        className="pointer-events-auto p-4 rounded-full bg-black/20 backdrop-blur hover:bg-white/10 transition-all text-white/50 hover:text-white hover:scale-110"
+                    >
+                        <span className="sr-only">Previous Game</span>
+                        <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={handleNextGame}
+                        className="pointer-events-auto p-4 rounded-full bg-black/20 backdrop-blur hover:bg-white/10 transition-all text-white/50 hover:text-white hover:scale-110"
+                    >
+                        <span className="sr-only">Next Game</span>
+                        <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Auth Status Check (Floating over bottom area) */}
+                <div className="absolute bottom-6 left-8 z-30">
+                    {isLoading ? (
+                        <div className="flex items-center gap-3 px-6 py-2 bg-black/40 backdrop-blur rounded-full border border-white/5">
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-ping" />
+                            <span className="text-white/50 text-sm">Connecting...</span>
+                        </div>
+                    ) : user ? (
+                        <div className="flex flex-col items-center gap-2 group cursor-default">
+                            <div className="px-6 py-2 bg-black/60 backdrop-blur rounded-full border border-white/10 flex items-center gap-3 hover:border-white/30 transition-colors">
+                                <div className="w-2 h-2 bg-green-400 rounded-full shadow-[0_0_10px_#4ade80]" />
+                                <span className="text-white/90 font-medium">
+                                    {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                                </span>
+                                <div className="h-4 w-[1px] bg-white/10" />
+                                <span className="text-amber-400 font-bold flex items-center gap-1">
+                                    <div className="w-1 h-1 bg-amber-400 rounded-full" />
+                                    {coins.toLocaleString()} C
+                                </span>
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Load Game Modal */}
-                <AnimatePresence>
-                    {showLoadModal && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-                        >
-                            <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl p-6 rounded-lg shadow-2xl relative">
-                                <button
-                                    onClick={() => setShowLoadModal(false)}
-                                    className="absolute top-4 right-4 text-gray-400 hover:text-white"
-                                >
-                                    <Settings className="w-6 h-6 rotate-45" /> {/* Close Icon */}
-                                </button>
-
-                                <h2 className="text-2xl font-bold text-white mb-6 border-b border-slate-700 pb-2">불러오기</h2>
-
-                                <div className="grid gap-4">
-                                    {saveSlots.map((slot) => (
-                                        <button
-                                            key={slot.id}
-                                            disabled={slot.date === 'Empty'}
-                                            onClick={() => handleLoadGame(slot.id)}
-                                            className={`flex flex-col text-left p-4 rounded border transition-all ${slot.date === 'Empty'
-                                                ? 'bg-slate-800/50 border-slate-800 text-gray-600 cursor-not-allowed'
-                                                : 'bg-slate-800 border-slate-600 hover:bg-slate-700 hover:border-blue-500/50 text-white'
-                                                }`}
-                                        >
-                                            <div className="flex justify-between w-full mb-1">
-                                                <span className="font-bold text-blue-400">SLOT {slot.id}</span>
-                                                <span className="text-xs text-gray-400">{slot.date}</span>
-                                            </div>
-                                            <p className="text-sm text-gray-300 truncate w-full">
-                                                {slot.summary}
-                                            </p>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Settings / Account Modal */}
-                <AnimatePresence>
-                    {showSettings && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-                            onClick={() => setShowSettings(false)}
-                        >
-                            <div
-                                className="bg-white/95 border border-white/20 w-full max-w-lg p-6 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] relative flex flex-col gap-6 backdrop-blur-xl"
-                                onClick={(e) => e.stopPropagation()}
+                            <button
+                                onClick={() => supabase.auth.signOut().then(() => { setUser(null); setCoins(0); setSession(null); })}
+                                className="text-xs text-white/30 hover:text-white/70 transition-colors opacity-0 group-hover:opacity-100"
                             >
-                                <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-                                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                        <div className="p-2 bg-blue-50 rounded-lg">
-                                            <Settings className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        설정 <span className="text-sm font-normal text-gray-400 font-mono self-end mb-0.5">Settings</span>
-                                    </h3>
-                                    <button onClick={() => setShowSettings(false)} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
+                                Sign Out
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setShowLogin(true)}
+                            className="px-8 py-3 bg-white/5 hover:bg-white/10 backdrop-blur rounded-full border border-white/10 text-white/70 hover:text-white hover:border-white/30 transition-all flex items-center gap-2 group"
+                        >
+                            <span>Login to Save Progress</span>
+                            <div className="w-2 h-2 bg-transparent border-2 border-white/30 rounded-full group-hover:bg-white/30 transition-all" />
+                        </button>
+                    )}
+                </div>
 
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-bold text-gray-600 uppercase tracking-widest flex items-center gap-2 ml-1">
-                                        <span>👤</span> My Account
-                                    </h4>
+            </div>
 
-                                    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200/60 shadow-inner">
-                                        {user ? (
-                                            <div className="space-y-4">
-                                                <div className="flex items-center gap-3">
-                                                    {user.user_metadata?.avatar_url ? (
-                                                        <img
-                                                            src={user.user_metadata.avatar_url}
-                                                            alt="Avatar"
-                                                            className="w-10 h-10 rounded-full border border-gray-300"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-lg">
-                                                            👤
-                                                        </div>
-                                                    )}
-                                                    <div className="flex flex-col text-sm overflow-hidden">
-                                                        <span className="text-gray-900 font-bold truncate text-base">{user.email}</span>
-                                                        <span className="text-gray-400 text-xs truncate font-mono">ID: {user.id.slice(0, 8)}...</span>
-                                                    </div>
-                                                    <div className="ml-auto flex items-center gap-1.5 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100/50 shadow-sm shrink-0">
-                                                        <span className="text-xs">💰</span>
-                                                        <span className="font-mono text-sm font-bold">{coins.toLocaleString()}</span>
-                                                    </div>
-                                                </div>
+            {/* Footer Info */}
+            <div className="absolute bottom-6 w-full text-center z-10 pointer-events-none">
+                <p className="text-xs text-white/20">
+                    Powered by Gemini 3.0 • Developed by A.I. Novel Engine
+                </p>
+            </div>
 
-                                                <div className="h-px bg-gray-200" />
+            {/* Settings Modal */}
+            {showSettings && (
+                <SettingsModal
+                    isOpen={showSettings}
+                    onClose={() => setShowSettings(false)}
+                    t={t}
+                    session={session}
+                    onResetGame={resetGameStore}
+                    coins={coins}
+                />
+            )}
 
-                                                <div className="flex gap-3">
-                                                    <button
-                                                        onClick={async () => {
-                                                            if (confirm("정말 로그아웃 하시겠습니까?")) {
-                                                                if (!supabase) return;
-                                                                const { error } = await supabase.auth.signOut();
-                                                                if (error) {
-                                                                    alert("로그아웃 중 오류가 발생했습니다: " + error.message);
-                                                                    console.error("Logout error:", error);
-                                                                } else {
-                                                                    setUser(null);
-                                                                    setShowSettings(false);
-                                                                    window.location.reload();
-                                                                }
-                                                            }
-                                                        }}
-                                                        className="flex-1 py-2.5 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 rounded-lg text-sm font-bold transition-all border border-gray-200 shadow-sm hover:shadow-md"
-                                                    >
-                                                        로그아웃
-                                                    </button>
-                                                    <button
-                                                        onClick={async () => {
-                                                            const confirmMsg = "⚠ 정말 계정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 모든 진행 데이터와 구매 내역이 영구적으로 삭제됩니다.";
-                                                            if (confirm(confirmMsg)) {
-                                                                if (prompt("삭제를 원하시면 '삭제'라고 입력해주세요.") === '삭제') {
-                                                                    try {
-                                                                        const { deleteAccount } = await import('@/app/actions/auth');
-                                                                        const result = await deleteAccount();
-                                                                        if (result.success) {
-                                                                            localStorage.clear(); // [CLEANUP] Clear all local data
-                                                                            alert("탈퇴가 완료되었습니다. 모든 데이터가 삭제되었습니다.");
-                                                                            window.location.reload();
-                                                                        } else {
-                                                                            alert("오류가 발생했습니다: " + result.error);
-                                                                        }
-                                                                    } catch (e) {
-                                                                        console.error("Delete failed:", e);
-                                                                        alert("처리 중 알 수 없는 오류가 발생했습니다.");
-                                                                    }
-                                                                }
-                                                            }
-                                                        }}
-                                                        className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
-                                                    >
-                                                        회원 탈퇴
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-4 text-gray-500 text-sm">
-                                                <p className="mb-2">로그인되어 있지 않습니다.</p>
-                                                <button
-                                                    onClick={() => { setShowSettings(false); setShowLogin(true); }}
-                                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-sm"
-                                                >
-                                                    로그인 / 회원가입
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+            {/* Login Modal */}
+            {showLogin && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="w-full max-w-md"
+                    >
+                        <Login onSuccess={() => setShowLogin(false)} />
+                        <div className="mt-4 text-center">
+                            <button onClick={() => setShowLogin(false)} className="text-white/50 hover:text-white text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </div>
 
-                                    <div className="space-y-4 pt-2">
-                                        <h4 className="text-xs font-bold text-gray-600 uppercase tracking-widest flex items-center gap-2 ml-1">
-                                            <span>🧠</span> AI Model Settings
-                                        </h4>
-
-                                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/60 shadow-inner grid gap-3">
-                                            <button
-                                                onClick={() => setStoryModel(MODEL_CONFIG.STORY)}
-                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${storyModel === MODEL_CONFIG.STORY
-                                                    ? 'bg-blue-50 border-blue-400 shadow-sm ring-1 ring-blue-200'
-                                                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-400 hover:text-gray-600'
-                                                    }`}
-                                            >
-                                                <div className={`p-2 rounded-full ${storyModel === MODEL_CONFIG.STORY ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                                                    <Zap className="w-5 h-5" />
-                                                </div>
-                                                <div className="flex flex-col text-left">
-                                                    <span className={`font-bold text-sm ${storyModel === MODEL_CONFIG.STORY ? 'text-blue-900' : 'text-gray-600'}`}>
-                                                        Gemini 3 Flash
-                                                    </span>
-                                                    <span className="text-xs text-gray-400">Fast & Efficient (Default)</span>
-                                                </div>
-                                                {storyModel === MODEL_CONFIG.STORY && (
-                                                    <div className="ml-auto w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                                                )}
-                                            </button>
-
-                                            <button
-                                                onClick={() => setStoryModel('gemini-3-pro-preview')}
-                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${storyModel === 'gemini-3-pro-preview'
-                                                    ? 'bg-violet-50 border-violet-400 shadow-sm ring-1 ring-violet-200'
-                                                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-400 hover:text-gray-600'
-                                                    }`}
-                                            >
-                                                <div className={`p-2 rounded-full ${storyModel === 'gemini-3-pro-preview' ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-400'}`}>
-                                                    <Star className="w-5 h-5" />
-                                                </div>
-                                                <div className="flex flex-col text-left">
-                                                    <span className={`font-bold text-sm ${storyModel === 'gemini-3-pro-preview' ? 'text-violet-900' : 'text-gray-600'}`}>
-                                                        Gemini 3 Pro
-                                                    </span>
-                                                    <span className="text-xs text-gray-400">High Quality & Creative</span>
-                                                </div>
-                                                {storyModel === 'gemini-3-pro-preview' && (
-                                                    <div className="ml-auto w-2 h-2 bg-violet-500 rounded-full animate-pulse" />
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-center text-xs text-gray-600 font-mono mt-4">
-                                    Visual Novel AI Engine v2.5.0
-                                </div>
-                            </div>
-                        </motion.div>
-                    )
-                    }
-                </AnimatePresence >
-            </div >
-        </div >
     );
 }

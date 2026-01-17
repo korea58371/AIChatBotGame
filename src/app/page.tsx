@@ -14,7 +14,9 @@ export default function Home() {
             const code = params.get('code');
             if (code) {
                 // Use window.location.href for a hard redirect to the route handler
-                window.location.href = `/auth/callback?code=${code}`;
+                // Forward ALL search params (including error, error_description which Supabase might send)
+                // And ensure we don't double-redirect if already on callback (though this is home page)
+                window.location.href = `/auth/callback?${params.toString()}`;
                 return;
             }
             setLoading(false);

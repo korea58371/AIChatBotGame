@@ -1,0 +1,384 @@
+[
+  {
+    "id": "TC001",
+    "title": "Guest Login Success",
+    "description": "Verify that a user can start the game as a Guest with anonymous authentication and maintain session until logout.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Title Screen"
+      },
+      {
+        "type": "action",
+        "description": "Start game as Guest, triggering anonymous authentication"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that an anonymous session is created and persisted"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user interface shows Guest status with Guest ID"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "OAuth Login Flow Completion",
+    "description": "Verify OAuth login with Google and Kakao completes successfully and redirects to previous page with session cookies issued.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Settings Modal when not logged in"
+      },
+      {
+        "type": "action",
+        "description": "Initiate OAuth login with Google"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify successful authentication and session creation with authentication cookies"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify redirect returns user to previous screen"
+      },
+      {
+        "type": "action",
+        "description": "Logout and repeat the above steps with Kakao OAuth login"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Email Login Success",
+    "description": "Verify user can login securely via email with Supabase Auth and session is maintained with redirect.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Settings Modal when not logged in"
+      },
+      {
+        "type": "action",
+        "description": "Input valid email credentials and submit login"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify successful authentication and session cookie setup"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm redirect to previous screen"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Logout Guest with Data Loss Warning",
+    "description": "Verify that logging out as a Guest shows appropriate data loss warning and terminates session upon confirmation.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as Guest user and navigate to Settings Modal"
+      },
+      {
+        "type": "action",
+        "description": "Click logout button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that a data loss warning popup is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Confirm logout"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify guest session is terminated and redirected back to Title Screen"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Logout User with Data Preservation",
+    "description": "Verify that logging out a logged-in user destroys session but preserves user data and redirects to main screen.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as authenticated user via OAuth or email"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to Settings Modal and click logout"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify session is terminated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user data remains intact in backend"
+      },
+      {
+        "type": "assertion",
+        "description": "Redirect user to Title Screen"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Guest Account Linking Upgrade",
+    "description": "Verify guest users can link their anonymous session to a full user account via OAuth/email without losing game progress.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as Guest and start gameplay with some progress saved"
+      },
+      {
+        "type": "action",
+        "description": "Open Settings Modal and initiate account linking with OAuth or email"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify guest session is upgraded to full authenticated user session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify guest game progress and coins are preserved post-linking"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI updates to show user email and updated action buttons"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Account Withdrawal with Confirmation and Data Deletion",
+    "description": "Verify logged-in users can initiate account withdrawal, confirm destructive operations, and all user-related data is deleted server-side safely.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as full authenticated user"
+      },
+      {
+        "type": "action",
+        "description": "Open Settings Modal and click the withdrawal button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify confirmation popup is displayed with warning about permanent data deletion"
+      },
+      {
+        "type": "action",
+        "description": "Confirm withdrawal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify backend deleteAccount action is called with service role token and RLS bypass"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user profile, gameplay logs, saves, and authentication account are deleted"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user session is terminated and user is redirected to Title Screen"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Settings Modal UI State Validation - Not Logged In",
+    "description": "Verify Settings Modal UI accurately reflects 'Not Logged In' state with no user ID or coins shown and displays login action buttons.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Settings Modal when user is not logged in"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI shows no user ID or email"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify coin balance is zero or hidden"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login buttons for OAuth and email are displayed, but logout and withdrawal buttons are hidden"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Settings Modal UI State Validation - Guest User",
+    "description": "Verify Settings Modal UI shows Guest user ID, coin balance, and displays linking and logout buttons with data loss warning on logout.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as Guest and open Settings Modal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI shows guest ID and current coin balance"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify linking and logout buttons are present"
+      },
+      {
+        "type": "action",
+        "description": "Click logout and verify data loss warning popup appears"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Settings Modal UI State Validation - Authenticated User",
+    "description": "Verify Settings Modal UI shows user email, coin balance, and displays logout and withdrawal buttons but not linking or login buttons.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as authenticated user and open Settings Modal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI displays correct user email and coin balance"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify logout and withdrawal buttons are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify linking and login buttons are not displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Session Redirect After Authentication Operations",
+    "description": "Verify that after login, logout, and withdrawal actions the user is redirected automatically to the main Title Screen as expected.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Perform guest login from Title Screen"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user remains or is redirected to Title Screen ready to start game"
+      },
+      {
+        "type": "action",
+        "description": "Perform user login via OAuth/email from Settings Modal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify redirect to main screen after successful login"
+      },
+      {
+        "type": "action",
+        "description": "Logout as Guest and verify redirection to Title Screen"
+      },
+      {
+        "type": "action",
+        "description": "Logout as User and verify redirection to Title Screen"
+      },
+      {
+        "type": "action",
+        "description": "Withdraw user account and verify redirection to Title Screen"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Error Handling - Invalid OAuth Tokens",
+    "description": "Verify the system appropriately handles invalid or expired OAuth tokens during login with proper error messages and no session creation.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Initiate OAuth login with manipulated or expired token"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login fails gracefully with appropriate error message shown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no session or user data is created"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Error Handling - Account Linking Failure",
+    "description": "Verify behavior when account linking fails due to network/API error, ensuring guest session remains intact and user is notified.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to link guest account under simulated backend failure or timeout"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify error notification is shown to user"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify guest session remains active without data loss"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Error Handling - Withdrawal Backend Failure",
+    "description": "Verify system handles backend failures safely during account withdrawal preventing partial data deletion and informing the user.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Initiate withdrawal with simulated backend failure during deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that deletion is aborted or safely rolled back"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is informed of failure and advised on next steps"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user session remains active if withdrawal incomplete"
+      }
+    ]
+  }
+]

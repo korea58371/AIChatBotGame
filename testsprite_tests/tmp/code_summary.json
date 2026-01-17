@@ -1,0 +1,35 @@
+{
+    "tech_stack": [
+        "TypeScript",
+        "Next.js",
+        "React",
+        "Supabase",
+        "TailwindCSS",
+        "Zustand",
+        "Framer Motion"
+    ],
+    "features": [
+        {
+            "name": "Login Component",
+            "description": "Handles user authentication including Guest login and OAuth.",
+            "files": [
+                "src/components/Login.tsx",
+                "src/app/auth/callback/route.ts"
+            ]
+        },
+        {
+            "name": "Title Screen",
+            "description": "Main entry screen, manages session state, game starting, and modal visibility.",
+            "files": [
+                "src/components/TitleScreen.tsx"
+            ]
+        },
+        {
+            "name": "Settings Modal",
+            "description": "Displays user settings including Account Info (Coin balance, Email/Guest ID) and System options.",
+            "files": [
+                "src/components/visual_novel/ui/SettingsModal.tsx"
+            ]
+        }
+    ]
+}

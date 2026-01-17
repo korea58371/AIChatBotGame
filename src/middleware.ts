@@ -2,6 +2,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+    // [Fix] Skip middleware for auth callback to prevent race conditions
+    if (request.nextUrl.pathname.startsWith('/auth/callback')) {
+        return NextResponse.next();
+    }
+
     let response = NextResponse.next({
         request: {
             headers: request.headers,
@@ -9,24 +14,44 @@ export async function middleware(request: NextRequest) {
     });
 
     const supabase = createServerClient(
-        'https://ifrxsdeikirjxthzoxye.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmcnhzZGVpa2lyanh0aHpveHllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4MzIzNzAsImV4cCI6MjA4MDQwODM3MH0.2e4gOKKFHfIvRY-kA7GWW6KNcg-rBIthijZ3Xnrpxoc',
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
                 get(name: string) {
-                    return request.cookies.get(name)?.value;
+                    const val = request.cookies.get(name)?.value;
+                    // console.log(`[AuthDebug] Middleware Get Cookie: ${name} = ${val ? 'Found' : 'Missing'}`);
+                    return val;
                 },
                 set(name: string, value: string, options: CookieOptions) {
+                    console.log(`[AuthDebug] Middleware Set Cookie: ${name}`);
+                    // [Fix] Force secure: false in development for localhost
+                    if (process.env.NODE_ENV === 'development') {
+                        options.secure = false;
+                    }
+
                     request.cookies.set({
                         name,
                         value,
                         ...options,
                     });
+
+                    // [Fix] Preserve existing response cookies when refreshing response
+                    // This handles chunked cookies (sb-auth-token-0, sb-auth-token-1)
+                    // preventing race conditions where the first chunk is lost.
+                    const previousCookies = response.cookies.getAll();
+
                     response = NextResponse.next({
                         request: {
                             headers: request.headers,
                         },
                     });
+
+                    // Restore previous cookies
+                    previousCookies.forEach(cookie => {
+                        response.cookies.set(cookie);
+                    });
+
                     response.cookies.set({
                         name,
                         value,
@@ -34,16 +59,30 @@ export async function middleware(request: NextRequest) {
                     });
                 },
                 remove(name: string, options: CookieOptions) {
+                    console.log(`[AuthDebug] Middleware Remove Cookie: ${name}`);
+                    // [Fix] Force secure: false in development
+                    if (process.env.NODE_ENV === 'development') {
+                        options.secure = false;
+                    }
+
                     request.cookies.set({
                         name,
                         value: '',
                         ...options,
                     });
+
+                    const previousCookies = response.cookies.getAll();
+
                     response = NextResponse.next({
                         request: {
                             headers: request.headers,
                         },
                     });
+
+                    previousCookies.forEach(cookie => {
+                        response.cookies.set(cookie);
+                    });
+
                     response.cookies.set({
                         name,
                         value: '',

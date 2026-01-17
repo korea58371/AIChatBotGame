@@ -66,6 +66,7 @@ export const CHARACTER_CREATION_QUESTIONS = [
 
 // [START SCENARIO]: The protagonist reads the ending of "Cheonha Jeil" and wakes up in the novel.
 export const START_SCENARIO_TEXT = `
+<Background>home</Background>
 당신은 현생의 고달픔을 달래주던 무협 소설 **'천하제일(天下第一)'**의 마지막 권을 덮었다.
 
 이 소설은 정파가 승리하는 척하다가, 마지막 순간 **마교(魔敎)**가 발발하여 주인공을 비롯한 **모든 등장인물이 몰살당하는 '배드 엔딩'**으로 끝이 났다.

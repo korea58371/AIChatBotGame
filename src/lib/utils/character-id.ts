@@ -27,10 +27,10 @@ const ID_TO_NAME_MAP: Record<string, string> = Object.entries(NAME_TO_ID_MAP).re
  * 3. Returns normalized ID/Name based on language.
  * 
  * @param input The character ID or Name (e.g. "ChoRyeon" or "초련" or "GoHaNeul_Anger_Lv1")
- * @param language Language setting ('ko' | 'en'). Defaults to 'ko' if omitted.
+ * @param language Language setting ('ko' | 'en' | 'ja'). Defaults to 'ko' if omitted.
  * @returns The normalized ID string
  */
-export function normalizeCharacterId(input: string, language: 'ko' | 'en' = 'ko'): string {
+export function normalizeCharacterId(input: string, language: 'ko' | 'en' | 'ja' = 'ko'): string {
     if (!input) return input;
 
     // Helper to check valid ID/Name in our maps
@@ -86,8 +86,8 @@ export function normalizeCharacterId(input: string, language: 'ko' | 'en' = 'ko'
         return baseId; // Fallback
     }
 
-    // 2. English Mode ('en') -> Prefer English ID
-    if (language === 'en') {
+    // 2. English/Japanese Mode ('en' | 'ja') -> Prefer English ID
+    if (language === 'en' || language === 'ja') {
         // If baseId is Korean Name, return English ID
         if (NAME_TO_ID_MAP[baseId]) return NAME_TO_ID_MAP[baseId];
         // If baseId is English ID, return as is

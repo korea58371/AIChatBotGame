@@ -4,7 +4,12 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import { Mail, Loader2, Chrome } from 'lucide-react';
 
-export default function Login() {
+interface LoginProps {
+    onClose?: () => void;
+    onSuccess?: () => void;
+}
+
+export default function Login({ onClose, onSuccess }: LoginProps) {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ text: string, type: 'error' | 'success' } | null>(null);
@@ -28,7 +33,7 @@ export default function Login() {
             email,
             options: {
                 // Redirect to the game page after clicking the link
-                emailRedirectTo: `${window.location.origin}/auth/callback`,
+                emailRedirectTo: `${window.location.origin}/auth/callback?next=/`,
             },
         });
 
@@ -41,10 +46,12 @@ export default function Login() {
     };
 
     const handleGoogleLogin = async () => {
+        console.log("[AuthDebug] Login: Google Login Clicked");
         setLoading(true);
         setMessage(null);
 
         if (!supabase) {
+            console.error("[AuthDebug] Login: Supabase client missing");
             setMessage({ text: "Auth service not available.", type: 'error' });
             setLoading(false);
             return;
@@ -53,7 +60,7 @@ export default function Login() {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
+                redirectTo: `${window.location.origin}/auth/callback?next=/`,
                 queryParams: {
                     access_type: 'offline',
                 },
@@ -61,29 +68,40 @@ export default function Login() {
         });
 
         if (error) {
+            console.error("[AuthDebug] Login: Google OAuth Error", error);
             setMessage({ text: error.message, type: 'error' });
             setLoading(false);
+        } else {
+            console.log("[AuthDebug] Login: Google OAuth flow initiated");
         }
     };
 
     const handleGuestLogin = async () => {
+        console.log("[AuthDebug] Login: Guest Login Clicked");
         setLoading(true);
         setMessage(null);
 
         if (!supabase) {
+            console.error("[AuthDebug] Login: Supabase client missing in Guest Login");
             // Guest mode without backend (Pure Local)
-            window.location.href = '/game';
+            // Just simulate success
+            if (onSuccess) onSuccess();
+            if (onClose) onClose();
             return;
         }
 
-        const { error } = await supabase.auth.signInAnonymously();
+        const { data, error } = await supabase.auth.signInAnonymously();
 
         if (error) {
+            console.error("[AuthDebug] Login: Guest Login Error", error);
             setMessage({ text: error.message, type: 'error' });
             setLoading(false);
         } else {
-            // Force redirect to game
-            window.location.href = '/game';
+            console.log("[AuthDebug] Login: Guest Login Success", data);
+            // Success
+            if (onSuccess) onSuccess();
+            if (onClose) onClose();
+            setLoading(false);
         }
     };
 

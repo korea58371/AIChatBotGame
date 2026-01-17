@@ -136,8 +136,8 @@ export interface GameState {
   addTextMessage: (partner: string, message: { sender: string; content: string; timestamp: number }) => void;
 
   // Settings
-  language: 'ko' | 'en' | null;
-  setLanguage: (lang: 'ko' | 'en') => void;
+  language: 'ko' | 'en' | 'ja' | null;
+  setLanguage: (lang: 'ko' | 'en' | 'ja') => void;
 
   // Time & Day System
   day: number;
@@ -206,6 +206,14 @@ export interface GameState {
     disabledEvents?: string[],
     protagonistImage?: string
   }) => void;
+
+  // [NEW] Session Bridging (Fix for SPA Auth Loss)
+  sessionUser: any | null; // using 'any' to avoid import issues, conceptually 'User'
+  setSessionUser: (user: any | null) => void;
+
+  // [New] Deferred Logic Application
+  pendingLogic: any | null;
+  setPendingLogic: (logic: any | null) => void;
 }
 
 export interface ChoiceHistoryEntry {
@@ -340,6 +348,10 @@ export const useGameStore = create<GameState>()(
 
       setStoryModel: (model) => set({ storyModel: model }),
 
+      // [NEW] Session Bridging
+      sessionUser: null,
+      setSessionUser: (user) => set({ sessionUser: user }),
+
       setGameId: async (id: string) => {
         console.log("[Store] setGameId called with:", id);
         console.log("[Store] Current Choices BEFORE setGameId:", get().choices);
@@ -414,6 +426,25 @@ export const useGameStore = create<GameState>()(
             constants: data.constants, // Added
             lore: data.lore, // Added
             characterCreationQuestions: data.characterCreationQuestions, // Added
+
+            // [Critical Fix] Reset Gameplay State on Game Switch
+            // Prevent Wuxia text/state from leaking into God Bless You
+            chatHistory: [],
+            displayHistory: [],
+            scriptQueue: [],
+            currentSegment: null,
+
+            turnCount: 0, // Reset Turn (0 for Creation Phase)
+            triggeredEvents: [],
+            activeEvent: null,
+            activeCharacters: [], // Clear characters
+
+            // Reset Visuals
+            currentBackground: '', // Will be set by init logic or script
+            currentBgm: null,
+
+            // Reset Meta
+            pendingLogic: null,
           });
 
           // If we are switching games, we should probably reset the session unless it's just a reload.
@@ -799,21 +830,11 @@ export const useGameStore = create<GameState>()(
           lore: {}, // [Fix] Clear lore as well
           goals: [],
           tensionLevel: 0,
-          skills: [],
-          choiceHistory: [], // [Fix] Reset choice history
-          userCoins: 0,
-          deadCharacters: [], // [Fix] Add missing reset for dead characters
-          isGodMode: false, // [Fix] Reset debug mode
-          currentBgm: null, // [Fix] Reset BGM
-          // Keep volume settings across resets (User might have set them)
-          // bgmVolume: 0.5, 
-          // sfxVolume: 0.5,
-          personaOverride: undefined,
-          scenarioOverride: undefined,
-          disabledEvents: [],
-          protagonistImageOverride: undefined // [Fix] Reset image override
         });
       },
+
+      pendingLogic: null,
+      setPendingLogic: (logic) => set({ pendingLogic: logic }),
     }),
     {
       name: 'vn-game-storage-v2',
