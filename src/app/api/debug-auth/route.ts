@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({
         message: 'Auth Debug Report',
         timestamp: new Date().toISOString(),
-        cookies: allCookies.map(c => ({ name: c.name, valueLength: c.value.length, secure: c.secure, httpOnly: c.httpOnly })),
+        cookies: allCookies.map(c => ({ name: c.name, valueLength: c.value.length })),
         hasAuthToken: allCookies.some(c => c.name.startsWith('sb-') && c.name.includes('-auth-token')),
         nodeEnv: process.env.NODE_ENV,
     }, { status: 200 });
