@@ -31,8 +31,9 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
             setProcessingId(product.id);
 
             // Save pending payment context for mobile redirection handling
+            // Use localStorage instead of sessionStorage to survive browser tab switches/redirects on mobile
             if (typeof window !== 'undefined') {
-                sessionStorage.setItem('pending_payment', JSON.stringify(product));
+                localStorage.setItem('pending_payment', JSON.stringify(product));
             }
 
             // 1. PortOne Payment Request
@@ -47,24 +48,37 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
 
             // Clean up if returned immediately (PC/Non-redirect)
             if (typeof window !== 'undefined') {
-                sessionStorage.removeItem('pending_payment');
+                localStorage.removeItem('pending_payment');
             }
 
             // 2. Success Logic
             if (response.success) {
+                console.log('Payment Response Success:', response);
                 const totalAmount = product.amount + product.bonusAmount;
+                console.log('Calculating Reward:', { current: userCoins, add: totalAmount, type: product.type });
 
                 if (product.type === 'token') {
+                    // Optimistic Update
                     const newCoins = userCoins + totalAmount;
-                    setUserCoins(newCoins);
-                    await updateProfileCoins(newCoins);
+                    setUserCoins(newCoins); // Update Store
+
+                    try {
+                        await updateProfileCoins(newCoins); // Sync to DB
+                    } catch (dbError) {
+                        console.error('Failed to sync coins to Supabase:', dbError);
+                        alert('코인은 지급되었으나 서버 저장에 실패했습니다. (새로고침 시 사라질 수 있음)');
+                    }
                 } else {
                     const newFate = (playerStats.fate || 0) + totalAmount;
                     setPlayerStats({ fate: newFate });
                 }
 
-                alert(`구매 성공! ${product.name}이(가) 지급되었습니다.`);
+                // Show success alert
+                setTimeout(() => {
+                    alert(`구매 성공! ${product.name}이(가) 지급되었습니다.\n(총 ${product.type === 'token' ? totalAmount + '코인' : totalAmount + '포인트'})`);
+                }, 100);
             } else {
+                console.error('Payment Failed Response:', response);
                 if (response.error_msg) {
                     alert(`결제 실패: ${response.error_msg}`);
                 }

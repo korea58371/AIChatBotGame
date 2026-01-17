@@ -107,7 +107,7 @@ export default function VisualNovelUI() {
 
         // Check if returning from payment
         if (impSuccess !== null || errorMsg) {
-            const pendingPayment = sessionStorage.getItem('pending_payment');
+            const pendingPayment = localStorage.getItem('pending_payment');
             if (pendingPayment) {
                 try {
                     const product = JSON.parse(pendingPayment);
@@ -118,19 +118,29 @@ export default function VisualNovelUI() {
                         const totalAmount = product.amount + product.bonusAmount;
 
                         if (product.type === 'token') {
-                            const currentCoins = useGameStore.getState().userCoins || 0;
-                            const newCoins = currentCoins + totalAmount;
-                            useGameStore.getState().setUserCoins(newCoins);
-
-                            // DB Sync
-                            const syncDb = async () => {
+                            // [Fix] Fetch fresh coins from DB first (Store might be 0 on reload)
+                            const processPayment = async () => {
                                 const supabase = createClient();
                                 const { data: { session } } = await supabase.auth.getSession();
                                 if (session?.user) {
+                                    // 1. Fetch Current
+                                    const { data: profile } = await supabase
+                                        .from('profiles')
+                                        .select('coins')
+                                        .eq('id', session.user.id)
+                                        .single();
+
+                                    const currentCoins = profile?.coins || 0;
+                                    const newCoins = currentCoins + totalAmount;
+
+                                    // 2. Update DB
                                     await supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id);
+
+                                    // 3. Update Store
+                                    useGameStore.getState().setUserCoins(newCoins);
                                 }
                             };
-                            syncDb();
+                            processPayment();
                         } else {
                             const currentFate = useGameStore.getState().playerStats.fate || 0;
                             const newFate = currentFate + totalAmount;
@@ -140,18 +150,21 @@ export default function VisualNovelUI() {
                         alert(`구매 성공! ${product.name}이(가) 지급되었습니다.`);
                     } else {
                         // Failure Logic
-                        // Decode URI component just in case
                         const msg = decodeURIComponent(errorMsg || '결제가 취소되었습니다.');
                         alert(`결제 실패: ${msg}`);
                     }
                 } catch (e) {
                     console.error('Payment callback handling failed', e);
+                    alert(`결제 처리 중 오류 발생: ${e}`);
                 } finally {
                     // Cleanup
-                    sessionStorage.removeItem('pending_payment');
+                    localStorage.removeItem('pending_payment');
                     // Clean URL
                     window.history.replaceState({}, '', window.location.pathname);
                 }
+            } else {
+                // Context Lost Case (Mobile specific debug)
+                alert("결제 결과가 반환되었으나 구매 정보를 찾을 수 없습니다. (Context Lost)\n(LocalStorage가 비어있음)");
             }
         }
     }, []);
@@ -613,7 +626,9 @@ export default function VisualNovelUI() {
                     .select('coins')
                     .eq('id', sessionData.session.user.id)
                     .single();
-                if (mounted && profile) setUserCoins(profile.coins);
+                // [Fix] Prevent overwriting optimistic payment update on reload
+                const isPayment = new URLSearchParams(window.location.search).get('imp_success');
+                if (mounted && profile && !isPayment) setUserCoins(profile.coins);
                 return;
             }
 
@@ -633,7 +648,9 @@ export default function VisualNovelUI() {
                             .select('coins')
                             .eq('id', refreshedSession.session.user.id)
                             .single();
-                        if (mounted && profile) setUserCoins(profile.coins);
+
+                        const isPayment = new URLSearchParams(window.location.search).get('imp_success');
+                        if (mounted && profile && !isPayment) setUserCoins(profile.coins);
                     }
                 } else {
                     console.log("VN: No user found (Guest Mode)");
@@ -653,7 +670,10 @@ export default function VisualNovelUI() {
                         .select('coins')
                         .eq('id', currentSession.user.id)
                         .single();
-                    if (mounted && profile) setUserCoins(profile.coins);
+                    if (mounted && profile) {
+                        const isPayment = new URLSearchParams(window.location.search).get('imp_success');
+                        if (!isPayment) setUserCoins(profile.coins);
+                    }
                 }
             }
         });
