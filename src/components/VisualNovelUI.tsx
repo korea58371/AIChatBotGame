@@ -100,73 +100,78 @@ export default function VisualNovelUI() {
     // [Stream] Track active segment index (consumed count) for syncing stream with UI
     // [Payment Callback Handling]
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const params = new URLSearchParams(window.location.search);
-        const impSuccess = params.get('imp_success');
-        const errorMsg = params.get('error_msg');
+        const handlePaymentResult = async () => {
+            if (typeof window === 'undefined') return;
+            const params = new URLSearchParams(window.location.search);
+            const impSuccess = params.get('imp_success');
+            const errorMsg = params.get('error_msg');
 
-        // Check if returning from payment
-        if (impSuccess !== null || errorMsg) {
-            const pendingPayment = localStorage.getItem('pending_payment');
-            if (pendingPayment) {
-                try {
-                    const product = JSON.parse(pendingPayment);
+            // Check if returning from payment
+            if (impSuccess !== null || errorMsg) {
+                const pendingPayment = localStorage.getItem('pending_payment');
+                if (pendingPayment) {
+                    try {
+                        const product = JSON.parse(pendingPayment);
 
-                    if (impSuccess === 'true') {
-                        // Success Logic
-                        // 1. Optimistic Update
-                        const totalAmount = product.amount + product.bonusAmount;
+                        if (impSuccess === 'true') {
+                            // Success Logic
+                            // 1. Optimistic Update
+                            const totalAmount = product.amount + product.bonusAmount;
 
-                        if (product.type === 'token') {
-                            // [Fix] Fetch fresh coins from DB first (Store might be 0 on reload)
-                            const processPayment = async () => {
-                                const supabase = createClient();
-                                const { data: { session } } = await supabase.auth.getSession();
-                                if (session?.user) {
-                                    // 1. Fetch Current
-                                    const { data: profile } = await supabase
-                                        .from('profiles')
-                                        .select('coins')
-                                        .eq('id', session.user.id)
-                                        .single();
+                            if (product.type === 'token') {
+                                // [Fix] Fetch fresh coins from DB first (Store might be 0 on reload)
+                                // const processPayment = async () => { 
+                                {
+                                    const supabase = createClient();
+                                    const { data: { session } } = await supabase.auth.getSession();
+                                    if (session?.user) {
+                                        // 1. Fetch Current
+                                        const { data: profile } = await supabase
+                                            .from('profiles')
+                                            .select('coins')
+                                            .eq('id', session.user.id)
+                                            .single();
 
-                                    const currentCoins = profile?.coins || 0;
-                                    const newCoins = currentCoins + totalAmount;
+                                        const currentCoins = profile?.coins || 0;
+                                        const newCoins = currentCoins + totalAmount;
 
-                                    // 2. Update DB
-                                    await supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id);
+                                        // 2. Update DB
+                                        await supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id);
 
-                                    // 3. Update Store
-                                    useGameStore.getState().setUserCoins(newCoins);
+                                        // 3. Update Store
+                                        useGameStore.getState().setUserCoins(newCoins);
+                                    }
+                                    // };
+                                    // processPayment();
                                 }
-                            };
-                            processPayment();
-                        } else {
-                            const currentFate = useGameStore.getState().playerStats.fate || 0;
-                            const newFate = currentFate + totalAmount;
-                            useGameStore.getState().setPlayerStats({ ...useGameStore.getState().playerStats, fate: newFate });
-                        }
+                            } else {
+                                const currentFate = useGameStore.getState().playerStats.fate || 0;
+                                const newFate = currentFate + totalAmount;
+                                useGameStore.getState().setPlayerStats({ ...useGameStore.getState().playerStats, fate: newFate });
+                            }
 
-                        alert(`구매 성공! ${product.name}이(가) 지급되었습니다.`);
-                    } else {
-                        // Failure Logic
-                        const msg = decodeURIComponent(errorMsg || '결제가 취소되었습니다.');
-                        alert(`결제 실패: ${msg}`);
+                            alert(`구매 성공! ${product.name}이(가) 지급되었습니다.`);
+                        } else {
+                            // Failure Logic
+                            const msg = decodeURIComponent(errorMsg || '결제가 취소되었습니다.');
+                            alert(`결제 실패: ${msg}`);
+                        }
+                    } catch (e) {
+                        console.error('Payment callback handling failed', e);
+                        alert(`결제 처리 중 오류 발생: ${e}`);
+                    } finally {
+                        // Cleanup
+                        localStorage.removeItem('pending_payment');
+                        // Clean URL
+                        window.history.replaceState({}, '', window.location.pathname);
                     }
-                } catch (e) {
-                    console.error('Payment callback handling failed', e);
-                    alert(`결제 처리 중 오류 발생: ${e}`);
-                } finally {
-                    // Cleanup
-                    localStorage.removeItem('pending_payment');
-                    // Clean URL
-                    window.history.replaceState({}, '', window.location.pathname);
+                } else {
+                    // Context Lost Case (Mobile specific debug)
+                    alert("결제 결과가 반환되었으나 구매 정보를 찾을 수 없습니다. (Context Lost)\n(LocalStorage가 비어있음)");
                 }
-            } else {
-                // Context Lost Case (Mobile specific debug)
-                alert("결제 결과가 반환되었으나 구매 정보를 찾을 수 없습니다. (Context Lost)\n(LocalStorage가 비어있음)");
             }
-        }
+        };
+        handlePaymentResult();
     }, []);
     const activeSegmentIndexRef = useRef(0);
 
