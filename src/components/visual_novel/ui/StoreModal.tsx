@@ -137,9 +137,9 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                         </button>
                     </div>
 
-                    <div className="flex flex-1 overflow-hidden">
+                    <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                         {/* Sidebar Navigation */}
-                        <div className="w-64 bg-white border-r border-gray-100 flex flex-col py-6 px-4 gap-2 shadow-sm z-10">
+                        <div className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-100 flex flex-row md:flex-col py-4 md:py-6 px-4 gap-2 shadow-sm z-10 shrink-0 overflow-x-auto md:overflow-visible no-scrollbar">
                             <TabButton
                                 active={activeTab === 'token'}
                                 onClick={() => setActiveTab('token')}
@@ -157,7 +157,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                                 colorClass="bg-purple-50 text-purple-900 border-purple-200"
                             />
 
-                            <div className="mt-auto px-4 py-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                            <div className="mt-auto px-4 py-4 bg-indigo-50 rounded-2xl border border-indigo-100 hidden md:block">
                                 <p className="text-xs font-bold text-indigo-900 mb-1">💡 Pro Tip</p>
                                 <p className="text-[11px] text-indigo-700 leading-relaxed">
                                     대량 구매 시 보너스 혜택이 적용됩니다. <br />
@@ -167,8 +167,8 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 overflow-y-auto p-8 bg-[#F8F9FC]">
-                            <div className="mb-6">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#F8F9FC]">
+                            <div className="mb-4 md:mb-6">
                                 <h3 className="text-lg font-bold text-gray-900">
                                     {activeTab === 'token' ? '스토리 토큰 충전' : '운명 포인트 충전'}
                                 </h3>
@@ -177,7 +177,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                            <div className="flex flex-col gap-2">
                                 {products.map((product) => (
                                     <ProductCard
                                         key={product.id}
@@ -241,71 +241,54 @@ function ProductCard({ product, onBuy, isLoading }: { product: ShopProduct, onBu
 
     return (
         <motion.div
-            whileHover={{ y: -4 }}
-            className={`group relative bg-white border rounded-2xl p-5 flex flex-col h-full transition-all duration-300 ${isPopular
-                ? 'border-indigo-100 shadow-[0_4px_20px_rgba(79,70,229,0.08)] ring-1 ring-indigo-500/10'
-                : 'border-gray-100 shadow-sm hover:shadow-md'
+            whileHover={{ scale: 1.01 }}
+            className={`group relative bg-white border rounded-xl px-5 py-3 flex items-center justify-between transition-all duration-200 ${isPopular
+                ? 'border-indigo-100 shadow-[0_2px_10px_rgba(79,70,229,0.05)] ring-1 ring-indigo-500/10'
+                : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
                 }`}
         >
             {/* Tag Badge */}
-            {product.tag && (
-                <div className="absolute top-0 right-0">
-                    <div className={`text-[10px] font-bold px-3 py-1.5 rounded-bl-xl round-tr-xl
-                        ${product.tag === 'BEST' ? 'bg-indigo-600 text-white shadow-indigo-200' : ''}
-                        ${product.tag === 'POPULAR' ? 'bg-rose-500 text-white shadow-rose-200' : ''}
-                        ${product.tag === 'HOT' ? 'bg-amber-500 text-white shadow-amber-200' : ''}
-                        ${product.tag === 'LEGENDARY' ? 'bg-gray-900 text-white' : ''}
-                    `}>
-                        {product.tag}
-                    </div>
-                </div>
-            )}
+
 
             {/* Icon & Name */}
-            <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl
+            {/* Icon & Amount Group */}
+            {/* Left: Icon & Info */}
+            <div className="flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg
                     ${product.type === 'token' ? 'bg-amber-50 text-amber-600' : 'bg-purple-50 text-purple-600'}
                 `}>
                     {product.icon}
                 </div>
-            </div>
 
-            <h3 className="text-gray-900 font-bold text-lg mb-1">{product.name}</h3>
-            <p className="text-gray-400 text-xs min-h-[2.5em]">{product.description}</p>
-
-            <div className="my-6 space-y-1">
-                <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                        {product.amount.toLocaleString()}
-                    </span>
-                    <span className="text-sm font-bold text-gray-500">
-                        {product.type === 'token' ? '개' : 'P'}
-                    </span>
-                </div>
-                {product.bonusAmount > 0 ? (
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-xs font-bold">
-                        <span>+{product.bonusAmount.toLocaleString()} 추가 지급</span>
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-gray-900">
+                            {product.amount.toLocaleString()}
+                            <span className="text-xs font-normal text-gray-500 ml-0.5">
+                                {product.type === 'token' ? '개' : 'P'}
+                            </span>
+                        </span>
+                        {product.bonusAmount > 0 && (
+                            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                                +{product.bonusAmount.toLocaleString()}
+                            </span>
+                        )}
                     </div>
-                ) : (
-                    <div className="text-xs text-gray-300 font-medium">기본 구성</div>
-                )}
+                </div>
             </div>
 
             <button
                 onClick={onBuy}
                 disabled={isLoading}
-                className={`w-full py-3.5 mt-auto rounded-xl font-bold transition-all relative overflow-hidden flex items-center justify-center gap-2 text-white shadow-lg group-hover:shadow-indigo-500/30
+                className={`w-24 py-2 rounded-lg font-bold text-sm transition-all relative overflow-hidden flex items-center justify-center
                     ${isLoading
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
-                        : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 hover:scale-[1.02] active:scale-[0.98]'
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
                     }
                 `}
             >
                 {isLoading ? (
-                    <>
-                        <Loader2 className="animate-spin w-4 h-4 text-gray-400" />
-                        <span className="text-gray-400">처리 중...</span>
-                    </>
+                    <Loader2 className="animate-spin w-4 h-4" />
                 ) : (
                     <span>{product.price.toLocaleString()}원</span>
                 )}
