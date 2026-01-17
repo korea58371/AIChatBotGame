@@ -47,43 +47,32 @@ export const usePortOne = () => {
     const [isSdkLoaded, setIsSdkLoaded] = useState(false);
 
     useEffect(() => {
-        const scriptId = "portone-sdk";
-
         // Function to initialize IMP
         const initIMP = () => {
             if (window.IMP && process.env.NEXT_PUBLIC_PORTONE_USER_CODE) {
                 window.IMP.init(process.env.NEXT_PUBLIC_PORTONE_USER_CODE);
                 setIsSdkLoaded(true);
+                return true;
             }
+            return false;
         };
 
-        if (document.getElementById(scriptId)) {
-            if (window.IMP) {
-                initIMP();
-            } else {
-                // Script tag exists but IMP object not ready? Retry briefly
-                const interval = setInterval(() => {
-                    if (window.IMP) {
-                        initIMP();
-                        clearInterval(interval);
-                    }
-                }, 100);
-                setTimeout(() => clearInterval(interval), 3000); // Stop checking after 3s
-            }
-            return;
-        }
+        // Check immediately
+        if (initIMP()) return;
 
-        const script = document.createElement("script");
-        script.id = scriptId;
-        script.src = "https://cdn.iamport.kr/v1/iamport.js";
-        script.async = true;
-        script.onload = () => {
-            initIMP();
-        };
-        document.body.appendChild(script);
+        // Poll for SDK availability (since it's loaded via lazyOnload in layout)
+        const interval = setInterval(() => {
+            if (initIMP()) {
+                clearInterval(interval);
+            }
+        }, 500);
+
+        // Stop polling after 10 seconds to avoid memory leaks
+        const timeout = setTimeout(() => clearInterval(interval), 10000);
 
         return () => {
-            // Cleanup if needed
+            clearInterval(interval);
+            clearTimeout(timeout);
         };
     }, []);
 

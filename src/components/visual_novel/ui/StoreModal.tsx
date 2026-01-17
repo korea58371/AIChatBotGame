@@ -25,10 +25,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
     // Actually, just show them all.
 
     const handlePurchase = async (product: ShopProduct) => {
-        if (!isSdkLoaded) {
-            alert("결제 시스템을 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
-            return;
-        }
+
 
         try {
             setProcessingId(product.id);
@@ -184,6 +181,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                                         product={product}
                                         onBuy={() => handlePurchase(product)}
                                         isLoading={processingId === product.id}
+                                        isSdkLoaded={isSdkLoaded}
                                     />
                                 ))}
                             </div>
@@ -236,7 +234,7 @@ function TabButton({ active, onClick, icon, label, desc, colorClass }: any) {
     );
 }
 
-function ProductCard({ product, onBuy, isLoading }: { product: ShopProduct, onBuy: () => void, isLoading: boolean }) {
+function ProductCard({ product, onBuy, isLoading, isSdkLoaded }: { product: ShopProduct, onBuy: () => void, isLoading: boolean, isSdkLoaded: boolean }) {
     const isPopular = product.tag === 'POPULAR' || product.tag === 'BEST' || product.tag === 'HOT';
 
     return (
@@ -279,9 +277,9 @@ function ProductCard({ product, onBuy, isLoading }: { product: ShopProduct, onBu
 
             <button
                 onClick={onBuy}
-                disabled={isLoading}
+                disabled={isLoading || !isSdkLoaded}
                 className={`w-24 py-2 rounded-lg font-bold text-sm transition-all relative overflow-hidden flex items-center justify-center
-                    ${isLoading
+                    ${isLoading || !isSdkLoaded
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         : 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
                     }
@@ -289,6 +287,8 @@ function ProductCard({ product, onBuy, isLoading }: { product: ShopProduct, onBu
             >
                 {isLoading ? (
                     <Loader2 className="animate-spin w-4 h-4" />
+                ) : !isSdkLoaded ? (
+                    <Loader2 className="animate-spin w-3 h-3 text-gray-300" />
                 ) : (
                     <span>{product.price.toLocaleString()}원</span>
                 )}
