@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { deleteAccount } from '@/app/actions/auth';
-import { Zap, Star, Cpu } from 'lucide-react';
+import { Zap, Star, Cpu, LogOut } from 'lucide-react';
 import { MODEL_CONFIG } from '@/lib/model-config';
 
 interface SettingsModalProps {
@@ -16,8 +17,27 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ isOpen, onClose, t, session, onResetGame }: SettingsModalProps) {
     const supabase = createClient();
+    const router = useRouter();
     const storyModel = useGameStore(state => state.storyModel);
     const setStoryModel = useGameStore(state => state.setStoryModel);
+
+    // [Fix] Local Session Fallback (If prop is missing/stale)
+    const [localSession, setLocalSession] = useState<any>(null);
+    const activeSession = session || localSession;
+
+    useEffect(() => {
+        if (isOpen && !session) {
+            console.log("[SettingsModal] Session prop missing, fetching locally...");
+            const fetchSession = async () => {
+                const { data: { session: fetchedSession } } = await supabase.auth.getSession();
+                if (fetchedSession) {
+                    console.log("[SettingsModal] Local session found:", fetchedSession.user.email);
+                    setLocalSession(fetchedSession);
+                }
+            };
+            fetchSession();
+        }
+    }, [isOpen, session]);
 
     // [New] Volume State
     const bgmVolume = useGameStore(state => state.bgmVolume);
@@ -161,9 +181,9 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                 <div className="bg-black/40 p-4 rounded-lg border border-gray-700">
                                     <div className="flex justify-between items-center mb-4">
                                         <span className="text-gray-400 text-sm">{(t as any).email || "Email"}</span>
-                                        <span className="text-white font-mono">{session?.user?.email || (t as any).guest || "Guest"}</span>
+                                        <span className="text-white font-mono">{activeSession?.user?.email || (t as any).guest || "Guest"}</span>
                                     </div>
-                                    {session?.user ? (
+                                    {activeSession?.user ? (
                                         <div className="flex gap-2 justify-end">
                                             <button
                                                 onClick={async () => {
@@ -171,7 +191,7 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                                         const res = await deleteAccount();
                                                         if (res.success) {
                                                             alert((t as any).withdrawalComplete || "Account deleted.");
-                                                            window.location.href = '/login';
+                                                            router.push('/');
                                                         } else {
                                                             alert(`${(t as any).withdrawalError || "Error"}: ${res.error}`);
                                                         }
@@ -184,7 +204,7 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                             <button
                                                 onClick={async () => {
                                                     await supabase.auth.signOut();
-                                                    window.location.href = '/login';
+                                                    router.push('/');
                                                 }}
                                                 className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm transition-colors"
                                             >
@@ -194,7 +214,7 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                     ) : (
                                         <div className="text-center">
                                             <button
-                                                onClick={() => window.location.href = '/login'}
+                                                onClick={() => router.push('/')}
                                                 className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-black text-sm font-bold rounded transition-colors"
                                             >
                                                 Login / Sign Up
@@ -202,6 +222,17 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-gray-700">
+                                <h3 className="text-lg font-bold text-gray-300 border-b border-gray-700 pb-2">System</h3>
+                                <button
+                                    onClick={() => router.push('/')}
+                                    className="w-full py-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:border-gray-500"
+                                >
+                                    <LogOut className="w-5 h-5 text-gray-400" />
+                                    <span>{(t as any).exitToTitle || "메인 화면으로 나가기"}</span>
+                                </button>
                             </div>
 
                             {/* Reset Game */}
