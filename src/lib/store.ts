@@ -1236,10 +1236,13 @@ export const useGameStore = create<GameState>()(
         }
       },
 
-      loadFromCloud: async () => {
+      loadFromCloud: async (gameId?: string) => {
         const state = get();
         const user = state.sessionUser;
         if (!user) return false;
+
+        const queryGameId = gameId || state.activeGameId;
+        console.log("[Store] loadFromCloud (v2) called. GameID Arg:", gameId, "Active:", state.activeGameId, "Target:", queryGameId);
 
         const supabase = createClient();
         if (!supabase) return false;
@@ -1249,13 +1252,24 @@ export const useGameStore = create<GameState>()(
             .from('game_saves')
             .select('save_data')
             .eq('user_id', user.id)
-            .eq('game_id', state.activeGameId)
-            .single();
+            .eq('game_id', queryGameId)
+            .order('updated_at', { ascending: false })
+            .limit(1);
 
-          if (error || !data) return false;
+          if (error) {
+            console.error("[Store] Cloud Load Error:", error);
+            return false;
+          }
+
+          const row = data && data.length > 0 ? data[0] : null;
+
+          if (!row) {
+            console.warn("[Store] No Cloud Save Found");
+            return false;
+          }
 
           // Decompress
-          const wrapper = data.save_data as any; // { v: 1, data: ... }
+          const wrapper = row.save_data as any; // { v: 1, data: ... }
           const compressed = wrapper.data || wrapper; // Handle both just in case
 
           let parsed: Partial<GameState> = {};
@@ -1331,7 +1345,9 @@ export const useGameStore = create<GameState>()(
           .select('updated_at, turn_count')
           .eq('user_id', user.id)
           .eq('game_id', state.activeGameId)
-          .single();
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
         if (error || !data) return null;
 

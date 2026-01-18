@@ -4,6 +4,7 @@ import { RotateCcw } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import { parseScript, ScriptSegment } from '@/lib/script-parser';
 import { resolveBackground } from '@/lib/background-manager';
+import { useVNAudio } from '../hooks/useVNAudio';
 
 interface Message {
     role: string;
@@ -30,6 +31,8 @@ const HistoryModal: React.FC<HistoryModalProps> = ({
     setBackground
 }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
+    // [Fix] Hook for SFX
+    const { playSfx } = useVNAudio();
 
     // Scroll to bottom when opened
     useEffect(() => {
@@ -50,7 +53,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({
                     <div className="bg-[#1e1e1e]/95 w-full max-w-4xl h-[80vh] rounded-xl flex flex-col border border-[#333] shadow-2xl">
                         <div className="p-4 md:p-6 border-b border-white/5 flex justify-between items-center bg-[#252525]">
                             <h2 className="text-2xl font-bold font-serif text-[#D4AF37] tracking-wider">◆ {t.chatHistory}</h2>
-                            <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">×</button>
+                            <button onClick={() => { playSfx('ui_click'); onClose(); }} onMouseEnter={() => playSfx('ui_hover')} className="text-gray-400 hover:text-white text-xl">×</button>
                         </div>
                         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 custom-scrollbar">
                             {(useGameStore.getState().displayHistory || chatHistory).map((msg, idx, arr) => {
@@ -121,6 +124,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({
                                                                 {canRewind && (
                                                                     <button
                                                                         onClick={() => {
+                                                                            playSfx('ui_confirm');
                                                                             if (confirm("이 시점으로 되돌아가시겠습니까? (이후 진행 상황은 유실됩니다)")) {
                                                                                 // [Fix] Restore Snapshot if available
                                                                                 if (msg.snapshot) {
@@ -148,6 +152,7 @@ const HistoryModal: React.FC<HistoryModalProps> = ({
                                                                         }}
                                                                         className="absolute top-2 right-2 p-1.5 bg-[#333] hover:bg-[#D4AF37] rounded-full text-gray-400 hover:text-black opacity-0 group-hover:opacity-100 transition-all shadow-lg z-10 border border-white/10 hover:border-[#D4AF37]"
                                                                         title="이 대사부터 다시 보기 (Rewind)"
+                                                                        onMouseEnter={() => playSfx('ui_hover')}
                                                                     >
                                                                         <RotateCcw size={14} />
                                                                     </button>

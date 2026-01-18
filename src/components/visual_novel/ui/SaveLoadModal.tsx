@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, SaveSlotMetadata } from '@/lib/store';
 import { Database, Trash2, Save, FileText, MapPin, Clock, Target } from 'lucide-react';
 import { get as idbGet } from 'idb-keyval';
+import { useVNAudio } from '../hooks/useVNAudio';
 
 const getRelativeTime = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -38,8 +39,12 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
     const listSaveSlots = useGameStore(state => state.listSaveSlots);
     const activeGameIdStore = useGameStore(state => state.activeGameId);
 
+    // [Fix] Hook for SFX
+    const { playSfx } = useVNAudio();
+
     // [Fix] Use prop if available, else store
     const activeGameId = propGameId || activeGameIdStore;
+    console.log("[SaveLoadModal] Debug - Prop:", propGameId, "Store:", activeGameIdStore, "Final:", activeGameId);
 
     const [autoSaves, setAutoSaves] = useState<any[]>([]);
 
@@ -104,13 +109,16 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
                     .select('*')
                     .eq('user_id', user.id)
                     .eq('game_id', activeGameId)
-                    .single();
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
 
-                if (cloudData) {
+                const row = cloudData && cloudData.length > 0 ? cloudData[0] : null;
+
+                if (row) {
                     autoList.push({
                         id: 'cloud_auto',
                         type: 'cloud',
-                        date: cloudData.updated_at,
+                        date: row.updated_at,
                         summary: cloudData.summary || "클라우드 저장",
                         turn: cloudData.turn_count,
                         location: "Cloud",
@@ -153,27 +161,23 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
         // Handle Auto Saves (Strings)
         if (typeof slotId === 'string') {
             if (slotId === 'local_auto') {
-                if (confirm("자동 저장된 데이터를 불러오시겠습니까?")) {
-                    const success = await loadFromSlot('auto', activeGameId);
-                    if (success) {
-                        onClose();
-                        if (onLoadSuccess) onLoadSuccess();
-                    } else {
-                        alert("자동 저장 불러오기 실패");
-                    }
+                const success = await loadFromSlot('auto', activeGameId);
+                if (success) {
+                    onClose();
+                    if (onLoadSuccess) onLoadSuccess();
+                } else {
+                    alert("자동 저장 불러오기 실패");
                 }
                 return;
             }
 
             if (slotId === 'cloud_auto') {
-                if (confirm("클라우드 데이터를 불러오시겠습니까? 현재 기기의 데이터는 덮어씌워집니다.")) {
-                    const success = await useGameStore.getState().loadFromCloud(activeGameId);
-                    if (success) {
-                        onClose();
-                        if (onLoadSuccess) onLoadSuccess();
-                    } else {
-                        alert("클라우드 로드 실패");
-                    }
+                const success = await useGameStore.getState().loadFromCloud(activeGameId);
+                if (success) {
+                    onClose();
+                    if (onLoadSuccess) onLoadSuccess();
+                } else {
+                    alert("클라우드 로드 실패");
                 }
                 return;
             }
@@ -185,14 +189,13 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
         }
 
         // Handle Manual Slots (Number)
-        if (window.confirm(`Slot ${slotId}를 불러오시겠습니까? 현재 진행 상황은 소실됩니다.`)) {
-            const success = await loadFromSlot(slotId, activeGameId);
-            if (success) {
-                onClose();
-                if (onLoadSuccess) onLoadSuccess();
-            } else {
-                alert("불러오기에 실패했습니다.");
-            }
+        // [UX Improvement] Remove confirmation for faster loading
+        const success = await loadFromSlot(slotId, activeGameId);
+        if (success) {
+            onClose();
+            if (onLoadSuccess) onLoadSuccess();
+        } else {
+            alert("불러오기에 실패했습니다.");
         }
     };
 
@@ -218,6 +221,7 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
                     onLoad={handleLoad}
                     onDelete={handleDelete}
                     gameId={activeGameId}
+                    playSfx={playSfx}
                 />
             );
         }
@@ -246,7 +250,7 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
                                 </span>
                             </div>
 
-                            <button onClick={onClose} className="text-white/30 hover:text-white p-2 text-xl hover:bg-white/5 rounded-full transition-colors">
+                            <button onClick={() => { playSfx('ui_click'); onClose(); }} onMouseEnter={() => playSfx('ui_hover')} className="text-white/30 hover:text-white p-2 text-xl hover:bg-white/5 rounded-full transition-colors">
                                 ✕
                             </button>
                         </div>
@@ -256,7 +260,9 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
                             <div className="max-w-5xl mx-auto flex flex-col gap-3">
                                 {/* 1. Auto Saves */}
                                 {autoSaves.map((save) => (
-                                    <div key={save.id} className="p-4 bg-[#1e1e1e] border border-cyan-500/20 hover:border-cyan-500/50 rounded-lg flex justify-between items-center group transition-all shadow-md">
+                                    <div key={save.id}
+                                        onMouseEnter={() => playSfx('ui_hover')}
+                                        className="p-4 bg-[#1e1e1e] border border-cyan-500/20 hover:border-cyan-500/50 rounded-lg flex justify-between items-center group transition-all shadow-md">
                                         <div className="flex items-center gap-4 flex-1 min-w-0">
                                             <div className={`w-16 h-10 flex items-center justify-center rounded font-black text-xs tracking-wider border ${save.type === 'cloud' ? 'bg-blue-900/20 border-blue-500/30 text-blue-400' : 'bg-green-900/20 border-green-500/30 text-green-400'}`}>
                                                 {save.type === 'local' ? 'AUTO' : 'CLOUD'}
@@ -290,20 +296,18 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
                                         {mode === 'load' && (
                                             <button
                                                 onClick={async () => {
+                                                    playSfx('ui_confirm');
                                                     // Simplified Logic reuse
                                                     if (save.type === 'cloud') {
-                                                        if (confirm("클라우드 데이터를 불러오시겠습니까?")) {
-                                                            const success = await useGameStore.getState().loadFromCloud(activeGameId);
-                                                            if (success) { onClose(); if (onLoadSuccess) onLoadSuccess(); }
-                                                        }
+                                                        const success = await useGameStore.getState().loadFromCloud(activeGameId);
+                                                        if (success) { onClose(); if (onLoadSuccess) onLoadSuccess(); }
                                                     } else {
-                                                        if (confirm("자동 저장된 데이터를 불러오시겠습니까?")) {
-                                                            const success = await loadFromSlot('auto', activeGameId);
-                                                            if (success) { onClose(); if (onLoadSuccess) onLoadSuccess(); }
-                                                        }
+                                                        const success = await loadFromSlot('auto', activeGameId);
+                                                        if (success) { onClose(); if (onLoadSuccess) onLoadSuccess(); }
                                                     }
                                                 }}
                                                 className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold rounded shadow-lg shadow-cyan-900/20 hover:scale-105 transition-all"
+                                                onMouseEnter={() => playSfx('ui_hover')}
                                             >
                                                 LOAD
                                             </button>
@@ -328,95 +332,108 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
 };
 
 // Unified Slot Item Component (Horizontal Layout)
-const SaveSlotItem = ({ slotId, data, mode, onSave, onLoad, onDelete, gameId }: any) => {
+const SaveSlotItem = ({ slotId, data, mode, onSave, onLoad, onDelete, gameId, playSfx }: any) => {
     const isEmpty = !data;
 
     return (
-        <div className={`
+        <div
+            onMouseEnter={() => playSfx && playSfx('ui_hover')}
+            className={`
             relative group p-4 rounded-lg border transition-all duration-200 flex items-center justify-between gap-4
             ${isEmpty
-                ? 'bg-white/5 border-white/5 hover:border-white/10'
-                : 'bg-[#1e1e1e] border-amber-500/20 hover:border-amber-500/50 shadow-md hover:shadow-amber-500/10'
-            }
+                    ? 'bg-white/5 border-white/5 hover:border-white/10'
+                    : 'bg-[#1e1e1e] border-amber-500/20 hover:border-amber-500/50 shadow-md hover:shadow-amber-500/10'
+                }
 `}>
             {/* Left: ID & Content */}
-            <div className="flex items-center gap-4 flex-1 min-w-0">
+            < div className="flex items-center gap-4 flex-1 min-w-0" >
                 {/* ID */}
-                <span className={`text-2xl font-black font-mono w-12 text-center ${isEmpty ? 'text-white/10' : 'text-amber-500'} `}>
+                < span className={`text-2xl font-black font-mono w-12 text-center ${isEmpty ? 'text-white/10' : 'text-amber-500'} `}>
                     {String(slotId).padStart(2, '0')}
-                </span>
+                </span >
 
                 {/* Vertical Divider */}
-                <div className="w-px h-10 bg-white/5" />
+                < div className="w-px h-10 bg-white/5" />
 
                 {/* Info */}
-                {isEmpty ? (
-                    <div className="text-white/20 text-sm font-medium tracking-widest uppercase">
-                        Empty Slot
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-0.5 text-xs">
-                            <span className="font-bold text-amber-500 uppercase tracking-wider">{data.playerName || "플레이어"}</span>
-                            <span className="text-white/30 truncate">•</span>
-                            <span className="text-white/50">{getRelativeTime(data.date)}</span>
+                {
+                    isEmpty ? (
+                        <div className="text-white/20 text-sm font-medium tracking-widest uppercase">
+                            Empty Slot
                         </div>
+                    ) : (
+                        <div className="flex flex-col gap-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-0.5 text-xs">
+                                <span className="font-bold text-amber-500 uppercase tracking-wider">{data.playerName || "플레이어"}</span>
+                                <span className="text-white/30 truncate">•</span>
+                                <span className="text-white/50">{getRelativeTime(data.date)}</span>
+                            </div>
 
-                        <div className="text-white/90 text-xl font-black tracking-widest text-amber-500 uppercase my-1 font-serif">
-                            {data.playerRank || data.summary || "No Rank"}
-                        </div>
+                            <div className="text-white/90 text-xl font-black tracking-widest text-amber-500 uppercase my-1 font-serif">
+                                {data.playerRank || data.summary || "No Rank"}
+                            </div>
 
-                        <div className="flex gap-4 text-xs text-white/50 font-mono items-center truncate mt-1">
-                            <span className="flex items-center gap-1 shrink-0">
-                                <Clock className="w-3 h-3 text-cyan-500" /> Turn {data.turn}
-                            </span>
-                            <span className="flex items-center gap-1 truncate">
-                                <MapPin className="w-3 h-3 text-emerald-500" /> {data.location}
-                            </span>
-                            {data.mainGoal && (
-                                <span className="flex items-center gap-1 truncate text-amber-500/70 border-l border-white/10 pl-3">
-                                    <Target className="w-3 h-3" /> {data.mainGoal}
+                            <div className="flex gap-4 text-xs text-white/50 font-mono items-center truncate mt-1">
+                                <span className="flex items-center gap-1 shrink-0">
+                                    <Clock className="w-3 h-3 text-cyan-500" /> Turn {data.turn}
                                 </span>
-                            )}
+                                <span className="flex items-center gap-1 truncate">
+                                    <MapPin className="w-3 h-3 text-emerald-500" /> {data.location}
+                                </span>
+                                {data.mainGoal && (
+                                    <span className="flex items-center gap-1 truncate text-amber-500/70 border-l border-white/10 pl-3">
+                                        <Target className="w-3 h-3" /> {data.mainGoal}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )
+                }
+            </div >
 
             {/* Right: Actions */}
-            <div className="flex items-center gap-2 shrink-0">
+            < div className="flex items-center gap-2 shrink-0" >
                 {/* SAVE Mode: Always show Save button */}
-                {mode === 'save' && (
-                    <button
-                        onClick={() => onSave(slotId)}
-                        className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-black text-sm font-bold rounded shadow-lg shadow-amber-900/20 hover:scale-105 transition-all"
-                    >
-                        SAVE
-                    </button>
-                )}
+                {
+                    mode === 'save' && (
+                        <button
+                            onClick={() => { playSfx('ui_confirm'); onSave(slotId); }}
+                            onMouseEnter={() => playSfx && playSfx('ui_hover')}
+                            className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-black text-sm font-bold rounded shadow-lg shadow-amber-900/20 hover:scale-105 transition-all"
+                        >
+                            SAVE
+                        </button>
+                    )
+                }
 
                 {/* LOAD Mode: Show Load button if NOT empty */}
-                {mode === 'load' && !isEmpty && (
-                    <button
-                        onClick={() => onLoad(slotId)}
-                        className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold rounded shadow-lg shadow-cyan-900/20 hover:scale-105 transition-all"
-                    >
-                        LOAD
-                    </button>
-                )}
+                {
+                    mode === 'load' && !isEmpty && (
+                        <button
+                            onClick={() => { playSfx('ui_confirm'); onLoad(slotId); }}
+                            onMouseEnter={() => playSfx && playSfx('ui_hover')}
+                            className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold rounded shadow-lg shadow-cyan-900/20 hover:scale-105 transition-all"
+                        >
+                            LOAD
+                        </button>
+                    )
+                }
 
                 {/* Delete Button (Always visible if not empty) */}
-                {!isEmpty && (
-                    <button
-                        onClick={() => onDelete(slotId)}
-                        className="p-2 text-white/20 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors border border-transparent hover:border-red-400/20"
-                        title="Delete Save"
-                    >
-                        <Trash2 className="w-5 h-5" />
-                    </button>
-                )}
-            </div>
-        </div>
+                {
+                    !isEmpty && (
+                        <button
+                            onClick={() => { playSfx('ui_click'); onDelete(slotId); }}
+                            onMouseEnter={() => playSfx && playSfx('ui_hover')}
+                            className="p-2 text-white/20 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors border border-transparent hover:border-red-400/20"
+                            title="Delete Save"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                        </button>
+                    )
+                }
+            </div >
+        </div >
     );
 };
 

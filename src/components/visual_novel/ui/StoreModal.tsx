@@ -5,6 +5,7 @@ import { useGameStore } from '@/lib/store';
 import { usePortOne } from '@/hooks/usePortOne';
 import { createClient } from '@/lib/supabase';
 import { ShoppingBag, X, Loader2, Info } from 'lucide-react'; // Added icons
+import { useVNAudio } from '@/components/visual_novel/hooks/useVNAudio';
 
 interface StoreModalProps {
     isOpen: boolean;
@@ -15,6 +16,8 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
     const { userCoins, setUserCoins, playerStats, setPlayerStats, isGodMode } = useGameStore();
     const { requestPayment, isSdkLoaded } = usePortOne();
     const [processingId, setProcessingId] = useState<string | null>(null);
+    // [Fix] Hook for SFX
+    const { playSfx } = useVNAudio();
 
     const activeTabState = useState<'token' | 'fate'>('token');
     const [activeTab, setActiveTab] = activeTabState;
@@ -152,8 +155,9 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                         </div>
 
                         <button
-                            onClick={onClose}
+                            onClick={() => { playSfx('ui_click'); onClose(); }}
                             className="p-2 -mr-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+                            onMouseEnter={() => playSfx('ui_hover')}
                         >
                             <X className="w-6 h-6" />
                         </button>
@@ -169,6 +173,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                                 label="스토리 토큰"
                                 desc="이야기 진행"
                                 colorClass="bg-amber-50 text-amber-900 border-amber-200"
+                                onMouseEnter={() => playSfx('ui_hover')}
                             />
                             <TabButton
                                 active={activeTab === 'fate'}
@@ -177,6 +182,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                                 label="운명 포인트"
                                 desc="신적 개입"
                                 colorClass="bg-purple-50 text-purple-900 border-purple-200"
+                                onMouseEnter={() => playSfx('ui_hover')}
                             />
 
                             <div className="mt-auto px-4 py-4 bg-indigo-50 rounded-2xl border border-indigo-100 hidden md:block">
@@ -207,6 +213,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                                         onBuy={() => handlePurchase(product)}
                                         isLoading={processingId === product.id}
                                         isSdkLoaded={isSdkLoaded}
+                                        playSfx={playSfx}
                                     />
                                 ))}
                             </div>
@@ -239,10 +246,11 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
     );
 }
 
-function TabButton({ active, onClick, icon, label, desc, colorClass }: any) {
+function TabButton({ active, onClick, icon, label, desc, colorClass, onMouseEnter }: any) {
     return (
         <button
             onClick={onClick}
+            onMouseEnter={onMouseEnter}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left border ${active
                 ? `${colorClass} shadow-sm scale-[1.02]`
                 : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
@@ -259,12 +267,13 @@ function TabButton({ active, onClick, icon, label, desc, colorClass }: any) {
     );
 }
 
-function ProductCard({ product, onBuy, isLoading, isSdkLoaded }: { product: ShopProduct, onBuy: () => void, isLoading: boolean, isSdkLoaded: boolean }) {
+function ProductCard({ product, onBuy, isLoading, isSdkLoaded, playSfx }: { product: ShopProduct, onBuy: () => void, isLoading: boolean, isSdkLoaded: boolean, playSfx: any }) {
     const isPopular = product.tag === 'POPULAR' || product.tag === 'BEST' || product.tag === 'HOT';
 
     return (
         <motion.div
             whileHover={{ scale: 1.01 }}
+            onMouseEnter={() => playSfx('ui_hover')}
             className={`group relative bg-white border rounded-xl px-5 py-3 flex items-center justify-between transition-all duration-200 ${isPopular
                 ? 'border-indigo-100 shadow-[0_2px_10px_rgba(79,70,229,0.05)] ring-1 ring-indigo-500/10'
                 : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
@@ -301,7 +310,7 @@ function ProductCard({ product, onBuy, isLoading, isSdkLoaded }: { product: Shop
             </div>
 
             <button
-                onClick={onBuy}
+                onClick={() => { playSfx('ui_click'); onBuy(); }}
                 disabled={isLoading || !isSdkLoaded}
                 className={`w-24 py-2 rounded-lg font-bold text-sm transition-all relative overflow-hidden flex items-center justify-center
                     ${isLoading || !isSdkLoaded

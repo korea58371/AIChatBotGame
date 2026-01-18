@@ -5,7 +5,7 @@ import { useGameStore } from '@/lib/store';
 // [Fix] Module-Level Singleton to prevent orphaned audio on component remounts
 let globalAudioInstance: HTMLAudioElement | null = null;
 
-export function useVNAudio(currentBgm: string | null) {
+export function useVNAudio(currentBgm?: string | null) {
     const bgmVolume = useGameStore(state => state.bgmVolume);
     const sfxVolume = useGameStore(state => state.sfxVolume);
 
@@ -17,8 +17,11 @@ export function useVNAudio(currentBgm: string | null) {
     }, [bgmVolume]);
 
     useEffect(() => {
+        // [Logic] SFX-Only Mode (undefined) -> Do nothing to BGM
+        if (currentBgm === undefined) return;
+
         // [Logic] Handle Stop / Null
-        if (!currentBgm) {
+        if (currentBgm === null) {
             if (globalAudioInstance) {
                 const oldAudio = globalAudioInstance;
                 // Fade out
@@ -124,10 +127,22 @@ export function useVNAudio(currentBgm: string | null) {
     }, [currentBgm]); // Note: We do NOT rely on bgmVolume in dependency here to avoid restarting track on volume change
 
     const playSfx = (sfxName: string) => {
-        const sfx = new Audio(`/sfx/${sfxName}`);
+        // [Logic] Auto-append extension if missing
+        const filename = sfxName.includes('.') ? sfxName : `${sfxName}.mp3`;
+        const sfx = new Audio(`/sfx/${filename}`);
+
         // [Fix] Use current SFX volume
         sfx.volume = useGameStore.getState().sfxVolume;
-        sfx.play().catch(e => console.warn("SFX play failed:", e));
+
+        // [Fix] Reset time if reusing (though we create new instance here)
+        sfx.currentTime = 0;
+
+        sfx.play().catch(e => {
+            // Ignore AbortError (common if spamming clicks)
+            if (e.name !== 'AbortError') {
+                console.warn(`SFX play failed for ${filename}:`, e);
+            }
+        });
     };
 
     return { playSfx };

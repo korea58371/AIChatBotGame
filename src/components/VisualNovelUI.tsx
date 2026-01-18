@@ -222,6 +222,10 @@ export default function VisualNovelUI() {
         isDebugOpen, setIsDebugOpen,
         isMounted, setIsMounted
     } = useVNState();
+
+    // [New] Cost Calculation Logic
+    const storyModel = useGameStore(state => state.storyModel);
+    const costPerTurn = storyModel === 'gemini-3-pro-preview' ? 20 : 10;
     // [리팩토링 메모] UI 상태 관리 로직(모달, 입력, 디버그 등)은 `hooks/useVNState.ts`로 이동되었습니다.
 
     const [fateUsage, setFateUsage] = useState<number>(0);
@@ -1534,10 +1538,16 @@ export default function VisualNovelUI() {
             let activeSession = session;
             let currentCoins = userCoins;
 
+            // [New] Determine Cost based on Model
+            const currentModel = useGameStore.getState().storyModel;
+            const COST_PER_TURN = currentModel === 'gemini-3-pro-preview' ? 20 : 10;
+
+            console.log(`[Cost] Model: ${currentModel}, Cost: ${COST_PER_TURN}`);
+
             // 1. Ensure Session (Use local state)
             if (!activeSession?.user) {
                 console.warn("handleSend: No session found, but allowing guest/optimistic play if coins > 0");
-                if (currentCoins < 1) {
+                if (currentCoins < COST_PER_TURN) {
                     // addToast("Login required or not enough coins.", "warning");
                     setShowRechargePopup(true); // Trigger Popup for Guests too
                     setIsProcessing(false);
@@ -1546,7 +1556,7 @@ export default function VisualNovelUI() {
             }
 
             // 2. Coin Check
-            if (currentCoins < 1) {
+            if (currentCoins < COST_PER_TURN) {
                 console.warn("handleSend: Not enough coins");
                 // addToast("Not enough coins! Please recharge.", "warning");
                 setShowRechargePopup(true); // Trigger Popup
@@ -1555,24 +1565,17 @@ export default function VisualNovelUI() {
             }
 
             // 3. OPTIMISTIC Deduct Coin
-            const newCoinCount = currentCoins - 1;
+            const newCoinCount = currentCoins - COST_PER_TURN;
             setUserCoins(newCoinCount);
 
             // Background DB Sync (Fire-and-forget)
             if (activeSession?.user) {
                 const userId = activeSession.user.id;
                 if (supabase) { // Guard supabase call
-                    supabase.rpc('decrement_coin', { user_id: userId })
+                    // [Changed] Use direct update for variable cost (RPC decrement_coin is likely fixed to 1)
+                    supabase.from('profiles').update({ coins: newCoinCount }).eq('id', userId)
                         .then(({ error }: { error: any }) => {
-                            if (error) {
-                                // Fallback to direct update if RPC fails
-                                if (supabase) { // Guard supabase call
-                                    supabase.from('profiles').update({ coins: newCoinCount }).eq('id', userId)
-                                        .then(({ error: updateError }: { error: any }) => {
-                                            if (updateError) console.error("Coin update failed:", updateError);
-                                        });
-                                }
-                            }
+                            if (error) console.error("Coin update failed:", error);
                         });
                 }
             }
@@ -3969,34 +3972,37 @@ export default function VisualNovelUI() {
                 <div className={`absolute bottom-[5vh] right-[4vw] md:bottom-10 md:right-8 flex gap-[1vw] md:gap-2 z-[100] transition-opacity pointer-events-auto ${choices.length > 0 ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`}>
                     {/* [NEW] Intervention / Mid-Turn Direct Input */}
                     <button
-                        className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-green-800/60 hover:bg-green-700/80 rounded border border-green-600 text-green-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
+                        className="px-3 py-2 md:px-3 md:py-1.5 bg-green-800/60 hover:bg-green-700/80 rounded border border-green-600 text-green-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
                         onClick={(e) => { e.stopPropagation(); setIsInputOpen(true); }}
                         title="이야기에 개입하기"
                     >
-                        <span className="text-lg">⚡</span>
+                        <span className="text-lg md:text-lg">⚡</span>
                         <span className="hidden md:inline">개입</span>
                     </button>
 
                     <button
-                        className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
+                        className="px-3 py-2 md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
+                        title={t.chatHistory}
                     >
-                        <History className="w-[3vw] h-[3vw] md:w-[14px] md:h-[14px]" />
-                        {t.chatHistory}
+                        <History className="w-5 h-5 md:w-[14px] md:h-[14px]" />
+                        <span className="hidden md:inline">{t.chatHistory}</span>
                     </button>
                     <button
-                        className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
+                        className="px-3 py-2 md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowSaveLoad(true); }}
+                        title={t.save}
                     >
-                        <Save className="w-[3vw] h-[3vw] md:w-[14px] md:h-[14px]" />
-                        {t.save}
+                        <Save className="w-5 h-5 md:w-[14px] md:h-[14px]" />
+                        <span className="hidden md:inline">{t.save}</span>
                     </button>
                     <button
-                        className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
+                        className="px-3 py-2 md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowWiki(true); }}
+                        title={(t as any).wiki || "Wiki"}
                     >
-                        <Book className="w-[3vw] h-[3vw] md:w-[14px] md:h-[14px]" />
-                        {(t as any).wiki || "Wiki"}
+                        <Book className="w-5 h-5 md:w-[14px] md:h-[14px]" />
+                        <span className="hidden md:inline">{(t as any).wiki || "Wiki"}</span>
                     </button>
                 </div>
 
@@ -4284,6 +4290,7 @@ export default function VisualNovelUI() {
                                         `}
                                             onClick={(e) => {
                                                 if (isProcessing || isLogicPending) return;
+                                                playSfx('ui_confirm');
                                                 console.log("Choice clicked:", choice.content);
                                                 e.stopPropagation();
 
@@ -4295,10 +4302,14 @@ export default function VisualNovelUI() {
 
                                                 handleSend(choice.content);
                                             }}
+                                            onMouseEnter={() => playSfx('ui_hover')}
                                         >
-                                            <span className="block transform skew-x-12">
-                                                {choice.content}
-                                            </span>
+                                            <div className="flex w-full justify-between items-center transform skew-x-12 px-1">
+                                                <span className="text-left truncate mr-4">{choice.content}</span>
+                                                <span className="shrink-0 bg-slate-200/60 text-slate-700 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full border border-slate-300/50">
+                                                    {costPerTurn}🪙
+                                                </span>
+                                            </div>
                                         </motion.button>
                                     ))}
 
@@ -4315,15 +4326,20 @@ export default function VisualNovelUI() {
                                         shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                         ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                                     `}
+                                        onMouseEnter={() => playSfx('ui_hover')}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if (isProcessing || isLogicPending) return;
+                                            playSfx('ui_confirm');
                                             setIsInputOpen(true);
                                         }}
                                     >
-                                        <span className="block transform skew-x-12">
-                                            {t.directInput}
-                                        </span>
+                                        <div className="flex w-full justify-between items-center transform skew-x-12 px-1">
+                                            <span>{t.directInput}</span>
+                                            <span className="shrink-0 bg-slate-200/60 text-slate-700 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full border border-slate-300/50">
+                                                {costPerTurn}🪙
+                                            </span>
+                                        </div>
                                     </motion.button>
 
 
@@ -4401,17 +4417,17 @@ export default function VisualNovelUI() {
                                                         profileText += `이름: ${finalName || playerName || '성현우'}\n`;
 
                                                         let prompt = `
-[SYSTEM: Game Start Protocol]
-The player has created a new character with the following profile:
-${profileText}
+                                    [SYSTEM: Game Start Protocol]
+                                    The player has created a new character with the following profile:
+                                    ${profileText}
 
-Instructions:
-1. Ignore any previous static Start Scenario.
-2. Start the story immediately from the Prologue or Chapter 1.
-3. Reflect the chosen Identity, Goal, Specialty, and Personality in the narrative.
-4. STRICTLY RESPECT the chosen 'Narrative Perspective' (e.g., if '1인칭', use '나'/'내' (I/My) exclusively. Do NOT use '당신' (You)).
-5. Output the first scene now.
-`;
+                                    Instructions:
+                                    1. Ignore any previous static Start Scenario.
+                                    2. Start the story immediately from the Prologue or Chapter 1.
+                                    3. Reflect the chosen Identity, Goal, Specialty, and Personality in the narrative.
+                                    4. STRICTLY RESPECT the chosen 'Narrative Perspective' (e.g., if '1인칭', use '나'/'내' (I/My) exclusively. Do NOT use '당신' (You)).
+                                    5. Output the first scene now.
+                                    `;
                                                         // Call handleSend with isDirectInput=true (hidden from history usually? No, handleSend adds to history)
                                                         // We want this to be a system instruction.
                                                         // But handleSend treats input as User Message.
@@ -4734,7 +4750,10 @@ Instructions:
 
                                                                     <div className="flex gap-4 w-full mt-4">
                                                                         <button
-                                                                            onClick={() => router.push('/')}
+                                                                            onClick={() => {
+                                                                                playSfx('ui_click');
+                                                                                router.push('/');
+                                                                            }}
                                                                             className="px-6 py-3.5 bg-[#444] hover:bg-[#555] rounded-lg font-bold text-[#aaa] hover:text-[#eee] text-lg shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all font-serif"
                                                                         >
                                                                             타이틀로
@@ -4747,6 +4766,7 @@ Instructions:
                                                                                     addToast(result.message || "Invalid Name", "error");
                                                                                     return;
                                                                                 }
+                                                                                playSfx('ui_confirm');
                                                                                 setCreationStep(prev => prev + 1);
                                                                             }}
                                                                             className="flex-1 px-8 py-3.5 bg-[#D4AF37] hover:bg-[#b5952f] rounded-lg font-bold text-[#1e1e1e] text-lg shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 font-serif"
@@ -4773,7 +4793,10 @@ Instructions:
                                                                             return (
                                                                                 <button
                                                                                     key={opt.value}
-                                                                                    onClick={() => currentQuestion && handleOptionSelect(currentQuestion.id, opt.value)}
+                                                                                    onClick={() => {
+                                                                                        playSfx('ui_click');
+                                                                                        currentQuestion && handleOptionSelect(currentQuestion.id, opt.value);
+                                                                                    }}
                                                                                     className="group relative px-6 py-4 bg-[#252525] hover:bg-[#2a2a2a] border border-[#333] hover:border-[#D4AF37]/50 rounded-lg text-left transition-all shadow-md active:scale-[0.99] overflow-hidden"
                                                                                 >
                                                                                     <div className="absolute inset-y-0 left-0 w-1 bg-[#333] group-hover:bg-[#D4AF37] transition-colors" />
@@ -4790,7 +4813,10 @@ Instructions:
 
                                                             {creationStep > 0 && (
                                                                 <button
-                                                                    onClick={() => setCreationStep(prev => prev - 1)}
+                                                                    onClick={() => {
+                                                                        playSfx('ui_click');
+                                                                        setCreationStep(prev => prev - 1);
+                                                                    }}
                                                                     className="mt-2 text-[#666] hover:text-[#D4AF37] text-sm transition-colors flex items-center gap-1 font-serif"
                                                                 >
                                                                     <span>←</span> 이전 단계로
@@ -4860,6 +4886,7 @@ Instructions:
                                                                         key={g}
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
+                                                                            playSfx('ui_click');
                                                                             // Use hook setter if available or direct update via store action if defined.
                                                                             // Since we didn't add a specialized setter, we use setPlayerStats from hook.
                                                                             setPlayerStats({ ...playerStats, gender: g as 'male' | 'female' });
@@ -5019,26 +5046,27 @@ Instructions:
 
                                         // [Refactor] Language Toggle -> Custom Component Logic
                                         const systemMenuItems = [
-                                            { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => setShowCharacterInfo(true) },
-                                            { icon: <ShoppingBag size={20} />, label: "상점", onClick: () => setIsStoreOpen(true), isActive: false },
-                                            { icon: <History size={20} />, label: t.chatHistory, onClick: () => setShowHistory(true) },
+                                            { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => { playSfx('ui_click'); setShowCharacterInfo(true); } },
+                                            { icon: <ShoppingBag size={20} />, label: "상점", onClick: () => { playSfx('ui_click'); setIsStoreOpen(true); }, isActive: false },
+                                            { icon: <History size={20} />, label: t.chatHistory, onClick: () => { playSfx('ui_click'); setShowHistory(true); } },
                                             {
                                                 icon: <Book size={20} />,
                                                 label: t.wiki,
                                                 onClick: () => {
+                                                    playSfx('ui_click');
                                                     if (currentWikiTarget) setWikiTargetCharacter(currentWikiTarget);
                                                     setShowWiki(true);
                                                 },
                                                 isActive: !!currentWikiTarget,
                                                 activeColor: "bg-gradient-to-r from-yellow-600 to-yellow-500 border-yellow-400 text-black shadow-yellow-500/50 animate-pulse"
                                             },
-                                            { icon: <Save size={20} />, label: t.saveLoad, onClick: () => setShowSaveLoad(true) },
+                                            { icon: <Save size={20} />, label: t.saveLoad, onClick: () => { playSfx('ui_click'); setShowSaveLoad(true); } },
                                             // [New] Language Selector (Custom)
                                             {
                                                 isCustom: true,
                                                 component: <LanguageSelector direction="up" className="shadow-lg" />
                                             },
-                                            { icon: <Settings size={20} />, label: t.settings, onClick: () => setShowResetConfirm(true) },
+                                            { icon: <Settings size={20} />, label: t.settings, onClick: () => { playSfx('ui_click'); setShowResetConfirm(true); } },
                                         ];
 
                                         return systemMenuItems.map((item, i) => {
@@ -5049,6 +5077,7 @@ Instructions:
                                                 <button
                                                     key={i}
                                                     onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
+                                                    onMouseEnter={() => playSfx('ui_hover')}
                                                     className={`p-3 md:p-3 rounded-full border transition-all backdrop-blur-md shadow-lg group relative
                                                         ${btn.isActive
                                                             ? btn.activeColor
@@ -5086,6 +5115,8 @@ Instructions:
                                 playerName={playerName}
                                 playerStats={playerStats}
                                 onOpenWiki={() => setShowWiki(true)}
+                                onOpenProfile={() => setShowCharacterInfo(true)}
+                                onOpenPhone={() => setIsPhoneOpen(true)}
                                 language={(language as any) || 'ko'}
                                 day={day}
                                 time={time}
@@ -5151,7 +5182,11 @@ Instructions:
                                             return (
                                                 <button
                                                     key={val}
-                                                    onClick={() => setFateUsage(val)}
+                                                    onClick={() => {
+                                                        playSfx('ui_click');
+                                                        setFateUsage(val);
+                                                    }}
+                                                    onMouseEnter={() => playSfx('ui_hover')}
                                                     disabled={!canAfford && val !== 0}
                                                     className={`px-3 h-8 rounded-lg font-bold border transition-all text-xs ${fateUsage === val
                                                         ? 'bg-yellow-500 text-black border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)] scale-110'
@@ -5194,11 +5229,17 @@ Instructions:
                                         {t.cancel}
                                     </button>
                                     <button
-                                        onClick={handleUserSubmit}
+                                        onClick={() => {
+                                            playSfx('ui_confirm');
+                                            handleUserSubmit();
+                                        }}
                                         className="px-4 py-2 bg-green-600 rounded hover:bg-green-500 font-bold disabled:opacity-50 flex items-center gap-2"
                                         disabled={isProcessing || isLogicPending}
                                     >
-                                        t.action
+                                        <span>{t.action}</span>
+                                        <span className="bg-black/20 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-1 md:ml-2 border border-white/20">
+                                            {costPerTurn}🪙
+                                        </span>
                                     </button>
                                 </div>
                                 {/* End of Input Form */}
@@ -5252,13 +5293,19 @@ Instructions:
 
                                     <div className="flex gap-3 w-full">
                                         <button
-                                            onClick={() => setShowRechargePopup(false)}
+                                            onClick={() => {
+                                                playSfx('ui_click');
+                                                setShowRechargePopup(false);
+                                            }}
                                             className="flex-1 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold transition-colors"
                                         >
                                             취소
                                         </button>
                                         <button
-                                            onClick={handleRecharge}
+                                            onClick={() => {
+                                                playSfx('ui_confirm');
+                                                handleRecharge();
+                                            }}
                                             className="flex-1 py-3 rounded-lg bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-bold shadow-lg hover:shadow-yellow-500/20 transition-all active:scale-95"
                                         >
                                             충전하기 (+50)

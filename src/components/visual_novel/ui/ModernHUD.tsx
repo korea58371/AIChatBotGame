@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Battery, User } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
+import { useVNAudio } from '@/components/visual_novel/hooks/useVNAudio';
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants';
 
 // [Localization]
@@ -16,6 +17,8 @@ interface ModernHUDProps {
 }
 
 export default function ModernHUD({ playerName, playerStats, onOpenPhone, onOpenProfile, day, time, location }: ModernHUDProps) {
+    const { playSfx } = useVNAudio();
+
     if (!playerStats) return null;
 
     // Calculate Rank based on Level (Modern)
@@ -45,7 +48,12 @@ export default function ModernHUD({ playerName, playerStats, onOpenPhone, onOpen
                 {/* Avatar Frame (Modern Style - Circular/Glass) */}
                 <div
                     className="relative group cursor-pointer"
-                    onClick={onOpenProfile}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        playSfx('ui_click');
+                        onOpenProfile();
+                    }}
+                    onMouseEnter={() => playSfx('ui_hover')}
                 >
                     <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-white/30 bg-black/40 backdrop-blur-md overflow-hidden shadow-xl transition-transform transform group-hover:scale-105">
                         {/* Placeholder Avatar or Character Image */}
@@ -94,7 +102,12 @@ export default function ModernHUD({ playerName, playerStats, onOpenPhone, onOpen
                     {/* Quick Actions */}
                     <div className="flex gap-2 mt-1">
                         <button
-                            onClick={onOpenPhone}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                playSfx('ui_click');
+                                onOpenPhone();
+                            }}
+                            onMouseEnter={() => playSfx('ui_hover')}
                             className="p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white/80 hover:text-white border border-white/10 transition-colors"
                             title="스마트폰"
                         >

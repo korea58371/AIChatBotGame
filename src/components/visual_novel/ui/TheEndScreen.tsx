@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Home } from 'lucide-react';
+import { useVNAudio } from '../hooks/useVNAudio';
 
 interface TheEndScreenProps {
     onTitle: () => void;
@@ -9,6 +10,9 @@ interface TheEndScreenProps {
 }
 
 const TheEndScreen: React.FC<TheEndScreenProps> = ({ onTitle, playerRank }) => {
+    // [Fix] Hook for SFX
+    const { playSfx } = useVNAudio();
+
     return (
         <AnimatePresence>
             <motion.div
@@ -81,7 +85,8 @@ const TheEndScreen: React.FC<TheEndScreenProps> = ({ onTitle, playerRank }) => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 4 }}
-                        onClick={onTitle}
+                        onClick={() => { playSfx('ui_confirm'); onTitle(); }}
+                        onMouseEnter={() => playSfx('ui_hover')}
                         className="group flex items-center gap-2 px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all hover:scale-105 active:scale-95"
                     >
                         <Home className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { User, Scroll, Maximize, Minimize } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
+import { useVNAudio } from '@/components/visual_novel/hooks/useVNAudio';
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json';
 import { FAME_TITLES, FATIGUE_LEVELS, REALM_ORDER, LEVEL_TO_REALM_MAP } from '@/data/games/wuxia/constants';
 
@@ -20,6 +21,8 @@ interface WuxiaHUDProps {
 }
 
 export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpenWiki, language = 'ko', day, time, location, turnCount = 0 }: WuxiaHUDProps) {
+    const { playSfx } = useVNAudio();
+
     if (!playerStats) return null;
 
 
@@ -99,7 +102,12 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                 {/* Wuxia Frame (Stone/Gold Texture) */}
                 <div
                     className="relative group cursor-pointer mt-3"
-                    onClick={onOpenProfile}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        playSfx('ui_click');
+                        onOpenProfile();
+                    }}
+                    onMouseEnter={() => playSfx('ui_hover')}
                 >
                     <div className={`w-16 h-16 md:w-20 md:h-20 rounded-lg transform rotate-45 overflow-hidden border-2 bg-stone-900/80 backdrop-blur-md shadow-2xl transition-all group-hover:scale-105 ${auraColor} flex items-center justify-center`}>
                         {/* Counter-rotate content to be straight */}
@@ -131,12 +139,23 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                     </div>
 
                     {/* Faction & Neigong */}
+                    {/* Faction & Neigong */}
                     <div className="flex items-center gap-2 text-xs md:text-sm text-zinc-400 font-medium tracking-wide mt-1">
                         <span>{(playerStats.faction || '무소속').split(' ')[0]}</span>
                         <span className="text-zinc-700">|</span>
-                        <span className="text-amber-200/80">내공 {(playerStats.neigong || 0).toLocaleString()}년</span>
+                        <span className="text-amber-200/80 flex items-center gap-1">
+                            <span className="hidden md:inline">내공</span>
+                            <span className="md:hidden">⚡</span>
+                            {(playerStats.neigong || 0).toLocaleString()}
+                            <span className="hidden md:inline">년</span>
+                        </span>
                         <span className="text-zinc-700">|</span>
-                        <span className="text-yellow-500">💰 {(playerStats.gold || 0).toLocaleString()}냥</span>
+                        <span className="text-yellow-500 flex items-center gap-1">
+                            <span className="hidden md:inline">💰</span>
+                            <span className="md:hidden">🪙</span>
+                            {(playerStats.gold || 0).toLocaleString()}
+                            <span className="hidden md:inline">냥</span>
+                        </span>
                     </div>
 
                     {/* HP & MP (Qi) */}
@@ -187,14 +206,14 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                 We should probably stack BELOW them or to the LEFT of them.
                 Actually, simpler to just put them in the top-right flow.
             */}
-            <div className="flex flex-col items-end gap-2 pointer-events-auto mt-12 mr-2">
+            <div className="relative z-10 flex flex-col items-end gap-2 pointer-events-auto mt-12 mr-2">
                 {/* [NEW] System Controls Row (Fullscreen) REMOVED - Moved to Left Side */}
                 <div className="flex items-center gap-2 mb-1">
                     {/* Placeholder or Empty if needed, or remove entire block */}
                 </div>
                 {/* Time & Location (Wuxia Style - Right Aligned) */}
                 <div className="flex flex-col items-end gap-1">
-                    <div className="px-4 py-1.5 bg-stone-900/90 border-y-2 border-stone-700 text-stone-200 text-sm md:text-base font-serif tracking-widest shadow-2xl flex items-center gap-3">
+                    <div className="px-3 py-1 bg-stone-900/90 border-y-2 border-stone-700 text-stone-200 text-xs md:text-sm md:text-base font-serif tracking-widest shadow-2xl flex items-center gap-2 md:gap-3">
                         {!hasDayInTime && (
                             <>
                                 <span>{day || 1}일차</span>
@@ -204,7 +223,7 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                         <span>{timeStr || '오전'}</span>
                     </div>
                     {location && (
-                        <div className="px-3 py-1 bg-stone-800/80 border border-stone-600 rounded-sm text-stone-300 text-xs md:text-sm font-serif tracking-widest shadow-lg flex items-center gap-2">
+                        <div className="px-2 py-0.5 md:px-3 md:py-1 bg-stone-800/80 border border-stone-600 rounded-sm text-stone-300 text-[10px] md:text-sm font-serif tracking-widest shadow-lg flex items-center gap-2">
                             <span>{(location || '').replace('공용_', '').replace('강호_', '').replace(/_/g, ' ')}</span>
                         </div>
                     )}

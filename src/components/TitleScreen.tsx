@@ -13,7 +13,7 @@ import SettingsModal from '@/components/visual_novel/ui/SettingsModal';
 import StoreModal from '@/components/visual_novel/ui/StoreModal';
 import SaveLoadModal from '@/components/visual_novel/ui/SaveLoadModal';
 import { useAuthSession } from '@/hooks/useAuthSession';
-import { stopGlobalAudio } from './visual_novel/hooks/useVNAudio'; // [Fix] Import Audio Cleanup
+import { useVNAudio, stopGlobalAudio } from './visual_novel/hooks/useVNAudio'; // [Fix] Import Audio Cleanup
 import { get as idbGet } from 'idb-keyval';
 
 import { translations } from '@/data/translations';
@@ -72,6 +72,9 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const t = (language && translations[language as keyof typeof translations]) || translations.ko;
 
     // [Fix] Enforce Global Audio Cleanup on Title Screen Mount
+    // We also get playSfx from here. Passing null ensures BGM is stopped/silenced.
+    const { playSfx } = useVNAudio(null);
+
     useEffect(() => {
         stopGlobalAudio();
     }, []);
@@ -169,9 +172,12 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 .select('turn_count')
                 .eq('user_id', authUser.id)
                 .eq('game_id', selectedGame.id)
-                .single();
+                .order('updated_at', { ascending: false })
+                .limit(1);
 
-            if (data && !error) {
+            const row = data && data.length > 0 ? data[0] : null;
+
+            if (row && !error) {
                 // console.log(`[TitleScreen] Found cloud save for ${selectedGame.id}`);
                 setHasCloudSave(true);
             }
@@ -258,7 +264,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                     {/* Store Button & Coins */}
                     {user && (
                         <button
-                            onClick={() => setShowStore(true)}
+                            onClick={() => { playSfx('ui_click'); setShowStore(true); }}
+                            onMouseEnter={() => playSfx('ui_hover')}
                             className="hidden md:flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full hover:bg-white/10 hover:border-white/30 transition-all group mr-2"
                         >
                             <div className="flex items-center gap-2">
@@ -275,7 +282,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
 
                     <LanguageSelector />
                     <button
-                        onClick={() => setShowSettings(true)}
+                        onClick={() => { playSfx('ui_click'); setShowSettings(true); }}
+                        onMouseEnter={() => playSfx('ui_hover')}
                         className="p-3 bg-black/40 backdrop-blur-md border border-white/10 rounded-full hover:bg-white/10 transition-all group"
                     >
                         <Settings className="w-6 h-6 text-white/70 group-hover:text-cyan-400 group-hover:rotate-90 transition-all duration-500" />
@@ -330,7 +338,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                         animate={{ opacity: 1, scale: 1 }}
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={handleContinue}
+                                        onClick={() => { playSfx('ui_confirm'); handleContinue(); }}
+                                        onMouseEnter={() => playSfx('ui_hover')}
                                         className={`w-full px-12 py-4 bg-white text-black text-xl font-black tracking-widest uppercase rounded-full shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.6)] transition-all flex items-center justify-center gap-3 relative overflow-hidden group`}
                                     >
                                         <span className="relative z-10">{language === 'ko' ? '이어하기' : 'CONTINUE'}</span>
@@ -339,10 +348,10 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
 
                                     {/* Secondary: New Game */}
                                     <button
-                                        onClick={handleNewGame}
-                                        className="text-white/40 text-sm hover:text-red-400 transition-colors flex items-center gap-1 hover:underline decoration-red-400/50 underline-offset-4"
+                                        onClick={() => { playSfx('ui_confirm'); handleNewGame(); }}
+                                        className="mt-4 px-6 py-2 bg-white/5 hover:bg-red-900/40 border border-white/10 hover:border-red-500/30 rounded-full text-white/50 hover:text-red-200 text-sm transition-all flex items-center gap-2 hover:scale-105 active:scale-95"
                                     >
-                                        <RotateCcw className="w-3 h-3" />
+                                        <RotateCcw className="w-4 h-4" />
                                         {language === 'ko' ? '새로 시작하기 (초기화)' : 'New Game (Reset)'}
                                     </button>
                                 </div>
@@ -353,7 +362,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                                     animate={{ opacity: 1, scale: 1 }}
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
-                                    onClick={handleNewGame}
+                                    onClick={() => { playSfx('ui_confirm'); handleNewGame(); }}
+                                    onMouseEnter={() => playSfx('ui_hover')}
                                     className={`px-12 py-4 bg-white text-black text-xl font-black tracking-widest uppercase rounded-full shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:shadow-[0_0_50px_rgba(255,255,255,0.6)] transition-all flex items-center gap-3 relative overflow-hidden group`}
                                 >
                                     <span className="relative z-10">{language === 'ko' ? '게임 시작' : 'GAME START'}</span>
@@ -368,7 +378,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 {/* Navigation Arrows (Fixed Center) */}
                 <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 flex justify-between pointer-events-none z-20">
                     <button
-                        onClick={handlePrevGame}
+                        onClick={() => { playSfx('ui_popup'); handlePrevGame(); }}
+                        onMouseEnter={() => playSfx('ui_hover')}
                         className="pointer-events-auto p-4 rounded-full bg-black/20 backdrop-blur hover:bg-white/10 transition-all text-white/50 hover:text-white hover:scale-110"
                     >
                         <span className="sr-only">Previous Game</span>
@@ -377,7 +388,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                         </svg>
                     </button>
                     <button
-                        onClick={handleNextGame}
+                        onClick={() => { playSfx('ui_popup'); handleNextGame(); }}
+                        onMouseEnter={() => playSfx('ui_hover')}
                         className="pointer-events-auto p-4 rounded-full bg-black/20 backdrop-blur hover:bg-white/10 transition-all text-white/50 hover:text-white hover:scale-110"
                     >
                         <span className="sr-only">Next Game</span>

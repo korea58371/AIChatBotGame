@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Crown, RotateCcw, Home, BookOpen, ArrowRight } from 'lucide-react';
+import { useVNAudio } from '../hooks/useVNAudio';
 
 interface EndingModalProps {
     type: 'none' | 'bad' | 'good' | 'true';
@@ -15,13 +16,15 @@ const Button: React.FC<{
     className?: string,
     variant?: 'ghost' | 'default',
     onClick?: () => void,
+    onMouseEnter?: () => void,
     children: React.ReactNode
-}> = ({ className, variant, onClick, children }) => (
+}> = ({ className, variant, onClick, onMouseEnter, children }) => (
     <button
         onClick={(e) => {
             e.stopPropagation();
             onClick && onClick();
         }}
+        onMouseEnter={onMouseEnter}
         className={`px-4 py-2 rounded-lg font-medium transition-all active:scale-95 ${className} ${variant === 'ghost' ? '' : ''}`}
     >
         {children}
@@ -29,6 +32,9 @@ const Button: React.FC<{
 );
 
 const EndingModal: React.FC<EndingModalProps> = ({ type, onRewind, onTitle, onEpilogue, onContinue }) => {
+    // [Fix] Hook for SFX
+    const { playSfx } = useVNAudio();
+
     if (type === 'none') return null;
 
     const isBad = type === 'bad';
@@ -73,14 +79,16 @@ const EndingModal: React.FC<EndingModalProps> = ({ type, onRewind, onTitle, onEp
                                 {isBad ? (
                                     <>
                                         <Button
-                                            onClick={onRewind}
+                                            onClick={() => { playSfx('ui_click'); onRewind(); }}
+                                            onMouseEnter={() => playSfx('ui_hover')}
                                             className="w-full h-14 text-lg bg-red-900/40 hover:bg-red-800/60 border border-red-500/50 text-red-100 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
                                         >
                                             <RotateCcw className="w-5 h-5" />
                                             운명 역행 (직전 선택지로)
                                         </Button>
                                         <Button
-                                            onClick={onTitle}
+                                            onClick={() => { playSfx('ui_click'); onTitle(); }}
+                                            onMouseEnter={() => playSfx('ui_hover')}
                                             variant="ghost"
                                             className="w-full text-gray-400 hover:text-white"
                                         >
@@ -92,7 +100,8 @@ const EndingModal: React.FC<EndingModalProps> = ({ type, onRewind, onTitle, onEp
                                     <>
                                         {onEpilogue && (
                                             <Button
-                                                onClick={onEpilogue}
+                                                onClick={() => { playSfx('ui_confirm'); onEpilogue(); }}
+                                                onMouseEnter={() => playSfx('ui_hover')}
                                                 className={`w-full h-14 text-lg font-bold flex items-center justify-center gap-2
                                                     ${isTrue ? 'bg-purple-600 hover:bg-purple-500' : 'bg-yellow-600 hover:bg-yellow-500'} text-white shadow-lg`}
                                             >
@@ -102,7 +111,8 @@ const EndingModal: React.FC<EndingModalProps> = ({ type, onRewind, onTitle, onEp
                                         )}
                                         {onContinue && (
                                             <Button
-                                                onClick={onContinue}
+                                                onClick={() => { playSfx('ui_confirm'); onContinue(); }}
+                                                onMouseEnter={() => playSfx('ui_hover')}
                                                 className="w-full h-12 text-md bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-200 flex items-center justify-center gap-2"
                                             >
                                                 <ArrowRight className="w-5 h-5" />
@@ -110,7 +120,8 @@ const EndingModal: React.FC<EndingModalProps> = ({ type, onRewind, onTitle, onEp
                                             </Button>
                                         )}
                                         <Button
-                                            onClick={onTitle}
+                                            onClick={() => { playSfx('ui_click'); onTitle(); }}
+                                            onMouseEnter={() => playSfx('ui_hover')}
                                             variant="ghost"
                                             className="w-full text-gray-400 hover:text-white mt-2"
                                         >

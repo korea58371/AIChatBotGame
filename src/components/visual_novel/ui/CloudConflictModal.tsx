@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useVNAudio } from '../hooks/useVNAudio';
 
 interface CloudConflictModalProps {
     isOpen: boolean;
@@ -16,6 +17,9 @@ export const CloudConflictModal: React.FC<CloudConflictModalProps> = ({
     cloudTime,
     onResolve
 }) => {
+    // [Fix] Hook for SFX
+    const { playSfx } = useVNAudio();
+
     if (!isOpen) return null;
 
     const dateStr = new Date(cloudTime).toLocaleString();
@@ -55,14 +59,16 @@ export const CloudConflictModal: React.FC<CloudConflictModalProps> = ({
 
                     <div className="flex gap-3">
                         <button
-                            onClick={() => onResolve(false)}
+                            onClick={() => { playSfx('ui_click'); onResolve(false); }}
+                            onMouseEnter={() => playSfx('ui_hover')}
                             className="flex-1 py-3 px-4 bg-zinc-700 hover:bg-zinc-600 text-gray-200 rounded-lg text-sm transition-colors"
                         >
                             기기 데이터 유지<br />
                             <span className="text-xs opacity-50">(클라우드 덮어쓰기)</span>
                         </button>
                         <button
-                            onClick={() => onResolve(true)}
+                            onClick={() => { playSfx('ui_confirm'); onResolve(true); }}
+                            onMouseEnter={() => playSfx('ui_hover')}
                             className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-blue-900/50"
                         >
                             클라우드 불러오기<br />

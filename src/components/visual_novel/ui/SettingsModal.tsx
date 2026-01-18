@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/lib/store';
-import { stopGlobalAudio } from '../hooks/useVNAudio';
+import { useVNAudio, stopGlobalAudio } from '../hooks/useVNAudio';
 import { createClient } from '@/lib/supabase';
 import { deleteAccount } from '@/app/actions/auth';
 import {
@@ -27,6 +27,8 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
     const router = useRouter();
     const storyModel = useGameStore(state => state.storyModel);
     const setStoryModel = useGameStore(state => state.setStoryModel);
+    // [Fix] Use hook for SFX (undefined = no BGM change)
+    const { playSfx } = useVNAudio();
 
     // [Fix] Local Session Fallback (If prop is missing/stale)
     const [localSession, setLocalSession] = useState<any>(null);
@@ -88,7 +90,8 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                             </p>
                         </div>
                         <button
-                            onClick={onClose}
+                            onClick={() => { playSfx('ui_click'); onClose(); }}
+                            onMouseEnter={() => playSfx('ui_hover')}
                             className="p-2 -mr-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
                         >
                             <X className="w-6 h-6" />
@@ -159,7 +162,8 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                             <div className="grid gap-4 md:grid-cols-2">
                                                 <ModelCard
                                                     selected={storyModel === MODEL_CONFIG.STORY}
-                                                    onClick={() => setStoryModel(MODEL_CONFIG.STORY)}
+                                                    onClick={() => { playSfx('ui_click'); setStoryModel(MODEL_CONFIG.STORY); }}
+                                                    onMouseEnter={() => playSfx('ui_hover')}
                                                     name="Gemini 3 Flash"
                                                     desc="빠르고 효율적인 기본 모델"
                                                     icon={<Zap className="w-6 h-6" />}
@@ -167,7 +171,8 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                                 />
                                                 <ModelCard
                                                     selected={storyModel === 'gemini-3-pro-preview'}
-                                                    onClick={() => setStoryModel('gemini-3-pro-preview')}
+                                                    onClick={() => { playSfx('ui_click'); setStoryModel('gemini-3-pro-preview'); }}
+                                                    onMouseEnter={() => playSfx('ui_hover')}
                                                     name="Gemini 3 Pro"
                                                     desc="높은 창의력과 품질"
                                                     icon={<Star className="w-6 h-6" />}
@@ -386,10 +391,11 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
 }
 
 // Sub-components
-function TabButton({ active, onClick, icon, label, desc, colorClass }: any) {
+function TabButton({ active, onClick, icon, label, desc, colorClass, onMouseEnter }: any) {
     return (
         <button
             onClick={onClick}
+            onMouseEnter={onMouseEnter}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left border w-full md:w-auto ${active
                 ? `${colorClass} shadow-sm scale-[1.02]`
                 : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
@@ -416,6 +422,15 @@ function SectionHeader({ title, desc }: { title: string, desc: string }) {
 }
 
 function VolumeSlider({ label, value, onChange, color }: any) {
+    // [Fix] Audio Preview (We need access to playSfx here, but it's a subcomponent)
+    // Simpler to just instantiate a new audio for preview or pass it down. 
+    // Since we are in valid context, let's just use the hook in parent and pass it, OR simple native Audio here for preview.
+    const previewSound = () => {
+        const audio = new Audio('/sfx/ui_click.mp3');
+        audio.volume = value;
+        audio.play().catch(() => { });
+    };
+
     return (
         <div className="space-y-3">
             <div className="flex justify-between text-sm font-bold">
@@ -429,13 +444,15 @@ function VolumeSlider({ label, value, onChange, color }: any) {
                 step="0.01"
                 value={value}
                 onChange={(e) => onChange(parseFloat(e.target.value))}
+                onMouseUp={previewSound} // [New] Play sound on release
+                onTouchEnd={previewSound} // [New] Mobile support
                 className={`w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-${color}-600 hover:accent-${color}-500 transition-colors`}
             />
         </div>
     );
 }
 
-function ModelCard({ selected, onClick, name, desc, icon, color }: any) {
+function ModelCard({ selected, onClick, name, desc, icon, color, onMouseEnter }: any) {
     const activeClass = selected
         ? `bg-${color}-50 border-${color}-200 ring-1 ring-${color}-100 shadow-sm`
         : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm';
@@ -443,6 +460,7 @@ function ModelCard({ selected, onClick, name, desc, icon, color }: any) {
     return (
         <button
             onClick={onClick}
+            onMouseEnter={onMouseEnter}
             className={`flex items-start gap-4 p-5 rounded-2xl border transition-all text-left group ${activeClass}`}
         >
             <div className={`p-3 rounded-xl ${selected ? `bg-${color}-100 text-${color}-600` : 'bg-gray-50 text-gray-400 group-hover:text-gray-600'} transition-colors`}>
@@ -461,6 +479,8 @@ function CloudSaveSection() {
     const saveToCloud = useGameStore(state => state.saveToCloud);
     const turnCount = useGameStore(state => state.turnCount);
     const [isSyncing, setIsSyncing] = useState(false);
+    // [Fix] Hook for SFX
+    const { playSfx } = useVNAudio();
 
     const handleSync = async () => {
         setIsSyncing(true);
@@ -482,7 +502,8 @@ function CloudSaveSection() {
                     </div>
                 </div>
                 <button
-                    onClick={handleSync}
+                    onClick={() => { playSfx('ui_click'); handleSync(); }}
+                    onMouseEnter={() => playSfx('ui_hover')}
                     disabled={isSyncing}
                     className="p-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-all active:scale-95 disabled:opacity-50"
                     title="Save Now"

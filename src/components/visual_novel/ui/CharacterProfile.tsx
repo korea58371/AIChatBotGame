@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Shield, Zap, BookOpen, Heart, Skull, Activity, Star } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import { RelationshipManager } from '@/lib/relationship-manager';
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants';
+import { useVNAudio } from '../hooks/useVNAudio';
 
 import { translations } from '@/data/translations';
 
@@ -56,12 +57,24 @@ export default function CharacterProfile({
     activeTab,
     onTabChange
 }: CharacterProfileProps) {
+    const { playSfx } = useVNAudio();
+
+    // Play Popup Sound on Open
+    useEffect(() => {
+        if (isOpen) {
+            playSfx('ui_popup');
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+    if (!playerStats) return null;
+
     const t = translations[language];
     // Access goals from store
     const { goals } = useGameStore();
 
     // [Refactor] Dynamic Trait Mapping using translations.ts (Jan 2026)
-    const PERSONALITY_TRAITS = [
+    const PERSONALITY_TRAITS_DYNAMIC = [
         { key: 'morality', label: t.morality || '도덕성', color: 'text-green-400', bar: 'bg-green-600' },
         { key: 'courage', label: t.courage || '용기', color: 'text-red-400', bar: 'bg-red-600' },
         { key: 'energy', label: t.energy || '에너지', color: 'text-yellow-400', bar: 'bg-yellow-600' },
@@ -78,7 +91,7 @@ export default function CharacterProfile({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
             <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -95,25 +108,44 @@ export default function CharacterProfile({
                             <span className="text-[#D4AF37] text-sm font-mono">Turn: {turnCount}</span>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">×</button>
+                    <button
+                        onClick={() => {
+                            playSfx('ui_cancel');
+                            onClose();
+                        }}
+                        onMouseEnter={() => playSfx('ui_hover')}
+                        className="text-gray-400 hover:text-white text-xl"
+                    >×</button>
                 </div>
 
                 {/* Tab Navigation */}
                 <div className="flex border-b border-white/5 bg-[#1e1e1e]">
                     <button
-                        onClick={() => onTabChange('basic')}
+                        onClick={() => {
+                            playSfx('ui_click');
+                            onTabChange('basic');
+                        }}
+                        onMouseEnter={() => playSfx('ui_hover')}
                         className={`flex-1 py-3 text-center font-bold transition-all duration-300 ${activeTab === 'basic' ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-b-2 border-[#D4AF37] font-serif text-lg' : 'text-gray-500 hover:text-[#D4AF37] hover:bg-[#D4AF37]/5'}`}
                     >
                         {t.tabBasic}
                     </button>
                     <button
-                        onClick={() => onTabChange('martial_arts')}
+                        onClick={() => {
+                            playSfx('ui_click');
+                            onTabChange('martial_arts');
+                        }}
+                        onMouseEnter={() => playSfx('ui_hover')}
                         className={`flex-1 py-3 text-center font-bold transition-all duration-300 ${activeTab === 'martial_arts' ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-b-2 border-[#D4AF37] font-serif text-lg' : 'text-gray-500 hover:text-[#D4AF37] hover:bg-[#D4AF37]/5'}`}
                     >
                         {t.tabMartialArts}
                     </button>
                     <button
-                        onClick={() => onTabChange('relationships')}
+                        onClick={() => {
+                            playSfx('ui_click');
+                            onTabChange('relationships');
+                        }}
+                        onMouseEnter={() => playSfx('ui_hover')}
                         className={`flex-1 py-3 text-center font-bold transition-all duration-300 ${activeTab === 'relationships' ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-b-2 border-[#D4AF37] font-serif text-lg' : 'text-gray-500 hover:text-[#D4AF37] hover:bg-[#D4AF37]/5'}`}
                     >
                         {t.tabAffinity}
