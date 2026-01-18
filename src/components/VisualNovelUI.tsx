@@ -65,6 +65,9 @@ import SettingsModal from './visual_novel/ui/SettingsModal';
 import ResponseTimer from './visual_novel/ui/common/ResponseTimer';
 import { AdBanner } from './AdBanner'; // [New] Import AdBanner
 import StoreModal from './visual_novel/ui/StoreModal'; // [New] Import StoreModal
+import { CloudConflictModal } from './visual_novel/ui/CloudConflictModal'; // [New] Cloud Conflict Modal
+import EndingModal from './visual_novel/ui/EndingModal'; // [New] Ending UI
+import TheEndScreen from './visual_novel/ui/TheEndScreen'; // [New] Final Ending Screen
 
 
 
@@ -83,7 +86,10 @@ import { LOADING_TIPS } from '@/data/loading_tips';
 // Helper to format text (Bold support)
 const formatText = (text: string) => {
     if (!text) return null;
-    const parts = text.split(/(\*\*.*?\*\*)/g);
+    // [Fix] Filter out Ending Tags (e.g. <GOOD ENDING>, <BAD ENDING>) to prevent leakage
+    const cleanText = text.replace(/<[A-Z_]+ ENDING>/g, '').trim();
+
+    const parts = cleanText.split(/(\*\*.*?\*\*)/g);
     return parts.map((part, index) => {
         if (part.startsWith('**') && part.endsWith('**')) {
             return <strong key={index} className="text-yellow-400 font-extrabold">{part.slice(2, -2)}</strong>;
@@ -114,6 +120,9 @@ export default function VisualNovelUI() {
             console.log("[AuthDebug] VisualNovelUI: Has Auth Token?", hasAuthToken);
             console.log("[AuthDebug] VisualNovelUI: Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
         }
+
+        // [Fix] Reset Epilogue Guard on Mount
+        isEpilogueRef.current = false;
     }, []);
 
     // [Stream] Track active segment index (consumed count) for syncing stream with UI
@@ -233,6 +242,14 @@ export default function VisualNovelUI() {
 
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.error(err));
+        } else {
+            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(err => console.error(err));
+        }
+    };
 
     // [New] Realm Progression Logic
     const processRealmProgression = useCallback((currentStats: any, addToastCallback: (msg: string, type: any) => void) => {
@@ -380,6 +397,7 @@ export default function VisualNovelUI() {
         isDataLoaded,
         isHydrated, // [Fix] Hydration Status
         goals, // [New] Goals for Choice Panel
+        endingType, // [Fix] Reactively Subscribe to Ending Type
     } = useGameStore();
 
     // [Fix] Auto-Start Game Logic (Scenario Injection)
@@ -581,6 +599,8 @@ export default function VisualNovelUI() {
 
     // Input State
     const [isLocalhost, setIsLocalhost] = useState(false);
+    const [showTheEnd, setShowTheEnd] = useState(false); // [New] Epilogue Completion Logic
+    const wasForcedResetRef = useRef(false); // [Fix] Track Force Reset for Cloud Sync
     const [lastLogicResult, setLastLogicResult] = useState<any>(null);
     const [pendingLogic, setPendingLogic] = useState<any>(null);
     const [lastStoryOutput, setLastStoryOutput] = useState<string>(''); // [Logging] Store last story output
@@ -590,6 +610,7 @@ export default function VisualNovelUI() {
     // [New] Effect State (Damage / Feedback)
     const [damageEffect, setDamageEffect] = useState<{ intensity: number; duration: number } | null>(null);
     const damageAudioRef = useRef<HTMLAudioElement | null>(null); // [New] Audio Ref
+    const pendingEndingRef = useRef<string | null>(null); // [New] Defer Ending Trigger until text finishes
 
     // [Refactor] Inline Stat Accumulator (Shared across Turn)
     // Tracks stats applied via <Stat> tags during playback to prevent double-counting in Post-Logic
@@ -691,6 +712,11 @@ export default function VisualNovelUI() {
             setUserCoins(authCoins);
         }
     }, [authCoins, setUserCoins]);
+
+    // [Refactor] Cloud Conflict Logic Removal
+    // The legacy auto-save conflict check is removed in favor of the manual slot system.
+    // Ideally, we will implement "Sync Status" in the SaveLoadModal later.
+
     // ------------------------------------------------------------------
     // Hydration Fix & Asset Loading
     const [sessionId, setSessionId] = useState<string>('');
@@ -702,6 +728,7 @@ export default function VisualNovelUI() {
     useEffect(() => {
         const performForceReset = async () => {
             if (sessionStorage.getItem('vn_force_reset') === 'true') {
+                wasForcedResetRef.current = true; // [Fix] Flag as fresh reset
                 console.log("[VisualNovelUI] Detected Force Reset Flag. Resetting Game State...");
 
                 // [Critical Fix] Restore correct Game ID from session, solving the "Return to GBY" bug
@@ -853,6 +880,9 @@ export default function VisualNovelUI() {
 
     // [Fix] Choice Recovery Mechanism (Lost Path Prevention)
     useEffect(() => {
+        // [Fix] Do not recover if we are waiting for a deferred ending trigger OR generating Epilogue
+        if (pendingEndingRef.current || showTheEnd || isEpilogueRef.current) return;
+
         if (isDataLoaded && !currentSegment && scriptQueue.length === 0 && choices.length === 0 && chatHistory.length > 0) {
             const lastMsg = chatHistory[chatHistory.length - 1];
             if (lastMsg.role === 'model' && lastMsg.text.includes('<선택지')) {
@@ -874,6 +904,17 @@ export default function VisualNovelUI() {
             }
         }
     }, [isDataLoaded, currentSegment, scriptQueue, choices, chatHistory]);
+
+    // [Fix] Failsafe: Auto-Trigger Deferred Ending
+    // If the queue is empty and we have a pending ending, ensure it triggers even if the user didn't click.
+    useEffect(() => {
+        if (!currentSegment && scriptQueue.length === 0 && pendingEndingRef.current) {
+            console.log(`[Ending] Failsafe Trigger: ${pendingEndingRef.current}`);
+            const type = pendingEndingRef.current.toLowerCase() as any;
+            pendingEndingRef.current = null;
+            useGameStore.getState().setEndingType(type);
+        }
+    }, [currentSegment, scriptQueue]);
 
     // Helper Functions
     const getBgUrl = (bg: string) => {
@@ -1006,7 +1047,8 @@ export default function VisualNovelUI() {
         }
     }, [currentSegment, characterExpression, useGameStore.getState().protagonistImageOverride]);
 
-    const advanceScript = () => {
+    // [fix] Auto-Advance Script: Moved below advanceScript definition
+    const advanceScript = useCallback(() => {
         // [Stream] Increment consumed count
         activeSegmentIndexRef.current += 1;
 
@@ -1021,6 +1063,23 @@ export default function VisualNovelUI() {
 
         if (currentQueue.length === 0) {
             setCurrentSegment(null);
+
+            // [Fix] Epilogue Completion
+            // If we are in Epilogue Mode and the queue is empty, we are DONE.
+            // Do NOT trigger pending logic (which might be a new turn loop).
+            // [Fix] Add !isProcessing check to prevent premature trigger while generating epilogue
+            if (isEpilogueRef.current) {
+                console.log(`[Epilogue] Completion Check: isProcessing=${isProcessing}, Queue=${currentQueue.length}`);
+                if (!isProcessing) {
+                    console.log("[Epilogue] Script finished. Triggering THE END.");
+                    setShowTheEnd(true);
+                    setPendingLogic(null); // Clear any pending logic
+                    return;
+                } else {
+                    console.log("[Epilogue] Queue empty but Processing... Waiting.");
+                }
+            }
+
             // Check for pending logic
             if (pendingLogic) {
                 applyGameLogic(pendingLogic);
@@ -1281,6 +1340,13 @@ export default function VisualNovelUI() {
                 applyGameLogic(pendingLogic);
                 setPendingLogic(null);
             }
+
+            // [Fix] Trigger Deferred Ending (After text finishes)
+            if (pendingEndingRef.current) {
+                console.log(`[Ending] Triggering Deferred Ending: ${pendingEndingRef.current}`);
+                useGameStore.getState().setEndingType(pendingEndingRef.current.toLowerCase() as any);
+                pendingEndingRef.current = null;
+            }
             return;
         }
 
@@ -1292,7 +1358,16 @@ export default function VisualNovelUI() {
                 newChoices.push(currentQueue[i]);
                 i++;
             }
-            setChoices(newChoices);
+
+            // [Epilogue Guard] Do NOT show choices during Epilogue (Streaming Fix)
+            if (isEpilogueRef.current) {
+                console.log("[Epilogue] Choices detected in queue. Suppressing and auto-advancing.");
+                // We consumed them, so we just clear choices to be safe and continue
+                setChoices([]);
+            } else {
+                setChoices(newChoices);
+            }
+
             setScriptQueue(currentQueue.slice(i));
             setCurrentSegment(null);
 
@@ -1425,9 +1500,27 @@ export default function VisualNovelUI() {
                 setCharacterExpression(imagePath);
             }
         }
-    }
 
-    // Response Time Tracking
+
+        // Response Time Tracking
+    }, [currentSegment, scriptQueue]);
+
+    // [fix] Auto-Advance Script when Queue fills (Streaming Support)
+    // [fix] Auto-Advance Script when Queue fills OR when Epilogue finishes (Transition to The End)
+    useEffect(() => {
+        // Condition 1: Queue has items (Streaming)
+        if (!currentSegment && scriptQueue.length > 0) {
+            console.log("[Auto-Advance] Queue has items. Advancing...");
+            advanceScript();
+        }
+        // Condition 2: Queue is empty, but we are in Epilogue Mode (and not yet showing The End)
+        // This forces the "Final Call" to advanceScript which triggers setShowTheEnd(true)
+        else if (!currentSegment && scriptQueue.length === 0 && isEpilogueRef.current && !showTheEnd) {
+            console.log("[Auto-Advance] Epilogue finished. Triggering Final Advance for The End.");
+            advanceScript();
+        }
+    }, [currentSegment, scriptQueue, showTheEnd]);
+
     const [avgResponseTime, setAvgResponseTime] = useState(30000); // Default 30 seconds as per request
 
     const handleSend = async (text: string, isDirectInput: boolean = false, isHidden: boolean = false) => {
@@ -1491,6 +1584,11 @@ export default function VisualNovelUI() {
 
                 // [Typing Indicator]
                 setIsTyping(true);
+
+                // [Fix] Reset Epilogue Guard on Direct Input
+                // If user is typing/playing, they are definitely NOT in an epilogue generation loop.
+                console.log("[handleSend] User Input detected. Resetting Epilogue Guard.");
+                isEpilogueRef.current = false;
             }
             setChoices([]);
 
@@ -1869,17 +1967,83 @@ export default function VisualNovelUI() {
                                         .replace(/<Output>/gi, '').replace(/<\/Output>/gi, '');
                                 }
 
+                                // [Fallback] Text-based Ending Detection (Belt & Suspenders)
+                                // If the AI writes "<GOOD ENDING>" or similar but forgets the JSON trigger.
+                                let detectedEndingType: 'bad' | 'good' | 'true' | null = null;
+                                if (finalText) {
+                                    if (/(<BAD ENDING>|\[BAD ENDING\]|배드 엔딩|주인공 사망|\[사망\])/i.test(finalText)) detectedEndingType = 'bad';
+                                    else if (/(<GOOD ENDING>|\[GOOD ENDING\]|굿 엔딩|굿엔딩|해피 엔딩|\[완벽한 굿엔딩\])/i.test(finalText)) detectedEndingType = 'good';
+                                    else if (/(<TRUE ENDING>|\[TRUE ENDING\]|트루 엔딩|진 엔딩|진엔딩)/i.test(finalText)) detectedEndingType = 'true';
+
+                                    if (detectedEndingType) {
+                                        console.log(`[Ending] Text-based detection: ${detectedEndingType}`);
+                                    } else {
+                                        console.log(`[Ending] No text-based ending detected in: ${finalText.slice(-50)}`);
+                                    }
+                                }
+
                                 if (finalText) {
                                     setLastStoryOutput(finalText);
-                                    useGameStore.getState().updateLastMessage(finalText);
-                                    // [Snapshot] Store Snapshot in History for Rewind
-                                    // [Snapshot] Store Snapshot in History for Rewind
-                                    addMessage({ role: 'model', text: finalText, snapshot });
+
+                                    // [Fix] Capture Snapshot for Rewind (Atomic w/o recursing history)
+                                    // This must be done BEFORE logic update if we want "Pre-Logic" state?
+                                    // Actually, we usually want "Post-Logic" state of the PREVIOUS TURN.
+                                    // But here we are saving the snapshot associated with THIS message.
+                                    // If we rewind to THIS message, we want the state associated with it.
+                                    // Since this is the AI response, the state should be the RESULT of the turn.
+                                    // However, 'applyGameLogic' is pending (deferred).
+                                    // So this snapshot captures "Pre-Logic" state.
+                                    // This means if we rewind to this message, we get state BEFORE damage.
+                                    // This is actually safer for "Retry".
+                                    const currentState = useGameStore.getState();
+                                    const snapshot = {
+                                        ...currentState,
+                                        chatHistory: [], // Exclude history to prevent bloat/recursion
+                                        displayHistory: []
+                                    };
+
+                                    // [Fix] Atomic Replacement of Placeholder with Final + Snapshot
+                                    // Prevents "Duplicate Bubble" issue where Placeholder and Final both appeared.
+                                    useGameStore.getState().replaceLastMessage({ role: 'model', text: finalText, snapshot });
 
                                     // [Fix] Re-Sync Script Queue to include Choices
                                     // The 'finalText' contains the choices appended by the server.
                                     // We re-parse it and update the queue, respecting the user's current reading position.
-                                    const finalSegments = parseScript(finalText);
+                                    const rawSegments = parseScript(finalText);
+
+                                    // [Fix] If Ending is triggered, STRIP CHOICES from queue to prevent UI overlap
+                                    // We check both the explicit JSON trigger and the fallback text detection.
+                                    let hasEnding = (postLogicOut?.ending_trigger && ['BAD', 'GOOD', 'TRUE'].includes(postLogicOut.ending_trigger)) || detectedEndingType;
+
+                                    // [Epilogue Guard] If we are in Epilogue Mode, suppress ANY ending triggers.
+                                    // The AI often repeats "<BAD ENDING>" in the epilogue text, which causes a loop.
+                                    if (isEpilogueRef.current) {
+                                        if (hasEnding) {
+                                            console.log(`[Epilogue] Suppressing ending trigger '${hasEnding}'. (Epilogue Mode is ACTIVE)`);
+                                            hasEnding = false;
+
+                                            // [New] Trigger Final "The End" State
+                                            // [Fix] Do NOT trigger 'The End' immediately here.
+                                            // Use 'advanceScript' to trigger it ONLY after the user reads all the text.
+                                            console.log("[Epilogue] Epilogue Generated. Waiting for user to read...");
+                                            // setShowTheEnd(true); // <--- REMOVED PREMATURE TRIGGER
+                                        }
+                                    } else {
+                                        console.log(`[Epilogue] Epilogue Mode is FALSE. Allowing ending: ${hasEnding}`);
+                                    }
+
+                                    const finalSegments = (hasEnding || isEpilogueRef.current)
+                                        ? rawSegments.filter(s => s.type !== 'choice')
+                                        : rawSegments;
+
+                                    if (hasEnding) {
+                                        // [Fix] Defer Ending Trigger until after text detection
+                                        // We removed choices from the queue, so the user will click through the text.
+                                        // when queue ends, applyGameLogic will fire and trigger the ending.
+
+                                        console.log(`[Ending] Detected (${postLogicOut?.ending_trigger || detectedEndingType}). Choices stripped.`);
+                                        setChoices([]); // Ensure clear so no buttons appear
+                                    }
 
                                     // If the user has already advanced past the stream length, or is at the end:
                                     // We just replace the queue with the remaining segments from the FINAL text.
@@ -1888,7 +2052,7 @@ export default function VisualNovelUI() {
                                     if (activeSegmentIndexRef.current !== null) {
                                         const remaining = finalSegments.slice(activeSegmentIndexRef.current + 1);
                                         setScriptQueue(remaining);
-                                        console.log(`[Stream] Queue Resync: Added ${remaining.length} segments (including choices).`);
+                                        console.log(`[Stream] Queue Resync: Added ${remaining.length} segments.`);
                                     }
                                 }
 
@@ -1947,6 +2111,8 @@ export default function VisualNovelUI() {
                                     stat_updates: postLogicOut?.stat_updates,
                                     goal_updates: postLogicOut?.goal_updates,
                                     new_goals: postLogicOut?.new_goals,
+                                    // [Fix] Inject Text-Detected Ending if JSON missed it, BUT suppress if in Epilogue
+                                    ending_trigger: isEpilogueRef.current ? null : (postLogicOut?.ending_trigger ?? (detectedEndingType ? detectedEndingType.toUpperCase() : null)),
                                     post_logic: {
                                         ...(postLogicOut || {}),
                                         stat_updates: plPersonality
@@ -1979,7 +2145,15 @@ export default function VisualNovelUI() {
                                 // Reset Inline Accumulator
                                 inlineAccumulatorRef.current = { hp: 0, mp: 0, relationships: {}, personality: {} };
 
-                                setPendingLogic(deferredLogic);
+                                // [Fix] Apply Logic IMMEDIATELY to prevent "Choice Gap"
+                                // If we defer logic, the UI might show choices (enabling interaction)
+                                // BEFORE the logic determines the user is dead or an ending occurred.
+                                // This causes "Ghost Cost" (User clicks -> Token Used -> Then dies).
+                                // By applying immediately, we ensure the UI reflects the TRUE state (e.g. Bad Ending)
+                                // before unlocking controls.
+                                applyGameLogic(deferredLogic);
+
+                                setPendingLogic(null);
                                 setIsLogicPending(false);
 
                                 // Logging
@@ -2001,6 +2175,16 @@ export default function VisualNovelUI() {
                                     },
                                     story_output: finalStoryText || cleanStoryText
                                 });
+
+                                // [NEW] Accumulate Log for "Replay" / "Story Log" Feature
+                                if (finalStoryText || cleanStoryText) {
+                                    useGameStore.getState().addStoryLogEntry({
+                                        turn: useGameStore.getState().turnCount,
+                                        content: finalStoryText || cleanStoryText,
+                                        type: 'narrative',
+                                        timestamp: Date.now()
+                                    });
+                                }
 
                                 console.log(`%c[Telemetry] Stream Finished. Latency: ${p2Duration}ms`, 'color: green;');
                             },
@@ -2034,6 +2218,48 @@ export default function VisualNovelUI() {
         const inputToLog = userInput; // Capture immediately
         if (!inputToLog.trim()) return; // Prevent empty logs
 
+        // [Intervention Fix] Truncate 'Future' Text from History
+        // When intervening mid-turn, we must remove unread text from the history log
+        // to prevent spoilers and ensure the log matches the user's experience.
+        const state = useGameStore.getState();
+        const history = state.chatHistory;
+        const queue = scriptQueue; // Use local state which is in-sync with UI
+
+        if (history.length > 0 && queue.length > 0) {
+            const lastMsg = history[history.length - 1];
+            if (lastMsg.role === 'model') {
+                const segments = parseScript(lastMsg.text);
+
+                // Assuming scriptQueue is a suffix of the original segments (Safe Assumption for linear reads)
+                const seenCount = Math.max(0, segments.length - queue.length);
+
+                if (seenCount < segments.length) {
+                    const seenSegments = segments.slice(0, seenCount);
+
+                    // Reconstruct Text from Seen Segments
+                    // This creates a "Clean" version of the history for display and persistence
+                    const reconstructed = seenSegments.map(s => {
+                        if (s.type === 'background') return `<배경>${s.content}`;
+                        if (s.type === 'bgm') return `<BGM>${s.content}`;
+                        if (s.type === 'dialogue') {
+                            if (s.character) return `<대사> ${s.character}: ${s.content}`;
+                            return `<대사> ${s.content}`;
+                        }
+                        if (s.type === 'narration') return s.content;
+                        if (s.type === 'system_popup') return `<시스템> ${s.content}`;
+                        return '';
+                    }).filter(Boolean).join('\n');
+
+                    console.log(`[Intervention] Truncating history. Segments: ${segments.length} -> ${seenSegments.length}`);
+                    state.updateLastMessage(reconstructed);
+                }
+            }
+        }
+
+        // [New] Clear Script Queue on Intervene to "Interrupt" current flow
+        setScriptQueue([]);
+
+
         // [Logging] Debug Toast for Mobile
         console.log("📝 Sending Direct Input Log:", inputToLog);
 
@@ -2057,9 +2283,12 @@ export default function VisualNovelUI() {
     };
 
     const lastClickTime = useRef(0);
+    const isEpilogueRef = useRef(false); // [Fix] Track Epilogue State to suppress recurring triggers
 
     const handleScreenClick = (e: React.MouseEvent) => {
-        if (isProcessing || isInputOpen || isDebugOpen || showHistory || showInventory || showCharacterInfo || showSaveLoad || showWiki) return;
+        // [Fix] Allow clicking if we have buffered segments, even if still processing (Streaming Mode)
+        // Block only if processing AND queue is empty (Waiting for tokens)
+        if ((isProcessing && scriptQueue.length === 0) || isInputOpen || isDebugOpen || showHistory || showInventory || showCharacterInfo || showSaveLoad || showWiki) return;
         if (choices.length > 0) return;
 
         const now = Date.now();
@@ -2114,6 +2343,9 @@ export default function VisualNovelUI() {
         setIsLogicPending(true); // Assume we might need AI
 
         try {
+            // [Fix] Reset Epilogue Guard on New Game Start
+            isEpilogueRef.current = false;
+
             // [GOD MODE CHECK]
             if (playerName === '김현준갓모드') {
                 useGameStore.getState().setPlayerName('김현준');
@@ -2267,13 +2499,124 @@ export default function VisualNovelUI() {
         }
     };
 
-    const applyGameLogic = (logicResult: any) => {
-        console.log("▶ [applyGameLogic] Received:", JSON.stringify(logicResult, null, 2)); // [DEBUG] Raw payload
+    // [New] Ending System Handlers
+    // [New] Ending System Handlers
+    // const endingType = useGameStore((state) => state.endingType); // [Fix] Removed duplicate (now at top level)
+
+    const handleRewind = () => {
+        const history = useGameStore.getState().chatHistory;
+
+        let safeIndex = -1;
+        // Search backwards, skipping the very last message (which is likely the death message)
+        // We look for a valid Model snapshot where the player was alive.
+        console.log("[Rewind] Searching for safe point...");
+        for (let i = history.length - 2; i >= 0; i--) {
+            const msg = history[i];
+            if (msg.role === 'model') {
+                if (msg.snapshot) {
+                    const snap = msg.snapshot as any;
+                    const hp = snap.playerStats?.hp ?? 0;
+                    const endType = snap.endingType || 'none';
+
+                    console.log(`[Rewind] Checking msg[${i}]: HP=${hp}, End=${endType}`);
+
+                    if (hp > 0 && endType === 'none') {
+                        safeIndex = i;
+                        console.log(`[Rewind] Safe point found at index ${i}`);
+                        break;
+                    }
+                } else {
+                    console.log(`[Rewind] Msg[${i}] has NO snapshot.`);
+                }
+            }
+        }
+
+        if (safeIndex !== -1) {
+            const safeMsg = history[safeIndex];
+            const snapshot = safeMsg.snapshot;
+
+            if (snapshot) {
+                // [Fix] Atomic State Restoration
+                // We truncated the history to the point of the safe snapshot.
+                const truncatedHistory = history.slice(0, safeIndex + 1);
+
+                // Restore Global State
+                useGameStore.setState({
+                    ...snapshot,
+                    chatHistory: truncatedHistory,
+                    displayHistory: truncatedHistory, // Keep display synced
+                    endingType: 'none', // Ensure ending lock is lifted
+                });
+
+                // [Fix] Reset Epilogue Guard on Rewind
+                isEpilogueRef.current = false;
+
+                // [Fix] Reset Epilogue Guard on Rewind
+                isEpilogueRef.current = false;
+
+                // Reset Local UI State
+                setChoices([]);
+                setScriptQueue(snapshot.scriptQueue || []); // Restore queue if captured
+                setCurrentSegment(snapshot.currentSegment || null); // Restore segment
+
+                addToast("운명의 수레바퀴를 되돌렸습니다. (Time Rewind)", "success");
+            }
+        } else {
+            // No safe point found (e.g. died at very beginning or no snapshots)
+            addToast("되돌릴 수 있는 안전한 시점이 없습니다. (No Safe Point)", "warning");
+        }
+    };
+
+    const handleTitle = () => {
+        console.log("[Epilogue] handleTitle called. Resetting Epilogue Guard.");
+        isEpilogueRef.current = false;
+        router.push('/');
+    };
+
+    const handleEpilogue = () => {
+        setIsProcessing(true); // [Fix] Force Processing State IMMEDIATELY to block premature 'The End' trigger
+        isEpilogueRef.current = true; // [Fix] Enable Epilogue Mode
+        // Trigger AI to write epilogue
+        // [Fix] Reset HP to 1 to prevent immediate "Dead" trigger loop if Epilogue is for a Bad Ending
+        const currentStats = useGameStore.getState().playerStats;
+        if (currentStats.hp <= 0) {
+            console.log("[Epilogue] Resurrecting player (HP 1) to allow epilogue playback.");
+            useGameStore.getState().setPlayerStats({ ...currentStats, hp: 1 });
+        }
+
+        setChoices([]); // [Fix] Clear choices immediately
+        handleSend("에필로그를 들려줘. [System: Write an Epilogue for the Good Ending]", true, true);
+        useGameStore.getState().setEndingType('none');
+        console.log("[Epilogue] Mode Activated. isEpilogueRef = true");
+    };
+
+    const handleContinue = () => {
+        console.log("[Epilogue] handleContinue called. Resetting Epilogue Guard.");
+        isEpilogueRef.current = false;
+        useGameStore.getState().setEndingType('none');
+        setChoices([]); // [Fix] Clear choices
+    };
+
+    function applyGameLogic(logicResult: any) {
+        // [Refactor] Collapsible Console Group for Cleaner Logs
+        console.groupCollapsed("▶ [applyGameLogic] Received Payload");
+        console.dir(logicResult);
+        console.groupEnd();
+
         if (!logicResult) {
             console.warn('applyGameLogic: logicResult is null or undefined');
             return;
         }
         setLastLogicResult(logicResult);
+
+        // [New] Ending Trigger
+        // [Fix] Epilogue Guard: Do not re-trigger ending if already in Epilogue mode
+        if (logicResult.ending_trigger && ['BAD', 'GOOD', 'TRUE'].includes(logicResult.ending_trigger) && !isEpilogueRef.current) {
+            console.log(`[Ending] Detected: ${logicResult.ending_trigger}. Deferring trigger until text completion.`);
+            // [Fix] Defer ending trigger until script queue is empty
+            pendingEndingRef.current = logicResult.ending_trigger;
+            setChoices([]); // [Fix] Force-clear any floating choices to prevent UI overlap
+        }
 
         // Update Stats
         const currentStats = useGameStore.getState().playerStats;
@@ -2324,6 +2667,13 @@ export default function VisualNovelUI() {
                 if (lowerKey === 'hp') {
                     newStats.hp = Math.min(Math.max(0, newStats.hp + numVal), newStats.maxHp);
                     handleVisualDamage(numVal, newStats.hp, newStats.maxHp);
+
+                    // [Fix] HARD Auto-Death Trigger (Backup if AI misses it)
+                    if (newStats.hp <= 0 && useGameStore.getState().endingType === 'none') {
+                        console.log("HP <= 0 detected. Triggering BAD ENDING.");
+                        useGameStore.getState().setEndingType('bad');
+                        setChoices([]); // [Fix] Force-clear choices on death
+                    }
                 }
                 else if (lowerKey === 'mp') newStats.mp = Math.min(Math.max(0, newStats.mp + numVal), newStats.maxMp);
                 else if (lowerKey === 'gold') newStats.gold = Math.max(0, newStats.gold + numVal);
@@ -3539,14 +3889,17 @@ export default function VisualNovelUI() {
                 {/* [Common UI] Top-Right Controls (Tokens, Settings, Debug) */}
                 <div className="absolute top-4 right-4 z-[60] flex items-center gap-3 pointer-events-auto">
                     {/* Token Display */}
-                    <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 shadow-lg">
-                        <span className="text-lg">🪙</span>
+                    {/* Token Display */}
+                    <div
+                        onClick={(e) => { e.stopPropagation(); setIsStoreOpen(true); }}
+                        className="bg-black/60 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 shadow-lg cursor-pointer transition-all active:scale-95 group"
+                    >
+                        <span className="text-lg group-hover:scale-110 transition-transform">🪙</span>
                         <span className="text-yellow-400 font-bold font-mono text-sm md:text-base">
                             {userCoins?.toLocaleString() || 0}
                         </span>
                         <button
-                            onClick={(e) => { e.stopPropagation(); setIsStoreOpen(true); }}
-                            className="bg-yellow-600 hover:bg-yellow-500 text-black text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1 transition-colors"
+                            className="bg-yellow-600 group-hover:bg-yellow-500 text-black text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1 transition-colors"
                         >
                             +
                         </button>
@@ -3562,24 +3915,35 @@ export default function VisualNovelUI() {
                     </button>
 
                     {/* Shop Button */}
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setIsStoreOpen(true); }}
-                        className="p-2 bg-black/60 hover:bg-gray-800/80 rounded-full border border-gray-600 text-yellow-400 hover:text-white transition-all shadow-lg"
-                        title="Shop"
-                    >
-                        <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" />
-                    </button>
+
 
                     {/* Debug Button (Conditional) */}
-                    {(isLocalhost || isDebugOpen) && (
+
+                </div>
+
+                {/* [New] Debug Button (Bottom Left) */}
+                {/* [New] Debug Button (Middle Left) */}
+                {(isLocalhost || isDebugOpen) && (
+                    <div className="absolute top-1/2 left-4 -translate-y-1/2 z-[100] pointer-events-auto">
                         <button
                             onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
-                            className="p-2 bg-purple-900/60 hover:bg-purple-800/80 rounded-full border border-purple-500/50 text-purple-300 hover:text-white transition-all shadow-lg"
+                            className="p-2 bg-purple-900/60 hover:bg-purple-800/80 rounded-full border border-purple-500/50 text-purple-300 hover:text-white transition-all shadow-lg backdrop-blur-sm"
                             title="Debug Menu"
                         >
                             <Bolt className="w-5 h-5 md:w-6 md:h-6" />
                         </button>
-                    )}
+                    </div>
+                )}
+
+                {/* [New] Fullscreen Button (Bottom Left) */}
+                <div className="absolute bottom-4 left-4 z-[90] pointer-events-auto">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+                        className={`p-2 rounded-lg border transition-all shadow-lg backdrop-blur-sm ${isFullscreen ? 'bg-yellow-900/40 border-yellow-500/50 text-yellow-500' : 'bg-black/60 border-white/20 text-gray-400 hover:text-white hover:border-white/50'}`}
+                        title={isFullscreen ? "전체화면 종료" : "전체화면"}
+                    >
+                        {isFullscreen ? <Minimize className="w-5 h-5 md:w-6 md:h-6" /> : <Maximize className="w-5 h-5 md:w-6 md:h-6" />}
+                    </button>
                 </div>
 
                 {/* [리팩토링 메모] HUD 렌더링 로직은 `ui/ModernHUD.tsx` 및 `ui/WuxiaHUD.tsx`로 분리되었습니다. */}
@@ -3603,6 +3967,16 @@ export default function VisualNovelUI() {
 
                 {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 -> Z-20 (Basic UI) */}
                 <div className={`absolute bottom-[5vh] right-[4vw] md:bottom-10 md:right-8 flex gap-[1vw] md:gap-2 z-[100] transition-opacity pointer-events-auto ${choices.length > 0 ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`}>
+                    {/* [NEW] Intervention / Mid-Turn Direct Input */}
+                    <button
+                        className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-green-800/60 hover:bg-green-700/80 rounded border border-green-600 text-green-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
+                        onClick={(e) => { e.stopPropagation(); setIsInputOpen(true); }}
+                        title="이야기에 개입하기"
+                    >
+                        <span className="text-lg">⚡</span>
+                        <span className="hidden md:inline">개입</span>
+                    </button>
+
                     <button
                         className="px-[3vw] py-[1vh] md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-[2.5vw] md:text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-[1vw] md:gap-1"
                         onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
@@ -3835,7 +4209,7 @@ export default function VisualNovelUI() {
 
                 {/* Center: Choices */}
                 {
-                    choices.length > 0 && (
+                    choices.length > 0 && endingType === 'none' && (
                         <>
                             {/* [NEW] Background Dimmer (Layered BELOW UI at z-20) */}
                             <div className="absolute inset-0 bg-black/40 z-[20] pointer-events-none transition-opacity duration-500" />
@@ -3961,7 +4335,7 @@ export default function VisualNovelUI() {
 
                 {/* Fallback for stuck state or Start Screen */}
                 {
-                    isMounted && !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && (
+                    isMounted && !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && endingType === 'none' && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
                             {/* [Fix] Use turnCount === 0 to prioritize Creation Wizard even if logs exist */}
                             <AnimatePresence mode="popLayout">
@@ -4518,7 +4892,7 @@ Instructions:
                                     </motion.div>
                                 ) : (
                                     <motion.div key="game-content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="contents">
-                                        {isLogicPending ? (
+                                        {isLogicPending && endingType === 'none' ? (
                                             <div className="bg-black/80 p-6 rounded-xl border border-yellow-500 text-center shadow-2xl backdrop-blur-md animate-pulse pointer-events-auto z-10 transition-all duration-300 scale-110">
                                                 <h2 className="text-2xl font-bold text-yellow-500 mb-2 tracking-widest uppercase">{t.fateIsWeaving}</h2>
                                                 <p className="text-yellow-200/80 text-sm font-bold animate-pulse">
@@ -4532,8 +4906,8 @@ Instructions:
                                                 // [Fix] Choices are present, so don't show Error Screen
                                                 // The choices overlay (line 3512) will handle the rendering.
                                                 null
-                                            ) : (!isDataLoaded) ? (
-                                                // [Fix] Data not loaded logic handled by top-level guard, but if here safely return null
+                                            ) : (!isDataLoaded || pendingEndingRef.current || isEpilogueRef.current) ? (
+                                                // [Fix] Data not loaded OR Waiting for Deferred Ending OR Epilogue -> Show nothing
                                                 null
                                             ) : (
                                                 <div className="bg-black/90 p-8 rounded-xl border border-yellow-600/50 text-center shadow-[0_0_30px_rgba(202,138,4,0.2)] backdrop-blur-md relative overflow-hidden pointer-events-auto">
@@ -4566,12 +4940,12 @@ Instructions:
 
                 {/* Interactive Loading Indicator (Ad/Tip Overlay) */}
                 <AnimatePresence>
-                    {(isProcessing || (isLogicPending && !currentSegment && scriptQueue.length === 0)) && (
+                    {(isProcessing || (isLogicPending && !currentSegment && scriptQueue.length === 0 && endingType === 'none')) && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-[#000]/90 flex items-center justify-center z-50 pointer-events-auto backdrop-blur-sm"
+                            className="absolute inset-0 bg-[#000]/90 flex items-center justify-center z-[70] pointer-events-auto backdrop-blur-sm"
                         >
                             <div className="flex flex-col items-center gap-6 max-w-xl w-full p-10 rounded-xl border border-[#333] bg-gradient-to-b from-[#2a2a2a] via-[#1a1a1a] to-[#0d0d0d] shadow-2xl relative overflow-hidden">
                                 {/* Background Glow */}
@@ -5039,10 +5413,7 @@ Instructions:
                 <SaveLoadModal
                     isOpen={showSaveLoad}
                     onClose={() => setShowSaveLoad(false)}
-                    saveSlots={saveSlots}
-                    onSave={saveGame}
-                    onLoad={loadGame}
-                    onDelete={deleteGame}
+                    mode="save" // Default to save mode in-game (we can add tabs or logic later)
                     t={t}
                 />
 
@@ -5060,6 +5431,19 @@ Instructions:
                     session={session}
                     onResetGame={handleNewGame}
                 />
+
+                {/* Cloud Conflict Modal (Removed) */}
+
+                {/* [New] Ending Modal (Z-100 to cover everything) */}
+                <div className="relative z-[100]">
+                    <EndingModal
+                        type={endingType}
+                        onRewind={handleRewind}
+                        onTitle={handleTitle}
+                        onEpilogue={handleEpilogue}
+                        onContinue={handleContinue}
+                    />
+                </div>
 
                 {/* System Popup Layer */}
                 <SystemPopup
@@ -5122,7 +5506,7 @@ Instructions:
                 {/* Dialogue / Narration Layer */}
                 {
                     currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
-                        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-20 md:pb-16 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[40vh] md:h-[min(30vh,600px)]">
+                        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-32 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[40vh] md:h-[min(30vh,600px)]">
                             <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                                 {/* Dialogue Control Bar */}
 
@@ -5191,6 +5575,18 @@ Instructions:
                     />
                 )
             }
+
+            {/* [New] The End Screen Overlay */}
+            {/* [New] The End Screen Overlay (Component) */}
+            {showTheEnd && (
+                <TheEndScreen
+                    onTitle={() => {
+                        setShowTheEnd(false);
+                        handleTitle();
+                    }}
+                    playerRank={playerStats.playerRank}
+                />
+            )}
 
         </div >
     );

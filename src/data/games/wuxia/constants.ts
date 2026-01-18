@@ -308,6 +308,25 @@ export const WUXIA_OUTPUT_FORMAT = `
      <BGM> 격정
      ...
      (X) <BGM> HardTraining (영어 파일명 사용 금지)
+
+# 7. [ENDING FORMAT] (엔딩 출력 규칙) (⭐ CRITICAL)
+- 게임의 결말 조건이 충족되면, 본문의 **맨 마지막 줄**에 반드시 아래 태그 중 하나를 출력하고 종료하십시오.
+- **형식**: \`<ENDING KEY>\` (다른 태그와 동일한 Angle Bracket 사용)
+
+   - **<BAD ENDING>**: 주인공이 사망하거나, 재기 불가능한 치명상을 입었을 때.
+     - 예시:
+       ...그의 의식이 흐려졌다. 더 이상 아무것도 느껴지지 않았다.
+       <BAD ENDING>
+
+   - **<GOOD ENDING>**: 주인공이 입황, 은거 등 주요 목표를 달성하고 행복한 결말을 맞이했을 때.
+     - 예시:
+       ...모두가 환호하며 그의 이름을 연호했다. 이것이 나의 천하제일이다.
+       <GOOD ENDING>
+
+   - **<TRUE ENDING>**: 숨겨진 진실을 밝혀내거나, 세계관의 비밀을 파헤친 완벽한 결말일 때.
+     - 예시:
+       ...마침내 모든 진실을 알게 되었다. 시스템의 창이 닫혔다.
+       <TRUE ENDING>
 `;
 
 export const WUXIA_SYSTEM_GUIDE = WUXIA_OUTPUT_FORMAT;

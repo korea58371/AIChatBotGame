@@ -132,3 +132,28 @@ export function useVNAudio(currentBgm: string | null) {
 
     return { playSfx };
 }
+
+// [Global Access]
+// Used by SettingsModal to force-stop audio when exiting to Title
+export function stopGlobalAudio() {
+    if (globalAudioInstance) {
+        console.log("[Audio] Force stopping global audio.");
+        // Immediate fade out logic or hard stop?
+        // Hard stop is safer to prevent lingering audio on TitleScreen
+        const oldAudio = globalAudioInstance;
+
+        // Fast Fade (prevent pop)
+        const fadeOut = setInterval(() => {
+            if (oldAudio.volume > 0.05) {
+                oldAudio.volume -= 0.1;
+            } else {
+                oldAudio.volume = 0;
+                oldAudio.pause();
+                oldAudio.src = ""; // Detach
+                clearInterval(fadeOut);
+            }
+        }, 30);
+
+        globalAudioInstance = null;
+    }
+}

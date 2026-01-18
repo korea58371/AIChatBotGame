@@ -11,7 +11,10 @@ import Login from '@/components/Login';
 import LanguageSelector from '@/components/LanguageSelector';
 import SettingsModal from '@/components/visual_novel/ui/SettingsModal';
 import StoreModal from '@/components/visual_novel/ui/StoreModal';
+import SaveLoadModal from '@/components/visual_novel/ui/SaveLoadModal';
 import { useAuthSession } from '@/hooks/useAuthSession';
+import { stopGlobalAudio } from './visual_novel/hooks/useVNAudio'; // [Fix] Import Audio Cleanup
+import { get as idbGet } from 'idb-keyval';
 
 import { translations } from '@/data/translations';
 
@@ -36,7 +39,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
 
     // Game State Checks
     const [hasActiveGame, setHasActiveGame] = useState(false);
-    const [saveSlots, setSaveSlots] = useState<{ id: number; date: string; summary: string }[]>([]);
+    // const [saveSlots, setSaveSlots] = useState<{ id: number; date: string; summary: string }[]>([]); // Deprecated localstorage logic
+    const [hasManualSlots, setHasManualSlots] = useState(false); // [NEW]
 
     const resetGameStore = useGameStore(state => state.resetGame);
     const activeGameId = useGameStore(state => state.activeGameId);
@@ -48,6 +52,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const userCoins = useGameStore(state => state.userCoins);
     const setUserCoins = useGameStore(state => state.setUserCoins);
 
+    const setSessionUser = useGameStore(state => state.setSessionUser);
+
     // Check Auth State using Shared Hook
     const { session: authSession, user: authUser, loading: authLoading, coins: authCoins } = useAuthSession();
 
@@ -57,12 +63,18 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
             setSession(authSession); // [Fix] Sync session
             setCoins(authCoins);
             setUserCoins(authCoins || 0); // [Sync] Sync DB coins to Store
+            setSessionUser(authUser); // [Fix] Sync User to Global Store for Cloud Ops
             setIsLoading(false);
         }
-    }, [authUser, authSession, authLoading, authCoins, setUserCoins]);
+    }, [authUser, authSession, authLoading, authCoins, setUserCoins, setSessionUser]);
 
     // [Localization]
     const t = (language && translations[language as keyof typeof translations]) || translations.ko;
+
+    // [Fix] Enforce Global Audio Cleanup on Title Screen Mount
+    useEffect(() => {
+        stopGlobalAudio();
+    }, []);
 
     // Auto-login success trigger
     useEffect(() => {
@@ -72,35 +84,6 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
         }
     }, [authUser, onLoginSuccess, authLoading]);
 
-
-    // Check Game State on Mount
-    useEffect(() => {
-        const state = useGameStore.getState();
-        if (state.chatHistory && state.chatHistory.length > 0) {
-            setHasActiveGame(true);
-        }
-
-        // Load Save Slots Info
-        const slots = [];
-        for (let i = 1; i <= 3; i++) {
-            const data = localStorage.getItem(`vn_save_${i}`);
-            if (data) {
-                try {
-                    const parsed = JSON.parse(data);
-                    slots.push({
-                        id: i,
-                        date: new Date(parsed.timestamp).toLocaleString(),
-                        summary: parsed.summary || 'No summary'
-                    });
-                } catch (e) {
-                    slots.push({ id: i, date: 'Corrupted', summary: 'Error reading save' });
-                }
-            } else {
-                slots.push({ id: i, date: 'Empty', summary: '-' });
-            }
-        }
-        setSaveSlots(slots);
-    }, [showLoadModal]);
 
     // Game Modes Configuration
     const GAME_MODES = [
@@ -129,6 +112,42 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const [selectedGameIndex, setSelectedGameIndex] = useState(0);
     const selectedGame = GAME_MODES[selectedGameIndex];
 
+    // Check Game State on Mount & Game Change
+    useEffect(() => {
+        const checkState = async () => {
+            const state = useGameStore.getState();
+            // Check Active Game (Decoupled Auto Save persistence)
+            // Even if memory is empty, if we have a persisted auto-save, we can continue.
+            const autoKey = `vn_autosave_${selectedGame.id}`;
+            try {
+                const localAuto = await idbGet(autoKey);
+                if (localAuto) {
+                    setHasActiveGame(true);
+                } else {
+                    // Fallback: Check memory if it happens to match (redundant but safe)
+                    if (state.chatHistory && state.chatHistory.length > 0 && state.activeGameId === selectedGame.id) {
+                        setHasActiveGame(true);
+                    } else {
+                        setHasActiveGame(false);
+                    }
+                }
+            } catch (e) {
+                console.warn("TitleScreen AutoCheck Failed", e);
+                setHasActiveGame(false);
+            }
+
+            // Check Manual Slots (IDB)
+            try {
+                const slots = await state.listSaveSlots(selectedGame.id);
+                setHasManualSlots(slots.length > 0);
+            } catch (e) {
+                console.error("Failed to list slots", e);
+                setHasManualSlots(false);
+            }
+        };
+        checkState();
+    }, [selectedGame.id]); // Re-run when game changes
+
     const handleNextGame = () => {
         setSelectedGameIndex((prev) => (prev + 1) % GAME_MODES.length);
     };
@@ -137,19 +156,43 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
         setSelectedGameIndex((prev) => (prev - 1 + GAME_MODES.length) % GAME_MODES.length);
     };
 
-    const canContinue = hasActiveGame && activeGameId === selectedGame.id;
+    const [hasCloudSave, setHasCloudSave] = useState(false);
+
+    // Check Cloud Save availability when game selection changes
+    useEffect(() => {
+        const checkCloudSave = async () => {
+            setHasCloudSave(false);
+            if (!authUser || !selectedGame.id) return;
+
+            const { data, error } = await supabase
+                .from('game_saves')
+                .select('turn_count')
+                .eq('user_id', authUser.id)
+                .eq('game_id', selectedGame.id)
+                .single();
+
+            if (data && !error) {
+                // console.log(`[TitleScreen] Found cloud save for ${selectedGame.id}`);
+                setHasCloudSave(true);
+            }
+        };
+
+        checkCloudSave();
+    }, [authUser, selectedGame.id, supabase]);
+
+    const canContinue = hasActiveGame || hasCloudSave || hasManualSlots;
 
     const handleContinue = async () => {
         if (!user) {
             setShowLogin(true);
             return;
         }
-        console.log('[TitleScreen] Continuing game:', selectedGame.id);
-        sessionStorage.setItem('selected_game_id', selectedGame.id);
+        console.log('[TitleScreen] Continue Request:', selectedGame.id);
 
-        // [Fix] Pass false to skip reset and preserve state
-        await setGameId(selectedGame.id, false);
-        router.push('/game');
+        // Always open the Load Modal now, as we have multiple potential sources (Auto, Cloud, Manual)
+        // This satisfies: "이어하기를 눌렀을 때, 데이터가 여러개 있을 경우 이어할 데이터 선택 가능"
+        // We can just open the Load Modal with the correct Game ID context.
+        setShowLoadModal(true);
     };
 
     const handleNewGame = async () => {
@@ -429,6 +472,16 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                     </motion.div>
                 </div>
             )}
+
+            {/* Save/Load Modal for "Continue" */}
+            <SaveLoadModal
+                isOpen={showLoadModal}
+                onClose={() => setShowLoadModal(false)}
+                mode="load"
+                gameId={selectedGame.id}
+                t={t}
+                onLoadSuccess={() => router.push('/game')}
+            />
         </div>
 
     );

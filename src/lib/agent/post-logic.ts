@@ -17,6 +17,7 @@ export interface PostLogicOutput {
   dead_character_ids?: string[]; // [NEW] Characters confirmed dead this turn
   factionChange?: string; // [NEW] Faction Change (e.g. "Mount Hua Sect")
   playerRank?: string; // [NEW] Title/Rank Change (e.g. "First Rate Warrior")
+  ending_trigger?: 'GOOD' | 'BAD' | 'TRUE' | null; // [NEW] Explicit Ending Trigger
 
   // [NEW] Relationship Info Updates (Status & Speech)
   relationship_info_updates?: Record<string, { status?: string, speech_style?: string }>;
@@ -295,6 +296,33 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 - **factionChange**: If the narrative explicitly states the player has joined or left a faction/sect (${t.소속_변경_설명}).
 - **playerRank**: If the narrative explicitly awards a new title or martial rank (${t.등급_변경_설명}).
 - **Constraint**: Only valid if explicitly confirmed in the text. Do not guess.
+
+[Ending Detection] (CRITICAL)
+- **Concept**: Detect if the story has reached a definitive conclusion.
+- **BAD ENDING**:
+  - Condition: The Protagonist ({playerName}) **DIES** or is **PERMANENTLY CRIPPLED** beyond recovery (e.g., Execution, Suicide, Head chopped off).
+  - Action: Set "ending_trigger": "BAD".
+- **GOOD ENDING**:
+  - Condition: The Protagonist achieves a **MAJOR LIFELONG GOAL** (e.g., Becoming Sect Leader, Defeating the Final Boss, Retiring peacefully after revenge).
+  - Action: Set "ending_trigger": "GOOD".
+  - Constraint: Must be a satisfying conclusion to the current narrative arc.
+- **TRUE ENDING**:
+  - Condition: Achieving a secret or perfect conclusion.
+  - Action: Set "ending_trigger": "TRUE".
+
+
+[Ending Detection] (CRITICAL)
+- **Concept**: Detect if the story has reached a definitive conclusion.
+- **BAD ENDING**:
+  - Condition: The Protagonist ({playerName}) **DIES** or is **PERMANENTLY CRIPPLED** beyond recovery (e.g., Execution, Suicide, Head chopped off).
+  - Action: Set "ending_trigger": "BAD".
+- **GOOD ENDING**:
+  - Condition: The Protagonist achieves a **MAJOR LIFELONG GOAL** (e.g., Becoming Sect Leader, Defeating the Final Boss, Retiring peacefully after revenge).
+  - Action: Set "ending_trigger": "GOOD".
+  - Constraint: Must be a satisfying conclusion to the current narrative arc.
+- **TRUE ENDING**:
+  - Condition: Achieving a secret or perfect conclusion.
+  - Action: Set "ending_trigger": "TRUE".
 
 
 [Output Schema (JSON)]

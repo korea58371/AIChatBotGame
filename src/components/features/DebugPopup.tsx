@@ -128,85 +128,93 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
 
                             {/* Stats */}
                             <section>
-                                <h3 className="text-blue-400 font-bold mb-2 border-b border-blue-500/30 pb-1">Player Stats</h3>
-                                <pre className="bg-gray-900 p-3 rounded text-xs text-blue-300 font-mono overflow-x-auto">
-                                    {JSON.stringify(playerStats, null, 2)}
-                                </pre>
+                                <details className="group">
+                                    <summary className="text-blue-400 font-bold mb-2 border-b border-blue-500/30 pb-1 cursor-pointer select-none">Player Stats</summary>
+                                    <pre className="bg-gray-900 p-3 rounded text-xs text-blue-300 font-mono overflow-x-auto group-open:block">
+                                        {JSON.stringify(playerStats, null, 2)}
+                                    </pre>
+                                </details>
                             </section>
 
                             {/* [NEW] Active Character Memories (Highlighted) */}
                             <section className="mb-6">
-                                <h3 className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1 flex items-center gap-2">
-                                    <span>🟢 Active Characters (Current Scene)</span>
-                                </h3>
-                                <div className="space-y-2">
-                                    {activeCharacters.length > 0 ? (
-                                        activeCharacters.map((charId: string) => {
-                                            const allCharData = useGameStore.getState().characterData;
-                                            const charData = allCharData[charId] || {};
-                                            return (
-                                                <div key={charId} className="bg-green-900/20 border border-green-500/30 p-3 rounded text-xs">
-                                                    <div className="flex justify-between mb-1">
-                                                        <strong className="text-green-300 text-sm">{charData.name || charId}</strong>
-                                                        <span className="text-green-500/70">{charData.memories?.length || 0} memories</span>
+                                <details open className="group">
+                                    <summary className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1 flex items-center gap-2 cursor-pointer select-none">
+                                        <span>🟢 Active Characters (Current Scene)</span>
+                                    </summary>
+                                    <div className="space-y-2 group-open:block">
+                                        {activeCharacters.length > 0 ? (
+                                            activeCharacters.map((charId: string) => {
+                                                const allCharData = useGameStore.getState().characterData;
+                                                const charData = allCharData[charId] || {};
+                                                return (
+                                                    <div key={charId} className="bg-green-900/20 border border-green-500/30 p-3 rounded text-xs">
+                                                        <div className="flex justify-between mb-1">
+                                                            <strong className="text-green-300 text-sm">{charData.name || charId}</strong>
+                                                            <span className="text-green-500/70">{charData.memories?.length || 0} memories</span>
+                                                        </div>
+                                                        {charData.memories && charData.memories.length > 0 ? (
+                                                            <ul className="list-disc list-inside text-gray-300 space-y-1 pl-1">
+                                                                {charData.memories.map((mem: string, i: number) => (
+                                                                    <li key={i}>{mem}</li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : (
+                                                            <div className="text-gray-500 italic">No recorded memories yet.</div>
+                                                        )}
                                                     </div>
-                                                    {charData.memories && charData.memories.length > 0 ? (
-                                                        <ul className="list-disc list-inside text-gray-300 space-y-1 pl-1">
-                                                            {charData.memories.map((mem: string, i: number) => (
-                                                                <li key={i}>{mem}</li>
-                                                            ))}
-                                                        </ul>
-                                                    ) : (
-                                                        <div className="text-gray-500 italic">No recorded memories yet.</div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="text-gray-500 italic p-2">No active characters detected.</div>
-                                    )}
-                                </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="text-gray-500 italic p-2">No active characters detected.</div>
+                                        )}
+                                    </div>
+                                </details>
                             </section>
 
                             {/* All Character Memories */}
                             <section>
-                                <h3 className="text-blue-400 font-bold mb-2 border-b border-blue-500/30 pb-1">All Character Memories</h3>
-                                <div className="space-y-2">
-                                    {Object.keys(useGameStore.getState().characterData || {}).length === 0 ? (
-                                        <div className="text-gray-600 text-sm italic">No character data available.</div>
-                                    ) : (
-                                        Object.entries(useGameStore.getState().characterData || {}).map(([charId, data]: [string, any]) => (
-                                            <div key={charId} className="bg-gray-900 p-3 rounded text-xs">
-                                                <div className="flex justify-between mb-1">
-                                                    <strong className="text-blue-300 text-sm">{data.name || charId}</strong>
-                                                    <span className="text-gray-500">{data.memories?.length || 0} memories</span>
+                                <details className="group">
+                                    <summary className="text-blue-400 font-bold mb-2 border-b border-blue-500/30 pb-1 cursor-pointer select-none">All Character Memories</summary>
+                                    <div className="space-y-2 group-open:block">
+                                        {Object.keys(useGameStore.getState().characterData || {}).length === 0 ? (
+                                            <div className="text-gray-600 text-sm italic">No character data available.</div>
+                                        ) : (
+                                            Object.entries(useGameStore.getState().characterData || {}).map(([charId, data]: [string, any]) => (
+                                                <div key={charId} className="bg-gray-900 p-3 rounded text-xs">
+                                                    <div className="flex justify-between mb-1">
+                                                        <strong className="text-blue-300 text-sm">{data.name || charId}</strong>
+                                                        <span className="text-gray-500">{data.memories?.length || 0} memories</span>
+                                                    </div>
+                                                    {data.memories && data.memories.length > 0 ? (
+                                                        <ul className="list-disc list-inside text-gray-400 space-y-1 pl-1">
+                                                            {data.memories.map((mem: string, i: number) => (
+                                                                <li key={i}>{mem}</li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : (
+                                                        <div className="text-gray-600 italic">No recorded memories yet.</div>
+                                                    )}
                                                 </div>
-                                                {data.memories && data.memories.length > 0 ? (
-                                                    <ul className="list-disc list-inside text-gray-400 space-y-1 pl-1">
-                                                        {data.memories.map((mem: string, i: number) => (
-                                                            <li key={i}>{mem}</li>
-                                                        ))}
-                                                    </ul>
-                                                ) : (
-                                                    <div className="text-gray-600 italic">No recorded memories yet.</div>
-                                                )}
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </details>
                             </section>
 
                             {/* Inventory */}
                             <section>
-                                <h3 className="text-blue-400 font-bold mb-2 border-b border-blue-500/30 pb-1">Inventory</h3>
-                                <div className="space-y-1">
-                                    {inventory.length === 0 ? <div className="text-gray-600 text-sm">Empty</div> : inventory.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between bg-gray-900 p-2 rounded text-sm">
-                                            <span className="text-white">{item.name}</span>
-                                            <span className="text-gray-400">x{item.quantity}</span>
-                                        </div>
-                                    ))}
-                                </div>
+                                <details className="group">
+                                    <summary className="text-blue-400 font-bold mb-2 border-b border-blue-500/30 pb-1 cursor-pointer select-none">Inventory</summary>
+                                    <div className="space-y-1 group-open:block">
+                                        {inventory.length === 0 ? <div className="text-gray-600 text-sm">Empty</div> : inventory.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between bg-gray-900 p-2 rounded text-sm">
+                                                <span className="text-white">{item.name}</span>
+                                                <span className="text-gray-400">x{item.quantity}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </details>
                             </section>
                         </div>
                     )}
@@ -214,22 +222,26 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                     {activeTab === 'story' && (
                         <div className="h-full overflow-y-auto space-y-6 pr-2 custom-scrollbar">
                             <section>
-                                <h3 className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1">Scenario Summary</h3>
-                                <div className="bg-gray-900 p-4 rounded text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                    {scenarioSummary || "No summary available."}
-                                </div>
+                                <details className="group" open>
+                                    <summary className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1 cursor-pointer select-none">Scenario Summary</summary>
+                                    <div className="bg-gray-900 p-4 rounded text-sm text-gray-300 leading-relaxed whitespace-pre-wrap group-open:block">
+                                        {scenarioSummary || "No summary available."}
+                                    </div>
+                                </details>
                             </section>
 
                             <section>
-                                <h3 className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1">Recent History (Last 5)</h3>
-                                <div className="space-y-2">
-                                    {chatHistory.slice(-5).map((msg, idx) => (
-                                        <div key={idx} className={`p-3 rounded text-sm ${msg.role === 'user' ? 'bg-gray-800 border-l-2 border-blue-500' : 'bg-gray-900 border-l-2 border-purple-500'}`}>
-                                            <div className="text-xs text-gray-500 mb-1 uppercase">{msg.role}</div>
-                                            <div className="text-gray-300">{msg.text.substring(0, 150)}...</div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <details className="group" open>
+                                    <summary className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1 cursor-pointer select-none">Recent History (Last 5)</summary>
+                                    <div className="space-y-2 group-open:block">
+                                        {chatHistory.slice(-5).map((msg, idx) => (
+                                            <div key={idx} className={`p-3 rounded text-sm ${msg.role === 'user' ? 'bg-gray-800 border-l-2 border-blue-500' : 'bg-gray-900 border-l-2 border-purple-500'}`}>
+                                                <div className="text-xs text-gray-500 mb-1 uppercase">{msg.role}</div>
+                                                <div className="text-gray-300">{msg.text.substring(0, 150)}...</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </details>
                             </section>
                         </div>
                     )}

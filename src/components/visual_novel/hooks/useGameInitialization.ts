@@ -18,7 +18,7 @@ export function useGameInitialization({ setIsMounted }: UseGameInitializationPro
             try {
                 const gameId = useGameStore.getState().activeGameId; // Get current game ID
                 const extraChars = await getExtraCharacterImages(gameId);
-                if (isLocal) console.log("Loaded Extra Characters:", extraChars);
+                // if (isLocal) console.log("Loaded Extra Characters:", extraChars);
                 useGameStore.getState().setAvailableExtraImages(extraChars);
             } catch (e) {
                 console.error("Failed to load extra assets:", e);

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { get, set, del } from 'idb-keyval'; // [IndexedDB]
+import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval'; // [IndexedDB]
+import { createClient } from './supabase'; // [Cloud]
+import LZString from 'lz-string'; // [Compression]
 import { ScriptSegment } from '@/lib/script-parser';
 import { MoodType } from '@/data/prompts/moods';
 import { GameRegistry } from '@/lib/registry/GameRegistry'; // [Refactor]
@@ -27,6 +29,12 @@ export interface GameState {
   isHydrated: boolean; // [NEW] Track IDB Rehydration status
   setHydrated: (hydrated: boolean) => void;
 
+  // Save/Load System
+  saveToSlot: (slotId: number | string, gameId?: string) => Promise<void>;
+  loadFromSlot: (slotId: number | string, gameId?: string) => Promise<boolean>;
+  deleteSlot: (slotId: number | string, gameId?: string) => Promise<void>;
+  listSaveSlots: (gameId: string) => Promise<SaveSlotMetadata[]>;
+
   // Event System State
   triggeredEvents: string[];
   activeEvent: any | null;
@@ -41,9 +49,14 @@ export interface GameState {
   setUserCoins: (coins: number) => void;
 
   addMessage: (message: Message) => void;
-  updateLastMessage: (newText: string) => void; // [Fix] Allow updating last message for async content
+  updateLastMessage: (newText: string) => void; // Partial text update
+  replaceLastMessage: (message: Message) => void; // [Fix] Full replacement (Atomic Snapshot)
   clearHistory: () => void;
   truncateHistory: (keepCount: number) => void;
+
+  // [NEW] Story Log (Persistent Narrative History)
+  storyLog: StoryLogEntry[];
+  addStoryLogEntry: (entry: StoryLogEntry) => void;
 
   turnCount: number;
   incrementTurnCount: () => void;
@@ -213,7 +226,15 @@ export interface GameState {
 
   // [New] Deferred Logic Application
   pendingLogic: any | null;
-  setPendingLogic: (logic: any | null) => void;
+  // [New] Cloud Save System
+  lastCloudSave: number | null;
+  saveToCloud: () => Promise<void>;
+  loadFromCloud: (gameId?: string) => Promise<boolean>;
+  checkForCloudConflict: () => Promise<{ hasConflict: boolean, cloudTurn: number, localTurn: number, cloudTime: string } | null>;
+
+  // [NEW] Ending System
+  endingType: 'none' | 'bad' | 'good' | 'true';
+  setEndingType: (type: 'none' | 'bad' | 'good' | 'true') => void;
 }
 
 export interface ChoiceHistoryEntry {
@@ -291,6 +312,27 @@ export interface RelationshipInfo {
   speechStyle: string | null; // e.g. "Polite", "Casual", "Archaic"
 }
 
+export interface StoryLogEntry {
+  turn: number;
+  content: string;
+  type: 'desc' | 'dialogue' | 'event' | 'narrative';
+  timestamp: number;
+}
+
+export interface SaveSlotMetadata {
+  id: number;
+  gameId: string;
+  date: string; // ISO String
+  summary?: string; // [Modified] Optional, deprecated
+  playtime: number; // Seconds (Future)
+  turn: number;
+  location: string;
+  // [NEW] Enhanced Save Info
+  playerName?: string;
+  mainGoal?: string;
+  playerRank?: string; // [NEW]
+}
+
 export interface GameCharacterData {
   id: string;
   name: string;
@@ -348,6 +390,232 @@ export const useGameStore = create<GameState>()(
 
       setStoryModel: (model) => set({ storyModel: model }),
 
+      // Save/Load Actions
+      saveToSlot: async (slotId: number | string, gameId?: string) => {
+        const state = get();
+        const targetGameId = gameId || state.activeGameId;
+        const key = (slotId === 'auto')
+          ? `vn_autosave_${targetGameId}`
+          : `vn_save_${targetGameId}_${slotId}`;
+
+        const metadata: SaveSlotMetadata = {
+          id: typeof slotId === 'number' ? slotId : -1, // -1 for auto
+          gameId: targetGameId,
+          date: new Date().toISOString(),
+          // summary: state.lastTurnSummary ... (Removed as per request)
+          playtime: 0, // Placeholder
+          turn: state.turnCount,
+          location: state.currentLocation,
+          // [NEW] Enhanced Info
+          playerName: state.playerName,
+          mainGoal: state.playerStats.final_goal || state.goals?.find(g => g.type === 'MAIN' && g.status === 'ACTIVE')?.description || "생존",
+          playerRank: state.playerStats.playerRank
+        };
+
+        // Create a Clean Snapshot
+        // We only persist the "Game State" parts, not the methods
+        // zustand/persist handles the main persistence, but manual slots are separate
+        const snapshot = {
+          // Meta
+          metadata,
+          // Core State
+          turnCount: state.turnCount,
+          activeGameId: targetGameId,
+          userCoins: state.userCoins,
+          // Narrative
+          chatHistory: state.chatHistory,
+          displayHistory: state.displayHistory, // [Fix] Persist Display History too
+          storyLog: state.storyLog,
+          scenarioSummary: state.scenarioSummary,
+          lastTurnSummary: state.lastTurnSummary, // Important for Logic
+          // World
+          currentLocation: state.currentLocation,
+          currentBackground: state.currentBackground,
+          currentBgm: state.currentBgm,
+          characterExpression: state.characterExpression,
+          // Data
+          characterData: state.characterData,
+          inventory: state.inventory,
+          playerStats: state.playerStats,
+          goals: state.goals,
+          skills: state.skills,
+          worldData: state.worldData,
+          // Technical
+          triggeredEvents: state.triggeredEvents,
+          activeEvent: state.activeEvent,
+          pendingLogic: state.pendingLogic,
+          // [Fix] Persist Execution State
+          scriptQueue: state.scriptQueue,
+          currentSegment: state.currentSegment,
+          choices: state.choices,
+          // Config
+          playerName: state.playerName,
+          language: state.language,
+          isGodMode: state.isGodMode,
+          // Lists
+          activeCharacters: state.activeCharacters,
+          deadCharacters: state.deadCharacters,
+          extraOverrides: state.extraOverrides,
+          choiceHistory: state.choiceHistory,
+          endingType: state.endingType,
+
+          timestamp: Date.now()
+        };
+
+        try {
+          // [Fix] Sanitize snapshot to remove any accidental functions (DataCloneError)
+          // Specifically 'setHydrated' or other actions that might have leaked into 'activeEvent' or 'any' types.
+          const sanitized = JSON.parse(JSON.stringify(snapshot));
+          await idbSet(key, sanitized);
+          console.log(`[Store] Saved to slot ${slotId} (${key})`);
+
+          // Only update metadata list for MANUAL numbered slots
+          if (typeof slotId === 'number') {
+            const metaKey = `vn_metadata_${targetGameId}`;
+            const existingMeta = (await idbGet(metaKey)) || [];
+            const newMetaList = existingMeta.filter((m: any) => m.id !== slotId);
+            newMetaList.push(metadata);
+            newMetaList.sort((a: any, b: any) => a.id - b.id);
+            await idbSet(metaKey, newMetaList);
+          }
+
+        } catch (e) {
+          console.error(`[Store] Failed to save to slot ${slotId}:`, e);
+          throw e; // Propagate to UI
+        }
+      },
+
+      loadFromSlot: async (slotId: number | string, gameId?: string) => {
+        const state = get();
+        // [Fix] Prefer passed gameId logic for Title Screen usage
+        const targetGameId = gameId || state.activeGameId;
+        const key = (slotId === 'auto')
+          ? `vn_autosave_${targetGameId}`
+          : `vn_save_${targetGameId}_${slotId}`;
+
+        try {
+          const snapshot = await idbGet(key);
+          if (!snapshot) {
+            console.warn(`[Store] No save found for slot ${slotId}`);
+            return false;
+          }
+
+          console.log(`[Store] Loading from slot ${slotId} (${key})...`);
+
+          // Hydrate State
+          set({
+            // Helper: We simply merge the snapshot into state
+            // Be careful with objects that need deep merge vs replacement.
+            // For Load, REPLACEMENT is usually safer to avoid ghost state.
+
+            // Core
+            turnCount: snapshot.turnCount,
+            activeGameId: snapshot.activeGameId || targetGameId, // Ensure ID matches
+            userCoins: snapshot.userCoins, // Maybe keep global? No, save state has coins at that time.
+
+            // Narrative
+            chatHistory: snapshot.chatHistory || [],
+            displayHistory: snapshot.displayHistory || [],
+            storyLog: snapshot.storyLog || [],
+            scenarioSummary: snapshot.scenarioSummary || "",
+            lastTurnSummary: snapshot.lastTurnSummary || "",
+
+            // World & Visuals
+            currentLocation: snapshot.currentLocation,
+            currentBackground: snapshot.currentBackground,
+            currentBgm: snapshot.currentBgm,
+            characterExpression: snapshot.characterExpression,
+
+            // Data
+            characterData: snapshot.characterData || {},
+            inventory: snapshot.inventory || [],
+            playerStats: snapshot.playerStats || INITIAL_STATS, // Fallback
+            goals: snapshot.goals || [],
+            skills: snapshot.skills || [],
+            worldData: snapshot.worldData || { locations: {}, items: {} },
+
+            // Technical
+            triggeredEvents: snapshot.triggeredEvents || [],
+            activeEvent: snapshot.activeEvent || null,
+            pendingLogic: snapshot.pendingLogic || null,
+
+            // [Fix] Restore Execution State
+            choices: snapshot.choices || [],
+            scriptQueue: snapshot.scriptQueue || [],
+            currentSegment: snapshot.currentSegment || null,
+
+            // Config
+            playerName: snapshot.playerName,
+            // language: snapshot.language, // Keep User Preference? Or Load? -> Usually Preference dominates, but let's see.
+            // Logic: If I saved in EN, do I want to load in EN? Probably yes for consistency of generated text.
+
+            // Lists
+            activeCharacters: snapshot.activeCharacters || [],
+            deadCharacters: snapshot.deadCharacters || [],
+            extraOverrides: snapshot.extraOverrides || [],
+            choiceHistory: snapshot.choiceHistory || [],
+            endingType: snapshot.endingType || 'none',
+
+            isDataLoaded: true, // Mark as ready
+          });
+
+          // [Fix] Rehydrate Static Data after Slot Load as well
+          const loadedGameId = snapshot.activeGameId || targetGameId;
+          try {
+            const staticData = await DataManager.loadGameData(loadedGameId);
+            set({
+              lore: staticData.lore || {},
+              worldData: staticData.world || { locations: {}, items: {} },
+              availableBackgrounds: staticData.backgroundList || [],
+              availableCharacterImages: staticData.characterImageList || [],
+              availableExtraImages: staticData.extraCharacterList || [],
+              backgroundMappings: staticData.backgroundMappings || {},
+              // functions...
+            });
+          } catch (e) { console.warn("[Store] Static data rehydrate failed on loadFromSlot", e); }
+
+          // Trigger a lightweight consistency check or re-render trigger if needed
+          return true;
+
+        } catch (e) {
+          console.error(`[Store] Failed to load slot ${slotId}:`, e);
+          return false;
+        }
+      },
+
+      deleteSlot: async (slotId: number | string, gameId?: string) => {
+        const state = get();
+        const targetGameId = gameId || state.activeGameId;
+        const key = (slotId === 'auto')
+          ? `vn_autosave_${targetGameId}`
+          : `vn_save_${targetGameId}_${slotId}`;
+
+        try {
+          await idbDel(key);
+          console.log(`[Store] Deleted slot ${slotId}`);
+
+          // Only update metadata if manual
+          if (typeof slotId === 'number') {
+            const metaKey = `vn_metadata_${targetGameId}`;
+            const existingMeta = (await idbGet(metaKey)) || [];
+            const newMetaList = existingMeta.filter((m: any) => m.id !== slotId);
+            await idbSet(metaKey, newMetaList);
+          }
+        } catch (e) {
+          console.error(`[Store] Failed to delete slot ${slotId}:`, e);
+          throw e;
+        }
+      },
+
+      listSaveSlots: async (gameId: string) => {
+        const metaKey = `vn_metadata_${gameId}`;
+        try {
+          return (await idbGet(metaKey)) || [];
+        } catch (e) {
+          return [];
+        }
+      },
+
       // [NEW] Session Bridging
       sessionUser: null,
       setSessionUser: (user) => set({ sessionUser: user }),
@@ -399,64 +667,74 @@ export const useGameStore = create<GameState>()(
             // Fallback to DataManager default logic or error handling
           }
 
-          set({
-            activeGameId: id,
-            worldData: data.world,
-            characterData: charState,
-            // Logic Injection via Registry (Priority) or DataManager (Fallback)
-            getSystemPromptTemplate: config?.getSystemPromptTemplate || data.getSystemPromptTemplate,
-            getRankInfo: config?.getRankInfo || data.getRankInfo,
+          set((state) => {
+            const isDifferentGame = state.activeGameId !== id;
+            if (isDifferentGame || reset) {
+              // ... RESET LOGIC ...
+              // Existing logic
+              return {
+                activeGameId: id,
+                isDataLoaded: true,
+                lore: data.lore,
+                worldData: data.world, // Changed from data.worldData to data.world to match original
+                availableBackgrounds: data.backgroundList,
+                availableCharacterImages: data.characterImageList || [],
+                availableExtraImages: data.extraCharacterList || [],
+                backgroundMappings: config?.assets.backgroundMap || data.backgroundMappings, // Re-added config logic
+                events: data.events, // Load events
+                initialScenario: data.scenario,
+                wikiData: data.wikiData,
+                characterMap: data.characterMap, // Added
+                extraMap: data.extraMap, // Added
+                constants: data.constants, // Added
+                characterCreationQuestions: data.characterCreationQuestions, // Added
+                characterData: charState, // Reset to initial static state (relationships 0)
+                getSystemPromptTemplate: config?.getSystemPromptTemplate || data.getSystemPromptTemplate,
+                getRankInfo: config?.getRankInfo || data.getRankInfo,
 
-            // Assets
-            backgroundMappings: config?.assets.backgroundMap || data.backgroundMappings,
-            events: data.events, // Load events
-            isDataLoaded: true,
-
-            // Also update available backgrounds list
-            availableBackgrounds: data.backgroundList,
-            availableCharacterImages: data.characterImageList || [],
-            availableExtraImages: data.extraCharacterList || [],
-
-            // Reset game when switching? Maybe optional.
-            // For now, let's reset to ensure clean state.
-            initialScenario: data.scenario,
-            wikiData: data.wikiData,
-            characterMap: data.characterMap, // Added
-            extraMap: data.extraMap, // Added
-            constants: data.constants, // Added
-            lore: data.lore, // Added
-            characterCreationQuestions: data.characterCreationQuestions, // Added
-
+                // Reset Play State
+                turnCount: 0,
+                chatHistory: [],
+                displayHistory: [],
+                storyLog: [],
+                activeCharacters: [],
+                activeEvent: null,
+                triggeredEvents: [],
+                inventory: [],
+                playerStats: JSON.parse(JSON.stringify(INITIAL_STATS)), // Deep Copy
+                goals: [],
+                skills: [],
+                choices: [],
+                scriptQueue: [],
+                currentSegment: null,
+                currentBackground: '', // Will be set by init logic or script
+                characterExpression: 'normal', // [Fix logic]
+                currentBgm: null,
+                pendingLogic: null,
+                endingType: 'none', // Reset Ending
+              };
+            }
+            // Just update static data if same game
+            return {
+              activeGameId: id,
+              isDataLoaded: true,
+              lore: data.lore,
+              worldData: data.world, // Changed from data.worldData to data.world to match original
+              availableBackgrounds: data.backgroundList,
+              availableCharacterImages: data.characterImageList || [],
+              availableExtraImages: data.extraCharacterList || [],
+              backgroundMappings: config?.assets.backgroundMap || data.backgroundMappings, // Update mappings
+              events: data.events, // Load events
+              initialScenario: data.scenario,
+              wikiData: data.wikiData,
+              characterMap: data.characterMap, // Added
+              extraMap: data.extraMap, // Added
+              constants: data.constants, // Added
+              characterCreationQuestions: data.characterCreationQuestions, // Added
+              getSystemPromptTemplate: config?.getSystemPromptTemplate || data.getSystemPromptTemplate,
+              getRankInfo: config?.getRankInfo || data.getRankInfo,
+            };
           });
-
-          // [Conditional Reset] Only reset state if requested (default true)
-          // If loading an existing session (Continue), skip this block to preserve history.
-          if (reset !== false) {
-            console.log(`[Store] Resetting Game State for new game: ${id}`);
-            set({
-              // [Critical Fix] Reset Gameplay State on Game Switch
-              // Prevent Wuxia text/state from leaking into God Bless You
-              chatHistory: [],
-              displayHistory: [],
-              scriptQueue: [],
-              currentSegment: null,
-
-              turnCount: 0, // Reset Turn (0 for Creation Phase)
-              triggeredEvents: [],
-              activeEvent: null,
-              activeCharacters: [], // Clear characters
-
-              // Reset Visuals
-              currentBackground: '', // Will be set by init logic or script
-              characterExpression: '', // [Fix] Clear character image
-              currentBgm: null,
-
-              // Reset Meta
-              pendingLogic: null,
-            });
-          } else {
-            console.log(`[Store] Preserving Game State for Continue: ${id}`);
-          }
 
           // If we are switching games, we should probably reset the session unless it's just a reload.
           // Logic for "Fresh Start" vs "Reload" needs to be handled by caller.
@@ -468,6 +746,11 @@ export const useGameStore = create<GameState>()(
 
       chatHistory: [],
       displayHistory: [],
+      storyLog: [],
+
+      addStoryLogEntry: (entry) => set((state) => ({
+        storyLog: [...state.storyLog, entry]
+      })),
 
       triggeredEvents: [],
       activeEvent: null,
@@ -500,6 +783,15 @@ export const useGameStore = create<GameState>()(
 
         return { chatHistory: history, displayHistory };
       }),
+      replaceLastMessage: (message) => set((state) => {
+        const history = [...state.chatHistory];
+        if (history.length > 0) history[history.length - 1] = message;
+
+        const display = state.displayHistory ? [...state.displayHistory] : [];
+        if (display.length > 0) display[display.length - 1] = message;
+
+        return { chatHistory: history, displayHistory: display };
+      }),
       clearHistory: () => set({ chatHistory: [], displayHistory: [] }),
       truncateHistory: (keepCount) => set((state) => {
         let newHistory = state.chatHistory.slice(-keepCount);
@@ -510,7 +802,11 @@ export const useGameStore = create<GameState>()(
       }),
 
       turnCount: 0,
-      incrementTurnCount: () => set((state) => ({ turnCount: state.turnCount + 1 })),
+      incrementTurnCount: () => {
+        set((state) => ({ turnCount: state.turnCount + 1 }));
+        // [Cloud] Auto-save removed from here to prevent saving "Limbo" state.
+        // Moved to setChoices.
+      },
 
       currentBackground: '/assets/backgrounds/Default_Fallback.jpg',
       setBackground: (bg) => set({ currentBackground: bg }),
@@ -710,7 +1006,13 @@ export const useGameStore = create<GameState>()(
       }),
 
       scriptQueue: [],
-      setScriptQueue: (queue) => set({ scriptQueue: queue }),
+      setScriptQueue: (queue) => {
+        set({ scriptQueue: queue });
+        // [Fix] Auto Save on Script Update (Linear Progress Persistence)
+        if (queue && queue.length > 0) {
+          get().saveToSlot('auto');
+        }
+      },
       currentSegment: null,
       setCurrentSegment: (segment) => set({ currentSegment: segment }),
       choices: [],
@@ -718,6 +1020,15 @@ export const useGameStore = create<GameState>()(
         console.log("[Store] setChoices called with:", choices);
         if (choices.length === 0) console.trace("[Store] setChoices([]) called from:");
         set({ choices });
+
+        // [Cloud] Auto-save Trigger: Only save when user input is required (Stable State)
+        // This prevents saving empty states during processing.
+        if (choices.length > 0) {
+          console.log('[Store] Auto-saving at Choice Point');
+          get().saveToCloud();
+          // [Fix] Also save to Local Auto Slot (Per-Game Mode Isolation)
+          get().saveToSlot('auto');
+        }
       },
 
       textMessageHistory: {},
@@ -769,6 +1080,9 @@ export const useGameStore = create<GameState>()(
       updateTensionLevel: (delta) => set((state) => ({
         tensionLevel: Math.max(-100, Math.min(100, state.tensionLevel + delta))
       })),
+
+      endingType: 'none',
+      setEndingType: (type) => set({ endingType: type }),
 
       // [NEW] Unified Skill Implementation
       skills: [],
@@ -845,7 +1159,201 @@ export const useGameStore = create<GameState>()(
       },
 
       pendingLogic: null,
-      setPendingLogic: (logic) => set({ pendingLogic: logic }),
+      setPendingLogic: (logic: any) => set({ pendingLogic: logic }),
+
+      // [Cloud Save Implementation]
+      lastCloudSave: null,
+
+      saveToCloud: async () => {
+        const state = get();
+        const user = state.sessionUser;
+        if (!user) return;
+
+        console.log("[Store] Starting Cloud Save...");
+        const supabase = createClient();
+        if (!supabase) return;
+
+        try {
+          // 1. Prepare Data (Filter non-essential & huge static data)
+          const {
+            // Functions & Actions
+            saveToCloud, loadFromCloud, checkForCloudConflict,
+            setGameId, addMessage, updateLastMessage, incrementTurnCount, // ...exclude all methods
+
+            // Static / Cache Data (Re-fetched on load)
+            isDataLoaded,
+            lore, worldData, availableBackgrounds, availableCharacterImages, availableExtraImages, backgroundMappings,
+
+            // Session specific
+            sessionUser, lastCloudSave,
+
+            // Target Data to Save
+            ...dataToSave
+          } = state;
+
+          // 2. Optimize History (Remove Snapshots)
+          const optimizedChatHistory = state.chatHistory.map(msg => {
+            const { snapshot, ...rest } = msg; return rest;
+          });
+          const optimizedDisplayHistory = state.displayHistory.map(msg => {
+            const { snapshot, ...rest } = msg; return rest;
+          });
+
+          // 3. Construct Payload
+          const payload = {
+            ...dataToSave,
+            chatHistory: optimizedChatHistory,
+            displayHistory: optimizedDisplayHistory,
+            // Ensure choices/queue are saved
+            choices: state.choices,
+            scriptQueue: state.scriptQueue,
+            currentSegment: state.currentSegment
+          };
+
+          // 4. Compress
+          const jsonString = JSON.stringify(payload);
+          const compressed = LZString.compressToUTF16(jsonString);
+
+          // 5. Upload
+          const { error } = await supabase
+            .from('game_saves')
+            .upsert({
+              user_id: user.id,
+              game_id: state.activeGameId,
+              save_data: { v: 1, data: compressed }, // Wrap in object for jsonb
+              turn_count: state.turnCount,
+              updated_at: new Date().toISOString()
+            });
+
+          if (error) {
+            console.error("[Store] Cloud Save Failed:", JSON.stringify(error, null, 2));
+          } else {
+            console.log(`[Store] Cloud Save Success (Turn ${state.turnCount})`);
+            set({ lastCloudSave: Date.now() });
+          }
+        } catch (e) {
+          console.error("[Store] Cloud Save Exception:", e);
+        }
+      },
+
+      loadFromCloud: async () => {
+        const state = get();
+        const user = state.sessionUser;
+        if (!user) return false;
+
+        const supabase = createClient();
+        if (!supabase) return false;
+
+        try {
+          const { data, error } = await supabase
+            .from('game_saves')
+            .select('save_data')
+            .eq('user_id', user.id)
+            .eq('game_id', state.activeGameId)
+            .single();
+
+          if (error || !data) return false;
+
+          // Decompress
+          const wrapper = data.save_data as any; // { v: 1, data: ... }
+          const compressed = wrapper.data || wrapper; // Handle both just in case
+
+          let parsed: Partial<GameState> = {};
+
+          if (typeof compressed === 'string') {
+            const decompressed = LZString.decompressFromUTF16(compressed);
+            if (!decompressed) throw new Error("Decompression failed");
+            parsed = JSON.parse(decompressed);
+          } else {
+            parsed = compressed; // Fallback for raw json
+          }
+
+          // Hydrate
+          // [Fix] Rehydrate Static Data (stripped during saveToCloud) using DataManager
+          const targetGameId = parsed.activeGameId || state.activeGameId || 'wuxia';
+
+          let staticData: any = {};
+          try {
+            console.log(`[Store] Rehydrating static data for ${targetGameId}...`);
+            staticData = await DataManager.loadGameData(targetGameId);
+          } catch (err) {
+            console.error("[Store] Failed to rehydrate static data:", err);
+            // Fallback: Continue without static data (might cause issues but better than hard crash)
+          }
+
+          set({
+            ...parsed,
+            // Merge Static Data
+            lore: staticData.lore || {},
+            worldData: staticData.world || { locations: {}, items: {} },
+            availableBackgrounds: staticData.backgroundList || [],
+            availableCharacterImages: staticData.characterImageList || [],
+            availableExtraImages: staticData.extraCharacterList || [],
+            backgroundMappings: staticData.backgroundMappings || {},
+            getSystemPromptTemplate: staticData.getSystemPromptTemplate, // Restore functions if needed (though store has them usually?) 
+            // Actually, we can't easily restore functions from DataManager object to Store root if they aren't part of initial state shape managed by store creator?
+            // The store creator defines methods. 
+            // DataManager returns: { lore, ... }
+            // We should ensure 'events' and 'characterMap' are also restored if they are used.
+            characterMap: staticData.characterMap || {},
+            extraMap: staticData.extraMap || {},
+            constants: staticData.constants || {}, // If used
+
+            isDataLoaded: true, // Mark data as loaded
+            // Ensure methods are not overwritten (spread order protects them if they are in prototype/store definition, 
+            // but here we are merging into state object. Zustand handles merging.)
+
+            // [Fix] Explicitly Restore Execution State for Cloud Load
+            choices: parsed.choices || [],
+            scriptQueue: parsed.scriptQueue || [],
+            currentSegment: parsed.currentSegment || null,
+          });
+
+          console.log("[Store] Cloud Save Loaded Successfully");
+          return true;
+
+        } catch (e) {
+          console.error("[Store] Load Exception:", e);
+          return false;
+        }
+      },
+
+      checkForCloudConflict: async () => {
+        const state = get();
+        const user = state.sessionUser;
+        if (!user) return null;
+
+        const supabase = createClient();
+        if (!supabase) return null;
+
+        const { data, error } = await supabase
+          .from('game_saves')
+          .select('updated_at, turn_count')
+          .eq('user_id', user.id)
+          .eq('game_id', state.activeGameId)
+          .single();
+
+        if (error || !data) return null;
+
+        const cloudTime = new Date(data.updated_at).getTime();
+        // We don't track local updated_at precisely in state, but we can compare turn counts or rely on Login Event
+        // Or we can add `lastSaved` to state.
+        // For now, let's assume if Cloud exists we check if it looks 'newer' or 'different'.
+        // Logic: If Cloud Turn > Local Turn, it's definitely a conflict/newer.
+        // If Cloud Turn < Local Turn, we might strictly ignore or warn?
+
+        const localTurn = state.turnCount;
+
+        if (data.turn_count > localTurn) {
+          return {
+            hasConflict: true,
+            cloudTurn: data.turn_count,
+            localTurn: localTurn,
+            cloudTime: data.updated_at
+          };
+        }
+        return null;
+      },
     }),
     {
       name: 'vn-game-storage-v2',
@@ -902,7 +1410,7 @@ export const useGameStore = create<GameState>()(
         getItem: async (name: string) => {
           // 1. Try IndexedDB first
           try {
-            const idbValue = await get(name);
+            const idbValue = await idbGet(name);
             if (idbValue) {
               // console.log(`[Store] Loaded ${name} from IndexedDB`);
               return idbValue;
@@ -918,7 +1426,7 @@ export const useGameStore = create<GameState>()(
               console.log(`[Store] Migrating ${name} from localStorage to IndexedDB...`);
               const parsed = JSON.parse(localStr);
               // Save to IDB for next time
-              await set(name, parsed);
+              await idbSet(name, parsed);
               // Clear old data to free up space (Safety: Only after parse success)
               localStorage.removeItem(name);
               return parsed;
@@ -936,13 +1444,13 @@ export const useGameStore = create<GameState>()(
             // IndexedDB cannot clone functions. Since we were using localStorage (JSON),
             // using JSON serialization here is safe and effectively strips all functions/proxies.
             const sanitized = JSON.parse(JSON.stringify(value));
-            await set(name, sanitized);
+            await idbSet(name, sanitized);
           } catch (e) {
             console.error('[Store] Failed to save to IDB:', e);
           }
         },
         removeItem: async (name: string) => {
-          await del(name);
+          await idbDel(name);
         },
       },
       onRehydrateStorage: () => (state) => {

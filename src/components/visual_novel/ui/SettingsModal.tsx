@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/lib/store';
+import { stopGlobalAudio } from '../hooks/useVNAudio';
 import { createClient } from '@/lib/supabase';
 import { deleteAccount } from '@/app/actions/auth';
 import {
     Zap, Star, Volume2, User, LogOut, AlertTriangle, X,
-    Settings as SettingsIcon, Monitor, Music
+    Settings as SettingsIcon, Monitor, Music, Cloud, Save
 } from 'lucide-react';
 import { MODEL_CONFIG } from '@/lib/model-config';
 
@@ -208,6 +209,11 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                                     </div>
                                                 )}
 
+                                                {/* Cloud Save Section */}
+                                                {activeSession?.user && (
+                                                    <CloudSaveSection />
+                                                )}
+
                                                 {/* Action Buttons */}
                                                 {!activeSession?.user ? (
                                                     <button
@@ -224,10 +230,32 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                                                 * 게스트 계정은 브라우저 쿠키 삭제 시 정보가 유실될 수 있습니다. 계정을 연동하여 데이터를 보호하세요.
                                                             </p>
                                                             <button
-                                                                onClick={() => router.push('/')}
+                                                                onClick={async () => {
+                                                                    const { error } = await supabase.auth.signInWithOAuth({
+                                                                        provider: 'google',
+                                                                        options: {
+                                                                            redirectTo: `${window.location.origin}/auth/callback?next=/`,
+                                                                            queryParams: {
+                                                                                access_type: 'offline',
+                                                                                prompt: 'consent',
+                                                                            },
+                                                                        },
+                                                                    });
+                                                                    if (error) {
+                                                                        console.error("Link Account Error:", error);
+                                                                        alert("계정 연동 중 오류가 발생했습니다: " + error.message);
+                                                                    }
+                                                                }}
                                                                 className="w-full py-3 bg-white border border-yellow-200 text-yellow-700 rounded-lg font-bold hover:bg-yellow-100 transition-colors text-sm"
                                                             >
-                                                                계정 연동하기 (Link Account)
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    {/* Chrome icon isn't imported, so just text or use existing icons if available. 
+                                                                        Actually, let's keep it simple with text as requested, or add icon if imported.
+                                                                        SettingsModal imports: Zap, Star, Volume2, User, LogOut, AlertTriangle, X, Settings, Monitor, Music, Cloud, Save.
+                                                                        No Chrome/Google icon. Text is fine.
+                                                                    */}
+                                                                    <span>계정 연동하기 (구글)</span>
+                                                                </div>
                                                             </button>
                                                         </div>
 
@@ -257,12 +285,33 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                                         </button>
                                                         <button
                                                             onClick={async () => {
-                                                                if (confirm((t as any).confirmWithdrawal || "Check")) {
-                                                                    const res = await deleteAccount();
-                                                                    if (res.success) {
-                                                                        router.push('/');
-                                                                    } else {
-                                                                        alert(res.error);
+                                                                if (confirm((t as any).confirmWithdrawal || "정말로 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.")) {
+                                                                    try {
+                                                                        const { data: { session } } = await supabase.auth.getSession();
+                                                                        const token = session?.access_token;
+
+                                                                        const res = await fetch('/api/auth/delete', {
+                                                                            method: 'POST',
+                                                                            headers: {
+                                                                                'Authorization': `Bearer ${token}`
+                                                                            }
+                                                                        });
+
+                                                                        if (res.ok) {
+                                                                            // Wipe Local Data
+                                                                            await supabase.auth.signOut();
+                                                                            localStorage.clear();
+                                                                            // IndexedDB clearing handled by store reset or manual
+                                                                            useGameStore.getState().resetGame();
+
+                                                                            router.push('/');
+                                                                        } else {
+                                                                            const err = await res.json();
+                                                                            alert("Failed: " + err.error);
+                                                                        }
+                                                                    } catch (e) {
+                                                                        console.error(e);
+                                                                        alert("Error during withdrawal");
                                                                     }
                                                                 }
                                                             }}
@@ -281,7 +330,12 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                             <SectionHeader title="System" desc="게임 초기화 및 종료" />
 
                                             <button
-                                                onClick={() => router.push('/')}
+                                                onClick={() => {
+                                                    // [Fix] Force Stop Audio + Reset Store State
+                                                    stopGlobalAudio();
+                                                    useGameStore.getState().setBgm(null);
+                                                    router.push('/');
+                                                }}
                                                 className="w-full py-4 bg-white hover:bg-gray-50 border border-gray-200 rounded-2xl text-gray-700 font-bold flex items-center justify-center gap-3 transition-all shadow-sm hover:shadow-md"
                                             >
                                                 <LogOut className="w-5 h-5 text-gray-500" />
@@ -327,7 +381,7 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                     </div>
                 </motion.div>
             </motion.div>
-        </AnimatePresence>
+        </AnimatePresence >
     );
 }
 
@@ -399,5 +453,43 @@ function ModelCard({ selected, onClick, name, desc, icon, color }: any) {
                 <div className="text-xs text-gray-500 mt-1 font-medium">{desc}</div>
             </div>
         </button>
+    );
+}
+
+function CloudSaveSection() {
+    const lastCloudSave = useGameStore(state => state.lastCloudSave);
+    const saveToCloud = useGameStore(state => state.saveToCloud);
+    const turnCount = useGameStore(state => state.turnCount);
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleSync = async () => {
+        setIsSyncing(true);
+        await saveToCloud();
+        setTimeout(() => setIsSyncing(false), 800);
+    };
+
+    return (
+        <div className="flex justify-between items-center mb-6 pb-6 border-b border-gray-100">
+            <span className="text-gray-500 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                <Cloud className="w-4 h-4" />
+                Cloud Save
+            </span>
+            <div className="flex items-center gap-4">
+                <div className="text-right">
+                    <div className="text-xs text-gray-400 font-bold mb-0.5">Last Sync</div>
+                    <div className="text-sm font-mono text-gray-700">
+                        {lastCloudSave ? new Date(lastCloudSave).toLocaleString() : 'Never'}
+                    </div>
+                </div>
+                <button
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="p-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                    title="Save Now"
+                >
+                    {isSyncing ? <Monitor className="w-5 h-5 animate-pulse" /> : <Save className="w-5 h-5" />}
+                </button>
+            </div>
+        </div>
     );
 }

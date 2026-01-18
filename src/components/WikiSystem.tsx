@@ -50,7 +50,7 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
             }
         });
 
-        console.log("Active Wiki Keys:", Array.from(keys));
+
         return Array.from(keys);
     }, [activeCharacters, gameWikiData, characterData]);
 
@@ -65,13 +65,14 @@ export default function WikiSystem({ isOpen, onClose, initialCharacter = "고하
     }, [isOpen]); // Only run when opening to avoid overriding user navigation
 
     // Debugging: Log loaded data keys
-    React.useEffect(() => {
-        console.log("WikiSystem mounted.");
-        console.log("Loaded wiki data keys:", Object.keys(gameWikiData));
-        console.log("Entries count:", Object.keys(gameWikiData).length);
-        const categories = new Set(Object.values(gameWikiData).map((v: any) => v.category));
-        console.log("Categories present:", Array.from(categories));
-    }, [gameWikiData]);
+    // Debugging: Log loaded data keys - REMOVED as per user request
+    // React.useEffect(() => {
+    //     console.log("WikiSystem mounted.");
+    //     console.log("Loaded wiki data keys:", Object.keys(gameWikiData));
+    //     console.log("Entries count:", Object.keys(gameWikiData).length);
+    //     const categories = new Set(Object.values(gameWikiData).map((v: any) => v.category));
+    //     console.log("Categories present:", Array.from(categories));
+    // }, [gameWikiData]);
 
     // Footnote Logic
     const footnotes: string[] = [];
