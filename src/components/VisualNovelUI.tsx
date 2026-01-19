@@ -695,17 +695,8 @@ export default function VisualNovelUI() {
     // [New] Recharge Popup State
     const [showRechargePopup, setShowRechargePopup] = useState(false);
 
-    const handleRecharge = async () => {
-        const newCoins = userCoins + 50;
-        setUserCoins(newCoins);
-        setShowRechargePopup(false);
-        addToast("50 토큰이 충전되었습니다! (테스트)", "success");
-
-        if (session?.user && supabase) {
-            const { error } = await supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id);
-            if (error) console.error("Recharge Update Failed:", error);
-        }
-    };
+    // [Refactor] Recharge Popup Logic
+    // handleRecharge removed in favor of Store redirection
 
     // [Refactor] Sync Auth State from Hook
     const { session, coins: authCoins, refreshSession } = useAuthSession();
@@ -5266,6 +5257,7 @@ export default function VisualNovelUI() {
 
 
                 {/* Recharge Popup */}
+                {/* Recharge Popup */}
                 <AnimatePresence>
                     {showRechargePopup && (
                         <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
@@ -5286,7 +5278,7 @@ export default function VisualNovelUI() {
                                     <h3 className="text-xl font-bold text-yellow-400">토큰 부족 (Insufficient Tokens)</h3>
                                     <p className="text-gray-300 text-sm leading-relaxed">
                                         행동을 위한 토큰이 부족합니다.<br />
-                                        무료로 충전하시겠습니까?
+                                        상점에서 토큰을 구매하시겠습니까?
                                     </p>
 
                                     <div className="w-full h-px bg-gray-700 my-2" />
@@ -5304,14 +5296,14 @@ export default function VisualNovelUI() {
                                         <button
                                             onClick={() => {
                                                 playSfx('ui_confirm');
-                                                handleRecharge();
+                                                setShowRechargePopup(false);
+                                                setIsStoreOpen(true);
                                             }}
-                                            className="flex-1 py-3 rounded-lg bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-bold shadow-lg hover:shadow-yellow-500/20 transition-all active:scale-95"
+                                            className="flex-1 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 rounded-lg font-bold text-black shadow-lg transition-all transform hover:scale-105"
                                         >
-                                            충전하기 (+50)
+                                            상점 이동
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-2">* 현재 테스트 버전에서는 무료로 제공됩니다.</p>
                                 </div>
                             </motion.div>
                         </div>
@@ -5627,15 +5619,17 @@ export default function VisualNovelUI() {
 
             {/* [New] The End Screen Overlay */}
             {/* [New] The End Screen Overlay (Component) */}
-            {showTheEnd && (
-                <TheEndScreen
-                    onTitle={() => {
-                        setShowTheEnd(false);
-                        handleTitle();
-                    }}
-                    playerRank={playerStats.playerRank}
-                />
-            )}
+            {
+                showTheEnd && (
+                    <TheEndScreen
+                        onTitle={() => {
+                            setShowTheEnd(false);
+                            handleTitle();
+                        }}
+                        playerRank={playerStats.playerRank}
+                    />
+                )
+            }
 
         </div >
     );
