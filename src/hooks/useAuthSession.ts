@@ -8,6 +8,7 @@ interface AuthSessionResult {
     session: Session | null;
     loading: boolean;
     coins: number;
+    fatePoints: number; // [NEW]
     refreshSession: () => Promise<void>;
 }
 
@@ -16,6 +17,7 @@ export function useAuthSession(): AuthSessionResult {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [coins, setCoins] = useState(0);
+    const [fatePoints, setFatePoints] = useState(0); // [NEW] Fate Points State
 
     // Singleton client
     const supabase = createClient();
@@ -24,10 +26,18 @@ export function useAuthSession(): AuthSessionResult {
         if (!supabase) return;
         const { data, error } = await supabase
             .from('profiles')
-            .select('coins')
+            .select('coins, fate_points') // [Fixed] Select fate_points too
             .eq('id', userId)
             .single();
-        if (data) setCoins(data.coins);
+
+        if (error) {
+            console.error("[Auth-Hook] fetchCoins Error:", error);
+        }
+        if (data) {
+            console.log("[Auth-Hook] fetchCoins Success:", data);
+            setCoins(data.coins);
+            setFatePoints(data.fate_points || 0);
+        }
     };
 
     const refreshSession = async () => {
@@ -157,5 +167,5 @@ export function useAuthSession(): AuthSessionResult {
 
     }, []);
 
-    return { user, session, loading, coins, refreshSession };
+    return { user, session, loading, coins, fatePoints, refreshSession };
 }

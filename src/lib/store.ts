@@ -381,7 +381,7 @@ const INITIAL_STATS: PlayerStats = {
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      activeGameId: 'god_bless_you', // Default
+      activeGameId: 'wuxia', // Default
       storyModel: MODEL_CONFIG.STORY, // Default to Configured Model
       isDataLoaded: false,
       isHydrated: false, // Start false
@@ -1347,11 +1347,13 @@ export const useGameStore = create<GameState>()(
           .eq('game_id', state.activeGameId)
           .order('updated_at', { ascending: false })
           .limit(1)
-          .maybeSingle();
+          .limit(1);
 
-        if (error || !data) return null;
+        const row = data && data.length > 0 ? data[0] : null;
 
-        const cloudTime = new Date(data.updated_at).getTime();
+        if (error || !row) return null;
+
+        const cloudTime = new Date(row.updated_at).getTime();
         // We don't track local updated_at precisely in state, but we can compare turn counts or rely on Login Event
         // Or we can add `lastSaved` to state.
         // For now, let's assume if Cloud exists we check if it looks 'newer' or 'different'.
@@ -1360,12 +1362,12 @@ export const useGameStore = create<GameState>()(
 
         const localTurn = state.turnCount;
 
-        if (data.turn_count > localTurn) {
+        if (row.turn_count > localTurn) {
           return {
             hasConflict: true,
-            cloudTurn: data.turn_count,
+            cloudTurn: row.turn_count,
             localTurn: localTurn,
-            cloudTime: data.updated_at
+            cloudTime: row.updated_at
           };
         }
         return null;

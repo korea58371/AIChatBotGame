@@ -708,7 +708,7 @@ export default function VisualNovelUI() {
     };
 
     // [Refactor] Sync Auth State from Hook
-    const { session, coins: authCoins } = useAuthSession();
+    const { session, coins: authCoins, refreshSession } = useAuthSession();
 
     // Sync Coins to Global Store when they change
     useEffect(() => {
@@ -5476,6 +5476,8 @@ export default function VisualNovelUI() {
                     onClose={() => setShowResetConfirm(false)}
                     t={t}
                     session={session}
+                    coins={userCoins} // [Fix] Pass coins for display
+                    onRefresh={refreshSession} // [Fix] Pass refresh handler
                     onResetGame={handleNewGame}
                 />
 

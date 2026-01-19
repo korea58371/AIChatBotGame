@@ -54,8 +54,9 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
 
     const setSessionUser = useGameStore(state => state.setSessionUser);
 
-    // Check Auth State using Shared Hook
-    const { session: authSession, user: authUser, loading: authLoading, coins: authCoins } = useAuthSession();
+    const { session: authSession, user: authUser, loading: authLoading, coins: authCoins, fatePoints: authFatePoints, refreshSession } = useAuthSession();
+    // Wrap result for cleaner usage below if needed, or just use variables directly.
+    const authSessionResult = { session: authSession, user: authUser, loading: authLoading, coins: authCoins, fatePoints: authFatePoints, refreshSession };
 
     useEffect(() => {
         if (!authLoading) {
@@ -455,6 +456,8 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                     session={session}
                     onResetGame={resetGameStore}
                     coins={userCoins}
+                    fatePoints={authSessionResult?.fatePoints || 0} // [NEW] Pass Fate Points
+                    onRefresh={refreshSession}
                 />
             )}
 

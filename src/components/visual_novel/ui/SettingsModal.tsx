@@ -5,9 +5,10 @@ import { useGameStore } from '@/lib/store';
 import { useVNAudio, stopGlobalAudio } from '../hooks/useVNAudio';
 import { createClient } from '@/lib/supabase';
 import { deleteAccount } from '@/app/actions/auth';
+import { redeemCoupon } from '@/app/actions/coupon'; // [NEW] Import Coupon Action
 import {
     Zap, Star, Volume2, User, LogOut, AlertTriangle, X,
-    Settings as SettingsIcon, Monitor, Music, Cloud, Save
+    Settings as SettingsIcon, Monitor, Music, Cloud, Save, Ticket
 } from 'lucide-react';
 import { MODEL_CONFIG } from '@/lib/model-config';
 
@@ -18,11 +19,13 @@ interface SettingsModalProps {
     session: any;
     onResetGame: () => void;
     coins?: number;
+    onRefresh?: () => Promise<void>; // [Fix] Add Refresh Handler
+    fatePoints?: number; // [NEW]
 }
 
 type TabType = 'sound' | 'ai' | 'account' | 'system';
 
-export default function SettingsModal({ isOpen, onClose, t, session, onResetGame, coins = 0 }: SettingsModalProps) {
+export default function SettingsModal({ isOpen, onClose, t, session, onResetGame, coins = 0, onRefresh, fatePoints = 0, ...props }: SettingsModalProps & { fatePoints?: number }) {
     const supabase = createClient();
     const router = useRouter();
     const storyModel = useGameStore(state => state.storyModel);
@@ -214,9 +217,29 @@ export default function SettingsModal({ isOpen, onClose, t, session, onResetGame
                                                     </div>
                                                 )}
 
+                                                {/* Fate Points Display (Logged In) */}
+                                                {activeSession?.user && (
+                                                    <div className="flex justify-between items-center mb-6 pb-6 border-b border-gray-100">
+                                                        <span className="text-gray-500 text-sm font-bold uppercase tracking-wider">Fate Points</span>
+                                                        <div className="flex items-center gap-1.5 text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100/50 shadow-sm shrink-0">
+                                                            <span className="text-xs">✨</span>
+                                                            {/* Note: SettingsModal needs to receive fatePoints prop or use store/hook */}
+                                                            {/* Attempting to use prop first, need to add to interface */}
+                                                            <span className="font-mono text-lg font-bold">
+                                                                {(fatePoints || 0).toLocaleString()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {/* Cloud Save Section */}
                                                 {activeSession?.user && (
                                                     <CloudSaveSection />
+                                                )}
+
+                                                {/* [NEW] Coupon Section (Only if Logged In) */}
+                                                {activeSession?.user && (
+                                                    <CouponSection playSfx={playSfx} onRefresh={onRefresh} />
                                                 )}
 
                                                 {/* Action Buttons */}
@@ -511,6 +534,83 @@ function CloudSaveSection() {
                     {isSyncing ? <Monitor className="w-5 h-5 animate-pulse" /> : <Save className="w-5 h-5" />}
                 </button>
             </div>
+        </div>
+    );
+}
+
+
+// [NEW] Coupon Component
+function CouponSection({ playSfx, onRefresh }: { playSfx: any, onRefresh?: () => Promise<void> }) {
+    const [code, setCode] = useState('');
+    const [status, setStatus] = useState({ loading: false, message: '' });
+
+    // We need to refresh coins after redemption. 
+    // Ideally we re-fetch session or profile, but for now we rely on the fact that 
+    // real-time synchronization or page refresh might be needed, 
+    // OR we trigger a store update. 
+    // Since we don't have a global "refreshProfile" exposed easily here without SWR/React-Query, 
+    // we will rely on manual page reload prompt or optimistic update if possible.
+    // For MVP, alerting success is enough, and maybe router.refresh().
+    const router = useRouter();
+
+    const handleRedeem = async () => {
+        if (!code.trim()) return;
+
+        setStatus({ loading: true, message: '' });
+        playSfx('ui_click');
+
+        try {
+            const result = await redeemCoupon(code);
+            if (result.success) {
+                setStatus({ loading: false, message: '' });
+                alert(result.message); // Simple alert for now
+                setCode('');
+                router.refresh(); // Refresh server components/data
+                // Also explicitly update local coin store if we had one, but coins are passed via props or fetched.
+                // Triggering a re-fetch of session/user data would be ideal.
+                router.refresh(); // Refresh server components/data
+
+                // [Fix] Real-time Update without Reload
+                if (onRefresh) {
+                    await onRefresh();
+                } else {
+                    console.warn("onRefresh not provided to SettingsModal");
+                }
+            } else {
+                setStatus({ loading: false, message: result.message });
+                playSfx('ui_cancel'); // Assuming we have this or similar, otherwise ignore
+            }
+        } catch (e) {
+            console.error(e);
+            setStatus({ loading: false, message: '오류가 발생했습니다.' });
+        }
+    };
+
+    return (
+        <div className="flex flex-col gap-3 mb-6 pb-6 border-b border-gray-100">
+            <span className="text-gray-500 text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                <Ticket className="w-4 h-4" />
+                Coupon Redemption
+            </span>
+            <div className="flex gap-2">
+                <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    placeholder="XXXX-XXXX-XXXX"
+                    className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono font-bold uppercase placeholder:text-gray-300 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+                <button
+                    onClick={handleRedeem}
+                    disabled={status.loading || !code.trim()}
+                    className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white font-bold rounded-xl px-6 py-2 transition-all shadow-md active:scale-95 text-sm whitespace-nowrap"
+                >
+                    {status.loading ? '...' : 'Redeem'}
+                </button>
+            </div>
+            {status.message && (
+                <p className="text-xs text-red-500 font-bold ml-1">{status.message}</p>
+            )}
         </div>
     );
 }
