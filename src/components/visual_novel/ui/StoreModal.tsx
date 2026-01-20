@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SHOP_PRODUCTS, ShopProduct } from '@/data/shop-products';
 import { useGameStore } from '@/lib/store';
 import { usePortOne } from '@/hooks/usePortOne';
 import { createClient } from '@/lib/supabase';
-import { ShoppingBag, X, Loader2, Info } from 'lucide-react'; // Added icons
+import { X, MessageSquare, Star, Zap, Info, Shield, ShoppingBag, Coins, Lock, Loader2 } from 'lucide-react';
 import { useVNAudio } from '@/components/visual_novel/hooks/useVNAudio';
+import { isFeatureEnabled, FEATURES } from '@/lib/features'; // [NEW] Feature Flag Import
 
 interface StoreModalProps {
     isOpen: boolean;
@@ -22,7 +23,14 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
     const activeTabState = useState<'token' | 'fate'>('token');
     const [activeTab, setActiveTab] = activeTabState;
 
-    const products = SHOP_PRODUCTS.filter(p => p.type === activeTab);
+    // [Feature Flag] Check if Fate Shop is enabled
+    const showFateShop = isFeatureEnabled(FEATURES.ENABLE_FATE_SHOP);
+
+    const products = SHOP_PRODUCTS.filter(p => {
+        if (p.type !== activeTab) return false;
+        if (p.type === 'fate' && !showFateShop) return false;
+        return true;
+    });
 
     // Filter out Fate products if not in a context where they make sense? 
     // Actually, just show them all.
@@ -175,15 +183,18 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                                 colorClass="bg-amber-50 text-amber-900 border-amber-200"
                                 onMouseEnter={() => playSfx('ui_hover')}
                             />
-                            <TabButton
-                                active={activeTab === 'fate'}
-                                onClick={() => setActiveTab('fate')}
-                                icon="✨"
-                                label="운명 포인트"
-                                desc="신적 개입"
-                                colorClass="bg-purple-50 text-purple-900 border-purple-200"
-                                onMouseEnter={() => playSfx('ui_hover')}
-                            />
+
+                            {showFateShop && (
+                                <TabButton
+                                    active={activeTab === 'fate'}
+                                    onClick={() => setActiveTab('fate')}
+                                    icon="✨"
+                                    label="운명 포인트"
+                                    desc="신적 개입"
+                                    colorClass="bg-purple-50 text-purple-900 border-purple-200"
+                                    onMouseEnter={() => playSfx('ui_hover')}
+                                />
+                            )}
 
                             <div className="mt-auto px-4 py-4 bg-indigo-50 rounded-2xl border border-indigo-100 hidden md:block">
                                 <p className="text-xs font-bold text-indigo-900 mb-1">💡 Pro Tip</p>

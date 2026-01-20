@@ -176,7 +176,18 @@ export const translations = {
                 harmony: "Harmony Realm",
                 mystic: "Mystic Realm",
                 life_death: "Life & Death Realm"
-            }
+            },
+            // [LOC] Background Category Mapping (Eng)
+            backgroundKeywords: {
+                school: ["school", "academy"],
+                dungeon: ["dungeon", "cave", "underground"],
+                luxury: ["luxury", "hotel", "palace", "vip"],
+                facility: ["lab", "facility", "research"],
+                store: ["store", "shop", "market", "mart"],
+                media: ["media", "broadcast", "studio"]
+            },
+            // [LOC] Country Names for Spawn Logic (Eng)
+            countries: ["Start Country", "Korea", "Japan", "China", "USA", "France", "UK", "Germany", "Italy", "Brazil", "Russia"]
         },
         god_bless_you: {
             ranks: {
@@ -371,7 +382,18 @@ export const translations = {
                 harmony: "화경",
                 mystic: "현경",
                 life_death: "생사경"
-            }
+            },
+            // [LOC] Background Category Mapping (Kor)
+            backgroundKeywords: {
+                school: ["학교", "학원", "school", "academy"],
+                dungeon: ["던전", "동굴", "지하", "dungeon"],
+                luxury: ["호텔", "특실", "궁전", "luxury", "hotel"],
+                facility: ["연구소", "실험실", "facility", "lab"],
+                store: ["상점", "가게", "시장", "마트", "store", "shop"],
+                media: ["방송국", "스튜디오", "media", "broadcast"]
+            },
+            // [LOC] Country Names for Spawn Logic (Kor)
+            countries: ["한국", "일본", "중국", "미국", "프랑스", "영국", "독일", "이탈리아", "브라질", "러시아", "Korea", "Japan", "China", "USA", "France", "UK", "Germany", "Italy", "Brazil", "Russia"]
         },
         god_bless_you: {
             ranks: {

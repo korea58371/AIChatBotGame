@@ -10,7 +10,7 @@ import {
     Zap, Star, Volume2, User, LogOut, AlertTriangle, X,
     Settings as SettingsIcon, Monitor, Music, Cloud, Save, Ticket
 } from 'lucide-react';
-import { MODEL_CONFIG } from '@/lib/model-config';
+import { MODEL_CONFIG } from '@/lib/ai/model-config';
 
 interface SettingsModalProps {
     isOpen: boolean;

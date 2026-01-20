@@ -1,0 +1,155 @@
+
+import { GameData } from '@/lib/engine/data-manager';
+
+export async function loadGodBlessYouData(): Promise<GameData> {
+    console.log(`[GBYLoader] Loading God Bless You data...`);
+
+    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, bgMappingsModule: any, systemPromptModule: any, wikiDataModule: any, charMapModule: any, extraMapModule: any, constantsModule: any, loreModule: any;
+    let characterImageList: string[] = [];
+    let extraCharacterList: string[] = [];
+
+    // [Common] Load Assets Lists
+    try {
+        // @ts-ignore
+        const assetsManifest = (await import('../../assets.json')).default;
+        const gameAssets = assetsManifest?.['god_bless_you'];
+        bgListModule = gameAssets?.backgrounds || [];
+        // [Fix] Merge mainCharacters and characters lists to ensure all images are available
+        const mainChars = gameAssets?.mainCharacters || [];
+        const chars = gameAssets?.characters || [];
+        characterImageList = [...new Set([...mainChars, ...chars])];
+        extraCharacterList = gameAssets?.extraCharacters || [];
+    } catch (e) {
+        console.warn("[GBYLoader] Failed to load assets.json:", e);
+        bgListModule = [];
+    }
+
+    try {
+        try {
+            console.log('- Importing world.json...');
+            worldModule = await import('./world.json');
+        } catch (e) {
+            console.warn('[GBYLoader] world.json not found, using empty default.');
+            worldModule = { default: { locations: {}, items: {} } };
+        }
+
+        console.log('- Importing characters/characters_main.json & supporting...');
+        const charsMain = await import('./jsons/characters/characters_main.json');
+        let charsSupporting = {};
+        try {
+            const charsSuppModule = await import('./jsons/characters/characters_supporting.json');
+            charsSupporting = charsSuppModule.default || charsSuppModule;
+        } catch (e) {
+            console.warn('[GBYLoader] characters_supporting.json not found for GBY');
+        }
+
+        // Merge supporting into main (Main overrides if collision)
+        // [Refactor] Use shared mergeCharacters utility
+        const { mergeCharacters, flattenMapData } = await import('@/lib/utils/loader-utils');
+
+        // [Fix] Inject 'is_main' flag for characters in characters_main source
+        const mainSource = charsMain.default || charsMain;
+        if (mainSource) {
+            Object.values(mainSource).forEach((char: any) => {
+                if (char && typeof char === 'object') {
+                    char.is_main = true;
+                }
+            });
+        }
+
+        charactersModule = mergeCharacters(
+            charsSupporting as object,
+            mainSource
+        );
+
+        // [New] Apply Flattening to World Data if it has hierarchy
+        // This ensures GBY supports region/zone structure if added later.
+        // [New] Apply Flattening to World Data if it has hierarchy
+        // This ensures GBY supports region/zone structure if added later.
+        const wm = (worldModule as any).default || worldModule;
+        if (wm) {
+            // Check if it looks hierarchical (has regions?) 
+            // If GBY world.json adds 'regions', we flatten it.
+            if (wm.regions) {
+                const flat = flattenMapData(wm.regions);
+                wm.locations = { ...flat, ...(wm.locations || {}) };
+            }
+        }
+
+        // bgListModule loaded above via action
+
+        console.log('- Importing events.ts...');
+        eventsModule = await import('./events');
+
+        console.log('- Importing start_scenario.ts...');
+        scenarioModule = await import('./start_scenario');
+
+        console.log('- Importing backgroundMappings.ts...');
+        bgMappingsModule = await import('./backgroundMappings');
+
+        console.log('- Importing prompts/system.ts...');
+        systemPromptModule = await import('./prompts/system');
+
+        // Constants
+        console.log('- Importing constants.ts...');
+        constantsModule = await import('./constants');
+
+        // Maps
+        // @ts-ignore
+        const charMap = await import('./character_map.json');
+        charMapModule = charMap.default || charMap;
+
+        // @ts-ignore
+        const extraMap = await import('./extra_map.json');
+        extraMapModule = extraMap.default || extraMap;
+
+        // Wiki Data (Optional, specific to God Bless You)
+        try {
+            // @ts-ignore
+            const wiki = await import('./wiki_data.json');
+            // [Fix] Don't mutate import result. Store in local variable.
+            // @ts-ignore
+            const wikiDataLoaded = wiki.default || wiki;
+            wikiDataModule = wikiDataLoaded;
+        } catch (e) {
+            console.warn('Wiki data not found for god_bless_you');
+            wikiDataModule = {};
+        }
+
+        // Lore (God Bless You)
+        try {
+            loreModule = await import('./jsons/index');
+        } catch (e) {
+            console.error("[GBYLoader] Failed GBY lore", e);
+        }
+
+    } catch (e) {
+        console.error(`[GBYLoader] IMPORT ERROR:`, e);
+        throw e;
+    }
+
+    return {
+        world: (worldModule as any).default || worldModule || {},
+        characters: charactersModule || {},
+        characterImageList,
+        extraCharacterList,
+        backgroundList: bgListModule || [],
+        events: (eventsModule as any)?.GAME_EVENTS || [],
+        scenario: (scenarioModule as any)?.START_SCENARIO_TEXT || '',
+        characterCreationQuestions: (scenarioModule as any)?.CHARACTER_CREATION_QUESTIONS || [],
+        backgroundMappings: (bgMappingsModule as any)?.backgroundMappings || {},
+        getSystemPromptTemplate: (systemPromptModule as any)?.getSystemPromptTemplate || (() => ''),
+        getRankInfo: (input: string | number) => {
+            const func = (systemPromptModule as any)?.getRankInfo;
+            if (!func) return null;
+            // GBY expects number usually
+            const val = typeof input === 'number' ? input : Number(input);
+            return func(val);
+        },
+        wikiData: wikiDataModule || {},
+        characterMap: charMapModule || {},
+        extraMap: extraMapModule || {},
+        constants: constantsModule || {},
+        lore: loreModule?.GodBlessYouLore || {}
+    };
+}

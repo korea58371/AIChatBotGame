@@ -2,8 +2,8 @@ import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
-import { parseScript, ScriptSegment } from '@/lib/script-parser';
-import { resolveBackground } from '@/lib/background-manager';
+import { parseScript, ScriptSegment } from '@/lib/utils/script-parser';
+import { resolveBackground } from '@/lib/engine/background-manager';
 import { useVNAudio } from '../hooks/useVNAudio';
 
 interface Message {

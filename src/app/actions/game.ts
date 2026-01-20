@@ -1,7 +1,16 @@
 'use server';
 
-import { generateResponse, generateGameLogic, generateSummary, preloadCache } from '@/lib/gemini';
-import { MODEL_CONFIG } from '@/lib/model-config';
+import { PromptManager } from '@/lib/engine/prompt-manager';
+import {
+    generateResponse,
+    generateGameLogic,
+    generateSummary,
+    generateCharacterMemorySummary,
+    preloadCache
+} from '@/lib/ai/gemini';
+import { EventManager } from '@/lib/engine/event-manager';
+import { DataManager } from '@/lib/engine/data-manager';
+import { MODEL_CONFIG } from '@/lib/ai/model-config';
 import { AgentOrchestrator } from '@/lib/agent/orchestrator'; // [NEW] 오케스트레이터 임포트
 import { Message } from '@/lib/store';
 // import fs from 'fs';
@@ -114,7 +123,7 @@ export async function serverAgentTurnPhase2(
 async function hydrateGameState(gameState: any) {
     if (gameState.activeGameId) {
         try {
-            const { DataManager } = await import('@/lib/data-manager');
+            const { DataManager } = await import('@/lib/engine/data-manager');
             const data = await DataManager.loadGameData(gameState.activeGameId);
 
             if (data.lore) gameState.lore = data.lore;
@@ -226,7 +235,7 @@ export async function serverGenerateCharacterMemorySummary(
     existingMemories: string[]
 ) {
     if (!API_KEY) return existingMemories;
-    const { generateCharacterMemorySummary } = await import('@/lib/gemini');
+    const { generateCharacterMemorySummary } = await import('@/lib/ai/gemini');
     return generateCharacterMemorySummary(API_KEY as string, characterName, existingMemories);
 }
 

@@ -1,8 +1,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { MODEL_CONFIG } from '../model-config';
+import { MODEL_CONFIG } from '../ai/model-config';
 import { Skill } from '../store';
-import { RelationshipManager } from '../relationship-manager'; // Context Helper
+import { RelationshipManager } from '../engine/relationship-manager'; // Context Helper
 import { WUXIA_SKILL_PROMPT } from '../../data/games/wuxia/prompts/skills';
 import { GBY_SKILL_PROMPT } from '../../data/games/god_bless_you/prompts/skills';
 

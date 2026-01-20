@@ -7,11 +7,11 @@ import { AgentPostLogic } from './post-logic';
 import { AgentCasting } from './casting'; // [NEW]
 import { AgentSkills } from './skills'; // [NEW] Renamed from martial-arts
 import { AgentChoices } from './choices'; // [NEW] Parallel Choice Gen
-import { generateResponse, generateResponseStream } from '../gemini'; // 기존 함수 재사용/리팩토링
+import { generateResponse, generateResponseStream } from '../ai/gemini'; // Moved to ai/gemini
 import { Message } from '../store';
-import { calculateCost, MODEL_CONFIG } from '../model-config';
-import { PromptManager } from '../prompt-manager';
-import { EventManager } from '../event-manager'; // [NEW]
+import { calculateCost, MODEL_CONFIG } from '../ai/model-config'; // Moved to ai/model-config
+import { PromptManager } from '../engine/prompt-manager'; // Moved to engine/prompt-manager
+import { EventManager } from '../engine/event-manager'; // Moved to engine/event-manager
 
 export class AgentOrchestrator {
 
@@ -86,7 +86,6 @@ export class AgentOrchestrator {
         console.log(`[Orchestrator] PreLogic State Tension: ${gameState.tensionLevel}, PlayerStats Tension: ${gameState.playerStats?.tensionLevel}`);
         const preLogicOut = await AgentPreLogic.analyze(history, retrievedContext, userInput, gameState, lastTurnSummary, [], language);
 
-        // [ADAPTER] Create fake router output for UI compatibility
         // [ADAPTER] Create fake router output for UI compatibility
         const routerOut = {
             type: 'action',

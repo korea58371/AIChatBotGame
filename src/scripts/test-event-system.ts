@@ -1,5 +1,5 @@
 
-import { EventManager } from '../lib/event-manager';
+import { EventManager } from '../lib/engine/event-manager';
 import { GAME_EVENTS } from '../data/games/wuxia/events';
 
 console.log("=== Event System Verification ===");

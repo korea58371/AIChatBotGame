@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-export default function ResponseTimer({ avgTime }: { avgTime: number }) {
+export default function ResponseTimer({ avgTime, label }: { avgTime: number, label?: string }) {
     const [progress, setProgress] = useState(0);
     const [elapsed, setElapsed] = useState(0);
 
@@ -39,7 +39,7 @@ export default function ResponseTimer({ avgTime }: { avgTime: number }) {
     return (
         <div className="w-full mt-4 flex flex-col gap-2 min-w-[300px]">
             <div className="flex justify-between text-xs text-yellow-500 font-mono">
-                <span className="animate-pulse">WARPING REALITY...</span>
+                <span className="animate-pulse">{label || "WARPING REALITY..."}</span>
                 <span>{formatTime(elapsed)} / {formatTime(avgTime)} EST</span>
             </div>
             <div className="w-full h-3 bg-gray-900 rounded-full overflow-hidden border border-yellow-900/50 shadow-inner relative">

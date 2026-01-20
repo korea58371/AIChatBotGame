@@ -1,8 +1,8 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { MODEL_CONFIG } from '../model-config';
+import { MODEL_CONFIG } from '../ai/model-config';
 // import { RouterOutput } from './router'; // [REMOVED]
-import { PromptManager } from '../prompt-manager';
+import { PromptManager } from '../engine/prompt-manager';
 
 export interface PreLogicOutput {
     narrative_guide: string; // [가이드] 스토리 작가(Story Model)가 따라야 할 서술 지침

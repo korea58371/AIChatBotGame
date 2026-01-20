@@ -1,5 +1,4 @@
-
-// import { GameState } from '../prompt-manager'; 
+// import { MODEL_CONFIG } from '../ai/model-config'; 
 // import { PromptManager } from '../prompt-manager';
 // import { RouterOutput } from './router'; // [REMOVED]
 

@@ -27,7 +27,7 @@ export function useVNAudio(currentBgm?: string | null) {
                 // Fade out
                 const fadeOut = setInterval(() => {
                     if (oldAudio.volume > 0.05) {
-                        oldAudio.volume -= 0.05;
+                        oldAudio.volume = Math.max(0, oldAudio.volume - 0.05);
                     } else {
                         oldAudio.volume = 0;
                         oldAudio.pause();
@@ -139,7 +139,8 @@ export function useVNAudio(currentBgm?: string | null) {
 
         sfx.play().catch(e => {
             // Ignore AbortError (common if spamming clicks)
-            if (e.name !== 'AbortError') {
+            // Ignore NotAllowedError (browser autoplay policy before interaction)
+            if (e.name !== 'AbortError' && e.name !== 'NotAllowedError') {
                 console.warn(`SFX play failed for ${filename}:`, e);
             }
         });
@@ -160,7 +161,7 @@ export function stopGlobalAudio() {
         // Fast Fade (prevent pop)
         const fadeOut = setInterval(() => {
             if (oldAudio.volume > 0.05) {
-                oldAudio.volume -= 0.1;
+                oldAudio.volume = Math.max(0, oldAudio.volume - 0.1);
             } else {
                 oldAudio.volume = 0;
                 oldAudio.pause();

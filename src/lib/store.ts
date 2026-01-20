@@ -3,16 +3,16 @@ import { persist } from 'zustand/middleware';
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval'; // [IndexedDB]
 import { createClient } from './supabase'; // [Cloud]
 import LZString from 'lz-string'; // [Compression]
-import { ScriptSegment } from '@/lib/script-parser';
+import { ScriptSegment } from '@/lib/utils/script-parser';
 import { MoodType } from '@/data/prompts/moods';
 import { GameRegistry } from '@/lib/registry/GameRegistry'; // [Refactor]
 // Import Configs to register them (Side-effect)
 // This ensures they are registered before store is used.
 import '@/data/games/wuxia/config';
 import '@/data/games/god_bless_you/config';
-import { DataManager, GameData } from './data-manager';
-import { PromptManager } from './prompt-manager';
-import { MODEL_CONFIG } from './model-config';
+import { DataManager, GameData } from './engine/data-manager';
+import { PromptManager } from './engine/prompt-manager';
+import { MODEL_CONFIG } from './ai/model-config';
 import { normalizeCharacterId } from './utils/character-id'; // [NEW] ID Normalization
 
 export interface Message {
@@ -467,7 +467,7 @@ export const useGameStore = create<GameState>()(
           // Specifically 'setHydrated' or other actions that might have leaked into 'activeEvent' or 'any' types.
           const sanitized = JSON.parse(JSON.stringify(snapshot));
           await idbSet(key, sanitized);
-          console.log(`[Store] Saved to slot ${slotId} (${key})`);
+          // console.log(`[Store] Saved to slot ${slotId} (${key})`);
 
           // Only update metadata list for MANUAL numbered slots
           if (typeof slotId === 'number') {

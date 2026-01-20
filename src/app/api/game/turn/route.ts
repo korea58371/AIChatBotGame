@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AgentOrchestrator } from '@/lib/agent/orchestrator';
-import { MODEL_CONFIG } from '@/lib/model-config';
-import { DataManager } from '@/lib/data-manager';
+import { MODEL_CONFIG } from '@/lib/ai/model-config';
+import { DataManager } from '@/lib/engine/data-manager';
+
+// [CRITICAL] Side-effect Imports for Game Registration
+import '@/data/games/wuxia/config';
+import '@/data/games/god_bless_you/config';
 
 // Force dynamic since we use streams and api keys
 export const dynamic = 'force-dynamic';

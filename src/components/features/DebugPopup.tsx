@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '@/lib/store';
-import { parseScript } from '@/lib/script-parser';
+import { parseScript } from '@/lib/utils/script-parser';
 import { X, Play, Database, BookOpen, Terminal } from 'lucide-react';
 
 interface DebugPopupProps {

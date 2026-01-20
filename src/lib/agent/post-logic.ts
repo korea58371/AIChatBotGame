@@ -1,7 +1,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { MODEL_CONFIG } from '../model-config';
-import { RelationshipManager } from '../relationship-manager';
+import { MODEL_CONFIG } from '../ai/model-config';
+import { RelationshipManager } from '../engine/relationship-manager';
 import { translations } from '../../data/translations'; // [NEW] Import translations
 
 export interface PostLogicOutput {

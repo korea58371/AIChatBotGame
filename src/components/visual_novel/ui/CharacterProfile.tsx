@@ -2,7 +2,7 @@ import React, { useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Shield, Zap, BookOpen, Heart, Skull, Activity, Star } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
-import { RelationshipManager } from '@/lib/relationship-manager';
+import { RelationshipManager } from '@/lib/engine/relationship-manager';
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants';
 import { useVNAudio } from '../hooks/useVNAudio';
 
@@ -403,7 +403,7 @@ export default function CharacterProfile({
                                                 <div key={charId} className="flex flex-col bg-[#1e1e1e] p-4 rounded-lg border border-white/5 hover:border-[#D4AF37]/20 transition-all duration-300">
                                                     <div className="flex flex-col gap-2 mb-3">
                                                         <div className="flex items-center justify-between">
-                                                            <span className="font-bold font-serif text-[#D4AF37] text-lg">◆ {charId}</span>
+                                                            <span className="font-bold font-serif text-[#D4AF37] text-lg">◆ {characterData?.[charId]?.name || charId}</span>
                                                             <span className={`text-xl font-bold ${(affinity as number) > 0 ? 'text-pink-400' : 'text-gray-400'}`}>{affinity as number}</span>
                                                         </div>
 

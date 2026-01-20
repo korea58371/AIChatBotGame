@@ -1,6 +1,6 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { MODEL_CONFIG } from '../model-config';
+import { MODEL_CONFIG } from '../ai/model-config';
 // import { WUXIA_CHOICE_RULES } from '../../data/games/wuxia/constants'; // [Removed] Generic Refactor
 
 // Define Interface for Output

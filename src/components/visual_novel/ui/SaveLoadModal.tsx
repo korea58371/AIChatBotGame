@@ -44,7 +44,7 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ isOpen, onClose, mode, t,
 
     // [Fix] Use prop if available, else store
     const activeGameId = propGameId || activeGameIdStore;
-    console.log("[SaveLoadModal] Debug - Prop:", propGameId, "Store:", activeGameIdStore, "Final:", activeGameId);
+
 
     const [autoSaves, setAutoSaves] = useState<any[]>([]);
 

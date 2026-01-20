@@ -1,4 +1,35 @@
+import { MODEL_CONFIG } from '../ai/model-config';
+import { PromptManager } from '../engine/prompt-manager';
+import { RelationshipManager } from '../engine/relationship-manager';
+import { EventManager } from '../engine/event-manager';
 import { CharacterData } from '../../data/games/wuxia/jsons/characters';
+import locations from '../../data/games/wuxia/jsons/locations.json';
+
+// Helper: Resolve Location to Hierarchy [Region, Zone, Spot]
+function resolveLocationHierarchy(locName: string): string[] {
+    if (!locName) return [];
+
+    // 1. Check Regions
+    for (const [rKey, rVal] of Object.entries(locations.regions)) {
+        if (locName === rKey) return [rKey];
+
+        // 2. Check Zones
+        if ((rVal as any).zones) {
+            for (const [zKey, zVal] of Object.entries((rVal as any).zones)) {
+                if (locName === zKey) return [rKey, zKey];
+
+                // 3. Check Spots
+                if ((zVal as any).spots && Array.isArray((zVal as any).spots)) {
+                    if ((zVal as any).spots.includes(locName)) {
+                        return [rKey, zKey, locName];
+                    }
+                }
+            }
+        }
+    }
+
+    return [locName];
+}
 
 export interface CastingCandidate {
     id: string;
@@ -108,14 +139,11 @@ export class AgentCasting {
 
             // Condition 1: Early Game Heroine Bonus (Plot Armor)
             // If early game, boost Main Heroines to ensure they appear to guide the story.
-            if (mainCharacterIds.has(id)) {
+            // [Fix] Uses injected 'is_main' flag from Loader
+            if (cAny.is_main) {
                 baseScore = Math.max(baseScore, 1.5);
                 baseReasons.push(`Base(Main) (1.5)`);
-
-                if (turnCount < 30) {
-                    baseScore += 2.0; // Early Game Helper Bonus
-                    baseReasons.push(`Early Game Plot Armor (+2.0)`);
-                }
+                // Early Game Bonus (+2.0) removed by user request ("15 points is enough")
             } else {
                 baseReasons.push(`Base (0.5)`);
             }
@@ -136,21 +164,66 @@ export class AgentCasting {
                 actReasons.push(`Context Mentioned (+${AgentCasting.CONTEXT_MENTION_BONUS})`);
             }
 
-            // 3. Location/Region Logic
-            const region = cAny.profile?.거주지 || cAny.profile?.소속 || cAny.활동지역 || "";
+            // 3. Location/Region Logic (Hierarchical)
+            const regionStr = cAny.profile?.거주지 || cAny.profile?.소속 || cAny.활동지역 || "";
+            // Also check 'activity_region' for backward compatibility
+            const finalCharLoc = regionStr || cAny.activity_region || "";
+
+            // Restore missing variables
+            const region = finalCharLoc;
             const affiliationStr = cAny.profile?.소속 || "";
 
-            // Normalize for comparison
+            // Resolve Hierarchies
+            // We do this inside loop, but ideally we'd cache player hierarchy once. 
+            // Optim: Let's assume resolveLocationHierarchy is fast enough (JSON is small).
+
+            // Note: In a real optimize scenario, resolve player hierarchy outside loop.
+            // But 'fullLocation' is available here.
+
+            const playerHierarchy = resolveLocationHierarchy(fullLocation.replace(/_/g, " "));
+            const charHierarchy = resolveLocationHierarchy(finalCharLoc);
+
+            let locScore = 0;
+
+            if (charHierarchy.length > 0 && playerHierarchy.length > 0) {
+                // Check Region Match
+                if (charHierarchy[0] === playerHierarchy[0]) {
+                    locScore += 20;
+
+                    // Check Zone Match (Only if Region matched)
+                    if (charHierarchy[1] && playerHierarchy[1] && charHierarchy[1] === playerHierarchy[1]) {
+                        locScore += 20;
+
+                        // Check Spot Match (Only if Zone matched)
+                        if (charHierarchy[2] && playerHierarchy[2] && charHierarchy[2] === playerHierarchy[2]) {
+                            locScore += 20;
+                            actReasons.push(`🎯 Spot Match (${charHierarchy[2]}) (+60)`);
+                        } else {
+                            actReasons.push(`🏙️ Zone Match (${charHierarchy[1]}) (+40)`);
+                        }
+                    } else {
+                        actReasons.push(`🌍 Region Match (${charHierarchy[0]}) (+20)`);
+                    }
+                }
+            }
+
+            // Normalize for fallback comparison if no hierarchy match found (e.g. wildcards)
             const locNorm = fullLocation.replace(/_/g, " ");
 
-            if (locNorm && region && locNorm.includes(region)) {
-                actScore += 2.0;
-                actReasons.push("Region Match (+2.0)");
-            } else if (region === 'Korea' || region === '무림' || region === 'Everywhere') {
-                // Generic region match (weak)
-                actScore += 0.2;
-                actReasons.push("Broad/Wildcard Region (+0.2)");
+            if (locScore === 0) {
+                // Determine if char is wildcard
+                if (finalCharLoc === 'Korea' || finalCharLoc === '무림' || finalCharLoc === 'Everywhere') {
+                    locScore += 0.2;
+                    actReasons.push("Broad/Wildcard Region (+0.2)");
+                } else if (locNorm && finalCharLoc && locNorm.includes(finalCharLoc)) {
+                    // Fallback string match if hierarchy failed (e.g. "Henan Market" vs "Henan")
+                    // If hierarchy didn't catch it (maybe custom string), give base bonus
+                    locScore += 20;
+                    actReasons.push(`Region Match [String] (${finalCharLoc}) (+20)`);
+                }
             }
+
+            actScore += locScore;
 
             // 4. Tag Resonance
             // [Fix] Weighted tags?

@@ -7,23 +7,30 @@ import { useGameStore, GameState, Skill } from '@/lib/store';
 import { createClient } from '@/lib/supabase';
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { serverGenerateResponse, serverGenerateGameLogic, serverGenerateSummary, getExtraCharacterImages, serverPreloadCache, serverAgentTurn, serverAgentTurnPhase1, serverAgentTurnPhase2, serverGenerateCharacterMemorySummary } from '@/app/actions/game';
-import { getCharacterImage } from '@/lib/image-mapper';
+import { getCharacterImage } from '@/lib/utils/image-mapper';
 import { isHiddenProtagonist } from '@/lib/utils/character-utils';
-import { resolveBackground } from '@/lib/background-manager';
-import { RelationshipManager } from '@/lib/relationship-manager'; // Added import // Added import
-import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/model-config';
+import { resolveBackground } from '@/lib/engine/background-manager';
+import { RelationshipManager } from '@/lib/engine/relationship-manager'; // Added import // Added import
+import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/ai/model-config';
 import { normalizeCharacterId } from '@/lib/utils/character-id'; // [NEW] ID Normalization
 import { fetchAgentTurnStream } from '@/lib/network/stream-client'; // [Stream] Client
-import { parseScript, ScriptSegment } from '@/lib/script-parser';
-import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/name-utils'; // [NEW] Fuzzy Match Helper
+import { parseScript, ScriptSegment } from '@/lib/utils/script-parser';
+import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/utils/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
 import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP, REALM_ORDER, WUXIA_IM_SEONG_JUN_SCENARIO, WUXIA_NAM_GANG_HYEOK_SCENARIO } from '@/data/games/wuxia/constants'; // [New] UI Constants
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants'; // [New] UI Constants
 import wikiData from '@/data/games/wuxia/wiki_data.json'; // [NEW] Wiki Data Import
-import { GameRegistry } from '@/lib/registry/GameRegistry'; // [Refactor]
+
+import { GameRegistry } from '@/lib/registry/GameRegistry';
+import { GameUIRegistry } from '@/lib/registry/GameUIRegistry';
+
 // Import Configs to register them (Side-effect)
 import '@/data/games/wuxia/config';
 import '@/data/games/god_bless_you/config';
+
+// Import UI Configs (Client-Side Only)
+import '@/data/games/god_bless_you/ui';
+import '@/data/games/wuxia/ui'; // [Refactor] Wuxia UI Registered
 
 
 import { submitGameplayLog } from '@/app/actions/log';
@@ -45,7 +52,7 @@ import { useSaveLoad } from './visual_novel/hooks/useSaveLoad';
 import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User, Info, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { EventManager } from '@/lib/event-manager';
+import { EventManager } from '@/lib/engine/event-manager';
 import WikiSystem from './WikiSystem';
 import TextMessage from './features/TextMessage';
 import PhoneCall from './features/PhoneCall';
@@ -3833,14 +3840,14 @@ export default function VisualNovelUI() {
                         <div
                             className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out"
                             style={{
-                                backgroundImage: `url(${getBgUrl(currentBackground)})`,
+                                backgroundImage: `url(${resolveBackground(currentBackground)})`,
                                 filter: 'brightness(0.6)'
                             }}
                         />
 
                         {/* Character Layer */}
                         <AnimatePresence>
-                            {characterExpression && (
+                            {characterExpression && characterExpression.startsWith('/') && (
                                 <motion.div
                                     key={characterExpression}
                                     initial={isSameCharacter ? { opacity: 0, scale: 1, y: 0, x: "-50%" } : { opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
@@ -3850,12 +3857,12 @@ export default function VisualNovelUI() {
                                     className="absolute bottom-0 left-1/2 h-[90%] z-0 pointer-events-none"
                                 >
                                     <img
-                                        src={getCharUrl(characterExpression)}
+                                        src={characterExpression}
                                         alt="Character"
                                         className="h-full w-auto max-w-none object-contain drop-shadow-2xl"
                                         onError={(e) => {
                                             e.currentTarget.style.display = 'none';
-                                            console.warn(`Failed to load character image: ${getCharUrl(characterExpression)}`);
+                                            console.warn(`Failed to load character image: ${characterExpression}`);
                                         }}
                                     />
                                 </motion.div>
@@ -4203,6 +4210,27 @@ export default function VisualNovelUI() {
                         ))}
                     </AnimatePresence>
                 </div>
+
+                {/* [Refactor] Dynamic HUD Injection via UI Registry */}
+                {(() => {
+                    const HUD = GameUIRegistry.getHUD(activeGameId);
+                    if (HUD) {
+                        return (
+                            <div className="absolute inset-0 z-[40] pointer-events-none">
+                                <HUD
+                                    playerName={playerName}
+                                    playerStats={playerStats}
+                                    onOpenPhone={() => setIsPhoneOpen(true)}
+                                    onOpenProfile={() => setShowCharacterInfo(true)}
+                                    day={day}
+                                    time={time}
+                                    location={currentLocation}
+                                />
+                            </div>
+                        );
+                    }
+                    return null;
+                })()}
 
                 {/* Center: Choices */}
                 {
@@ -4958,7 +4986,7 @@ export default function VisualNovelUI() {
 
                 {/* Interactive Loading Indicator (Ad/Tip Overlay) */}
                 <AnimatePresence>
-                    {(isProcessing || (isLogicPending && !currentSegment && scriptQueue.length === 0 && endingType === 'none')) && (
+                    {(isProcessing || (isLogicPending && !currentSegment && scriptQueue.length === 0 && choices.length === 0 && endingType === 'none')) && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -4969,155 +4997,138 @@ export default function VisualNovelUI() {
                                 {/* Background Glow */}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#D4AF37]/5 rounded-full blur-3xl animate-pulse" />
 
-                                {/* Spinner & Title */}
-                                <div className="flex flex-col items-center gap-3 z-10 w-full">
-                                    <div className="w-16 h-16 rounded-full border-2 border-[#333] border-t-[#D4AF37] animate-spin mb-4" />
+                                {isProcessing ? (
+                                    <>
+                                        {/* [Standard] Story Generation Mode - Full UI */}
+                                        <div className="flex flex-col items-center gap-3 z-10 w-full">
+                                            <div className="w-16 h-16 rounded-full border-2 border-[#333] border-t-[#D4AF37] animate-spin mb-4" />
 
-                                    <h3 className="text-3xl font-serif font-bold text-[#D4AF37] animate-pulse tracking-widest uppercase text-center flex items-center gap-3">
-                                        <span className="text-[#D4AF37]/50 text-xl">◆</span>
-                                        {t.fateIsWeaving}
-                                        <span className="text-[#D4AF37]/50 text-xl">◆</span>
-                                    </h3>
+                                            <h3 className="text-3xl font-serif font-bold text-[#D4AF37] animate-pulse tracking-widest uppercase text-center flex items-center gap-3">
+                                                <span className="text-[#D4AF37]/50 text-xl">◆</span>
+                                                {t.fateIsWeaving}
+                                                <span className="text-[#D4AF37]/50 text-xl">◆</span>
+                                            </h3>
 
-                                    <div className="text-center w-full">
-                                        <ResponseTimer avgTime={avgResponseTime} />
-                                        <p className="text-xs text-[#666] mt-2 font-mono tracking-widest">
-                                            ESTIMATED: {Math.round(avgResponseTime / 1000)}s
-                                        </p>
-                                    </div>
-                                </div>
+                                            <div className="text-center w-full">
+                                                <ResponseTimer avgTime={avgResponseTime} />
+                                                <p className="text-xs text-[#666] mt-2 font-mono tracking-widest">
+                                                    ESTIMATED: {Math.round(avgResponseTime / 1000)}s
+                                                </p>
+                                            </div>
+                                        </div>
 
-                                {/* Dynamic Tips */}
-                                <div className="bg-[#252525] p-5 rounded-lg border border-[#333] w-full text-center z-10 shadow-inner mt-2">
-                                    <span className="text-[#D4AF37] text-xs font-serif font-bold tracking-[0.2em] block mb-2 border-b border-[#333] pb-2 mx-auto w-12">TIP</span>
-                                    <p key={currentTipIndex} className="text-[#ccc] text-sm leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-2 duration-700 min-h-[3rem] flex items-center justify-center">
-                                        "{LOADING_TIPS[currentTipIndex]}"
-                                    </p>
-                                </div>
+                                        {/* Dynamic Tips */}
+                                        <div className="bg-[#252525] p-5 rounded-lg border border-[#333] w-full text-center z-10 shadow-inner mt-2">
+                                            <span className="text-[#D4AF37] text-xs font-serif font-bold tracking-[0.2em] block mb-2 border-b border-[#333] pb-2 mx-auto w-12">TIP</span>
+                                            <p key={currentTipIndex} className="text-[#ccc] text-sm leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-2 duration-700 min-h-[3rem] flex items-center justify-center">
+                                                "{LOADING_TIPS[currentTipIndex]}"
+                                            </p>
+                                        </div>
 
-                                {/* Interactive Ad Button */}
-                                <div className="w-full z-10">
-                                    {/* Local state for ad simulation would be ideal, but we can't add state inside this block easily without refactoring the whole component.
-                                        So we'll use a self-contained component logic or just simple immediate reward for now?
-                                        Actually, we can use a small inner component if we defined it outside, but we are inside the render.
-                                        Let's try to keep it simple: Click -> 3s fake delay -> Reward. 
-                                        Since I can't add state variables easily in this tool call (I'd have to edit the top of the file),
-                                        I will assume I can edit the top of the file in a separate call if needed.
-                                        BUT, I can use a simple trick: use state variables if I added them.
-                                        
-                                        Wait, I haven't added `showAd` state yet.
-                                        I should have added State first.
-                                        Refactoring Plan:
-                                        1. Add `adState` (idle, playing, rewarded) to VisualNovelUI state.
-                                        2. Implement the UI here.
-                                    */}
-                                    {/* Real AdSense Banner (Start Only) */}
-                                    <div className="flex flex-col items-center gap-2 w-full px-4">
-                                        <AdBanner
-                                            dataAdSlot="9593102689"
-                                            format="auto"
-                                            responsive={true}
-                                            className="w-full min-h-[100px] overflow-hidden rounded-lg shadow-lg bg-black/20"
-                                            style={{ display: 'block' }}
-                                        />
-                                        <p className="text-[10px] text-[#444] font-mono">ADVERTISEMENT</p>
-                                    </div>
-                                </div>
+                                        {/* Interactive Ad Button */}
+                                        <div className="w-full z-10">
+                                            <div className="flex flex-col items-center gap-2 w-full px-4">
+                                                <AdBanner
+                                                    dataAdSlot="9593102689"
+                                                    format="auto"
+                                                    responsive={true}
+                                                    className="w-full min-h-[100px] overflow-hidden rounded-lg shadow-lg bg-black/20"
+                                                    style={{ display: 'block' }}
+                                                />
+                                                <p className="text-[10px] text-[#444] font-mono">ADVERTISEMENT</p>
+                                            </div>
+                                        </div>
 
-                                {/* [NEW] System Menu Bar (Available during Generation) */}
-                                <div className="flex w-full justify-center gap-3 md:gap-4 mt-6 pointer-events-auto z-20">
-                                    {(() => {
-                                        const currentWikiTarget = (() => {
-                                            if (currentSegment?.character) {
-                                                const charName = currentSegment.character.split('(')[0].trim();
-                                                return findBestMatch(charName, wikiKeys);
-                                            }
-                                            return null;
-                                        })();
+                                        {/* System Menu Bar */}
+                                        <div className="flex w-full justify-center gap-3 md:gap-4 mt-6 pointer-events-auto z-20">
+                                            {(() => {
+                                                const currentWikiTarget = (() => {
+                                                    if (currentSegment?.character) {
+                                                        const charName = currentSegment.character.split('(')[0].trim();
+                                                        return findBestMatch(charName, wikiKeys);
+                                                    }
+                                                    return null;
+                                                })();
 
-                                        // [Refactor] Language Toggle -> Custom Component Logic
-                                        const systemMenuItems = [
-                                            { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => { playSfx('ui_click'); setShowCharacterInfo(true); } },
-                                            { icon: <ShoppingBag size={20} />, label: "상점", onClick: () => { playSfx('ui_click'); setIsStoreOpen(true); }, isActive: false },
-                                            { icon: <History size={20} />, label: t.chatHistory, onClick: () => { playSfx('ui_click'); setShowHistory(true); } },
-                                            {
-                                                icon: <Book size={20} />,
-                                                label: t.wiki,
-                                                onClick: () => {
-                                                    playSfx('ui_click');
-                                                    if (currentWikiTarget) setWikiTargetCharacter(currentWikiTarget);
-                                                    setShowWiki(true);
-                                                },
-                                                isActive: !!currentWikiTarget,
-                                                activeColor: "bg-gradient-to-r from-yellow-600 to-yellow-500 border-yellow-400 text-black shadow-yellow-500/50 animate-pulse"
-                                            },
-                                            { icon: <Save size={20} />, label: t.saveLoad, onClick: () => { playSfx('ui_click'); setShowSaveLoad(true); } },
-                                            // [New] Language Selector (Custom)
-                                            {
-                                                isCustom: true,
-                                                component: <LanguageSelector direction="up" className="shadow-lg" />
-                                            },
-                                            { icon: <Settings size={20} />, label: t.settings, onClick: () => { playSfx('ui_click'); setShowResetConfirm(true); } },
-                                        ];
+                                                const systemMenuItems = [
+                                                    { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => { playSfx('ui_click'); setShowCharacterInfo(true); } },
+                                                    { icon: <ShoppingBag size={20} />, label: "상점", onClick: () => { playSfx('ui_click'); setIsStoreOpen(true); }, isActive: false },
+                                                    { icon: <History size={20} />, label: t.chatHistory, onClick: () => { playSfx('ui_click'); setShowHistory(true); } },
+                                                    {
+                                                        icon: <Book size={20} />,
+                                                        label: t.wiki,
+                                                        onClick: () => {
+                                                            playSfx('ui_click');
+                                                            if (currentWikiTarget) setWikiTargetCharacter(currentWikiTarget);
+                                                            setShowWiki(true);
+                                                        },
+                                                        isActive: !!currentWikiTarget,
+                                                        activeColor: "bg-gradient-to-r from-yellow-600 to-yellow-500 border-yellow-400 text-black shadow-yellow-500/50 animate-pulse"
+                                                    },
+                                                    { icon: <Save size={20} />, label: t.saveLoad, onClick: () => { playSfx('ui_click'); setShowSaveLoad(true); } },
+                                                    {
+                                                        isCustom: true,
+                                                        component: <LanguageSelector direction="up" className="shadow-lg" />
+                                                    },
+                                                    { icon: <Settings size={20} />, label: t.settings, onClick: () => { playSfx('ui_click'); setShowResetConfirm(true); } },
+                                                ];
 
-                                        return systemMenuItems.map((item, i) => {
-                                            if ((item as any).isCustom) return <div key={i}>{(item as any).component}</div>;
+                                                return systemMenuItems.map((item, i) => {
+                                                    if ((item as any).isCustom) return <div key={i}>{(item as any).component}</div>;
 
-                                            const btn = item as any;
-                                            return (
-                                                <button
-                                                    key={i}
-                                                    onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
-                                                    onMouseEnter={() => playSfx('ui_hover')}
-                                                    className={`p-3 md:p-3 rounded-full border transition-all backdrop-blur-md shadow-lg group relative
+                                                    const btn = item as any;
+                                                    return (
+                                                        <button
+                                                            key={i}
+                                                            onClick={(e) => { e.stopPropagation(); btn.onClick(); }}
+                                                            onMouseEnter={() => playSfx('ui_hover')}
+                                                            className={`p-3 md:p-3 rounded-full border transition-all backdrop-blur-md shadow-lg group relative
                                                         ${btn.isActive
-                                                            ? btn.activeColor
-                                                            : 'bg-black/60 border-white/20 text-white hover:bg-white/20 hover:border-white'
-                                                        } hover:scale-110`}
-                                                    title={btn.label}
-                                                >
-                                                    {btn.icon}
-                                                    {/* Tooltip */}
-                                                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
-                                                        {btn.label}
-                                                    </span>
-                                                </button>
-                                            );
-                                        });
-                                    })()}
-                                </div>
+                                                                    ? btn.activeColor
+                                                                    : 'bg-black/60 border-white/20 text-white hover:bg-white/20 hover:border-white'
+                                                                } hover:scale-110`}
+                                                            title={btn.label}
+                                                        >
+                                                            {btn.icon}
+                                                            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-black/80 border border-white/20 px-2 py-1 rounded pointer-events-none">
+                                                                {btn.label}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        {/* [New] Choice Logic Processing Mode - Minimal UI */}
+                                        <div className="flex flex-col items-center justify-center gap-6 z-10 animate-in fade-in zoom-in duration-500">
+                                            {/* Minimal Spinner */}
+                                            <div className="relative">
+                                                <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-yellow-500 animate-spin" />
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-[0_0_10px_#fbbf24]" />
+                                                </div>
+                                            </div>
+
+                                            {/* Text Only */}
+                                            <div className="text-center space-y-2">
+                                                <h3 className="text-xl md:text-2xl font-serif font-bold text-yellow-500/90 tracking-widest uppercase animate-pulse">
+                                                    AI가 선택지를 생성중입니다...
+                                                </h3>
+                                                <p className="text-[10px] md:text-xs text-yellow-500/40 font-mono tracking-[0.3em]">
+                                                    GENERATING CHOICES...
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* [NEW] Modular HUD Layer */}
-                {isMounted && (() => {
-                    const gameId = activeGameId || 'god_bless_you';
-
-                    // [Debug] Check Registry State - Removed after verification
-
-                    const config = GameRegistry.get(gameId);
-
-                    if (config && config.components.HUD) {
-                        const HUDComponent = config.components.HUD;
-                        return (
-                            <HUDComponent
-                                playerName={playerName}
-                                playerStats={playerStats}
-                                onOpenWiki={() => setShowWiki(true)}
-                                onOpenProfile={() => setShowCharacterInfo(true)}
-                                onOpenPhone={() => setIsPhoneOpen(true)}
-                                language={(language as any) || 'ko'}
-                                day={day}
-                                time={time}
-                                location={currentLocation}
-                                turnCount={turnCount}
-                            />
-                        );
-                    }
-                    return null;
-                })()}
+                {/* [Legacy] Modular HUD block removed in favor of GameUIRegistry injection above */}
 
                 {/* History Modal */}
                 <HistoryModal
@@ -5570,7 +5581,7 @@ export default function VisualNovelUI() {
 
                                                     const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
                                                     const charName = currentSegment.character || '';
-                                                    const found = charList.find((c: any) => c.englishName === charName || c.name === charName);
+                                                    const found = charList.find((c: any) => c.englishName === charName || c.name === charName || c.id === charName);
                                                     if (found) return found.name;
                                                     return charName.split('_')[0];
                                                 })()}

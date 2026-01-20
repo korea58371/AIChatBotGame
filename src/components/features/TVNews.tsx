@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { getCharacterImage } from '@/lib/image-mapper';
-import { resolveBackground } from '@/lib/background-manager';
+import { getCharacterImage } from '@/lib/utils/image-mapper';
+import { resolveBackground } from '@/lib/engine/background-manager';
 
 interface TVNewsProps {
     anchor: string;

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useGameStore, GameState } from '@/lib/store';
-import { DataManager } from '@/lib/data-manager';
+import { DataManager } from '@/lib/engine/data-manager';
+import { useVNAudio } from './useVNAudio';
+import { normalizeCharacterId } from '@/lib/utils/character-id';
+import { getCharacterImage } from '@/lib/utils/image-mapper';
 import { get, set, del } from 'idb-keyval';
 
 interface SaveSlot {

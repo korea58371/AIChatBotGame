@@ -34,7 +34,7 @@ export function useAuthSession(): AuthSessionResult {
             console.error("[Auth-Hook] fetchCoins Error:", error);
         }
         if (data) {
-            console.log("[Auth-Hook] fetchCoins Success:", data);
+
             setCoins(data.coins);
             setFatePoints(data.fate_points || 0);
         }

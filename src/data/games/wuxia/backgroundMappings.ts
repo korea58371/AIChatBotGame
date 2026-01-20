@@ -170,4 +170,5 @@ export const backgroundMappings: Record<string, string> = {
     '악인곡_해골제단': '악인곡_해골제단.jpg',
     '악인곡_혈마전': '악인곡_혈마전.jpg',
     'home': 'home.jpg',
+    'Home_Entrance': 'home.jpg',
 };

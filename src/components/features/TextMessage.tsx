@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { getCharacterImage } from '@/lib/image-mapper';
+import { getCharacterImage } from '@/lib/utils/image-mapper';
 import { ChevronLeft, MoreVertical, Phone, Video } from 'lucide-react';
 
 interface TextMessageProps {

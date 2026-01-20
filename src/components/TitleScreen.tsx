@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { useGameStore } from '@/lib/store';
-import { MODEL_CONFIG } from '@/lib/model-config';
+import { MODEL_CONFIG } from '@/lib/ai/model-config';
 import { Settings, Play, Database, ShoppingBag, RotateCcw, Save, X, Cpu, Zap, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Login from '@/components/Login';
@@ -12,6 +12,7 @@ import LanguageSelector from '@/components/LanguageSelector';
 import SettingsModal from '@/components/visual_novel/ui/SettingsModal';
 import StoreModal from '@/components/visual_novel/ui/StoreModal';
 import SaveLoadModal from '@/components/visual_novel/ui/SaveLoadModal';
+import CharacterViewerModal from '@/components/tool/CharacterViewerModal'; // [DEV]
 import { useAuthSession } from '@/hooks/useAuthSession';
 import { useVNAudio, stopGlobalAudio } from './visual_novel/hooks/useVNAudio'; // [Fix] Import Audio Cleanup
 import { get as idbGet } from 'idb-keyval';
@@ -36,6 +37,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const [showLoadModal, setShowLoadModal] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showStore, setShowStore] = useState(false);
+    const [showCharViewer, setShowCharViewer] = useState(false); // [DEV] Character Viewer State
 
     // Game State Checks
     const [hasActiveGame, setHasActiveGame] = useState(false);
@@ -222,16 +224,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
         router.push('/game');
     };
 
-    // Preload videos
-    useEffect(() => {
-        GAME_MODES.forEach(mode => {
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.as = 'video';
-            link.href = mode.video;
-            document.head.appendChild(link);
-        });
-    }, []);
+
 
     return (
         <div className="relative w-full h-screen bg-black overflow-hidden font-sans select-none flex justify-center">
@@ -262,6 +255,23 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
 
                 {/* Top Right: Settings & Shop */}
                 <div className="absolute top-6 right-6 flex items-center gap-4 z-20">
+
+                    {/* [DEV TOOL] Character DB Button - Development Only */}
+                    {process.env.NODE_ENV === 'development' && (
+                        <button
+                            onClick={() => { playSfx('ui_click'); setShowCharViewer(true); }}
+                            className="p-3 bg-cyan-900/40 backdrop-blur-md border border-cyan-500/30 rounded-full hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-200 transition-all group relative"
+                            title={`Character Database (${selectedGame.title})`}
+                        >
+                            <span className="sr-only">Character Viewer</span>
+                            <Database className="w-6 h-6" />
+                            {/* Tooltip-ish indicator */}
+                            <span className="absolute top-full mt-2 right-0 whitespace-nowrap text-xs bg-black/80 px-2 py-1 rounded text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                Character DB
+                            </span>
+                        </button>
+                    )}
+
                     {/* Store Button & Coins */}
                     {user && (
                         <button
@@ -497,6 +507,15 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                 t={t}
                 onLoadSuccess={() => router.push('/game')}
             />
+
+            {/* DEV TOOL: Character Viewer */}
+            {process.env.NODE_ENV === 'development' && (
+                <CharacterViewerModal
+                    isOpen={showCharViewer}
+                    onClose={() => setShowCharViewer(false)}
+                    gameId={selectedGame.id}
+                />
+            )}
         </div>
 
     );

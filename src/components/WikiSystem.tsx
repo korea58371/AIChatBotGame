@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Search, BookOpen } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
-import { getCharacterImage } from '@/lib/image-mapper';
+import { getCharacterImage } from '@/lib/utils/image-mapper';
 
 interface WikiSystemProps {
     isOpen: boolean;

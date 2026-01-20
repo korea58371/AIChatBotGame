@@ -1,5 +1,5 @@
-
-import { GameEvent } from '@/lib/event-manager';
+import { GameState } from '@/lib/store';
+import { EventManager, GameEvent } from '@/lib/engine/event-manager';
 
 export const GAME_EVENTS: GameEvent[] = [
     // ============================================================
