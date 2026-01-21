@@ -1,5 +1,6 @@
 import { useGameStore } from '@/lib/store';
-export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'bgm' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'command' | 'unknown';
+// 1. Add 'event_cg' to ScriptType
+export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'bgm' | 'event_cg' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'command' | 'unknown';
 
 export interface ScriptSegment {
     type: ScriptType;
@@ -34,7 +35,7 @@ export function parseScript(text: string): ScriptSegment[] {
 
     // [Fix] Enforce Newline before specific system tags to prevent inline parsing errors
     // If AI writes "Text.<BGM> Title", we convert it to "Text.\n<BGM> Title"
-    text = text.replace(/([^\n])<(BGM|배경|Sound|Effect|시간)>/gi, '$1\n<$2>');
+    text = text.replace(/([^\n])<(BGM|CG|배경|Sound|Effect|시간)>/gi, '$1\n<$2>');
 
     // Regex to match tags like <TagName>Content or <TagName>Content...
     // We split by newlines first to handle line-based parsing safely, 
@@ -43,7 +44,7 @@ export function parseScript(text: string): ScriptSegment[] {
     // [Refactor] Differentiate Block Tags vs Inline Tags
     // Block Tags: Start a new segment type (e.g. Dialogue, Choice, BGM)
     const blockTags = [
-        '배경', 'BGM', '시스템팝업', '시스템', '나레이션',
+        '배경', 'BGM', 'CG', '시스템팝업', '시스템', '나레이션',
         '선택지.*?', '대사', '문자', '답장', '전화', 'TV뉴스', '기사', '떠남', '시간'
     ].join('|');
 
@@ -103,6 +104,10 @@ export function parseScript(text: string): ScriptSegment[] {
         } else if (tagName.toUpperCase() === 'BGM') {
             // [New] BGM Tag
             segments.push({ type: 'bgm', content: content });
+
+        } else if (tagName.toUpperCase() === 'CG') {
+            // [New] Event CG Tag
+            segments.push({ type: 'event_cg', content: content });
 
         } else if (tagName === '시간') {
             // [New] Time Update Command

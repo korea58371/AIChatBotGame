@@ -49,7 +49,7 @@ import { useSaveLoad } from './visual_novel/hooks/useSaveLoad';
 
 
 
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User, Info, ShoppingBag } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User, Info, ShoppingBag, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { EventManager } from '@/lib/engine/event-manager';
@@ -104,6 +104,8 @@ const formatText = (text: string) => {
         return part;
     });
 };
+
+import EventCGLayer from '@/components/visual_novel/ui/EventCGLayer';
 
 
 
@@ -232,6 +234,7 @@ export default function VisualNovelUI() {
 
     // [New] Cost Calculation Logic
     const storyModel = useGameStore(state => state.storyModel);
+    const currentCG = useGameStore(state => state.currentCG); // [New] Subscribe to CG state
     const costPerTurn = storyModel === 'gemini-3-pro-preview' ? 20 : 10;
     // [리팩토링 메모] UI 상태 관리 로직(모달, 입력, 디버그 등)은 `hooks/useVNState.ts`로 이동되었습니다.
 
@@ -1093,7 +1096,7 @@ export default function VisualNovelUI() {
         let nextSegment = currentQueue[0];
 
         // Process background, command, and BGM segments iteratively to avoid recursion
-        while (nextSegment && (nextSegment.type === 'background' || nextSegment.type === 'command' || nextSegment.type === 'bgm')) {
+        while (nextSegment && (nextSegment.type === 'background' || nextSegment.type === 'command' || nextSegment.type === 'bgm' || nextSegment.type === 'event_cg')) {
             console.log(`[ScriptLoop] Processing Segment: Type=${nextSegment.type}, Content=${nextSegment.content}`);
 
             if (nextSegment.type === 'background') {
@@ -1102,6 +1105,7 @@ export default function VisualNovelUI() {
                 const resolvedBg = resolveBackground(nextSegment.content);
                 console.log(`[Background Debug] Resolved to: "${resolvedBg}"`);
                 setBackground(resolvedBg);
+                useGameStore.getState().setEventCG(null); // [Fix] Clear Event CG on background change
                 setCharacterExpression(''); // Clear character on scene change
             } else if (nextSegment.type === 'command') {
                 // [New] Handle Commands
@@ -1280,6 +1284,14 @@ export default function VisualNovelUI() {
             } else if (nextSegment.type === 'bgm') {
                 // [New] Handle BGM
                 playBgm(nextSegment.content);
+            } else if (nextSegment.type === 'event_cg') {
+                // [New] Handle Event CG
+                const content = nextSegment.content;
+                if (content.toLowerCase() === 'off') {
+                    useGameStore.getState().setEventCG(null);
+                } else {
+                    useGameStore.getState().setEventCG(content);
+                }
             }
 
             currentQueue.shift(); // Remove processed segment
@@ -3845,9 +3857,13 @@ export default function VisualNovelUI() {
                             }}
                         />
 
+                        {/* Event CG Layer (Full Screen Override) */}
+                        {/* Renders ABOVE background, BELOW characters/UI (but characters are hidden by logic below) */}
+                        <EventCGLayer />
+
                         {/* Character Layer */}
                         <AnimatePresence>
-                            {characterExpression && characterExpression.startsWith('/') && (
+                            {!currentCG && characterExpression && characterExpression.startsWith('/') && (
                                 <motion.div
                                     key={characterExpression}
                                     initial={isSameCharacter ? { opacity: 0, scale: 1, y: 0, x: "-50%" } : { opacity: 0, scale: 0.95, y: 20, x: "-50%" }}
@@ -3906,6 +3922,24 @@ export default function VisualNovelUI() {
                         </button>
                     </div>
 
+                    {/* Shop Button */}
+
+
+                    {/* Home Button */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            playSfx('ui_click');
+                            if (confirm('타이틀 화면으로 돌아가시겠습니까? 저장되지 않은 진행 상황은 손실될 수 있습니다.')) {
+                                router.push('/');
+                            }
+                        }}
+                        className="p-2 bg-black/60 hover:bg-gray-800/80 rounded-full border border-gray-600 text-gray-300 hover:text-white transition-all shadow-lg"
+                        title="홈으로"
+                    >
+                        <Home className="w-5 h-5 md:w-6 md:h-6" />
+                    </button>
+
                     {/* Settings Button */}
                     <button
                         onClick={(e) => { e.stopPropagation(); setShowResetConfirm(true); }}
@@ -3915,10 +3949,9 @@ export default function VisualNovelUI() {
                         <Settings className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
 
-                    {/* Shop Button */}
-
 
                     {/* Debug Button (Conditional) */}
+
 
                 </div>
 
@@ -5051,6 +5084,7 @@ export default function VisualNovelUI() {
                                                 })();
 
                                                 const systemMenuItems = [
+                                                    { icon: <Home size={20} />, label: "홈으로", onClick: () => { playSfx('ui_click'); if (confirm('타이틀 화면으로 돌아가시겠습니까? 저장되지 않은 진행 상황은 손실될 수 있습니다.')) router.push('/'); } },
                                                     { icon: <User size={20} />, label: t.profile || "Profile", onClick: () => { playSfx('ui_click'); setShowCharacterInfo(true); } },
                                                     { icon: <ShoppingBag size={20} />, label: "상점", onClick: () => { playSfx('ui_click'); setIsStoreOpen(true); }, isActive: false },
                                                     { icon: <History size={20} />, label: t.chatHistory, onClick: () => { playSfx('ui_click'); setShowHistory(true); } },

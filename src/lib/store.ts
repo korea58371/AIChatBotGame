@@ -65,6 +65,9 @@ export interface GameState {
   currentBackground: string;
   setBackground: (bg: string) => void;
 
+  currentCG: string | null; // [New] Event CG Overlay
+  setEventCG: (cg: string | null) => void;
+
   currentBgm: string | null; // [New] Persisted BGM State
   setBgm: (bgm: string | null) => void;
   bgmVolume: number; // 0.0 to 1.0
@@ -431,6 +434,7 @@ export const useGameStore = create<GameState>()(
           // World
           currentLocation: state.currentLocation,
           currentBackground: state.currentBackground,
+          currentCG: state.currentCG, // [New] Persist CG
           currentBgm: state.currentBgm,
           characterExpression: state.characterExpression,
           // Data
@@ -523,6 +527,7 @@ export const useGameStore = create<GameState>()(
             // World & Visuals
             currentLocation: snapshot.currentLocation,
             currentBackground: snapshot.currentBackground,
+            currentCG: snapshot.currentCG || null, // [New] Load CG
             currentBgm: snapshot.currentBgm,
             characterExpression: snapshot.characterExpression,
 
@@ -708,6 +713,7 @@ export const useGameStore = create<GameState>()(
                 scriptQueue: [],
                 currentSegment: null,
                 currentBackground: '', // Will be set by init logic or script
+                currentCG: null, // [New] Reset CG
                 characterExpression: 'normal', // [Fix logic]
                 currentBgm: null,
                 pendingLogic: null,
@@ -810,6 +816,9 @@ export const useGameStore = create<GameState>()(
 
       currentBackground: '/assets/backgrounds/Default_Fallback.jpg',
       setBackground: (bg) => set({ currentBackground: bg }),
+
+      currentCG: null,
+      setEventCG: (cg) => set({ currentCG: cg }),
 
       currentBgm: null,
       setBgm: (bgm) => set({ currentBgm: bgm }),

@@ -277,7 +277,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
                         <button
                             onClick={() => { playSfx('ui_click'); setShowStore(true); }}
                             onMouseEnter={() => playSfx('ui_hover')}
-                            className="hidden md:flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full hover:bg-white/10 hover:border-white/30 transition-all group mr-2"
+                            className="flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full hover:bg-white/10 hover:border-white/30 transition-all group mr-2"
                         >
                             <div className="flex items-center gap-2">
                                 <span className="text-amber-400 text-lg">🪙</span>

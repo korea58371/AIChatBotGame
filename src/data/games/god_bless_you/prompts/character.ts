@@ -174,6 +174,18 @@ export function formatCharacter(c: any, mode: string, state?: any): string {
         lines.push(`- Relationships: ${c.relationship}`);
     }
 
+    // 9. EVENT CGs (Important for visual immersion)
+    if (c.cgs) {
+        lines.push(`- [AVAILABLE CGs]:`);
+        if (Array.isArray(c.cgs)) {
+            c.cgs.forEach((cg: string) => lines.push(`  - ${cg}`));
+        } else {
+            Object.entries(c.cgs).forEach(([k, v]) => {
+                lines.push(`  - <CG>${k}</CG>: ${v}`);
+            });
+        }
+    }
+
     return lines.join('\n');
 }
 
