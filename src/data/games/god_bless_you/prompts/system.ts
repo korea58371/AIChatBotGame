@@ -157,6 +157,15 @@ ${directInputConstraints}
 - **보유 능력(스킬)**: ${skillList}
 - **소지품**: ${inventoryDesc}
 
+**[이동 및 여행 규칙 (Travel Pacing)] (CRITICAL)**:
+- **순간이동 금지**: 먼 지역(다른 국가/City)으로 이동할 때는 절대 한 턴 만에 도착하지 마십시오.
+- **여정 묘사**: 출발 -> 여정(공항, 기차역, 이동 중 사건) -> 도착의 과정을 거쳐야 합니다.
+- **예시**:
+  (X) "미국으로 가자. (잠시 후) 뉴욕에 도착했다." (금지)
+  (O) "미국행 비행기 표를 예매했다. 공항으로 향하는 발걸음이 무거웠다." (올바름)
+  (O) "장시간의 비행 끝에 JFK 공항에 착륙했다." (도착 시)
+
+
 **[LORE PRIORITY GUIDELINES (Context-Aware)]**
 상황에 따라 로어북의 다음 항목들을 최우선으로 참고하여 서술의 디테일을 살리십시오:
 1. **[전투/액션 (Combat)]**: '### Power System & Realms' & '### Special Martial Arts Skills'

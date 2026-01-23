@@ -2,7 +2,7 @@
 // Extracted from src/data/prompts/logic.ts
 
 export const getStaticLogicPrompt = (rankCriteria: any = null, romanceGuide: any = null, combatGuide: any = null) => {
-    const rankGuide = rankCriteria || "martial_arts_levels.json 확인";
+
     const romanceContext = romanceGuide || "";
     const combatContext = combatGuide || "";
 
@@ -10,9 +10,7 @@ export const getStaticLogicPrompt = (rankCriteria: any = null, romanceGuide: any
 당신은 무협 비주얼 노벨의 ** 게임 로직 엔진 ** 입니다.당신의 역할은 유저의 행동과 이전 이야기 맥락을 분석하여 게임 상태를 업데이트하는 것입니다.
 일관성을 유지하고, 무협의 리얼리즘(갑작스러운 파워업 금지)을 집행하며, 행동의 결과를 계산할 책임이 있습니다.
 
-** [승급 기준(RANK UP CRITERIA)] **:
-다음 경지로 승급하기 위해, 플레이어는 특정 내공(Neigong)과 깨달음(Enlightenment) 요구사항을 충족해야 합니다.
-    ${rankGuide}
+
 
 ** [전투 가이드(COMBAT GUIDE)] **:
 무공 및 전투 결과 판정을 위한 핵심 규칙입니다.

@@ -99,15 +99,75 @@ export function parseScript(text: string): ScriptSegment[] {
             } catch (e) {
                 console.warn("[ScriptParser] Failed to access store for fuzzy matching", e);
             }
+            // [Fix] Background tag should be single-line. If content has newlines, the rest is narration.
+            const lines = content.split('\n');
+            bgKey = lines[0].trim();
+            try {
+                // [Feature] Fuzzy matching for Backgrounds
+                // User might input "대장간" instead of "[마을] 대장간"
+                const state = useGameStore.getState();
+                const available = state.availableBackgrounds || [];
+
+                // 1. Check exact match first
+                if (!available.includes(bgKey)) {
+                    // 2. Check suffix match (e.g. "대장간" matches "[마을] 대장간")
+                    const foundBg = available.find(k => k.endsWith(bgKey) || k.endsWith(` ${bgKey}`));
+                    if (foundBg) {
+                        console.log(`[ScriptParser] Fuzzy matched background: '${bgKey}' -> '${foundBg}'`);
+                        bgKey = foundBg;
+                    }
+                }
+            } catch (e) {
+                console.warn("[ScriptParser] Failed to access store for fuzzy matching", e);
+            }
             segments.push({ type: 'background', content: bgKey });
+
+            // Push remaining lines as narration
+            if (lines.length > 1) {
+                const remaining = lines.slice(1).join('\n').trim();
+                if (remaining) {
+                    segments.push(...parseInlineContent(remaining, { type: 'narration' }));
+                }
+            }
 
         } else if (tagName.toUpperCase() === 'BGM') {
             // [New] BGM Tag
-            segments.push({ type: 'bgm', content: content });
+            // [New] BGM Tag
+            // [Fix] Enforce single line
+            const lines = content.split('\n');
+            segments.push({ type: 'bgm', content: lines[0].trim() });
+
+            if (lines.length > 1) {
+                const remaining = lines.slice(1).join('\n').trim();
+                if (remaining) {
+                    segments.push(...parseInlineContent(remaining, { type: 'narration' }));
+                }
+            }
 
         } else if (tagName.toUpperCase() === 'CG') {
             // [New] Event CG Tag
-            segments.push({ type: 'event_cg', content: content });
+            // [Fix] Remove closing tag if present in content (e.g. from regex capture)
+            // The regex in parseScript captures ([\\s\\S]*?) which usually stops BEFORE the lookahead,
+            // but if there's a malformed string or the regex state is weird, it might capture garbage.
+            // However, the USER log shows "비연_전투</CG>". 
+            // This means our regex <(TagPattern)>([\\s\\S]*?)(?=$|<(?:${tagPattern})>) 
+            // MIGHT be failing to stop at </CG> if 'TagPattern' doesn't match /CG/ (Wait, TagPattern matches START tags).
+            // A closing tag </CG> is NOT a Start Tag.
+
+            // Fix: Explicitly remove </CG> or similar closing tags from the content
+            // Fix: Explicitly remove </CG> or similar closing tags from the content
+            const cleanContent = content.replace(/<\/[^>]+>/g, '').trim();
+
+            // [Fix] Enforce single line for CG
+            const lines = cleanContent.split('\n');
+            segments.push({ type: 'event_cg', content: lines[0].trim() });
+
+            if (lines.length > 1) {
+                const remaining = lines.slice(1).join('\n').trim();
+                if (remaining) {
+                    segments.push(...parseInlineContent(remaining, { type: 'narration' }));
+                }
+            }
 
         } else if (tagName === '시간') {
             // [New] Time Update Command

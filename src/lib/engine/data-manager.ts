@@ -16,6 +16,7 @@ export interface GameData {
     wikiData?: any;
     characterMap?: Record<string, string>;
     extraMap?: Record<string, string>;
+    cgMap?: Record<string, string>; // [New]
     constants?: {
         FAMOUS_CHARACTERS: string;
         CORE_RULES: string;
@@ -24,6 +25,7 @@ export interface GameData {
     };
     lore?: any;
     characterCreationQuestions?: any[];
+    initialLocation?: string; // [New] Explicit Start Location
 }
 
 export class DataManager {

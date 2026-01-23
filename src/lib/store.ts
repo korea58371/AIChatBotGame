@@ -182,6 +182,7 @@ export interface GameState {
     CORE_RULES: string;
     [key: string]: string;
   };
+  cgMap?: Record<string, string>; // [New] Event CG Mappings
 
   lore?: any;
   characterCreationQuestions?: any[]; // [NEW] Added for generic creation support
@@ -197,9 +198,7 @@ export interface GameState {
   addGoal: (goal: GameGoal) => void;
   updateGoal: (id: string, updates: Partial<GameGoal>) => void;
 
-  tensionLevel: number; // 0-100
-  setTensionLevel: (level: number) => void;
-  updateTensionLevel: (delta: number) => void;
+
 
   // [NEW] Unified Skills System (Replaces Martial Arts)
   skills: Skill[];
@@ -510,12 +509,10 @@ export const useGameStore = create<GameState>()(
           set({
             // Helper: We simply merge the snapshot into state
             // Be careful with objects that need deep merge vs replacement.
-            // For Load, REPLACEMENT is usually safer to avoid ghost state.
-
             // Core
             turnCount: snapshot.turnCount,
+            userCoins: snapshot.userCoins,
             activeGameId: snapshot.activeGameId || targetGameId, // Ensure ID matches
-            userCoins: snapshot.userCoins, // Maybe keep global? No, save state has coins at that time.
 
             // Narrative
             chatHistory: snapshot.chatHistory || [],
@@ -525,11 +522,11 @@ export const useGameStore = create<GameState>()(
             lastTurnSummary: snapshot.lastTurnSummary || "",
 
             // World & Visuals
-            currentLocation: snapshot.currentLocation,
-            currentBackground: snapshot.currentBackground,
-            currentCG: snapshot.currentCG || null, // [New] Load CG
-            currentBgm: snapshot.currentBgm,
-            characterExpression: snapshot.characterExpression,
+            currentLocation: snapshot.currentLocation || "Unknown",
+            currentBackground: snapshot.currentBackground || "",
+            currentCG: snapshot.currentCG || null, // [New] Hydrate CG
+            currentBgm: snapshot.currentBgm || null,
+            characterExpression: snapshot.characterExpression || "",
 
             // Data
             characterData: snapshot.characterData || {},
@@ -645,7 +642,8 @@ export const useGameStore = create<GameState>()(
           }
 
           // Transform for State
-          const existingCharData = get().characterData || {};
+          // [Fix] If resetting, do NOT carry over existing data (memories, etc.)
+          const existingCharData = reset ? {} : (get().characterData || {});
           const charState = Object.values(initialCharacterData).reduce((acc: any, char: any) => {
             // [Fix] Use Normalized Key (Defaulting to 'ko' if not set yet, or rely on internal store check)
             // But we can check get().language
@@ -691,6 +689,7 @@ export const useGameStore = create<GameState>()(
                 wikiData: data.wikiData,
                 characterMap: data.characterMap, // Added
                 extraMap: data.extraMap, // Added
+                cgMap: data.cgMap, // Added
                 constants: data.constants, // Added
                 characterCreationQuestions: data.characterCreationQuestions, // Added
                 characterData: charState, // Reset to initial static state (relationships 0)
@@ -713,8 +712,10 @@ export const useGameStore = create<GameState>()(
                 scriptQueue: [],
                 currentSegment: null,
                 currentBackground: '', // Will be set by init logic or script
+                currentLocation: data.initialLocation || '', // [Fix] Dynamic Location from Loader
+                scenarioSummary: '', // [Fix] Reset Summary
+                lastTurnSummary: '', // [Fix] Reset Logic Context
                 currentCG: null, // [New] Reset CG
-                characterExpression: 'normal', // [Fix logic]
                 currentBgm: null,
                 pendingLogic: null,
                 endingType: 'none', // Reset Ending
@@ -735,6 +736,7 @@ export const useGameStore = create<GameState>()(
               wikiData: data.wikiData,
               characterMap: data.characterMap, // Added
               extraMap: data.extraMap, // Added
+              cgMap: data.cgMap, // Added
               constants: data.constants, // Added
               characterCreationQuestions: data.characterCreationQuestions, // Added
               getSystemPromptTemplate: config?.getSystemPromptTemplate || data.getSystemPromptTemplate,
@@ -815,7 +817,7 @@ export const useGameStore = create<GameState>()(
       },
 
       currentBackground: '/assets/backgrounds/Default_Fallback.jpg',
-      setBackground: (bg) => set({ currentBackground: bg }),
+      setBackground: (bg) => set({ currentBackground: bg, currentCG: null }), // [Fix] Clear Event CG on BG change
 
       currentCG: null,
       setEventCG: (cg) => set({ currentCG: cg }),
@@ -1084,11 +1086,7 @@ export const useGameStore = create<GameState>()(
         goals: state.goals.map(g => g.id === id ? { ...g, ...updates } : g)
       })),
 
-      tensionLevel: 0,
-      setTensionLevel: (level) => set({ tensionLevel: Math.max(-100, Math.min(100, level)) }),
-      updateTensionLevel: (delta) => set((state) => ({
-        tensionLevel: Math.max(-100, Math.min(100, state.tensionLevel + delta))
-      })),
+
 
       endingType: 'none',
       setEndingType: (type) => set({ endingType: type }),
@@ -1163,7 +1161,7 @@ export const useGameStore = create<GameState>()(
           characterData: {}, // [Fix] Clear character data so it reloads fresh on next init
           lore: {}, // [Fix] Clear lore as well
           goals: [],
-          tensionLevel: 0,
+
         });
       },
 

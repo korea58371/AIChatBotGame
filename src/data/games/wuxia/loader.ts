@@ -4,7 +4,7 @@ import { GameData } from '@/lib/engine/data-manager';
 export async function loadWuxiaData(): Promise<GameData> {
     console.log(`[WuxiaLoader] Loading Wuxia data...`);
 
-    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, bgMappingsModule: any, systemPromptModule: any, wikiDataModule: any, charMapModule: any, extraMapModule: any, constantsModule: any, loreModule: any;
+    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, bgMappingsModule: any, systemPromptModule: any, wikiDataModule: any, charMapModule: any, extraMapModule: any, cgMapModule: any, constantsModule: any, loreModule: any;
     let characterImageList: string[] = [];
     let extraCharacterList: string[] = [];
 
@@ -58,6 +58,12 @@ export async function loadWuxiaData(): Promise<GameData> {
             const extraMap = await import('./extra_map.json');
             extraMapModule = extraMap.default || extraMap;
         } catch (e) { console.error("[WuxiaLoader] Failed extraMap", e); }
+
+        try {
+            // @ts-ignore
+            const cgMap = await import('./cg_mappings');
+            cgMapModule = (cgMap as any).WUXIA_CG_MAP || (cgMap as any).default || cgMap;
+        } catch (e) { console.error("[WuxiaLoader] Failed cgMap", e); }
 
         // Wiki Data
         try {
@@ -143,7 +149,50 @@ export async function loadWuxiaData(): Promise<GameData> {
         wikiData: wikiDataModule || {},
         characterMap: charMapModule || {},
         extraMap: extraMapModule || {},
+        cgMap: cgMapModule || {},
         constants: constantsModule || {},
-        lore: loreModule?.WuxiaLore || {}
+        lore: loreModule?.WuxiaLore || {},
+        initialLocation: getRandomInitialLocation(loreModule?.WuxiaLore)
     };
+}
+
+/**
+ * [NEW] 무협 초기 위치 랜덤 생성
+ * locations.json에서 임의의 Region과 Zone을 조합하여 반환합니다.
+ * 포맷: "Region_Zone" (예: "하남_소림사", "호북_객잔")
+ */
+function getRandomInitialLocation(lore: any): string {
+    const fallback = '하남_소림사';
+
+    try {
+        const locations = lore?.locations;
+        if (!locations || !locations.regions) {
+            console.warn('[WuxiaLoader] No locations data, using fallback.');
+            return fallback;
+        }
+
+        const regionNames = Object.keys(locations.regions);
+        if (regionNames.length === 0) return fallback;
+
+        // 1. 랜덤 Region 선택
+        const randomRegion = regionNames[Math.floor(Math.random() * regionNames.length)];
+        const regionData = locations.regions[randomRegion];
+
+        if (!regionData || !regionData.zones) {
+            return `${randomRegion}_마을`; // Fallback Zone
+        }
+
+        // 2. 랜덤 Zone 선택
+        const zoneNames = Object.keys(regionData.zones);
+        if (zoneNames.length === 0) return `${randomRegion}_마을`;
+
+        const randomZone = zoneNames[Math.floor(Math.random() * zoneNames.length)];
+
+        const result = `${randomRegion}_${randomZone}`;
+        console.log(`[WuxiaLoader] Random Initial Location: ${result}`);
+        return result;
+    } catch (e) {
+        console.error('[WuxiaLoader] Error generating random location:', e);
+        return fallback;
+    }
 }

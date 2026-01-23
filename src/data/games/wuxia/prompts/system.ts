@@ -162,6 +162,37 @@ ${perspectiveRule}
 - **내공**: ${stats.neigong || 0}년
   - **보유 무공**: ${skillList}
 
+**[Active Characters Context] (CRITICAL)**
+*The following characters are currently present in the scene. Use their DEFINED relationships and speech styles.*
+${(state.activeCharacters || []).map((charId: string) => {
+    const charData = state.characterData?.[charId];
+    if (!charData) return `- ${charId}: (No Data)`;
+
+    // Format Relationship Info
+    const relInfo = charData.relationshipInfo || {};
+    const relStatus = relInfo.relation || 'Unknown';
+    const speechStyle = relInfo.speechStyle || 'Unknown';
+    const endingStyle = relInfo.endingStyle || '';
+
+    // Format Memories (Limit to last 3 major memories to save tokens)
+    const memories = (charData.memories || []).slice(-3).map((m: string) => `  * Memory: "${m}"`).join('\n');
+
+    return `- **${charData.name || charId}**:
+  - **Relationship**: ${relStatus} (CallSign: ${relInfo.callSign || 'None'})
+  - **Speech Style**: ${speechStyle} ${endingStyle ? `(Ends with: ${endingStyle})` : ''}
+  - **Key Memories**:
+${memories || "  (No significant shared memories yet)"}`;
+  }).join('\n')}
+
+**[이동 및 여행 규칙 (Travel Pacing)] (CRITICAL)**:
+- **순간이동 금지**: 먼 지역(다른 성/City)으로 이동할 때는 절대 한 턴 만에 도착하지 마십시오.
+- **여정 묘사**: 출발 -> 여정(산적, 노숙, 풍경) -> 도착의 과정을 거쳐야 합니다.
+- **예시**:
+  (X) "하남으로 가자. (잠시 후) 하남에 도착했다." (금지)
+  (O) "하남으로 가자. 짐을 챙겨 성문을 나섰다. 가는 길은 멀고 험할 것이다." (올바름)
+  (O) "며칠을 꼬박 걸어 드디어 하남의 성벽이 보인다." (도착 시)
+
+
 **[전투 가이드라인]**:
 주인공은 현재 **'${playerRank}'** 경지이다. 
 - **${playerRank}**의 한계: ${rankData.능력}

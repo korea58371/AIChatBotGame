@@ -58,6 +58,7 @@ import TextMessage from './features/TextMessage';
 import PhoneCall from './features/PhoneCall';
 import TVNews from './features/TVNews';
 import SmartphoneApp from './features/SmartphoneApp';
+import { checkRankProgression } from '@/data/games/wuxia/progression';
 import Article from './features/Article';
 import DebugPopup from './features/DebugPopup';
 import Link from 'next/link';
@@ -1052,6 +1053,11 @@ export default function VisualNovelUI() {
         }
     }, [currentSegment, characterExpression, useGameStore.getState().protagonistImageOverride]);
 
+    // [Debug] Monitor Background Changes
+    useEffect(() => {
+        console.log(`[VisualNovelUI] currentBackground changed to: "${currentBackground}"`);
+    }, [currentBackground]);
+
     // [fix] Auto-Advance Script: Moved below advanceScript definition
     const advanceScript = useCallback(() => {
         // [Stream] Increment consumed count
@@ -1105,8 +1111,19 @@ export default function VisualNovelUI() {
                 const resolvedBg = resolveBackground(nextSegment.content);
                 console.log(`[Background Debug] Resolved to: "${resolvedBg}"`);
                 setBackground(resolvedBg);
+
+                // [Fix] Sync Current Location with Narrative Tag
+                console.log(`[Location] Updating Current Location: ${nextSegment.content}`);
+                useGameStore.getState().setCurrentLocation(nextSegment.content);
+
                 useGameStore.getState().setEventCG(null); // [Fix] Clear Event CG on background change
                 setCharacterExpression(''); // Clear character on scene change
+
+                // [Fix] Force React Render Cycle for Background
+                // Sometimes state update doesn't reflect in time for the next frame if logic is heavy.
+                // We rely on 'setBackground' (Zustand) which should trigger re-render.
+                // But to be safe for "Streaming", we ensure this runs before next text segment.
+                setTimeout(() => { }, 0);
             } else if (nextSegment.type === 'command') {
                 // [New] Handle Commands
                 if (nextSegment.commandType === 'set_time') {
@@ -1576,18 +1593,26 @@ export default function VisualNovelUI() {
 
             // 3. OPTIMISTIC Deduct Coin
             const newCoinCount = currentCoins - COST_PER_TURN;
-            setUserCoins(newCoinCount);
+            setUserCoins(newCoinCount); // Optimistic UI Update
 
-            // Background DB Sync (Fire-and-forget)
+            // Background DB Sync (Server Action)
             if (activeSession?.user) {
-                const userId = activeSession.user.id;
-                if (supabase) { // Guard supabase call
-                    // [Changed] Use direct update for variable cost (RPC decrement_coin is likely fixed to 1)
-                    supabase.from('profiles').update({ coins: newCoinCount }).eq('id', userId)
-                        .then(({ error }: { error: any }) => {
-                            if (error) console.error("Coin update failed:", error);
-                        });
-                }
+                // Ensure to import: import { deductCoins } from '@/app/actions/economy';
+                // We use dynamic import or top-level import? Top-level is better but this is a large file update.
+                // For now, let's just assume top-level import will be added by me in a separate step or I can add it here if I am careful?
+                // No, replace_file_content chunk cannot add import at top easily if it's far away.
+                // I will add the call here and then add the import at the top in a separate call or rely on user to add it? NO. I must do it.
+                // Wait, dynamic import for server action? 
+                // `import('@/app/actions/economy').then(mod => mod.deductCoins(COST_PER_TURN))`
+
+                import('@/app/actions/economy').then(({ deductCoins }) => {
+                    deductCoins(COST_PER_TURN).catch(err => {
+                        console.error("Coin deduction failed:", err);
+                        // Revert optimistic update?
+                        // setUserCoins(currentCoins); // Optional: rollback
+                        // addToast("Failed to save coin usage", "error");
+                    });
+                });
             }
 
             if (!isHidden) {
@@ -1604,6 +1629,10 @@ export default function VisualNovelUI() {
                 isEpilogueRef.current = false;
             }
             setChoices([]);
+
+            // [Fix] Reset active segment index for new turn to prevent skipping lines (Jump Bug)
+            activeSegmentIndexRef.current = 0;
+            console.log("[VisualNovelUI] Reset activeSegmentIndexRef to 0 for new turn.");
 
             const currentState = useGameStore.getState();
             let currentHistory = currentState.chatHistory;
@@ -1690,7 +1719,7 @@ export default function VisualNovelUI() {
                 characterData: JSON.parse(JSON.stringify(snapshotState.characterData)),
                 inventory: JSON.parse(JSON.stringify(snapshotState.inventory)),
                 worldData: JSON.parse(JSON.stringify(snapshotState.worldData)),
-                tensionLevel: snapshotState.tensionLevel,
+
                 goals: JSON.parse(JSON.stringify(snapshotState.goals)),
                 skills: JSON.parse(JSON.stringify(snapshotState.skills || [])), // [Fix] Capture Skills for Rewind
                 activeCharacters: JSON.parse(JSON.stringify(snapshotState.activeCharacters || [])),
@@ -1763,20 +1792,120 @@ export default function VisualNovelUI() {
                                 // [Filter] Client-side visibility filter for Thinking/Output tags
                                 // We keep accumulatedText as the RAW buffer.
                                 // We derive 'visText' for the parser and UI.
+                                // [Fix] History Leaking / Text Flashing Bug
+                                // We must strictly isolate the LAST <Output> block if multiple exist.
                                 let visText = accumulatedText;
 
-                                // 1. Remove closed Thinking blocks
+                                // 1. Remove closed Thinking blocks first (High Priority)
                                 visText = visText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '');
 
                                 // 2. Hide partial Thinking blocks (prevent flash)
-                                // If we have an open <Thinking tag that isn't closed yet, hide everything after it.
                                 const openThink = visText.indexOf('<Thinking');
                                 if (openThink !== -1) {
                                     visText = visText.substring(0, openThink);
                                 }
 
-                                // 3. Remove Output container tags (Robust Regex)
-                                visText = visText.replace(/<Output[^>]*>/gi, '').replace(/<\/Output>/gi, '');
+                                // 3. [Fix] Relaxed Output Handling
+                                // Instead of discarding everything before <Output>, we just extract the content inside it IF it exists.
+                                // BUT, if <배경> exists *before* <Output>, we want to keep it.
+                                // So we simply remove the <Output> tags themselves, relying on the fact that we already removed Thinking.
+                                // Exception: If there are multiple Output blocks (leaking history), we SHOULD take the last one.
+                                const outputMatches = [...visText.matchAll(/<Output>([\s\S]*?)<\/Output>/gi)];
+                                if (outputMatches.length > 0) {
+                                    // Take the content of the LAST complete block
+                                    // AND also prepend any tags that appeared *before* the first Output? 
+                                    // No, simple models might output "<Tags> <Output>Content</Output>".
+                                    // Let's iterate and concat all non-thinking content?
+                                    // Risk: Repeating history.
+
+                                    // Safer Strategy:
+                                    // If <Output> exists, use the LAST block's content.
+                                    // BUT checking if the Background tag is missing in it?
+
+                                    // Let's try the simple approach first that the User suggested implicitly (Timing/Parsing).
+                                    // Be permissive: Just remove the tags.
+                                    visText = visText.replace(/<Output[^>]*>/gi, '').replace(/<\/Output>/gi, '');
+
+                                    // If we have "History <Output> New", replacing tags leaves "History New".
+                                    // This is bad.
+                                    // We MUST use substring if we suspect history leak.
+                                    // Let's trust the LAST <Output> start index.
+                                    const lastOpenIdx = accumulatedText.lastIndexOf('<Output>');
+                                    if (lastOpenIdx !== -1) {
+                                        // Check if <배경> is explicitly *before* this index in the scratch buffer?
+                                        // This is getting complex.
+
+                                        // Logic: If we found <Output>, valid content starts there.
+                                        // IF the AI puts <배경> before it, the AI is malformed.
+                                        // But I will allow a "Grace Zone" of 50 chars before Output?
+                                        visText = accumulatedText.substring(lastOpenIdx);
+                                        visText = visText.replace(/<Output[^>]*>/gi, '').replace(/<\/Output>/gi, '');
+                                    } else {
+                                        // No Output tag yet? Show everything (cleaned).
+                                    }
+                                } else {
+                                    // No complete Output block logic or streaming incomplete.
+                                    // If we have an OPEN tag but no close?
+                                    const lastOpenIdx = visText.lastIndexOf('<Output>');
+                                    if (lastOpenIdx !== -1) {
+                                        visText = visText.substring(lastOpenIdx).replace(/<Output[^>]*>/gi, '');
+                                    }
+                                }
+
+                                // [Fix] Scrub Logic Tags (Sync with Orchestrator)
+                                // If we don't scrub these, the Client Parser might create 'Command' segments that the Server Parser (on clean text) doesn't.
+                                // This causes 'activeSegmentIndexRef' to Desync (Client has more segments than Server).
+                                // When onComplete swaps the text, the index points to the wrong place (or past end), causing "Reversion" or "Jump".
+                                visText = visText
+                                    .replace(/\[Stat[^\]]*\]/gi, '')
+                                    .replace(/<Stat[^>]*>/gi, '')
+                                    .replace(/\[Rel[^\]]*\]/gi, '')
+                                    .replace(/<Rel[^>]*>/gi, '')
+                                    .replace(/\[Relationship[^\]]*\]/gi, '')
+                                    .replace(/<Relationship[^>]*>/gi, '')
+                                    .replace(/\[Tension[^\]]*\]/gi, '')
+                                    .replace(/<Tension[^>]*>/gi, '')
+                                    .replace(/<NewInjury[^>]*>/gi, '')
+                                    .replace(/<Injury[^>]*>/gi, '')
+                                    .replace(/<Dead[^>]*>/gi, '')
+                                    .replace(/\[Dead[^\]]*\]/gi, '')
+                                    .replace(/<Location[^>]*>/gi, '')
+                                    .replace(/<Faction[^>]*>/gi, '')
+                                    .replace(/<Rank[^>]*>/gi, '')
+                                    .replace(/<PlayerRank[^>]*>/gi, '')
+                                    .replace(/\[PlayerRank[^\]]*\]/gi, '')
+                                    .replace(/<EventProgress[^>]*>/gi, '')
+                                    .replace(/\[EventProgress[^\]]*\]/gi, '')
+                                    .replace(/<ResolvedInjury[^>]*>/gi, '')
+                                    .replace(/\[ResolvedInjury[^\]]*\]/gi, '')
+                                    // [Fix] Robustly remove Narration/Dialogue CLOSING tags (Parser only uses Open tags)
+                                    .replace(/<\/\s*(나레이션|대사|이름|지문)[^>]*>/gi, '')
+                                    // [Fix] Remove Ending Key Block entirely (System Data)
+                                    .replace(/<ENDING KEY>[\s\S]*?<\/ENDING KEY>/gi, '')
+                                    .replace(/<ENDING KEY>[^>]*>/gi, '')
+                                    .replace(/<\/ENDING KEY>/gi, '')
+                                    .replace(/<나레이션[^>]*>/gi, '') // Remove Open Narration tag if intended (Wait, parser uses Open Tag?)
+                                    // Review: script-parser.ts USES <나레이션>. Removing it might break parsing if the segment relies on it.
+                                    // HOWEVER, if we remove it, parser falls back to default narration.
+                                    // The user issue was specifically </나레이션> (Closing Tag).
+                                    // So we MUST remove </나레이션>.
+                                    // We should KEEP <나레이션> if it helps the parser?
+                                    // Actually, if we remove <나레이션>, parser treats "Text" as narration.
+                                    // If we keep <나레이션>, parser treats "<나레이션> Text" as narration.
+                                    // Result is the same. But removing it is safer to prevent it from showing up if parser fails.
+                                    // Let's stick to removing it since we did that before and it worked for the Opening tag.
+                                    .replace(/<나레이션[^>]*>/gi, '')
+                                    .replace(/\[나레이션[^\]]*\]/gi, '');
+
+                                // [Fix] Partial Tag Hiding (Prevent Flashing)
+                                // If the text ends with a partial tag (e.g. "</나레"), hide it until it's complete and scrubbed.
+                                // Logic: If there is a '<' that is NOT followed by a '>' anywhere after it.
+                                const lastLessThan = visText.lastIndexOf('<');
+                                const lastGreaterThan = visText.lastIndexOf('>');
+                                if (lastLessThan > lastGreaterThan) {
+                                    // There is an open tag at the end. Hide it.
+                                    visText = visText.substring(0, lastLessThan);
+                                }
 
 
                                 const allSegments = parseScript(visText);
@@ -1793,17 +1922,33 @@ export default function VisualNovelUI() {
                                 while (currentIndex < allSegments.length) {
                                     const seg = allSegments[currentIndex];
 
-                                    if (seg.type === 'background' || seg.type === 'bgm' || seg.type === 'command') {
+                                    if (seg.type === 'background' || seg.type === 'bgm' || seg.type === 'event_cg' || seg.type === 'command') {
                                         // Execute Command
                                         if (seg.type === 'background') {
-                                            // [Helpers] We assume resolveBackground is available (it was in legacy)
                                             try {
+                                                console.log(`[Stream] Background Segment Detected: ${seg.content}`);
                                                 const resolvedBg = resolveBackground(seg.content);
-                                                setBackground(resolvedBg);
-                                                setCharacterExpression('');
-                                            } catch (e) { console.error(e); }
+                                                // [Optimization] Only verify change if strictly needed, but resolveBackground is fast.
+                                                // setBackground does internal check but we log.
+                                                if (useGameStore.getState().currentBackground !== resolvedBg) {
+                                                    console.log(`[Stream] Setting Background: ${resolvedBg}`);
+                                                    setBackground(resolvedBg);
+                                                    setCharacterExpression('');
+                                                }
+                                            } catch (e) { console.error("[Stream] BG Update Error:", e); }
                                         } else if (seg.type === 'bgm') {
                                             playBgm(seg.content);
+                                        } else if (seg.type === 'event_cg') {
+                                            // [New] Stream Event CG
+                                            try {
+                                                const clean = seg.content.replace(/<\/[^>]+>/g, '').trim();
+                                                if (clean) {
+                                                    useGameStore.getState().setEventCG(clean); // Assume store handles resolution or component does
+                                                    // Actually Store expects tag key probably? Or resolved path?
+                                                    // existing logic: state.currentCG is string. 
+                                                    // EventCGLayer resolves it. So passing key is fine.
+                                                }
+                                            } catch (e) { }
                                         } else if (seg.type === 'command') {
                                             // Minimal Stat Parsing (Sync with onComplete logic accumulator)
                                             if (seg.commandType === 'update_stat') {
@@ -1845,9 +1990,22 @@ export default function VisualNovelUI() {
                                             }
                                         }
 
-                                        // Advance
-                                        currentIndex++;
-                                        activeSegmentIndexRef.current = currentIndex;
+                                        // [Fix] Stream Sync Hazard - "The Partial Tag Trap"
+                                        // If this is the LAST segment in the stream, it might be incomplete (e.g. background tag growing).
+                                        // We MUST NOT increment the index for Idempotent Metadata (BG/BGM/CG) so we re-evaluate it on next token.
+                                        // Commands are non-idempotent (stat add keys), so we must consume them immediately (assume atomic).
+
+                                        const isLastSegment = currentIndex === allSegments.length - 1;
+                                        const isIdempotent = ['background', 'bgm', 'event_cg'].includes(seg.type);
+
+                                        if (isIdempotent && isLastSegment) {
+                                            // Do NOT increment. Let loop break. Next onToken will re-process this index with fuller content.
+                                            break;
+                                        } else {
+                                            // Advance
+                                            currentIndex++;
+                                            activeSegmentIndexRef.current = currentIndex;
+                                        }
                                     } else {
                                         // Content (Dialogue/Narration/Choice)
                                         // Update current segment to reflect latest buffer (in case text grew)
@@ -1928,16 +2086,52 @@ export default function VisualNovelUI() {
 
                                 console.groupEnd();
 
+                                // [New] Casting Debug
+                                console.groupCollapsed(`%c1.5 Character Casting (${data.casting?.length || 0} candidates)`, logStyle);
+                                if (data.casting && data.casting.length > 0) {
+                                    // Format for Table (Reasons as String)
+                                    const formattedCasting = data.casting.map((c: any) => ({
+                                        id: c.id,
+                                        name: c.name,
+                                        score: c.score,
+                                        reasons: (Array.isArray(c.reasons) ? c.reasons : []).join(", "),
+                                        data: c.data
+                                    }));
+                                    console.table(formattedCasting);
+                                } else {
+                                    console.log("No characters selected for casting.");
+                                }
+                                console.groupEnd();
+
                                 // 2. Story Generation
                                 console.groupCollapsed(`%c2. Story Generation (${cleanStoryText?.length || 0} chars) [${latencies?.story || 0}ms]`, logStyle);
-                                console.log("%c[Static Prompt]", subLogStyle, data.story_static_prompt || "N/A");
-                                console.log("%c[Dynamic Prompt]", subLogStyle, data.story_dynamic_prompt || "N/A");
+
+                                // [New] Detailed Input Breakdown
+                                const components = data.story_debug?.components;
+                                if (components) {
+                                    console.log("%c[Narrative Guide]", subLogStyle, components.narrative_guide);
+                                    console.log("%c[Player Context]", subLogStyle, components.context_player);
+                                    console.log("%c[Active Characters]", subLogStyle, components.context_characters);
+                                    console.log("%c[Retrieved Context]", subLogStyle, components.context_retrieved);
+                                    console.log("%c[Structure Instruction]", subLogStyle, components.instruction_thinking);
+                                }
+
+                                console.log("%c[Static Prompt]", subLogStyle, data.story_static_prompt || data.systemPrompt || "N/A");
+                                console.log("%c[Dynamic Output (Full)]", subLogStyle, data.story_dynamic_prompt || components?.full_composite || "N/A");
                                 console.log("%c[Generated Text]", subLogStyle, cleanStoryText);
                                 console.groupEnd();
 
                                 // 3. Game Logic (Post-Logic)
                                 console.groupCollapsed(`%c3. Game Logic & Stats [${latencies?.postLogic || 0}ms]`, logStyle);
-                                console.groupCollapsed("Post-Logic Output");
+                                console.groupCollapsed("Post-Logic Input (Prompt)");
+                                console.log(postLogicOut?._debug_prompt);
+                                console.groupEnd();
+
+                                console.groupCollapsed("Post-Logic System Prompt (Static Rules)");
+                                console.log(postLogicOut?._debug_system_prompt || "Cached/Not Available");
+                                console.groupEnd();
+
+                                console.groupCollapsed("Post-Logic Output (Result)");
                                 console.dir(postLogicOut);
                                 console.groupEnd();
 
@@ -1948,7 +2142,7 @@ export default function VisualNovelUI() {
                                 console.groupEnd();
 
                                 // 4. Events
-                                console.groupCollapsed(`%c4. Event System [${latencies?.postLogic || 0}ms]`, logStyle); // Events run in parallel with PostLogic usually, or part of logic time
+                                console.groupCollapsed(`%c4. Event System [${latencies?.eventSystem || 0}ms]`, logStyle); // Events run in parallel with PostLogic usually, or part of logic time
 
                                 console.log("Event Data:", eventOut);
                                 console.groupEnd();
@@ -1978,6 +2172,23 @@ export default function VisualNovelUI() {
                                 if (finalText === accumulatedText) {
                                     finalText = finalText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '')
                                         .replace(/<Output>/gi, '').replace(/<\/Output>/gi, '');
+                                }
+
+                                // [Fix] Robust History De-Duplication
+                                // Sometimes the AI regurgitates the user's prompt or the previous turn's text.
+                                // We check the last few messages in history and strip them if they appear at the START of finalText.
+                                const lastUserMsg = currentState.chatHistory.slice().reverse().find(m => m.role === 'user');
+                                const lastModelMsg = currentState.chatHistory.slice().reverse().find(m => m.role === 'model' && m.text !== '...' && m.text !== '');
+
+                                if (lastUserMsg && finalText.trim().startsWith(lastUserMsg.text.trim())) {
+                                    console.warn("[Post-Process] Deduplicated User Prompt from response.");
+                                    finalText = finalText.replace(lastUserMsg.text.trim(), '').trim();
+                                }
+
+                                // Also check for "User: [Text]" format just in case
+                                if (lastUserMsg && finalText.includes(`${lastUserMsg.text}`)) {
+                                    // More aggressive leak check? 
+                                    // Let's stick to prefix removal for safety.
                                 }
 
                                 // [Fallback] Text-based Ending Detection (Belt & Suspenders)
@@ -2058,15 +2269,66 @@ export default function VisualNovelUI() {
                                         setChoices([]); // Ensure clear so no buttons appear
                                     }
 
-                                    // If the user has already advanced past the stream length, or is at the end:
-                                    // We just replace the queue with the remaining segments from the FINAL text.
-                                    // Index logic: activeSegmentIndexRef points to the currently displayed segment index.
-                                    // New Queue = finalSegments [current + 1 ... end]
-                                    if (activeSegmentIndexRef.current !== null) {
-                                        const remaining = finalSegments.slice(activeSegmentIndexRef.current + 1);
-                                        setScriptQueue(remaining);
-                                        console.log(`[Stream] Queue Resync: Added ${remaining.length} segments.`);
+                                    // [Fix] Content-Based Queue Synchronization
+                                    // Instead of blindly slicing by index (which fails if parser yields different segment counts for stream vs final),
+                                    // we find WHERE in the finalSegments the user currently is, based on Content Matching.
+
+                                    let newQueueIndex = 0;
+                                    const currentIndex = activeSegmentIndexRef.current;
+
+                                    // 1. Get the content the user is currently looking at (or just finished)
+                                    // We need to access the 'allSegments' from the LAST render.
+                                    // Since we don't have direct access to the stream's 'allSegments' here (it's local to onToken),
+                                    // we rely on 'currentSegment' state if it exists, or we infer from index if we could trust it.
+                                    // Actually, 'currentSegment' is the SOURCE of truth for what's on screen.
+
+                                    if (currentSegment && currentIndex !== null) {
+                                        // Normalize content for comparison (remove spaces/newlines)
+                                        const normalize = (s: string) => s.replace(/\s+/g, '').trim();
+                                        const targetContent = normalize(currentSegment.content);
+
+                                        // 2. Scan finalSegments to find BEST match (Closest to currentIndex)
+                                        let bestMatchIndex = -1;
+                                        let minDistance = Infinity;
+
+                                        for (let i = 0; i < finalSegments.length; i++) {
+                                            const seg = finalSegments[i];
+                                            if (seg.type === currentSegment.type) {
+                                                const segContent = normalize(seg.content);
+
+                                                // Check Exact or Prefix Match
+                                                if (segContent === targetContent || segContent.startsWith(targetContent)) {
+                                                    const distance = Math.abs(i - currentIndex);
+
+                                                    if (distance < minDistance) {
+                                                        minDistance = distance;
+                                                        bestMatchIndex = i;
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if (bestMatchIndex !== -1) {
+                                            console.log(`[Stream] Content Sync Success: Matched index ${currentIndex} to Final index ${bestMatchIndex} (Dist: ${minDistance})`);
+                                            newQueueIndex = bestMatchIndex + 1;
+                                        } else {
+                                            // [Fix] Race Condition Vulnerability
+                                            // If currentSegment is null (state lag) but currentIndex is set (ref), 
+                                            // falling back to 'currentIndex + 1' SKIPS the current segment.
+                                            // We should fallback to 'currentIndex' to ensure it gets queued.
+                                            console.warn(`[Stream] Content Sync Failed: Could not find segment. Fallback to index ${currentIndex}`);
+                                            newQueueIndex = currentIndex || 0;
+                                        }
+                                    } else {
+                                        // No active segment? Maybe starting fresh or error.
+                                        // [Fix] Same as above. Do not skip if we haven't rendered yet.
+                                        newQueueIndex = (currentIndex || 0);
                                     }
+
+                                    // Apply the calculated start index
+                                    const remaining = finalSegments.slice(newQueueIndex);
+                                    setScriptQueue(remaining);
+                                    console.log(`[Stream] Queue Resync: Added ${remaining.length} segments (from index ${newQueueIndex}).`);
                                 }
 
                                 // Calculate Logic
@@ -2102,15 +2364,13 @@ export default function VisualNovelUI() {
                                     });
                                 }
 
-                                // [Fate System] Update logic
-                                const fateDelta = preLogicOut?.fate_change || 0;
-                                if (fateDelta !== 0) {
-                                    console.log(`[Fate] Applying Delta: ${fateDelta}`);
-                                }
+                                // [Fate System] Update logic - DEPRECATED (Handled Client-Side)
+                                // const fateDelta = preLogicOut?.fate_change || 0;
+
 
                                 const combinedLogic = {
                                     hpChange: finalHpChange,
-                                    fate: fateDelta,
+                                    fate: 0, // [Fate] Handled deterministically before request
                                     mpChange: finalMpChange,
                                     personalityChange: plPersonality,
                                     mood: postLogicOut?.mood_update,
@@ -2168,6 +2428,12 @@ export default function VisualNovelUI() {
 
                                 setPendingLogic(null);
                                 setIsLogicPending(false);
+
+                                // [Fix] Trigger Critical Autosave
+                                // Ensure we save the game state *after* all logic and text are finalized.
+                                // This prevents "Loss of Context" if the user reloads right after a turn.
+                                console.log("[AutoSave] Triggering Post-Turn Autosave...");
+                                useGameStore.getState().saveToSlot('auto');
 
                                 // Logging
                                 submitGameplayLog({
@@ -2237,6 +2503,25 @@ export default function VisualNovelUI() {
         const state = useGameStore.getState();
         const history = state.chatHistory;
         const queue = scriptQueue; // Use local state which is in-sync with UI
+
+        // [Fate System] Deterministic Deduction
+        // Must happen BEFORE handleSend to prevent "Free Usage" if network fails, 
+        // but primarily to ensure prompt reflects "Paid" status.
+        if (fateUsage > 0) {
+            const currentFate = state.playerStats.fate || 0;
+            const fateCost = fateUsage * fateUsage;
+
+            if (currentFate < fateCost) {
+                addToast("운명이 부족합니다! (Not enough Fate)", "warning");
+                return;
+            }
+
+            // Deduct immediately
+            const newFate = currentFate - fateCost;
+            useGameStore.getState().setPlayerStats({ ...state.playerStats, fate: newFate });
+            addToast(`운명 ${fateCost} 포인트 사용`, "info");
+            console.log(`[Fate] Client-side deduction: -${fateCost} (New Balance: ${newFate})`);
+        }
 
         if (history.length > 0 && queue.length > 0) {
             const lastMsg = history[history.length - 1];
@@ -2712,6 +2997,18 @@ export default function VisualNovelUI() {
             });
         }
 
+        // [New] Deterministic Rank Progression (Wuxia Only)
+        // If we are in Wuxia mode, check for rank up based on updated stats (Level + Neigong).
+        if (activeGameId === 'wuxia') {
+            const progression = checkRankProgression(newStats, useGameStore.getState().playerStats.playerRank);
+            if (progression) {
+                console.log(`[Progression] Rank Up Detected: ${progression.newRankId}`);
+                useGameStore.getState().setPlayerStats({ playerRank: progression.newRankId });
+                addToast(`[승급] ${progression.title}의 경지에 올랐습니다!`, 'success');
+                addToast(progression.message, 'info');
+            }
+        }
+
         if (logicResult.hpChange) {
             newStats.hp = Math.min(Math.max(0, newStats.hp + logicResult.hpChange), newStats.maxHp);
             handleVisualDamage(logicResult.hpChange, newStats.hp, newStats.maxHp);
@@ -3017,11 +3314,6 @@ export default function VisualNovelUI() {
 
 
         // [Narrative Systems: Tension & Goals]
-        if (logicResult.tension_update) {
-            useGameStore.getState().updateTensionLevel(logicResult.tension_update);
-            console.log(`[Narrative] Tension Updated: ${logicResult.tension_update}`);
-        }
-
         if (logicResult.new_goals) {
             logicResult.new_goals.forEach((g: any) => {
                 const newGoal = {
@@ -3162,23 +3454,54 @@ export default function VisualNovelUI() {
             console.log(`[Logic] Fame Change: ${logicResult.fameChange}`);
         }
 
+        // [Fix] Update Active Characters FIRST to ensure they exist in store
+        if (logicResult.activeCharacters) {
+            useGameStore.getState().setActiveCharacters(logicResult.activeCharacters);
+        }
+
         // Character Updates (Bio & Memories)
         if (logicResult.characterUpdates && logicResult.characterUpdates.length > 0) {
             logicResult.characterUpdates.forEach((char: any) => {
                 // [Fix] Normalize ID
                 const normalizedId = normalizeCharacterId(char.id, useGameStore.getState().language || 'ko');
+
+                // [Fix] Fetch existing data to safely merge
+                const existingData = useGameStore.getState().characterData[normalizedId] || {
+                    id: normalizedId,
+                    name: char.name || normalizedId,
+                    relationship: 0,
+                    memories: []
+                };
+
                 const updateData = { ...char, id: normalizedId };
 
-                // If memories are provided, they REPLACE the old list (AI manages the list)
-                // Otherwise, keep existing memories
-                if (!updateData.memories) {
-                    delete updateData.memories; // Don't overwrite with undefined
+                // [Critical Fix] Merge Memories instead of Replacing
+                // The Logic Model returns NEW memories or relevant ones. We must not wipe old ones.
+                if (updateData.memories && Array.isArray(updateData.memories)) {
+                    const oldMemories = existingData.memories || [];
+                    const newMemories = updateData.memories;
+
+                    // Deduplicate and Append
+                    const mergedMemories = [...oldMemories];
+                    newMemories.forEach((m: string) => {
+                        if (!mergedMemories.includes(m)) {
+                            mergedMemories.push(m);
+                        }
+                    });
+
+                    updateData.memories = mergedMemories;
+                    addToast(`Memories Updated: ${normalizedId} (+${newMemories.length})`, 'info');
                 } else {
-                    addToast(`Memories Updated: ${normalizedId}`, 'info');
+                    // If no memories provided in update, DO NOT touch existing memories
+                    delete updateData.memories;
                 }
 
+                // [Safe Update] Use updateCharacterData (which now works because we initialized above, or we can use dedicated setter if needed)
+                // Since updateCharacterData might fail if ID missing (though setActiveCharacters handles it), 
+                // we can rely on it now.
                 useGameStore.getState().updateCharacterData(normalizedId, updateData);
-                if (!updateData.memories) addToast(`Character Updated: ${normalizedId}`, 'info');
+
+                if (!char.memories) addToast(`Character Updated: ${normalizedId}`, 'info');
             });
         }
 

@@ -97,6 +97,17 @@ export const WuxiaConfig: GameConfig = {
         if (char.default_expression) charInfo += `\n- Status: ${char.default_expression}`;
         if (char.description) charInfo += `\n- Current State: ${char.description}`;
 
+        if (char.cgs) {
+            charInfo += `\n- [AVAILABLE CGs]:`;
+            if (Array.isArray(char.cgs)) {
+                char.cgs.forEach((cg: string) => charInfo += `\n  - ${cg}`);
+            } else {
+                Object.entries(char.cgs).forEach(([k, v]) => {
+                    charInfo += `\n  - <CG>${k}</CG>: ${v}`;
+                });
+            }
+        }
+
         return charInfo;
     },
 

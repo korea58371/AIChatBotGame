@@ -14,6 +14,28 @@ export function formatCharacter(c: any, mode: string, state?: any): string {
     if (c.title) lines.push(`- Title: ${c.title}`);
     if (c['활동지역']) lines.push(`- Activity Region: ${c['활동지역']}`);
 
+    // [MODE: ACTIVE] (Optimized for Dynamic Prompt - Brief Sync)
+    // Full bio is already in Static Prompt (Cached). We only need current relevance.
+    if (mode === 'ACTIVE') {
+        if (c.title) lines.push(`- Title: ${c.title}`);
+        if (c.role) lines.push(`- Role: ${c.role}`);
+
+        // Critical: Speech Style (Must be reinforced)
+        const speech = getSpeechStyle(c);
+        if (speech) lines.push(`- Tone: ${speech.style} | Ending: ${speech.ending}`);
+
+        // Phase/Condition (Already added at top)
+
+        // Brief Personality (Key Traits only)
+        if (c.personality) {
+            const pStr = typeof c.personality === 'string' ? c.personality : JSON.stringify(c.personality);
+            // Truncate if too long (Concept: Just remind the vibe)
+            lines.push(`- Core Traits: ${pStr.slice(0, 150)}${pStr.length > 150 ? '...' : ''}`);
+        }
+
+        return lines.join('\n');
+    }
+
     // [MODE: COMBAT]
     if (mode === 'COMBAT') {
         if (c['강함'] && c['강함'].skills) {

@@ -105,10 +105,18 @@ export class AgentOrchestrator {
             effectiveGameState.currentMood = preLogicOut.mood_override;
         }
 
-        // [New] PreLogic Auto-Injection of Characters
+        // [New] PreLogic Auto-Injection of Characters (Sanitized by Casting)
         if (preLogicOut.new_characters && preLogicOut.new_characters.length > 0) {
             const currentActive = new Set<string>(effectiveGameState.activeCharacters || []);
             const charData = effectiveGameState.characterData || {};
+
+            // [Security] Create Set of Valid Cast IDs + Already Active IDs
+            // We do NOT allow PreLogic to summon characters that AgentCasting rejected (Score 0),
+            // unless they are already active in the scene.
+            const validCastIds = new Set([
+                ...suggestions.map(c => c.id),
+                ...currentActive
+            ]);
 
             preLogicOut.new_characters.forEach((name: string) => {
                 // Find ID by Name (Exact match first, then partial)
@@ -120,9 +128,14 @@ export class AgentOrchestrator {
                 }
 
                 if (foundId) {
-                    if (!currentActive.has(foundId)) {
-                        currentActive.add(foundId);
-                        console.log(`[Orchestrator] PreLogic Auto-Inject Active Character: ${name} -> ${foundId}`);
+                    // [Fix] Enforce Casting Constraint
+                    if (validCastIds.has(foundId)) {
+                        if (!currentActive.has(foundId)) {
+                            currentActive.add(foundId);
+                            console.log(`[Orchestrator] PreLogic Auto-Inject Active Character: ${name} -> ${foundId}`);
+                        }
+                    } else {
+                        console.warn(`[Orchestrator] Blocked Hallucinated Character Injection: ${name} (${foundId}) - Not in Casting List`);
                     }
                 } else {
                     console.warn(`[Orchestrator] PreLogic Suggested Character '${name}' not found in database.`);
@@ -130,6 +143,26 @@ export class AgentOrchestrator {
             });
 
             effectiveGameState.activeCharacters = Array.from(currentActive);
+        }
+
+        // [New] Sanitize Character Suggestion Text
+        if (preLogicOut.character_suggestion) {
+            const validNames = new Set([
+                ...suggestions.map(c => c.name),
+                ...(effectiveGameState.activeCharacters || []).map((id: string) => effectiveGameState.characterData?.[id]?.name).filter(Boolean)
+            ]);
+
+            // Split by comma, filter, rejoin
+            const parts = preLogicOut.character_suggestion.split(/[,/]/).map(s => s.trim());
+            const filteredParts = parts.filter(s => {
+                // Check exact or partial match against valid names
+                return Array.from(validNames).some(validName => validName && (validName === s || validName.includes(s) || s.includes(validName)));
+            });
+
+            if (filteredParts.length < parts.length) {
+                console.log(`[Orchestrator] Sanitized Character Suggestion: "${preLogicOut.character_suggestion}" -> "${filteredParts.join(', ')}"`);
+                preLogicOut.character_suggestion = filteredParts.join(', ');
+            }
         }
 
         // 5. Story Generation
@@ -143,7 +176,7 @@ ${retrievedContext}
 [Player Action]
 ${userInput}
 
-나레이션 가이드와 기존 설정 및 규칙을 참고하여 600자 분량의 내용을 작성하세요.
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 6000자 분량의 내용을 작성하세요.
 
 [Narrative Direction]
 ${preLogicOut.narrative_guide}
@@ -192,9 +225,12 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
         let rawText = storyResult.text || "";
 
         // 1. Extract <Output> content if present
-        const outputMatch = rawText.match(/<Output>([\s\S]*?)<\/Output>/i);
-        if (outputMatch && outputMatch[1]) {
-            rawText = outputMatch[1];
+        // [Fix] text Reversion Bug: Always pick the LAST <Output> block.
+        // History hallucination can cause the model to repeat previous <Output> blocks before the new one.
+        const outputMatches = [...rawText.matchAll(/<Output>([\s\S]*?)<\/Output>/gi)];
+        if (outputMatches.length > 0) {
+            const lastMatch = outputMatches[outputMatches.length - 1];
+            rawText = lastMatch[1];
         } else {
             // Fallback: Remove <Thinking> tags if Output tag is missing
             rawText = rawText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '').trim();
@@ -221,7 +257,10 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
             .replace(/<EventProgress[^>]*>/gi, '')
             .replace(/\[EventProgress[^\]]*\]/gi, '')
             .replace(/<ResolvedInjury[^>]*>/gi, '')
-            .replace(/\[ResolvedInjury[^\]]*\]/gi, '');
+            .replace(/\[ResolvedInjury[^\]]*\]/gi, '')
+            .replace(/<나레이션[^>]*>/gi, '')
+            .replace(/<\/나레이션>/gi, '')
+            .replace(/\[나레이션[^\]]*\]/gi, '');
 
         // [Guard] Empty Story Validation
         if (!cleanStoryText || !cleanStoryText.trim()) {
@@ -687,34 +726,44 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
 
         // --- PHASE 2: STORY STREAMING ---
 
-        const compositeInput = `
-[Narrative Direction]
+        // --- PHASE 2: STORY STREAMING ---
+
+        const contextPlayer = PromptManager.getPlayerContext(effectiveGameState, language);
+        const contextCharacters = PromptManager.getActiveCharacterProps(effectiveGameState, undefined, language);
+        const contextRetrieved = retrievedContext || "";
+
+        const narrativeGuide = `[Narrative Direction]
 ${preLogicOut.narrative_guide}
 ${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysis}` : ""}
 ${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
 ${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
 ${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
 ${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_inference}` : ""}
-${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}
+${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}`;
 
-[Context data]
-${PromptManager.getPlayerContext(effectiveGameState, language)}
-${PromptManager.getActiveCharacterProps(effectiveGameState, undefined, language)}
-${retrievedContext}
-
-[Player Action]
-${userInput}
-
-나레이션 가이드와 기존 설정 및 규칙을 참고하여 600자 분량의 내용을 작성하세요.
-
-[Thinking Process Required]
+        const thinkingInstruction = `[Thinking Process Required]
 답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
 1. 현재 상황(Context)과 모순되는 점이 없는가?
 2. 등장인물의 말투(Speech Pattern)는 설정과 일치하는가?
 3. 이번 턴의 주요 사건(Key Events)은 무엇인가?
 4. 캐릭터들의 기억 정보와 현재 네러티브의 개연성/핍진성이 유지되는가?
 
-그 후, <Output> 태그 안에 본문을 작성하세요.
+그 후, <Output> 태그 안에 본문을 작성하세요.`;
+
+        const compositeInput = `
+${narrativeGuide}
+
+[Context data]
+${contextPlayer}
+${contextCharacters}
+${contextRetrieved}
+
+[Player Action]
+${userInput}
+
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 6000자 분량의 내용을 작성하세요.
+
+${thinkingInstruction}
 `;
 
         const cleanHistory = history.map(msg => msg.role === 'model' ? { ...msg, text: msg.text.replace(/<선택지[^>]*>.*?(\n|$)/g, '').trim() } : msg);
@@ -747,9 +796,12 @@ ${userInput}
 
         // Parsing & Scrubbing (Copied Logic)
         let cleanStoryText = fullRawText;
-        const outputMatch = fullRawText.match(/<Output>([\s\S]*?)<\/Output>/i);
-        if (outputMatch && outputMatch[1]) {
-            cleanStoryText = outputMatch[1];
+
+        // [Fix] Use LAST Output block for streaming text validation too
+        const outputMatches = [...fullRawText.matchAll(/<Output>([\s\S]*?)<\/Output>/gi)];
+        if (outputMatches.length > 0) {
+            const lastMatch = outputMatches[outputMatches.length - 1];
+            cleanStoryText = lastMatch[1];
         } else {
             cleanStoryText = cleanStoryText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '').trim();
         }
@@ -798,6 +850,16 @@ ${userInput}
         const finalPayload = {
             reply: p2.finalStoryText, // Has choices appended
             raw_story: cleanStoryText,
+            story_debug: { // [NEW] Detailed Prompt Breakdown
+                components: {
+                    narrative_guide: narrativeGuide,
+                    context_player: contextPlayer,
+                    context_characters: contextCharacters,
+                    context_retrieved: contextRetrieved,
+                    instruction_thinking: thinkingInstruction,
+                    full_composite: compositeInput
+                }
+            },
             logic: {
                 ...preLogicOut,
                 triggerEventId: (p2 as any).eventOut?.triggerEventId,

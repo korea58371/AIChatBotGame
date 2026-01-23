@@ -145,13 +145,13 @@ export async function generateResponse(
     // PromptManager Key: PROMPT_CACHE_{GameID}_SHARED_{Version}
     // We reuse PromptManager's public method logic if possible, or replicate it.
     // Let's replicate the key structure: `CACHE_{GameID}_STORY_{Version}`
-    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v1_3${overrideKey}`;
+    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v2_0${overrideKey}`;
 
     // Only attempt caching if the prompt is substantial (Static Prompt is huge)
     // And only for Story models (Logic is too small)
     console.log(`[GeminiCache] Static Prompt Length: ${systemInstruction.length} chars.`);
 
-    if (systemInstruction.length > 30000) { // Lowered to 30k chars as safety margin for 32k tokens (which is roughly ~100k chars? No, tokens > chars/4 usually? Korean is distinct.)
+    if (systemInstruction.length > 25000) { // Lowered to 30k chars as safety margin for 32k tokens (which is roughly ~100k chars? No, tokens > chars/4 usually? Korean is distinct.)
         // Actually 1 token ~= 1.5-3 chars for Korean? 
         // 32k tokens * 2 chars = 64k chars. 
         // If 34k tokens total input, and static is 90% of it, it should be huge.
@@ -323,9 +323,10 @@ export async function* generateResponseStream(
     // [Cache Logic]
     let cachedContentName: string | null = null;
     const overrideKey = gameState.personaOverride ? `_PERSONA_${gameState.personaOverride}` : '';
-    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v1_3${overrideKey}`;
+    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v2_0${overrideKey}`;
 
-    if (systemInstruction.length > 30000) {
+    // [DEBUG: CACHE DISABLED] Threshold raised to 35000 to force NO CACHE (Reverting to "Yesterday" state)
+    if (systemInstruction.length > 25000) {
         cachedContentName = await getOrUpdateCache(apiKey, cacheDisplayName, systemInstruction, targetModel);
     }
 
@@ -353,33 +354,79 @@ export async function* generateResponseStream(
                 modelConfig.model = currentModel;
             }
 
-            const model = genAI.getGenerativeModel(modelConfig);
+            const model = genAI.getGenerativeModel(modelConfig, { apiVersion: 'v1beta' });
+
+            // [DEBUG] Log History Size
+            console.log(`[GeminiStream] History Size: ${history.length} messages.`);
 
             // History Filtering
             let effectiveHistory = history;
-            if (gameState.scenarioSummary && gameState.scenarioSummary.length > 50) {
-                effectiveHistory = history.slice(-10);
-            }
+            // [Adjustment] Increase Context Window from 5 to 15 messages (approx 7 turns)
+            // 5 messages (2.5 turns) is too short for immediate context even with summary.
+            // 15 messages provides a better buffer for "recent conversation".
+            effectiveHistory = history.slice(-15);
+            console.log(`[GeminiStream] Formatted History. Using last ${effectiveHistory.length} messages.`);
+
+            // [Optimization] Gemini SDK requires alternating roles. 
             let processedHistory = effectiveHistory.map(msg => ({
-                role: msg.role,
+                role: msg.role === 'user' ? 'user' : 'model',
                 parts: [{ text: msg.text || "..." }],
             }));
+
+            // Only prepend dummy if strictly necessary
             if (processedHistory.length > 0 && processedHistory[0].role === 'model') {
-                processedHistory = [{ role: 'user', parts: [{ text: "..." }] }, ...processedHistory];
+                processedHistory = [{ role: 'user', parts: [{ text: "(Context Continuation)" }] }, ...processedHistory];
             }
+
+            console.log(`[GeminiStream] Final Logic/Model Config:`, JSON.stringify(modelConfig, null, 2));
 
             const chatSession = model.startChat({ history: processedHistory });
             const finalUserMessage = `${dynamicPrompt}\n\n${userMessage}`;
 
             // STREAMING CALL
+            console.log(`[GeminiStream] Sending message to API... (User Msg: ${finalUserMessage.length} chars)`);
+            const streamStartTime = Date.now();
             const result = await chatSession.sendMessageStream(finalUserMessage);
+            console.log(`[GeminiStream] Stream object received. Waiting for first chunk...`);
 
             let accumulatedText = "";
+            let firstChunkReceived = false;
+            let chunkCount = 0;
 
             for await (const chunk of result.stream) {
-                const chunkText = chunk.text();
-                accumulatedText += chunkText;
-                yield chunkText; // Yield partial text
+                chunkCount++;
+                const now = Date.now();
+                if (!firstChunkReceived) {
+                    const ttft = now - streamStartTime;
+                    console.log(`[GeminiStream] 🚀 FIRST CHUNK returned from iterator after ${ttft}ms (TTFT)`);
+                    firstChunkReceived = true;
+                }
+
+                // [Debug] Chunk inspection
+                // console.log(`[GeminiStream] Chunk #${chunkCount}: Candidates=${chunk.candidates?.length}`);
+
+                let chunkText = '';
+                try {
+                    chunkText = chunk.text();
+                } catch (e) {
+                    // console.log(`[GeminiStream] Chunk #${chunkCount} has no text:`, e);
+                }
+
+                // Handle thoughts if present but no text
+                if (!chunkText && chunk.candidates && chunk.candidates.length > 0) {
+                    // Check candidates for parts
+                    /* 
+                    const parts = chunk.candidates[0].content?.parts || [];
+                    parts.forEach(p => {
+                       // if (p.thought) console.log(`[GeminiStream] THOUGHT:`, p.text);
+                    });
+                    */
+                }
+
+                if (chunkText) {
+                    accumulatedText += chunkText;
+                    yield chunkText; // Yield partial text
+                }
             }
 
             const response = await result.response; // Wait for full completion to get metadata

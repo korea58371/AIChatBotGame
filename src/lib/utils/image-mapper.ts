@@ -10,7 +10,7 @@ import { useGameStore } from '@/lib/store';
 const unifiedEmotionMap: Record<string, string> = {
     // 1. Level-based Emotions (Intensity 1-3)
     "기쁨1": "Joy_Lv1", "기쁨2": "Joy_Lv2", "기쁨3": "Joy_Lv3",
-    "화남1": "Anger_Lv1", "화남2": "Anger_Lv2", "화남3": "Anger_Lv3",
+    "화남1": "Anger_Lv1", "화남2": "Anger_Lv2",
     "슬픔1": "Sadness_Lv1", "슬픔2": "Sadness_Lv2", "슬픔3": "Sadness_Lv3",
     "부끄1": "Shy_Lv1", "부끄2": "Shy_Lv2", "부끄3": "Shy_Lv3",
     "앙탈1": "CuteAngry_Lv1", "앙탈2": "CuteAngry_Lv2", "앙탈3": "CuteAngry_Lv3", // Cute/Affectionate Anger

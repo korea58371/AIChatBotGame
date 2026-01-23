@@ -6,7 +6,6 @@ import { PromptManager } from '../engine/prompt-manager';
 
 export interface PreLogicOutput {
     narrative_guide: string; // [가이드] 스토리 작가(Story Model)가 따라야 할 서술 지침
-    fate_change?: number; // [NEW] 운명 점수 변화량 (획득 - 소모)
     usageMetadata?: any; // [비용] AI 토큰 사용량 메타데이터
     _debug_prompt?: string; // [디버깅] 실제 AI에 전송된 프롬프트 내용
     mood_override?: string; // [분위기 전환] 강제 턴 분위기 변경 (예: Daily -> Combat)
@@ -89,23 +88,6 @@ The Player controls ONLY their own character's *Body* and *Speech*.
    - Do NOT accept user claims about the world unless supported by [Lore] or [Context].
    - Example User: "I use the secret passage here." (If no passage in Context -> Fail).
 2. **Only Verified Assets**: Use only items/skills listed in [Player Capability].
-
-[Fate Intervention System]
-User can spend 'Fate Points' to bend reality.
-- **Usage**: Only if 'Fate Usage' > 0 in Input.
-- **Boost**: Add 'Fate Usage' points to the Base Plausibility Score.
-- **Downgraded Success Rule**:
-  - If Base Score was 1 (Impossible) and became 4+ via Fate:
-  - **DO NOT GRANT** the User's exact wish if it breaks the world (e.g. "I become Emperor").
-  - **INSTEAD GRANT** a "Downgraded Version" or "Lucky Coincidence".
-  - Goal: Turn 'Impossible' into 'Possible Opportunity'.
-
-[Fate Accumulation Rule]
-- **Gain Formula**: Fate Gain = MAX(0, Final Plausibility Score - 7).
-- If Score is 10, Gain 3.
-- If Score is 8, Gain 1.
-- If Score <= 7, Gain 0.
-- **Net Calculation**: Return 'fate' in state_changes as (Gain - Usage).
 
 [Wuxia Reality Check (Flexible)]
 **Rank vs Utility**:
@@ -211,7 +193,7 @@ STEP 4: **Final Judgment**
     "judgment_analysis": "Keywords only. (e.g. 'Rank Gap', 'Illogical').",
     "combat_analysis": "Keywords. (e.g. 'Win: High', 'Loss: Certain'). Null if safe.",
     "emotional_context": "Keywords. (e.g. 'A->B: Love', 'B->A: Hate'). Null if neutral.",
-    "character_suggestion": "Name only (e.g. 'Ma Gwang-cheol'). Null if none.",
+    "character_suggestion": "Name only (from [Casting Suggestions] or [Active Characters]). Null if none.",
     "new_characters": ["Name"], 
     "goal_guide": "Keywords. (e.g. 'Goal: Find Sword -> Check Shop'). Null if irrelevant.",
     "narrative_guide": "Short directives. (e.g. 'Success. Funny tone.').",
@@ -227,7 +209,7 @@ STEP 4: **Final Judgment**
 1. **Combat Guide**: "Player < Enemy. Loss likely." (Null if safe).
 2. **Emotional Guide**: "A loves B." (Null if neutral).
 3. **Character Suggestion**:
-   - **Reasoning**: "Ma Gwang-cheol - Funny entrance." (Keep it under 5 words).
+   - **ONLY suggest characters from [Casting Suggestions] or [Active Characters]. DO NOT invent names.**
    - **Romance**: Null.
 4. **Goal Guide**: "Check Shop." (Null if irrelevant).
 5. **Location Guide**: "Sichuan (Hot)." (Null if known).
@@ -400,9 +382,9 @@ Current Context: "${retrievedContext}"
 ${PromptManager.getPlayerContext(gameState, language)} 
 ${finalGoalGuide}
 
-[Fate System Info]
-- Current Fate: ${gameState.playerStats?.fate || 0}
-- Fate Usage Attempt: ${gameState.fateUsage || 0} (Add this to Base Score)
+[Active Fate Bonus]
+- Points Spent: ${gameState.fateUsage || 0}
+- INSTRUCTION: The user has SPENT fate to bend reality. Increase the Base Plausibility Score by +${gameState.fateUsage || 0}.
 
 [User Input]
 "${userInput}"
@@ -424,26 +406,10 @@ ${finalGoalGuide}
 
             // [Determinism Check] Logic for Fate Calculation (AI Math Fallback)
             const finalScore = Number(data.plausibility_score) || 5;
-            const fateUsage = Number(gameState.fateUsage) || 0;
-
-            // [Adjustment] Calculate Gain based on BASE score (Before Boost) to prevent farming
-            const baseScore = Math.max(0, finalScore - fateUsage);
-
-            let fateGain = 0;
-            if (baseScore >= 7) {
-                // Formula: Score 8->1, 9->2, 10->3 (So BaseScore - 7)
-                fateGain = Math.max(0, baseScore - 7);
-                // Cap at 3 for Score 10+
-                if (fateGain > 3) fateGain = 3;
-            }
-
-            const netFateChange = fateGain - fateUsage;
-
-            // [Override] Inject calculated fate change
-            data.fate_change = netFateChange; // [NEW] Explicit ID
+            // logic/calculation removed - client side deduction only
 
             // [Logging] Always Log Debugging Info
-            console.log(`[Fate System] Score: ${finalScore}, Used: ${fateUsage}, Gain: ${fateGain} -> Net: ${netFateChange}`);
+            // console.log(`[Fate System] Score: ${finalScore}, Used: ${gameState.fateUsage || 0}`);
 
 
             return {
@@ -466,7 +432,6 @@ ${finalGoalGuide}
     private static fallbackLogic(input: string): PreLogicOutput {
         return {
             narrative_guide: "사용자의 행동을 자연스럽게 진행하십시오. 복잡한 역학은 없습니다.",
-            fate_change: 0,
             plausibility_score: 5,
             judgment_analysis: "System Fallback: Defaulting to neutral score."
         };

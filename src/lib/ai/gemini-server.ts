@@ -24,6 +24,7 @@ export async function getOrUpdateCache(
             console.log(`[GeminiCache][Server] Found Existing Cache: ${existingCache.name} (Expire: ${existingCache.expireTime})`);
 
             // 2. Update TTL (Refresh)
+            /*
             try {
                 // @ts-ignore - API type definition might be missing ttlSeconds
                 await cacheManager.update(existingCache.name, {
@@ -33,6 +34,7 @@ export async function getOrUpdateCache(
             } catch (updateError) {
                 console.warn("[GeminiCache][Server] TTL Refresh failed (non-critical):", updateError);
             }
+            */
 
             return existingCache.name; // Return Resource Name
         }

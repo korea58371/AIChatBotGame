@@ -124,7 +124,7 @@ export class PromptManager {
 
     // [CACHE CONFIG]
     private static readonly CACHE_PREFIX = 'PROMPT_CACHE_';
-    private static readonly CACHE_VERSION = 'v1.6'; // Increment this to invalidate all caches
+    private static readonly CACHE_VERSION = 'v2.0'; // Increment this to invalidate all caches
 
     // [New] Cache Management Methods
     static async clearPromptCache(gameId?: string) {
@@ -742,6 +742,18 @@ ${spawnCandidates || "None"}
         const charMap = state.characterMap || {};
 
         const resolveChar = (id: string) => {
+            // [FIX] Alias Mapping for Known Hallucinations/Titles
+            const ALIAS_MAP: Record<string, string> = {
+                "야수왕": "야율 바르칸",
+                "남만 야수궁주": "야율 바르칸",
+                "Beast King": "야율 바르칸",
+                "야율": "야율" // Self-map to be safe
+            };
+            if (ALIAS_MAP[id]) {
+                const mappedId = ALIAS_MAP[id];
+                if (charsData[mappedId]) return charsData[mappedId];
+            }
+
             // 1. Direct Lookup (Legacy/Correct)
             if (charsData[id]) return charsData[id];
 

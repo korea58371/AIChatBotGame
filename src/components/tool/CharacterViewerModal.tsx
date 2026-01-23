@@ -545,9 +545,11 @@ function CastingSimulatorView({ data, locations }: { data: CharacterData, locati
         }
 
         Object.values(data).forEach(char => {
-            // Collect Regions
             const r = char['활동지역'] || char.activity_region;
-            if (r) regions.add(r);
+            if (r) {
+                if (typeof r === 'string') regions.add(r);
+                else if (Array.isArray(r)) r.forEach(item => regions.add(String(item)));
+            }
 
             // Collect Tags
             const tList = char.system_logic?.tags;

@@ -5,6 +5,7 @@ import { RelationshipManager } from '../engine/relationship-manager';
 import { translations } from '../../data/translations'; // [NEW] Import translations
 
 export interface PostLogicOutput {
+  _analysis?: string; // [NEW] CoT Internal Thought (Reasoning Step)
   mood_update?: string;
   location_update?: string; // [NEW] Region_Place
   relationship_updates?: Record<string, number>; // ID: 변경량
@@ -31,10 +32,13 @@ export interface PostLogicOutput {
   goal_updates?: { id: string, status: 'COMPLETED' | 'FAILED' | 'ACTIVE', updates?: string }[];
   new_goals?: { description: string, type: 'MAIN' | 'SUB' }[];
 
-
   usageMetadata?: any; // [Cost] 토큰 사용량
   _debug_prompt?: string; // [Debug] 실제 프롬프트
+  _debug_system_prompt?: string; // [Debug] 시스템 프롬프트 (Static)
 }
+
+
+
 
 export class AgentPostLogic {
   private static apiKey: string | undefined = process.env.GEMINI_API_KEY;
@@ -311,55 +315,41 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
   - Action: Set "ending_trigger": "TRUE".
 
 
-[Ending Detection] (CRITICAL)
-- **Concept**: Detect if the story has reached a definitive conclusion.
-- **BAD ENDING**:
-  - Condition: The Protagonist ({playerName}) **DIES** or is **PERMANENTLY CRIPPLED** beyond recovery (e.g., Execution, Suicide, Head chopped off).
-  - Action: Set "ending_trigger": "BAD".
-- **GOOD ENDING**:
-  - Condition: The Protagonist achieves a **MAJOR LIFELONG GOAL** (e.g., Becoming Sect Leader, Defeating the Final Boss, Retiring peacefully after revenge).
-  - Action: Set "ending_trigger": "GOOD".
-  - Constraint: Must be a satisfying conclusion to the current narrative arc.
-- **TRUE ENDING**:
-  - Condition: Achieving a secret or perfect conclusion.
-  - Action: Set "ending_trigger": "TRUE".
-
-
 [Output Schema (JSON)]
 {
-  "mood_update": "tension" | "romance" | "daily" | null,
-  "location_update": "Region_Place" | null,
+  "_analysis": "Step 1: Player HP is low but no critical hits... Step 2: Soso is present...",
+  "mood_update": "tension",
+  "location_update": "Region_Place",
   "relationship_updates": { "character_id": 5, "another_char": -2 },
   "stat_updates": { "morality": -2, "eloquence": 1, "hp": -5, "mp": 2, "fame": 10 },
   "character_memories": { 
-      "soso": ["Player praised my cooking", "Player asked about my past"], 
-      "chilsung": ["Player defeated me", "Player gave me a healing potion"] 
+      "soso": ["Player praised my cooking"], 
+      "chilsung": ["Player defeated me"] 
   },
   "inline_triggers": [
       { "quote": ${t.인라인_인용_예시}, "tag": "<Stat hp='-5'>" },
       { "quote": ${t.인라인_태그_예시}, "tag": "<Rel char='NamgungSeAh' val='5'>" }
   ],
-
-  "resolved_injuries": ["Broken Arm"], // Optional
-  "new_injuries": ["Permanent Disability"], // Optional
-  "new_goals": [{ "type": "MAIN" | "SUB", "description": "Goal description" }], // Optional
-  "goal_updates": [{ "id": "goal_id", "status": "COMPLETED" | "FAILED" | "ACTIVE" }], // Optional
+  "resolved_injuries": ["Broken Arm"],
+  "new_injuries": ["Permanent Disability"],
+  "new_goals": [{ "type": "MAIN", "description": "Goal description" }],
+  "goal_updates": [{ "id": "goal_id", "status": "COMPLETED" }],
   "activeCharacters": ["soso", "chilsung"], 
   "summary_trigger": false,
-  "goal_updates": [ { "id": "goal_1", "status": "COMPLETED" } ],
-  "new_goals": [ { "description": "Survive the ambush", "type": "SUB" } ],
-  "tension_update": 10,
   "dead_character_ids": ["bandit_leader"],
   "factionChange": "Mount Hua Sect",
   "playerRank": "First Rate Warrior"
 }
+
 [Critically Important]
-- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'character_memories', 'factionChange', 'playerRank') MUST be in KOREAN (한국어).
-- For 'activeCharacters', list EVERY character ID that is **CURRENTLY PRESENT** at the **END** of the turn.
-  - **CRITICAL EXCLUSION**: If a character explicitly **LEAVES**, **EXITS**, or **DISAPPEARS** during the turn, **DO NOT** include them in this list.
-- For 'character_memories', extract 1 key memory per active character if they had significant interaction with the player this turn.
-- For 'dead_character_ids', list IDs of ANY character who died or was permanently incapacitated/killed in this turn.
-- The 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.
+- **Internal Analysis (CoT)**: Before generating the JSON, briefly analyze the situation in the "_analysis" field to ensure all constraints (Health, Relationship caps) are met. Use English for analysis.
+- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'character_memories', 'factionChange', 'playerRank') MUST be in KOREAN (한국어). Only JSON keys and logical IDs must remain in English.
+- **Active Characters Rules**:
+  1. List EVERY character ID that is **CURRENTLY PRESENT** at the **END** of the turn.
+  2. **Leaving**: If a character explicitly LEAVES, EXITS, or DISAPPEARS, **DO NOT** include them.
+  3. **Dead**: If a character is listed in 'dead_character_ids', they **MUST NOT** appear in 'activeCharacters'.
+- **Dead Characters**: List IDs of ANY character who died or was permanently incapacitated/killed in this turn.
+- 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.
 
 [Relationship Tiers Guide]
 ${RelationshipManager.getPromptContext()}
@@ -464,10 +454,17 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
       }
 
       locationContext = `
-[World Map Data]
-- Valid Major Regions (for long travel): ${regionsList.join(', ')}
-- Current Location: ${currentLocation} (Region: ${currentRegionName})
-- Valid Local Spots (for local move): ${currentZoneSpots.join(', ')}
+[World Map Data] (Geographical Constraints)
+- **Current Region**: ${currentRegionName}
+- **Current Location**: ${currentLocation}
+- **Valid Local Spots** (Movable): ${currentZoneSpots.join(', ')}
+
+- **Distant Regions** (Locked): ${regionsList.filter(r => r !== currentRegionName).join(', ')}
+  - **TELEPORTATION PREVENTION RULE**: You CANNOT update location to a Distant Region unless the narrative EXPLICITLY describes a **LONG JOURNEY COMPLETED** (e.g. "After days of travel, you arrived in X").
+  - **Travel takes time**: If the player *starts* a journey or says "Let's go to [Region]", do **NOT** update the location immediately.
+  - Instead, describe the departure or the journey on the road. The location update should happen only when they **ARRIVE**.
+  - If the story is just a conversation, combat, or local event, you MUST **STAY IN ${currentRegionName}**.
+  - If unsure, do NOT output 'location_update'.
 `;
     }
 
@@ -647,10 +644,39 @@ Generate the JSON output.
           }
         }
 
+        // [Persistence Guard] Character Keep-Alive
+        // If a character was active in the previous turn and is mentioned in the current text,
+        // FORCE them to stay active (Prevents AI accidental drop).
+        if (gameState && gameState.activeCharacters) {
+          const verifyActive = new Set(json.activeCharacters || []);
+          const prevActive = gameState.activeCharacters;
+          const storyText = aiResponse;
+
+          prevActive.forEach((charId: string) => {
+            // Skip if already kept
+            if (verifyActive.has(charId)) return;
+
+            // Check if mentioned
+            // We need the Name (Korean) to check existence in text
+            // Use validCharacters (IDs) to lookup Data? No, validCharacters is just keys.
+            // We need access to characterData. gameState passed in `analyze` has it.
+            const charData = gameState.characterData?.[charId];
+            if (charData) {
+              const name = charData.name || charData.이름;
+              if (name && storyText.includes(name)) {
+                verifyActive.add(charId);
+                console.log(`[AgentPostLogic] Persistence Guard: Forced '${name}' (${charId}) to stay active.`);
+              }
+            }
+          });
+          json.activeCharacters = Array.from(verifyActive);
+        }
+
         return {
           ...json,
           usageMetadata: usage,
-          _debug_prompt: dynamicPrompt // Log only dynamic part for valid debug (Static is cached)
+          _debug_prompt: dynamicPrompt, // Log only dynamic part for valid debug (Static is cached)
+          _debug_system_prompt: staticSystemPrompt // [Debug] Expose System Prompt
         };
       } catch (e) {
         console.error("[AgentPostLogic] JSON Parse Error:", e);
@@ -659,7 +685,8 @@ Generate the JSON output.
           mood_update: undefined,
           summary_trigger: false,
           usageMetadata: usage,
-          _debug_prompt: dynamicPrompt
+          _debug_prompt: dynamicPrompt,
+          _debug_system_prompt: staticSystemPrompt
         };
       }
 

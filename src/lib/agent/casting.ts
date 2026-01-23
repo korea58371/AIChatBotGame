@@ -6,29 +6,67 @@ import { CharacterData } from '../../data/games/wuxia/jsons/characters';
 import locations from '../../data/games/wuxia/jsons/locations.json';
 
 // Helper: Resolve Location to Hierarchy [Region, Zone, Spot]
-function resolveLocationHierarchy(locName: string): string[] {
+// [Modified] Strict Region-First Logic for composite strings (e.g., "Henan Cave")
+export function resolveLocationHierarchy(locName: string): string[] {
     if (!locName) return [];
 
-    // 1. Check Regions
-    for (const [rKey, rVal] of Object.entries(locations.regions)) {
-        if (locName === rKey) return [rKey];
+    // 0. Tokenize (Split by space, _, >)
+    const tokens = locName.split(/[\s_>]+/).filter(Boolean);
+    if (tokens.length === 0) return [locName];
 
-        // 2. Check Zones
-        if ((rVal as any).zones) {
-            for (const [zKey, zVal] of Object.entries((rVal as any).zones)) {
-                if (locName === zKey) return [rKey, zKey];
+    // 1. ANCHOR: Find explicit Region first
+    // This is crucial to prevent "Cave" from matching a random region's cave when the user implies a specific context.
+    const regionKeys = Object.keys(locations.regions);
+    let matchedRegionKey: string | null = null;
 
-                // 3. Check Spots
-                if ((zVal as any).spots && Array.isArray((zVal as any).spots)) {
-                    if ((zVal as any).spots.includes(locName)) {
-                        return [rKey, zKey, locName];
+    for (const token of tokens) {
+        if (regionKeys.includes(token)) {
+            matchedRegionKey = token;
+            break; // Found the region anchor
+        }
+    }
+
+    // 2. Strict Check: If no Region found, fail (return raw)
+    // We do NOT want to infer region from a Spot match because spot names like "Mountain" or "Cave" are not unique.
+    if (!matchedRegionKey) {
+        return [locName];
+    }
+
+    // 3. Search within the matched Region
+    const regionVal = locations.regions[matchedRegionKey as keyof typeof locations.regions];
+    if ((regionVal as any).zones) {
+        const zones = (regionVal as any).zones;
+
+        // Priority A: Check for Zone Match First
+        for (const [zKey, zVal] of Object.entries(zones)) {
+            if (tokens.includes(zKey)) {
+                // Check for Spot inside this Zone
+                const zoneData = zVal as any;
+                if (zoneData.spots && Array.isArray(zoneData.spots)) {
+                    for (const spot of zoneData.spots) {
+                        if (tokens.includes(spot)) {
+                            return [matchedRegionKey, zKey, spot]; // Fully Resolved [Region, Zone, Spot]
+                        }
+                    }
+                }
+                return [matchedRegionKey, zKey]; // Zone Resolved [Region, Zone]
+            }
+        }
+
+        // Priority B: Check for Spot Match (Implicit Zone)
+        for (const [zKey, zVal] of Object.entries(zones)) {
+            const zoneData = zVal as any;
+            if (zoneData.spots && Array.isArray(zoneData.spots)) {
+                for (const spot of zoneData.spots) {
+                    if (tokens.includes(spot)) {
+                        return [matchedRegionKey, zKey, spot]; // Spot Resolved [Region, Zone, Spot]
                     }
                 }
             }
         }
     }
 
-    return [locName];
+    return [matchedRegionKey]; // Only Region Resolved [Region]
 }
 
 export interface CastingCandidate {
@@ -230,7 +268,8 @@ export class AgentCasting {
             const tags = cAny.system_logic?.tags || [];
             let tagScore = 0;
             for (const tag of tags) {
-                if (userInput.includes(tag)) {
+                // [Fix] Ignore single-char tags for resonance to avoid false positives (e.g. '도' in '도덕')
+                if (tag.length > 1 && userInput.includes(tag)) {
                     tagScore += 1.5; // Strong resonance
                     actReasons.push(`Tag Resonance [User] (+1.5)`);
                 }
@@ -365,9 +404,12 @@ export class AgentCasting {
 
             if (!isUserInvoked && !isCrisis && rankGap >= 2) {
                 // Too Strong (Anti-Bullying/Gating)
-                const penaltyMp = 1.0 / (rankGap * 2.0);
-                actScore *= penaltyMp;
-                actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Penalty (x${penaltyMp.toFixed(2)})`);
+                // [FIX] Hard Disqualification for Active selection
+                // If they are significantly stronger (Gap >= 2), they should NOT appear as Active 
+                // unless explicitly called by User or it's a Crisis.
+                // We force them to 'Background' where their high Home/Relation score will place them at the top.
+                actScore = 0.01;
+                actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Disqualified Active`);
             } else if (!isUserInvoked && rankGap <= -3) {
                 // Too Weak (Fodder) - Only separate if gap is huge
                 // Gap -3 (e.g. Player A vs F)
