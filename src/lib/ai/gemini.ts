@@ -145,7 +145,10 @@ export async function generateResponse(
     // PromptManager Key: PROMPT_CACHE_{GameID}_SHARED_{Version}
     // We reuse PromptManager's public method logic if possible, or replicate it.
     // Let's replicate the key structure: `CACHE_{GameID}_STORY_{Version}`
-    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v2_0${overrideKey}`;
+    // [Fix] Cache Mismatch Error (400): Model used by GenerateContent (Flash) and CachedContent (Pro) must be same.
+    // Solution: Include Model Name in Key.
+    const sanitizedModelName = targetModel.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v2_0_${sanitizedModelName}${overrideKey}`;
 
     // Only attempt caching if the prompt is substantial (Static Prompt is huge)
     // And only for Story models (Logic is too small)
@@ -181,7 +184,9 @@ export async function generateResponse(
             };
 
             // [Gemini 3 최적화] Native Thinking 활성화
-            if (currentModel.includes('gemini-3') || currentModel.includes('thinking')) {
+            // [Fix] Flash 모델은 속도가 중요하므로 Thinking을 비활성화하거나 기본값으로 둡니다.
+            // 명시적인 'thinking' 모델이거나, 'gemini-3' 이면서 'flash'가 아닌 경우(Pro 등)에만 활성화
+            if (currentModel.includes('thinking') || (currentModel.includes('gemini-3') && !currentModel.includes('flash'))) {
                 modelConfig.thinkingConfig = {
                     includeThoughts: true, // [User Request] 생각 과정 로그 확인을 위해 True 설정
                     thinkingLevel: "high"
@@ -323,7 +328,9 @@ export async function* generateResponseStream(
     // [Cache Logic]
     let cachedContentName: string | null = null;
     const overrideKey = gameState.personaOverride ? `_PERSONA_${gameState.personaOverride}` : '';
-    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v2_0${overrideKey}`;
+    // [Fix] Cache Mismatch Error (400): Include Model Name in Key
+    const sanitizedModelName = targetModel.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+    const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v2_0_${sanitizedModelName}${overrideKey}`;
 
     // [DEBUG: CACHE DISABLED] Threshold raised to 35000 to force NO CACHE (Reverting to "Yesterday" state)
     if (systemInstruction.length > 25000) {
@@ -338,7 +345,7 @@ export async function* generateResponseStream(
             console.log(`Trying stream story model: ${currentModel}`);
             const modelConfig: any = { model: currentModel, safetySettings };
 
-            if (currentModel.includes('gemini-3') || currentModel.includes('thinking')) {
+            if (currentModel.includes('thinking') || (currentModel.includes('gemini-3') && !currentModel.includes('flash'))) {
                 modelConfig.thinkingConfig = { includeThoughts: true, thinkingLevel: "high" };
             }
 
