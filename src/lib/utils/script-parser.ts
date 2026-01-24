@@ -33,9 +33,10 @@ export function parseScript(text: string): ScriptSegment[] {
     // [Fix] Normalize ellipses to prevent unwanted sentence splitting
     text = text.replace(/\.\.\./g, '…');
 
-    // [Fix] Enforce Newline before specific system tags to prevent inline parsing errors
-    // If AI writes "Text.<BGM> Title", we convert it to "Text.\n<BGM> Title"
-    text = text.replace(/([^\n])<(BGM|CG|배경|Sound|Effect|시간)>/gi, '$1\n<$2>');
+    // [Fix] Enforce Newline before ALL block tags to prevent swallowing/attachment issues
+    // If AI writes "Text.<Tag> Title", we convert it to "Text.\n<Tag> Title"
+    // Also explicitly handle \r for Windows consistency
+    text = text.replace(/([^\n\r])<(BGM|CG|배경|Sound|Effect|시간|나레이션|대사|선택지|시스템|떠남)>/gi, '$1\n<$2>');
 
     // Regex to match tags like <TagName>Content or <TagName>Content...
     // We split by newlines first to handle line-based parsing safely, 
@@ -50,7 +51,8 @@ export function parseScript(text: string): ScriptSegment[] {
 
     // Pattern: < ( (Keyword)(Spaces...)? | (Any:Any) ) >
     // We use a strict pattern for the tag name to ensure we don't pick up random <Text>.
-    const tagPattern = `(?:(?:${blockTags})(?:\\s+[^>]*)?|[^>]*:[^>]*)`;
+    // [Fix] Robustness: Allow leading whitespace in tag name (e.g. < 나레이션>)
+    const tagPattern = `(?:\\s*(?:${blockTags})(?:\\s+[^>]*)?|[^>]*:[^>]*)`;
 
     // Regex: <(TagPattern)> (Content) (?= End | <(TagPattern)>)
     const regex = new RegExp(`<(${tagPattern})>([\\s\\S]*?)(?=$|<(?:${tagPattern})>)`, 'gi');
@@ -79,6 +81,9 @@ export function parseScript(text: string): ScriptSegment[] {
         const tagName = fullTagName.split(/\s+/)[0];
         const content = match[2].trim();
 
+        // [Debug] Log parsed tags
+
+
         if (tagName === '배경') {
             let bgKey = content;
             try {
@@ -92,7 +97,7 @@ export function parseScript(text: string): ScriptSegment[] {
                     // 2. Check suffix match (e.g. "대장간" matches "[마을] 대장간")
                     const foundBg = available.find(k => k.endsWith(bgKey) || k.endsWith(` ${bgKey}`));
                     if (foundBg) {
-                        console.log(`[ScriptParser] Fuzzy matched background: '${bgKey}' -> '${foundBg}'`);
+
                         bgKey = foundBg;
                     }
                 }
@@ -113,7 +118,7 @@ export function parseScript(text: string): ScriptSegment[] {
                     // 2. Check suffix match (e.g. "대장간" matches "[마을] 대장간")
                     const foundBg = available.find(k => k.endsWith(bgKey) || k.endsWith(` ${bgKey}`));
                     if (foundBg) {
-                        console.log(`[ScriptParser] Fuzzy matched background: '${bgKey}' -> '${foundBg}'`);
+
                         bgKey = foundBg;
                     }
                 }
@@ -122,11 +127,11 @@ export function parseScript(text: string): ScriptSegment[] {
             }
             segments.push({ type: 'background', content: bgKey });
 
-            // Push remaining lines as narration
+            // Push remaining lines as separate segments (recursively parsed to handle embedded tags like <Name>)
             if (lines.length > 1) {
                 const remaining = lines.slice(1).join('\n').trim();
                 if (remaining) {
-                    segments.push(...parseInlineContent(remaining, { type: 'narration' }));
+                    segments.push(...parseScript(remaining)); // [Fix] Use Recursion
                 }
             }
 
@@ -140,7 +145,7 @@ export function parseScript(text: string): ScriptSegment[] {
             if (lines.length > 1) {
                 const remaining = lines.slice(1).join('\n').trim();
                 if (remaining) {
-                    segments.push(...parseInlineContent(remaining, { type: 'narration' }));
+                    segments.push(...parseScript(remaining)); // [Fix] Recursion
                 }
             }
 
@@ -165,13 +170,46 @@ export function parseScript(text: string): ScriptSegment[] {
             if (lines.length > 1) {
                 const remaining = lines.slice(1).join('\n').trim();
                 if (remaining) {
-                    segments.push(...parseInlineContent(remaining, { type: 'narration' }));
+                    segments.push(...parseScript(remaining)); // [Fix] Recursion
                 }
             }
 
         } else if (tagName === '시간') {
             // [New] Time Update Command
             // format: <시간> 14:40 낮
+
+            // [Fix] Handle Implicit Narration (Missing <나레이션> tag)
+            // If the content has newlines, split it. First line is time, rest is narration.
+            if (content.includes('\n')) {
+                const parts = content.split(/\n([\s\S]+)/); // Split on first newline group (polyfilled dotAll)
+                if (parts.length >= 2) {
+                    const timeCmd = parts[0].trim();
+                    const implicitNarration = parts[1].trim();
+
+                    // Push Time Command first
+                    segments.push({
+                        type: 'command',
+                        commandType: 'set_time',
+                        content: timeCmd
+                    });
+
+                    // Push Implicit Narration next
+                    if (implicitNarration) {
+
+                        // [Fix] Match standard narration behavior: Split by newlines
+                        const lines = implicitNarration.split('\n');
+                        for (const line of lines) {
+                            const trimmed = line.trim();
+                            if (trimmed) {
+                                const inlineSegments = parseInlineContent(trimmed, { type: 'narration' });
+                                segments.push(...inlineSegments);
+                            }
+                        }
+                    }
+                    continue; // Skip the default push
+                }
+            }
+
             segments.push({
                 type: 'command',
                 commandType: 'set_time',
@@ -190,14 +228,24 @@ export function parseScript(text: string): ScriptSegment[] {
             // Split by newlines first to preserve list structures
             const lines = cleanedContent.split('\n');
 
+            let hasContent = false;
             for (const line of lines) {
                 const trimmedLine = line.trim();
                 if (!trimmedLine) continue;
 
+                hasContent = true;
                 // Parse inline tags within narration
                 const inlineSegments = parseInlineContent(trimmedLine, { type: 'narration' });
                 segments.push(...inlineSegments);
             }
+
+            // [Fix] Removed Streaming Placeholder '...'
+            // We do NOT want to push a placeholder segment if content is not yet available.
+            // Pushing '...' causes the UI to render it, finish typewriting instantly, and Auto-Advance index.
+            // This causes the *real* content (when it arrives) to be skipped because the index has moved to the next segment.
+            // if (!hasContent) {
+            //    segments.push({ type: 'narration', content: '...' });
+            // }
 
         } else if (tagName.startsWith('선택지')) {
             const choiceId = parseInt(tagName.replace('선택지', ''));
@@ -553,12 +601,28 @@ function parseInlineTag(fullTag: string, tagName: string): ScriptSegment | null 
         }
     }
 
-    if (lowerName === 'tension') {
-        const attrRegex = /val=["']([^"']*)["']/i;
+
+
+    if (lowerName === 'time' || lowerName === '시간') {
+        const attrRegex = /(?:val|value)=["']([^"']*)["']/i;
         const m = attrRegex.exec(fullTag);
-        if (m) {
-            const val = parseFloat(m[1]);
-            if (!isNaN(val)) return { type: 'command', commandType: 'update_tension', content: val.toString() };
+        let timeVal = m ? m[1] : '';
+
+        // If no attribute, try to parse content inside tag? No, inline tags usually self-closing or attribute based.
+        // If <Time>10분</Time> format, parseInlineContent doesn't handle children easily. 
+        // We assume <Time val='10m'> or <시간 val='10분'>
+
+        if (timeVal) {
+            return { type: 'command', commandType: 'update_time', content: timeVal };
+        }
+    }
+
+    if (lowerName === 'injury' || lowerName === 'newinjury') {
+        const attrRegex = /(?:name|val|value)=["']([^"']*)["']/i;
+        const m = attrRegex.exec(fullTag);
+        let injuryName = m ? m[1] : '';
+        if (injuryName) {
+            return { type: 'command', commandType: 'add_injury', content: JSON.stringify({ name: injuryName }) };
         }
     }
 

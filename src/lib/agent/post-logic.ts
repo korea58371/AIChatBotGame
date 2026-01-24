@@ -301,10 +301,18 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 - **playerRank**: If the narrative explicitly awards a new title or martial rank (${t.등급_변경_설명}).
 - **Constraint**: Only valid if explicitly confirmed in the text. Do not guess.
 
-[Ending Detection] (CRITICAL)
+[Ending Detection] (CRITICAL - STRICT)
 - **Concept**: Detect if the story has reached a definitive conclusion.
 - **BAD ENDING**:
   - Condition: The Protagonist ({playerName}) **DIES** or is **PERMANENTLY CRIPPLED** beyond recovery (e.g., Execution, Suicide, Head chopped off).
+  - **Constraints (MUST FOLLOW)**:
+    - **Do NOT trigger if**:
+      - It is just a **THREAT** (e.g. "I will kill you").
+      - It is a **JOKE** or **SARCASM** (e.g. "You're dead meat!", "Go to hell").
+      - It is a **HYPOTHETICAL** scenario (e.g. "If you do that, you will die").
+      - It is a **NEAR MISS** (e.g. "You almost died").
+      - The character just "faints" or "loses consciousness" (unless explicitly stated as death).
+    - **NARRATIVE FACT**: The death/failure MUST be described as an **EVENT THAT ALREADY HAPPENED** in the narration, not just spoken in dialogue.
   - Action: Set "ending_trigger": "BAD".
 - **GOOD ENDING**:
   - Condition: The Protagonist achieves a **MAJOR LIFELONG GOAL** (e.g., Becoming Sect Leader, Defeating the Final Boss, Retiring peacefully after revenge).
@@ -537,7 +545,7 @@ Generate the JSON output.
         if (json.stat_updates) {
           const ALLOWED_STATS = new Set([
             // Core
-            'hp', 'mp', 'gold', 'str', 'agi', 'int', 'vit', 'luk', 'fame', 'neigong',
+            'hp', 'mp', 'gold', 'str', 'agi', 'int', 'vit', 'luk', 'fame', 'neigong', 'exp', 'level',
             // Personality
             'morality', 'courage', 'energy', 'decision', 'lifestyle',
             'openness', 'warmth', 'eloquence', 'leadership', 'humor', 'lust'
@@ -641,6 +649,14 @@ Generate the JSON output.
               console.log(`[AgentPostLogic] Correcting Location Region: ${rawLoc} -> ${foundRegion}_${rawZone}`);
               json.location_update = `${foundRegion}_${rawZone}`;
             }
+          }
+        }
+
+        // [Debug] Log Analysis if Ending Triggered
+        if (json.ending_trigger) {
+          console.warn(`[AgentPostLogic] Ending Triggered: ${json.ending_trigger}`);
+          if (json._analysis) {
+            console.warn(`[AgentPostLogic] Analysis: ${json._analysis}`);
           }
         }
 

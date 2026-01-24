@@ -111,6 +111,7 @@ ${choiceRules}
 - Output ONLY the 3 lines of choices.
 - Do NOT output any conversational text or JSON.
 - Strictly follow the tag format: <선택지N> 내용
+- **[LENGTH LIMIT]**: Each choice MUST NOT exceed 64 bytes (approx. 32 Korean characters). Keep it concise.
 `;
 
         const model = genAI.getGenerativeModel({

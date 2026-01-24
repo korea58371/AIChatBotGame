@@ -37,8 +37,27 @@ export async function getWuxiaStaticContext(state: any): Promise<string> {
         }
     }
 
-    // 2.2 Available Backgrounds (Reference)
-    const availableBackgrounds = PromptManager.getAvailableBackgrounds(state);
+    // 2.2 Locations (Structured Map)
+    // [MODIFIED] Injecting hierarchical location data from locations.json
+    const locationData = require('../jsons/locations.json'); // Importing JSON directly
+
+    let locationContext = "## [World Map & Locations]\n(Format: Region > Zone > Spots)\n";
+
+    // Format: Region (EngKey)
+    //   - Zone: [Spot1, Spot2, ...]
+
+    // Iterate Regions
+    Object.entries(locationData.regions).forEach(([regionKey, regionVal]: [string, any]) => {
+        locationContext += `- ${regionKey} (${regionVal.eng_code}):\n`;
+
+        // Iterate Zones
+        if (regionVal.zones) {
+            Object.entries(regionVal.zones).forEach(([zoneKey, zoneVal]: [string, any]) => {
+                const spots = zoneVal.spots ? zoneVal.spots.join(', ') : '';
+                locationContext += `  - ${zoneKey}: [${spots}]\n`;
+            });
+        }
+    });
 
     // [BLOCK 3: BEHAVIOR GUIDELINES]
     const behaviorRules = WUXIA_BEHAVIOR_RULES;
@@ -52,8 +71,7 @@ ${systemIdentity}
 
 ${loreContext}
 
-## [Available Backgrounds]
-${availableBackgrounds}
+${locationContext}
 
 ## [Available Extra Images]
 ${(state.availableExtraImages ? [...state.availableExtraImages].sort() : []).map((img: string) => img.replace(/\.(png|jpg|jpeg)$/i, '')).join(', ')}

@@ -525,6 +525,12 @@ export default function VisualNovelUI() {
     const currentCharName = getCurrentCharName(characterExpression);
     const isSameCharacter = lastCharNameRef.current === currentCharName && !!characterExpression;
 
+    // [Fix] Keep Ref in sync with State
+    // Crucial for Sync Logic which relies on Ref to know what user is currently reading.
+    useEffect(() => {
+        currentSegmentRef.current = currentSegment;
+    }, [currentSegment]);
+
     useEffect(() => {
         if (characterExpression) {
             lastCharNameRef.current = getCurrentCharName(characterExpression);
@@ -629,6 +635,7 @@ export default function VisualNovelUI() {
 
     // [Refactor] Inline Stat Accumulator (Shared across Turn)
     // Tracks stats applied via <Stat> tags during playback to prevent double-counting in Post-Logic
+    const currentSegmentRef = useRef<ScriptSegment | null>(null); // [Fix] Live Ref for Sync
     const inlineAccumulatorRef = useRef<{
         hp: number;
         mp: number;
@@ -1297,6 +1304,48 @@ export default function VisualNovelUI() {
                     } catch (e) {
                         console.error("Failed to parse update_relationship command:", e);
                     }
+                } else if (nextSegment.commandType === 'update_time') {
+                    // [New] Inline Time Update
+                    // [New] Inline Time Update
+                    const rawContent = nextSegment.content;
+                    console.log(`[Command] Inline Time Update: ${rawContent}`);
+
+                    // Parse Day (reused logic from set_time)
+                    const dayMatch = rawContent.match(/(\d+)(일차|Day)/i);
+                    if (dayMatch) {
+                        const newDay = parseInt(dayMatch[1], 10);
+                        if (!isNaN(newDay)) {
+                            useGameStore.getState().setDay(newDay);
+                        }
+                    }
+
+                    // Clean Time String
+                    const cleanTime = rawContent.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
+                    if (cleanTime) {
+                        useGameStore.getState().setTime(cleanTime);
+                        addToast(`시간 업데이트: ${cleanTime}`, 'info');
+                    }
+
+                } else if (nextSegment.commandType === 'add_injury') {
+                    // [New] Inline Injury
+                    try {
+                        const data = JSON.parse(nextSegment.content);
+                        if (data.name) {
+                            console.log(`[Command] Inline Injury: ${data.name}`);
+                            const state = useGameStore.getState();
+                            const currentInjuries = state.playerStats.active_injuries || [];
+
+                            if (!currentInjuries.includes(data.name)) {
+                                state.setPlayerStats({
+                                    active_injuries: [...currentInjuries, data.name]
+                                });
+                                addToast(`부상 발생: ${data.name}`, 'warning');
+                                handleVisualDamage(-10, state.playerStats.hp, state.playerStats.maxHp);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse add_injury command:", e);
+                    }
                 }
             } else if (nextSegment.type === 'bgm') {
                 // [New] Handle BGM
@@ -1541,7 +1590,7 @@ export default function VisualNovelUI() {
     useEffect(() => {
         // Condition 1: Queue has items (Streaming)
         if (!currentSegment && scriptQueue.length > 0) {
-            console.log("[Auto-Advance] Queue has items. Advancing...");
+            console.log("[Auto-Advance] Queue has items. currentSegment is null. Advancing...");
             advanceScript();
         }
         // Condition 2: Queue is empty, but we are in Epilogue Mode (and not yet showing The End)
@@ -1900,15 +1949,38 @@ export default function VisualNovelUI() {
                                 // [Fix] Partial Tag Hiding (Prevent Flashing)
                                 // If the text ends with a partial tag (e.g. "</나레"), hide it until it's complete and scrubbed.
                                 // Logic: If there is a '<' that is NOT followed by a '>' anywhere after it.
+                                // If the text ends with a partial tag (e.g. "</나레"), hide it until it's complete and scrubbed.
+                                // Logic: If there is a '<' that is NOT followed by a '>' anywhere after it.
                                 const lastLessThan = visText.lastIndexOf('<');
                                 const lastGreaterThan = visText.lastIndexOf('>');
                                 if (lastLessThan > lastGreaterThan) {
-                                    // There is an open tag at the end. Hide it.
-                                    visText = visText.substring(0, lastLessThan);
+                                    // [Fix] Robustness: Only hide if it actually looks like a tag (starts with letter, /, !, ?)
+                                    // This prevents hiding text like "Health < 50" or "Love <3"
+                                    const nextChar = visText[lastLessThan + 1];
+                                    if (nextChar && /[a-zA-Z가-힣!/?]/.test(nextChar)) {
+                                        visText = visText.substring(0, lastLessThan);
+                                    }
                                 }
 
+                                // [Removed] Aggressive Thinking Leak Scrubbing
+                                // This logic was causing valid narrative text (appearing before the first tag) to be deleted.
+                                // We now rely on the 'Thinking' tag removal above (lines 1849-1855).
 
                                 const allSegments = parseScript(visText);
+
+                                // [Fix] Aggressive Index Reset for Empty/Garbage Phase
+                                // If we parsed 0 segments, we're in a "garbage" or "waiting for content" phase.
+                                // The index should ALWAYS be 0 in this state to prevent stale index values
+                                // from causing segment skips when real content arrives.
+                                if (allSegments.length === 0) {
+                                    activeSegmentIndexRef.current = 0;
+                                }
+
+                                // [DEBUG] Log segment count for each stream update
+
+                                if (allSegments.length > 0) {
+
+                                }
 
                                 // [Stream] Auto-Advance Logic
                                 // We track 'activeSegmentIndexRef' as the index of the segment currently being shown (or just finished).
@@ -1919,19 +1991,62 @@ export default function VisualNovelUI() {
                                 // Safety check
                                 if (currentIndex == null) currentIndex = 0;
 
+                                // [Fix] Background Hoisting (Stream Start)
+                                // If the stream starts with some garbage text followed by a Background tag,
+                                // the standard loop stops at the text, preventing the BG from updating.
+                                // We scan ahead in the first few segments to apply the BG immediately.
+                                if (currentIndex === 0 && allSegments.length > 0) {
+                                    for (let i = 0; i < Math.min(5, allSegments.length); i++) {
+                                        const s = allSegments[i];
+                                        if (s.type === 'background') {
+                                            try {
+                                                const resolvedBg = resolveBackground(s.content);
+                                                // Direct store access to avoid closure staleness, though setBackground is likely stable
+                                                const currentBg = useGameStore.getState().currentBackground;
+                                                if (currentBg !== resolvedBg) {
+                                                    console.log(`[Stream] Hoisted Background Update: ${resolvedBg}`);
+                                                    setBackground(resolvedBg);
+                                                }
+                                            } catch (e) { }
+                                        }
+                                    }
+                                }
+
                                 while (currentIndex < allSegments.length) {
                                     const seg = allSegments[currentIndex];
+
+                                    const isIdempotent = ['background', 'bgm', 'event_cg'].includes(seg.type);
+
+                                    // [Fix] Stream Sync Hazard - "The Partial Tag Trap" & 404 Prevention
+                                    // If a metadata segment (BG/BGM) is the LAST segment, it might be incomplete (growing).
+                                    // We must NOT execute it yet to avoid 404s (partial paths) or flickering.
+                                    // We wait until it is no longer the last segment (or stream ends, effectively).
+                                    // Commands are non-idempotent (stat adds), but we assume they are atomic or parsed safely.
+
+                                    const isLastSegment = currentIndex === allSegments.length - 1;
+
+                                    if (isIdempotent && isLastSegment) {
+                                        // Do NOT execute. Do NOT increment. Let loop break.
+                                        // Next onToken will re-process this index with fuller content.
+                                        break;
+                                    }
 
                                     if (seg.type === 'background' || seg.type === 'bgm' || seg.type === 'event_cg' || seg.type === 'command') {
                                         // Execute Command
                                         if (seg.type === 'background') {
                                             try {
-                                                console.log(`[Stream] Background Segment Detected: ${seg.content}`);
+
                                                 const resolvedBg = resolveBackground(seg.content);
-                                                // [Optimization] Only verify change if strictly needed, but resolveBackground is fast.
-                                                // setBackground does internal check but we log.
-                                                if (useGameStore.getState().currentBackground !== resolvedBg) {
-                                                    console.log(`[Stream] Setting Background: ${resolvedBg}`);
+
+                                                // [Fix] Force Update on Start
+                                                // If this is the very first segment (index 0), we force setBackground
+                                                // to ensure the UI is in sync, even if the store thinks it's already set (e.g. from hydration).
+                                                // This fixes "Missing Background on First Stream".
+                                                const currentBg = useGameStore.getState().currentBackground;
+                                                const shouldUpdate = currentBg !== resolvedBg || currentIndex === 0;
+
+                                                if (shouldUpdate) {
+
                                                     setBackground(resolvedBg);
                                                     setCharacterExpression('');
                                                 }
@@ -1944,9 +2059,6 @@ export default function VisualNovelUI() {
                                                 const clean = seg.content.replace(/<\/[^>]+>/g, '').trim();
                                                 if (clean) {
                                                     useGameStore.getState().setEventCG(clean); // Assume store handles resolution or component does
-                                                    // Actually Store expects tag key probably? Or resolved path?
-                                                    // existing logic: state.currentCG is string. 
-                                                    // EventCGLayer resolves it. So passing key is fine.
                                                 }
                                             } catch (e) { }
                                         } else if (seg.type === 'command') {
@@ -1990,27 +2102,18 @@ export default function VisualNovelUI() {
                                             }
                                         }
 
-                                        // [Fix] Stream Sync Hazard - "The Partial Tag Trap"
-                                        // If this is the LAST segment in the stream, it might be incomplete (e.g. background tag growing).
-                                        // We MUST NOT increment the index for Idempotent Metadata (BG/BGM/CG) so we re-evaluate it on next token.
-                                        // Commands are non-idempotent (stat add keys), so we must consume them immediately (assume atomic).
-
-                                        const isLastSegment = currentIndex === allSegments.length - 1;
-                                        const isIdempotent = ['background', 'bgm', 'event_cg'].includes(seg.type);
-
-                                        if (isIdempotent && isLastSegment) {
-                                            // Do NOT increment. Let loop break. Next onToken will re-process this index with fuller content.
-                                            break;
-                                        } else {
-                                            // Advance
-                                            currentIndex++;
-                                            activeSegmentIndexRef.current = currentIndex;
-                                        }
+                                        // Advance
+                                        currentIndex++;
+                                        activeSegmentIndexRef.current = currentIndex;
                                     } else {
                                         // Content (Dialogue/Narration/Choice)
-                                        // Update current segment to reflect latest buffer (in case text grew)
                                         if (allSegments[currentIndex]) {
-                                            setCurrentSegment(allSegments[currentIndex]);
+                                            const seg = allSegments[currentIndex];
+                                            setCurrentSegment(seg);
+                                            // [Fix] Ensure Typewriter receives the update
+                                            if (currentSegmentRef.current?.content !== seg.content) {
+                                                currentSegmentRef.current = seg;
+                                            }
                                         }
 
                                         // Handle Choices Lookahead
@@ -2023,6 +2126,7 @@ export default function VisualNovelUI() {
                                             }
                                             setChoices(newChoices);
                                             setCurrentSegment(null); // Clear text box for choices
+                                            setCharacterExpression(''); // Clear character for choices (optional)
                                         }
 
                                         // Update Queue for Next Click
@@ -2046,7 +2150,7 @@ export default function VisualNovelUI() {
                                 }
                             },
                             onComplete: (data) => {
-                                console.log("[Stream] Complete. Data Payload Received. Final Text Length:", data.finalStoryText?.length || 0);
+
                                 const p2Duration = Date.now() - p1Start;
 
                                 // [Fix] Destructure Correctly based on Orchestrator Payload
@@ -2192,8 +2296,9 @@ export default function VisualNovelUI() {
                                 }
 
                                 // [Fallback] Text-based Ending Detection (Belt & Suspenders)
-                                // If the AI writes "<GOOD ENDING>" or similar but forgets the JSON trigger.
+                                // [Fix] DISABLED due to false positives (e.g. text saying "배드 엔딩" in dialogue)
                                 let detectedEndingType: 'bad' | 'good' | 'true' | null = null;
+                                /*
                                 if (finalText) {
                                     if (/(<BAD ENDING>|\[BAD ENDING\]|배드 엔딩|주인공 사망|\[사망\])/i.test(finalText)) detectedEndingType = 'bad';
                                     else if (/(<GOOD ENDING>|\[GOOD ENDING\]|굿 엔딩|굿엔딩|해피 엔딩|\[완벽한 굿엔딩\])/i.test(finalText)) detectedEndingType = 'good';
@@ -2205,6 +2310,7 @@ export default function VisualNovelUI() {
                                         console.log(`[Ending] No text-based ending detected in: ${finalText.slice(-50)}`);
                                     }
                                 }
+                                */
 
                                 if (finalText) {
                                     setLastStoryOutput(finalText);
@@ -2282,10 +2388,17 @@ export default function VisualNovelUI() {
                                     // we rely on 'currentSegment' state if it exists, or we infer from index if we could trust it.
                                     // Actually, 'currentSegment' is the SOURCE of truth for what's on screen.
 
-                                    if (currentSegment && currentIndex !== null) {
+                                    // [Fix] Use Ref instead of Stale State
+                                    const liveCurrentSegment = currentSegmentRef.current;
+
+                                    // [Fix] Drift Recovery: Variable to collect skipped segments
+                                    // Must be declared outside the if block so it's accessible when building the queue
+                                    let skippedContentSegments: typeof finalSegments = [];
+
+                                    if (liveCurrentSegment && currentIndex !== null) {
                                         // Normalize content for comparison (remove spaces/newlines)
                                         const normalize = (s: string) => s.replace(/\s+/g, '').trim();
-                                        const targetContent = normalize(currentSegment.content);
+                                        const targetContent = normalize(liveCurrentSegment.content);
 
                                         // 2. Scan finalSegments to find BEST match (Closest to currentIndex)
                                         let bestMatchIndex = -1;
@@ -2293,30 +2406,90 @@ export default function VisualNovelUI() {
 
                                         for (let i = 0; i < finalSegments.length; i++) {
                                             const seg = finalSegments[i];
-                                            if (seg.type === currentSegment.type) {
-                                                const segContent = normalize(seg.content);
+                                            const segContent = normalize(seg.content);
 
-                                                // Check Exact or Prefix Match
-                                                if (segContent === targetContent || segContent.startsWith(targetContent)) {
-                                                    const distance = Math.abs(i - currentIndex);
+                                            // [Debug] Deep Search - Log only candidates near window
+                                            if (Math.abs(i - currentIndex) < 10) {
+                                                const isPrefix = segContent.startsWith(targetContent);
+                                                const isExact = segContent === targetContent;
+                                                // console.log(`[SyncCandidate] [${i}] Pfx:${isPrefix} Exact:${isExact} (${segContent.substring(0,10)}...)`);
+                                            }
 
-                                                    if (distance < minDistance) {
-                                                        minDistance = distance;
-                                                        bestMatchIndex = i;
+                                            // Check Exact or Prefix Match
+                                            if (segContent && (segContent === targetContent || segContent.startsWith(targetContent))) {
+                                                const distance = Math.abs(i - currentIndex);
+
+                                                if (distance < minDistance) {
+                                                    minDistance = distance;
+                                                    bestMatchIndex = i;
+
+                                                    // [Fix] Auto-Repair Partial Segment
+                                                    // If Target (Stream) is shorter than Match (Final) and is a prefix, it means user has incomplete text.
+                                                    // We MUST upgrade the screen content to the full final text, otherwise queueing 'bestMatchIndex + 1' will skip the suffix.
+                                                    if (segContent.length > targetContent.length) {
+
+                                                        setCurrentSegment(seg);
+                                                        currentSegmentRef.current = seg;
                                                     }
                                                 }
                                             }
                                         }
 
+
+
+                                        // [Debug] Sync Trace
+
+
+                                        // [Fix] Drift Recovery: Capture Skipped Content Segments
+                                        // When "Granularity Drift" occurs (stream parses fewer segments than final),
+                                        // the match jumps forward (e.g., streaming index 3 -> final index 8).
+                                        // The segments between [currentIndex, bestMatchIndex) were NOT shown during streaming.
+                                        // We should prepend these skipped CONTENT segments to the queue so they're not lost.
+
                                         if (bestMatchIndex !== -1) {
-                                            console.log(`[Stream] Content Sync Success: Matched index ${currentIndex} to Final index ${bestMatchIndex} (Dist: ${minDistance})`);
+                                            // The first 3 segments are typically metadata (background, bgm, command)
+                                            // which are already executed. We only care about skipped CONTENT.
+                                            const metadataTypes = ['background', 'bgm', 'command', 'event_cg'];
+
+                                            // Check if we have significant index drift
+                                            // currentIndex is the stream's segment index, which corresponds to after metadata
+                                            // bestMatchIndex is where we found the content in final
+                                            // If bestMatchIndex > currentIndex, segments in between were "inserted" by final parsing
+
+                                            // Find where content starts in final segments
+                                            let firstContentIdx = 0;
+                                            for (let i = 0; i < finalSegments.length; i++) {
+                                                if (!metadataTypes.includes(finalSegments[i].type)) {
+                                                    firstContentIdx = i;
+                                                    break;
+                                                }
+                                            }
+
+                                            // Collect skipped content between currentIndex and bestMatchIndex
+                                            // [Fix] Start from 'currentIndex' (what user has seen) instead of 'firstContentIdx' (start of turn)
+                                            // to avoid assuming the user missed everything if they are simply reading normally.
+                                            const startDriftIdx = Math.max(firstContentIdx, currentIndex);
+
+                                            for (let i = startDriftIdx; i < bestMatchIndex; i++) {
+                                                const seg = finalSegments[i];
+                                                if (!metadataTypes.includes(seg.type)) {
+                                                    // This is a content segment that was skipped
+                                                    skippedContentSegments.push(seg);
+                                                }
+                                            }
+
+                                            if (skippedContentSegments.length > 0) {
+
+                                            }
+
+
                                             newQueueIndex = bestMatchIndex + 1;
                                         } else {
                                             // [Fix] Race Condition Vulnerability
                                             // If currentSegment is null (state lag) but currentIndex is set (ref), 
                                             // falling back to 'currentIndex + 1' SKIPS the current segment.
                                             // We should fallback to 'currentIndex' to ensure it gets queued.
-                                            console.warn(`[Stream] Content Sync Failed: Could not find segment. Fallback to index ${currentIndex}`);
+
                                             newQueueIndex = currentIndex || 0;
                                         }
                                     } else {
@@ -2326,9 +2499,168 @@ export default function VisualNovelUI() {
                                     }
 
                                     // Apply the calculated start index
-                                    const remaining = finalSegments.slice(newQueueIndex);
-                                    setScriptQueue(remaining);
-                                    console.log(`[Stream] Queue Resync: Added ${remaining.length} segments (from index ${newQueueIndex}).`);
+                                    let adjustedIndex = newQueueIndex;
+
+                                    // [Fix] Enhanced Repetition Guard (Window 3) with Verify Logs
+                                    if (liveCurrentSegment) {
+                                        const normalize = (s: string) => s.replace(/\s+/g, '').trim();
+                                        const currentContent = normalize(liveCurrentSegment.content);
+
+                                        // [Debug] Log Before Guard
+                                        // console.log(`[SyncCheck] Current Screen: "${liveCurrentSegment.content.substring(0, 15)}..."`);
+
+                                        // Check 0, 1, 2
+                                        for (let offset = 0; offset < 3; offset++) {
+                                            if (adjustedIndex + offset < finalSegments.length) {
+                                                const checkSeg = finalSegments[adjustedIndex + offset];
+                                                if (checkSeg.type === liveCurrentSegment.type &&
+                                                    normalize(checkSeg.content) === currentContent) {
+
+
+                                                    adjustedIndex = adjustedIndex + offset + 1;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // [Fix] Flush Pending Metadata at End of Stream
+                                    // If the stream ended on a Background/BGM tag, 'onToken' would have skipped it (waiting for more data).
+                                    // Now that we are Complete, we MUST execute any pending non-content segments immediately.
+                                    // Also, if the screen is EMPTY (Cold Start), we should auto-display the first content to avoid "first line skipped" feel.
+
+                                    while (adjustedIndex < finalSegments.length) {
+                                        const seg = finalSegments[adjustedIndex];
+                                        const isMetadata = ['background', 'bgm', 'command', 'event_cg'].includes(seg.type);
+
+                                        if (isMetadata) {
+
+                                            // Execute Metadata
+                                            if (seg.type === 'background') {
+                                                const resolvedBg = resolveBackground(seg.content);
+                                                if (useGameStore.getState().currentBackground !== resolvedBg) {
+                                                    setBackground(resolvedBg);
+                                                    setCharacterExpression('');
+                                                }
+                                            } else if (seg.type === 'bgm') {
+                                                playBgm(seg.content);
+                                            } else if (seg.type === 'event_cg') {
+                                                useGameStore.getState().setEventCG(seg.content);
+                                            } else if (seg.type === 'command') {
+                                                // Identify command type and execute if necessary (Time, etc)
+                                                if (seg.commandType === 'set_time') {
+                                                    useGameStore.getState().setTime(seg.content);
+                                                }
+                                            }
+                                            // Advance past this segment since we just executed it
+                                            adjustedIndex++;
+                                        } else {
+                                            // It is Content (Dialogue/Narration/Choice)
+
+                                            // [Fix] Cold Start Protection
+                                            // If NOTHING is currently on screen (currentSegmentRef.current is null),
+                                            // and we are sitting at the start of new content, AUTO-DISPLAY it.
+                                            // Otherwise the user sees a blank screen and has to click to see the first line.
+                                            if (!currentSegmentRef.current && seg.type !== 'choice') {
+
+                                                setCurrentSegment(seg);
+                                                currentSegmentRef.current = seg;
+                                                // We CONSUMED this segment by displaying it, so advance index.
+                                                adjustedIndex++;
+                                            }
+
+                                            // Stop flushing. We are now at the "Next" content to be queued.
+                                            break;
+                                        }
+                                    }
+
+
+                                    // [Fix] Flush Pending Metadata at End of Stream
+                                    // If the stream ended on a Background/BGM tag, 'onToken' would have skipped it (waiting for more data).
+                                    // Now that we are Complete, we MUST execute any pending non-content segments immediately.
+                                    // Also, if the screen is EMPTY (Cold Start), we should auto-display the first content to avoid "first line skipped" feel.
+
+                                    while (adjustedIndex < finalSegments.length) {
+                                        const seg = finalSegments[adjustedIndex];
+                                        const isMetadata = ['background', 'bgm', 'command', 'event_cg'].includes(seg.type);
+
+                                        if (isMetadata) {
+
+                                            // Execute Metadata
+                                            if (seg.type === 'background') {
+                                                const resolvedBg = resolveBackground(seg.content);
+                                                if (useGameStore.getState().currentBackground !== resolvedBg) {
+                                                    setBackground(resolvedBg);
+                                                    setCharacterExpression('');
+                                                }
+                                            } else if (seg.type === 'bgm') {
+                                                playBgm(seg.content);
+                                            } else if (seg.type === 'event_cg') {
+                                                useGameStore.getState().setEventCG(seg.content);
+                                            } else if (seg.type === 'command') {
+                                                // Identify command type and execute if necessary (Time, etc)
+                                                if (seg.commandType === 'set_time') {
+                                                    useGameStore.getState().setTime(seg.content);
+                                                }
+                                            }
+                                            // Advance past this segment since we just executed it
+                                            adjustedIndex++;
+                                        } else {
+                                            // It is Content (Dialogue/Narration/Choice)
+
+                                            // [Fix] Cold Start Protection
+                                            // If NOTHING is currently on screen (currentSegmentRef.current is null),
+                                            // and we are sitting at the start of new content, AUTO-DISPLAY it.
+                                            // Otherwise the user sees a blank screen and has to click to see the first line.
+                                            if (!currentSegmentRef.current && seg.type !== 'choice') {
+
+                                                setCurrentSegment(seg);
+                                                currentSegmentRef.current = seg;
+                                                // We CONSUMED this segment by displaying it, so advance index.
+                                                adjustedIndex++;
+                                            }
+
+                                            // Stop flushing. We are now at the "Next" content to be queued.
+                                            break;
+                                        }
+                                    }
+
+                                    const remaining = finalSegments.slice(adjustedIndex);
+
+                                    // [Fix] Drift Recovery: Prepend skipped segments to queue
+                                    // If we found content segments that were skipped due to granularity drift,
+                                    // prepend them to the queue so the user sees them before continuing.
+                                    let finalQueue = remaining;
+                                    if (skippedContentSegments.length > 0) {
+
+                                        // The skipped segments come BEFORE the remaining segments
+                                        finalQueue = [...skippedContentSegments, ...remaining];
+
+                                        // [Critical Fix] UI Rewind
+                                        // If we recovered skipped segments, the current screen is likely showing a "Future" segment (caused by the jump).
+                                        // We must FORCE the screen to "Rewind" to the first recovered segment immediately.
+                                        // Otherwise, the user sees segment N, and clicking shows segment N-5, which is confusing.
+                                        const firstRecovered = finalQueue[0];
+                                        if (firstRecovered && firstRecovered.type !== 'choice') {
+
+                                            setCurrentSegment(firstRecovered);
+                                            currentSegmentRef.current = firstRecovered;
+
+                                            // Provide feedback to user/logs
+                                            // The activeSegmentIndexRef is technically desynced now, but we are queuing cleanly so it's fine.
+
+                                            // Remove the segment we just force-displayed from the queue
+                                            finalQueue = finalQueue.slice(1);
+                                        }
+                                    }
+
+                                    setScriptQueue(finalQueue);
+
+
+                                    // [Debug] Final Verify
+                                    if (finalQueue.length > 0) {
+
+                                    }
                                 }
 
                                 // Calculate Logic
@@ -2390,7 +2722,7 @@ export default function VisualNovelUI() {
                                         ...(postLogicOut || {}),
                                         stat_updates: plPersonality
                                     },
-                                    character_memories: martialArtsOut ? {
+                                    martial_arts: martialArtsOut ? {
                                         ...martialArtsOut,
                                         stat_updates: { ...(martialArtsOut.stat_updates || {}), hp: 0, mp: 0 }
                                     } : martialArtsOut,
@@ -2968,9 +3300,9 @@ export default function VisualNovelUI() {
 
                     // [Fix] HARD Auto-Death Trigger (Backup if AI misses it)
                     if (newStats.hp <= 0 && useGameStore.getState().endingType === 'none') {
-                        console.log("HP <= 0 detected. Triggering BAD ENDING.");
-                        useGameStore.getState().setEndingType('bad');
-                        setChoices([]); // [Fix] Force-clear choices on death
+                        console.log("HP <= 0 detected. Queuing DEFERRED BAD ENDING.");
+                        // Do NOT set immediately, as user might still be reading the "You died" description.
+                        pendingEndingRef.current = 'bad';
                     }
                 }
                 else if (lowerKey === 'mp') newStats.mp = Math.min(Math.max(0, newStats.mp + numVal), newStats.maxMp);
@@ -3004,8 +3336,9 @@ export default function VisualNovelUI() {
             if (progression) {
                 console.log(`[Progression] Rank Up Detected: ${progression.newRankId}`);
                 useGameStore.getState().setPlayerStats({ playerRank: progression.newRankId });
-                addToast(`[승급] ${progression.title}의 경지에 올랐습니다!`, 'success');
-                addToast(progression.message, 'info');
+                // [Suppressed] Rank Up Toast
+                // addToast(`[승급] ${progression.title}의 경지에 올랐습니다!`, 'success');
+                // addToast(progression.message, 'info');
             }
         }
 
@@ -3265,7 +3598,8 @@ export default function VisualNovelUI() {
             const delta = maResult.level_delta;
             const oldLevel = newStats.level || 1;
             newStats.level = oldLevel + delta;
-            addToast(`성장 (Growth): +${delta.toFixed(2)} Level`, 'success');
+            // [Suppressed] Generic Level Growth Toast
+            // queueToast(`성장 (Growth): +${delta.toFixed(2)} Level`, 'success');
 
             // Check for Rank Up (Title Change)
             const gameId = useGameStore.getState().activeGameId || 'wuxia';
@@ -3416,7 +3750,8 @@ export default function VisualNovelUI() {
                 if (value !== 0) {
                     // [Fix] Access flattened keys directly
                     const label = (t as any)[trait] || trait.charAt(0).toUpperCase() + trait.slice(1);
-                    addToast(`${label} ${value > 0 ? '+' : ''}${value}`, value > 0 ? 'success' : 'warning');
+                    // [Suppressed] Personality Toast
+                    // queueToast(`${label} ${value > 0 ? '+' : ''}${value}`, value > 0 ? 'success' : 'warning');
                 }
             });
         }
@@ -3433,7 +3768,8 @@ export default function VisualNovelUI() {
                 // Also update top-level playerRealm State immediately for safety
                 // useGameStore.getState().setPlayerRealm(logicResult.playerRank); // [Removed] Legacy
 
-                addToast(`Rank Up: ${logicResult.playerRank}`, 'success');
+                // [Suppressed] Rank Up Toast
+                // queueToast(`Rank Up: ${logicResult.playerRank}`, 'success');
                 console.log(`Rank updated from ${currentRank} to ${logicResult.playerRank}`);
             }
         }
@@ -3645,7 +3981,8 @@ export default function VisualNovelUI() {
                         if (Math.abs(val as number) >= 1) {
                             // [Localization] Use flattened keys from translations
                             const label = (t as any)[key] || key;
-                            addToast(`${label} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
+                            // [Suppressed] Personality Toast
+                            // queueToast(`${label} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
                         }
                     } else if (['hp', 'mp', 'gold', 'fame', 'neigong'].includes(key)) {
                         // [Fix] Handle Core Stats in stat_updates
@@ -3696,7 +4033,8 @@ export default function VisualNovelUI() {
                         // currentStats.realm = ma.realm_update; // [Removed] Legacy
                         // currentStats.realmProgress = 0; // [Removed] Legacy
                         hasUpdates = true;
-                        addToast(t.systemMessages?.realmAscension?.replace('{0}', ma.realm_update) || `경지 등극: ${ma.realm_update}`, 'success');
+                        // [Suppressed] Realm Ascension Toast
+                        // queueToast(t.systemMessages?.realmAscension?.replace('{0}', ma.realm_update) || `경지 등극: ${ma.realm_update}`, 'success');
                     }
                 }
 
@@ -3708,7 +4046,8 @@ export default function VisualNovelUI() {
                     hasUpdates = true;
                     // Only toast for significant gain
                     if (ma.realm_progress_delta >= 5) {
-                        addToast(t.systemMessages?.realmProgress?.replace('{0}', ma.realm_progress_delta) || `깨달음: 경험치 +${ma.realm_progress_delta}`, 'info');
+                        // [Suppressed] Realm Progress Toast
+                        // queueToast(t.systemMessages?.realmProgress?.replace('{0}', ma.realm_progress_delta) || `깨달음: 경험치 +${ma.realm_progress_delta}`, 'info');
                     }
                 }
 
@@ -3720,7 +4059,8 @@ export default function VisualNovelUI() {
                     currentStats.neigong = Math.round(currentStats.neigong * 100) / 100;
                     hasUpdates = true;
                     const sign = delta > 0 ? '+' : '';
-                    addToast(t.systemMessages?.neigongGain?.replace('{0}', `${sign}${delta}`) || `내공 ${sign}${delta}년`, 'success');
+                    // [Suppressed] Neigong Gain Toast (often frequent)
+                    // queueToast(t.systemMessages?.neigongGain?.replace('{0}', `${sign}${delta}`) || `내공 ${sign}${delta}년`, 'success');
                 }
 
                 // 3.5. HP/MP Logic from Martial Arts (Penalty/Growth)
@@ -4658,8 +4998,8 @@ export default function VisualNovelUI() {
                                              */
                                             className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
                                             w-[85vw] md:w-[min(50vw,1200px)] 
-                                            py-[1.2vh] px-[5vw] md:py-[1.5vh] md:px-[min(2vw,48px)] 
-                                            text-[2.5vw] md:text-[min(0.9vw,27px)] leading-tight 
+                                            py-4 px-[5vw] md:py-5 md:px-[min(2vw,48px)] h-auto min-h-[60px]
+                                            text-[max(18px,3.5vw)] md:text-[clamp(20px,1.1vw,32px)] leading-relaxed
                                             shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                             ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                                         `}
@@ -4680,7 +5020,7 @@ export default function VisualNovelUI() {
                                             onMouseEnter={() => playSfx('ui_hover')}
                                         >
                                             <div className="flex w-full justify-between items-center transform skew-x-12 px-1">
-                                                <span className="text-left truncate mr-4">{choice.content}</span>
+                                                <span className="text-left whitespace-pre-wrap break-keep mr-4 leading-normal">{choice.content}</span>
                                                 <span className="shrink-0 bg-slate-200/60 text-slate-700 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full border border-slate-300/50">
                                                     {costPerTurn}🪙
                                                 </span>
@@ -4696,8 +5036,8 @@ export default function VisualNovelUI() {
                                         transition={{ delay: choices.length * 0.1 }}
                                         className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold 
                                         w-[85vw] md:w-[min(50vw,1200px)] 
-                                        py-[1.2vh] px-[5vw] md:py-[1.5vh] md:px-[min(2vw,48px)] 
-                                        text-[2.5vw] md:text-[min(0.9vw,27px)] leading-tight 
+                                        py-4 px-[5vw] md:py-5 md:px-[min(2vw,48px)] h-auto min-h-[60px]
+                                        text-[max(18px,3.5vw)] md:text-[clamp(20px,1.1vw,32px)] leading-relaxed 
                                         shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                                         ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                                     `}
@@ -5926,7 +6266,7 @@ export default function VisualNovelUI() {
                                     {/* Name Tag */}
                                     {currentSegment.type === 'dialogue' && (
                                         <div className="absolute -top-[3vh] md:-top-[6vh] w-full text-center px-2">
-                                            <span className="text-[4.5vw] md:text-[min(1.4vw,47px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                                            <span className="text-[max(16px,4.5vw)] md:text-[clamp(20px,1.4vw,47px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                                 {(() => {
                                                     if (!currentSegment) return '';
                                                     const { characterData, playerName } = useGameStore.getState();
@@ -5947,7 +6287,7 @@ export default function VisualNovelUI() {
                                     )}
 
                                     {/* Text Content */}
-                                    <div className="text-[3.7vw] md:text-[min(1.3vw,39px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
+                                    <div className="text-[max(16px,3.7vw)] md:text-[clamp(18px,1.3vw,39px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
                                         {currentSegment.type === 'narration' ? (
                                             <span className="text-gray-300 italic block">
                                                 {formatText(currentSegment.content)}
