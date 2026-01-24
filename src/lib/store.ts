@@ -1402,7 +1402,7 @@ export const useGameStore = create<GameState>()(
           // scriptQueue, // [Persisted]
           // currentSegment, // [Persisted]
           // choices, // [Persisted]
-          isDataLoaded,
+          isDataLoaded, // [Fix] Exclude from persistence to force re-init (and static asset reload) on boot
 
           // The State itself to process
           chatHistory,

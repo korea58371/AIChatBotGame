@@ -1658,13 +1658,19 @@ export default function VisualNovelUI() {
                 // `import('@/app/actions/economy').then(mod => mod.deductCoins(COST_PER_TURN))`
 
                 import('@/app/actions/economy').then(({ deductCoins }) => {
-                    deductCoins(COST_PER_TURN).then(() => {
-                        console.log("Coin deduction confirmed by server.");
+                    deductCoins(COST_PER_TURN).then((result) => {
+                        if (result.success) {
+                            console.log("Coin deduction confirmed by server:", result.newBalance);
+                        } else {
+                            console.error("Coin deduction failed:", result.error);
+                            // [Critical Fix] Revert optimistic update on failure
+                            setUserCoins(currentCoins);
+                            alert(`코인 차감 처리 중 오류가 발생했습니다: ${result.error || "알 수 없는 오류"}`);
+                        }
                     }).catch(err => {
-                        console.error("Coin deduction failed:", err);
-                        // [Critical Fix] Revert optimistic update on failure
+                        console.error("Coin deduction mechanism failed:", err);
                         setUserCoins(currentCoins);
-                        alert("코인 차감 처리 중 오류가 발생했습니다. (네트워크/서버 오류)");
+                        alert("코인 차감 시스템 오류");
                     });
                 });
             }
