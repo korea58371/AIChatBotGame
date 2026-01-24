@@ -72,6 +72,7 @@ try {
 
                     // map to 'characters' key in JSON
                     assets[gameId]['characters'] = allCharFiles;
+                    assets[gameId]['mainCharacters'] = allCharFiles; // [Restored] Required by GBY loader
                 } else {
                     const key = cat === 'ExtraCharacters' ? 'extraCharacters' : 'backgrounds';
                     assets[gameId][key] = getFiles(targetDir);
