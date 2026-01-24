@@ -1,5 +1,6 @@
 
 import { GameData } from '@/lib/engine/data-manager';
+import assetsManifest from '../../assets.json'; // [Fix] Static Import to ensure bundling
 
 export async function loadWuxiaData(): Promise<GameData> {
     console.log(`[WuxiaLoader] Loading Wuxia data...`);
@@ -9,11 +10,11 @@ export async function loadWuxiaData(): Promise<GameData> {
     let extraCharacterList: string[] = [];
 
     // [Common] Load Assets Lists
+    // [Common] Load Assets Lists
     try {
-        // @ts-ignore
-        const assetsManifest = (await import('../../assets.json')).default;
-        console.log(`[WuxiaLoader] Assets Manifest Loaded. Keys: ${Object.keys(assetsManifest || {}).join(', ')}`);
+        console.log(`[WuxiaLoader] Assets Manifest Loaded (Static). Keys: ${Object.keys(assetsManifest || {}).join(', ')}`);
 
+        // @ts-ignore
         const gameAssets = assetsManifest?.['wuxia'];
         console.log(`[WuxiaLoader] GameAssets for 'wuxia':`, gameAssets ? `Found (Chars: ${gameAssets.characters?.length}, Extras: ${gameAssets.extraCharacters?.length})` : 'Missing');
 
