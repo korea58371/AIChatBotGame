@@ -12,7 +12,11 @@ export async function loadWuxiaData(): Promise<GameData> {
     try {
         // @ts-ignore
         const assetsManifest = (await import('../../assets.json')).default;
+        console.log(`[WuxiaLoader] Assets Manifest Loaded. Keys: ${Object.keys(assetsManifest || {}).join(', ')}`);
+
         const gameAssets = assetsManifest?.['wuxia'];
+        console.log(`[WuxiaLoader] GameAssets for 'wuxia':`, gameAssets ? `Found (Chars: ${gameAssets.characters?.length}, Extras: ${gameAssets.extraCharacters?.length})` : 'Missing');
+
         bgListModule = gameAssets?.backgrounds || [];
         characterImageList = gameAssets?.characters || [];
         extraCharacterList = gameAssets?.extraCharacters || [];
