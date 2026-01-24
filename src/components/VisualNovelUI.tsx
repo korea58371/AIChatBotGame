@@ -717,14 +717,16 @@ export default function VisualNovelUI() {
     // handleRecharge removed in favor of Store redirection
 
     // [Refactor] Sync Auth State from Hook
-    const { session, coins: authCoins, refreshSession } = useAuthSession();
+    const { session, coins: authCoins, refreshSession, loading: authLoading } = useAuthSession();
 
     // Sync Coins to Global Store when they change
     useEffect(() => {
-        if (typeof authCoins === 'number') {
+        // [Fix] Only sync if loaded and we have a valid number
+        // This prevents overwriting optimistic/local state with "loading" (0) state or stale state if network lags
+        if (!authLoading && typeof authCoins === 'number') {
             setUserCoins(authCoins);
         }
-    }, [authCoins, setUserCoins]);
+    }, [authCoins, authLoading, setUserCoins]);
 
     // [Refactor] Cloud Conflict Logic Removal
     // The legacy auto-save conflict check is removed in favor of the manual slot system.
@@ -1656,11 +1658,13 @@ export default function VisualNovelUI() {
                 // `import('@/app/actions/economy').then(mod => mod.deductCoins(COST_PER_TURN))`
 
                 import('@/app/actions/economy').then(({ deductCoins }) => {
-                    deductCoins(COST_PER_TURN).catch(err => {
+                    deductCoins(COST_PER_TURN).then(() => {
+                        console.log("Coin deduction confirmed by server.");
+                    }).catch(err => {
                         console.error("Coin deduction failed:", err);
-                        // Revert optimistic update?
-                        // setUserCoins(currentCoins); // Optional: rollback
-                        // addToast("Failed to save coin usage", "error");
+                        // [Critical Fix] Revert optimistic update on failure
+                        setUserCoins(currentCoins);
+                        alert("코인 차감 처리 중 오류가 발생했습니다. (네트워크/서버 오류)");
                     });
                 });
             }

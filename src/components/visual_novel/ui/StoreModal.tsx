@@ -74,7 +74,9 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                     setUserCoins(newCoins); // Update Store
 
                     try {
-                        await updateProfileCoins(newCoins); // Sync to DB
+                        // [Fix] Use Server Action (Admin) to bypass RLS and ensure security
+                        const { addCoins } = await import('@/app/actions/economy');
+                        await addCoins(totalAmount);
                     } catch (dbError) {
                         console.error('Failed to sync coins to Supabase:', dbError);
                         alert('코인은 지급되었으나 서버 저장에 실패했습니다. (새로고침 시 사라질 수 있음)');
@@ -103,14 +105,6 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
             }
         } finally {
             setProcessingId(null);
-        }
-    };
-
-    const updateProfileCoins = async (coins: number) => {
-        const supabase = createClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-            await supabase.from('profiles').update({ coins }).eq('id', session.user.id);
         }
     };
 
