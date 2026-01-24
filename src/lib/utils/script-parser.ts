@@ -82,7 +82,7 @@ export function parseScript(text: string): ScriptSegment[] {
         const content = match[2].trim();
 
         // [Debug] Log parsed tags
-
+        // console.log(`[Parser] Found Tag: "[${tagName}]", Full: "${fullTagName}", Content: "${content.substring(0, 30)}..."`);
 
         if (tagName === '배경') {
             let bgKey = content;

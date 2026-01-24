@@ -1601,6 +1601,7 @@ export default function VisualNovelUI() {
         }
     }, [currentSegment, scriptQueue, showTheEnd]);
 
+
     const [avgResponseTime, setAvgResponseTime] = useState(30000); // Default 30 seconds as per request
 
     const handleSend = async (text: string, isDirectInput: boolean = false, isHidden: boolean = false) => {
@@ -1793,7 +1794,8 @@ export default function VisualNovelUI() {
             };
 
             // [Stream Init]
-            activeSegmentIndexRef.current = 0;
+            // activeSegmentIndexRef.current = 0; // [Fix] Removed to prevent Replay of Old Turn
+            setCurrentSegment(null);
             let accumulatedText = "";
             let streamStarted = false;
             setCharacterExpression('');
@@ -1933,17 +1935,9 @@ export default function VisualNovelUI() {
                                     .replace(/<ENDING KEY>[\s\S]*?<\/ENDING KEY>/gi, '')
                                     .replace(/<ENDING KEY>[^>]*>/gi, '')
                                     .replace(/<\/ENDING KEY>/gi, '')
-                                    .replace(/<나레이션[^>]*>/gi, '') // Remove Open Narration tag if intended (Wait, parser uses Open Tag?)
-                                    // Review: script-parser.ts USES <나레이션>. Removing it might break parsing if the segment relies on it.
-                                    // HOWEVER, if we remove it, parser falls back to default narration.
-                                    // The user issue was specifically </나레이션> (Closing Tag).
-                                    // So we MUST remove </나레이션>.
-                                    // We should KEEP <나레이션> if it helps the parser?
-                                    // Actually, if we remove <나레이션>, parser treats "Text" as narration.
-                                    // If we keep <나레이션>, parser treats "<나레이션> Text" as narration.
-                                    // Result is the same. But removing it is safer to prevent it from showing up if parser fails.
-                                    // Let's stick to removing it since we did that before and it worked for the Opening tag.
-                                    .replace(/<나레이션[^>]*>/gi, '')
+                                    // [Fix] Do NOT remove Open Narration tag, as it acts as a delimiter for the parser.
+                                    // Removing it causes the previous <대사> tag to greedily consume the narration text.
+                                    // .replace(/<나레이션[^>]*>/gi, '') 
                                     .replace(/\[나레이션[^\]]*\]/gi, '');
 
                                 // [Fix] Partial Tag Hiding (Prevent Flashing)
@@ -6266,6 +6260,7 @@ export default function VisualNovelUI() {
                                     {/* Name Tag */}
                                     {currentSegment.type === 'dialogue' && (
                                         <div className="absolute -top-[3vh] md:-top-[6vh] w-full text-center px-2">
+
                                             <span className="text-[max(16px,4.5vw)] md:text-[clamp(20px,1.4vw,47px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                                                 {(() => {
                                                     if (!currentSegment) return '';

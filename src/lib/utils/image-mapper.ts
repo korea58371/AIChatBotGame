@@ -89,7 +89,21 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
     if (isHidden) {
         // [Fix] Check if the override image is in ExtraCharacters (e.g. Generated Protagonists)
         // or in Characters (e.g. Hidden Named Protagonists like Im Seong-jun)
-        if (state.protagonistImageOverride && (availableExtraImages.includes(state.protagonistImageOverride) || availableExtraImages.includes(state.protagonistImageOverride + '.png'))) {
+
+        // Debugging logs
+        console.log(`[ImageMapper] Hidden Protagonist Check: '${state.protagonistImageOverride}'`);
+        console.log(`[ImageMapper] Available Extras Count: ${availableExtraImages.length}`);
+        const foundInExtra = availableExtraImages.includes(state.protagonistImageOverride!) || availableExtraImages.includes(state.protagonistImageOverride + '.png');
+        console.log(`[ImageMapper] Found in Extras? ${foundInExtra}`);
+        if (!foundInExtra && availableExtraImages.length > 0) {
+            // Print first few to check encoding/structure
+            console.log(`[ImageMapper] Sample Extras: ${availableExtraImages.slice(0, 5).join(', ')}`);
+            // Check specific match attempt
+            const specificMatch = availableExtraImages.find(x => x.normalize('NFC') === state.protagonistImageOverride?.normalize('NFC'));
+            console.log(`[ImageMapper] NFC Match Check: ${specificMatch}`);
+        }
+
+        if (state.protagonistImageOverride && foundInExtra) {
             console.log(`[ImageMapper] Found Override in Extras: ${extraBasePath}/${state.protagonistImageOverride}.png`);
             return `${extraBasePath}/${state.protagonistImageOverride}.png`;
         }
