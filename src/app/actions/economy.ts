@@ -26,10 +26,14 @@ export async function deductCoins(amount: number) {
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-        if (!serviceKey || !supabaseUrl) {
-            console.error("Missing Server Env Variables for Economy");
-            // Check Vercel logs for this
-            return { success: false, error: "Server Configuration Error" };
+        if (!supabaseUrl) {
+            console.error("Missing NEXT_PUBLIC_SUPABASE_URL");
+            return { success: false, error: "Server Error: Missing Database URL" };
+        }
+
+        if (!serviceKey) {
+            console.error("Missing SUPABASE_SERVICE_ROLE_KEY");
+            return { success: false, error: "Server Error: Missing SUPABASE_SERVICE_ROLE_KEY" };
         }
 
         const adminClient = createAdminClient(supabaseUrl, serviceKey);

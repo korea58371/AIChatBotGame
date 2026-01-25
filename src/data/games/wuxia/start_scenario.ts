@@ -1,7 +1,7 @@
 export const CHARACTER_CREATION_QUESTIONS = [
     {
         id: 'personality_tone',
-        question: "1문) [성격] 당신은 전날 읽고 있던 '천하제일' 소설속으로 빙의되었다. 이 황당한 '무림' 세계를 어떤 태도로 대할 것인가?",
+        question: "1문) [성격] 당신은 낯선 '무림' 세계로 떨어졌다. 이 황당한 상황을 어떤 태도로 대할 것인가?",
         options: [
             { value: 'humorous', label: "매사를 긍정적이고 유머러스하게 넘긴다." },
             { value: 'serious', label: "신중하고 진지하게 상황을 분석한다." },

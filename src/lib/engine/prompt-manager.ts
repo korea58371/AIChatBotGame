@@ -124,7 +124,7 @@ export class PromptManager {
 
     // [CACHE CONFIG]
     private static readonly CACHE_PREFIX = 'PROMPT_CACHE_';
-    private static readonly CACHE_VERSION = 'v2.0'; // Increment this to invalidate all caches
+    private static readonly CACHE_VERSION = 'v2.1'; // Increment this to invalidate all caches
 
     // [New] Cache Management Methods
     static async clearPromptCache(gameId?: string) {

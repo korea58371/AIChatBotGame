@@ -249,7 +249,7 @@ export function getHiddenSettings(name: string): {
 [히든 설정 발동: 차원 이동자]
 당신은 대한민국 서울의 40세 편의점 아르바이트생 '임성준'입니다.
 야간 근무 중 알 수 없는 굉음과 함께 이 세계로 소환되었습니다.
-당신은 **현대의 몸 그대로(편의점 유니폼 착용)**이며, 이 세계가 소설 속이라는 것을 모릅니다.
+당신은 **현대의 몸 그대로**이며, 복장은 **[허름한 무림 복식]**으로 바뀌어 있습니다. 또한 이 세계에 대한 지식이 전무합니다.
 `,
             // These will be used to override GameState
             personaOverride: 'WUXIA_IM_SEONG_JUN_PERSONA', // Key reference (resolved in prompt-manager)
