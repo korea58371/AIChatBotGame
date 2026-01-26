@@ -93,13 +93,14 @@ export class AgentCasting {
     private static readonly REGION_MISMATCH_PENALTY = 0.2; // [NEW] Soft Filter
     private static readonly LIFECYCLE_PENALTY = 0.1; // [NEW] Soft Filter for Phase
     private static readonly TAG_BONUS = 0.5;
-    private static readonly RELATIONSHIP_BONUS = 4.0; // [NEW] Significant bonus for existing relationships
+    private static readonly RELATIONSHIP_BONUS = 2.0; // [Modified] Reduced from 4.0 to 2.0
     private static readonly USER_MENTION_BONUS = 10.0; // [CRITICAL] Force include if mentioned
     private static readonly CONTEXT_MENTION_BONUS = 5.0; // [NEW] Narrative consistency
     private static readonly LOCATION_TAG_BONUS = 2.0; // [NEW] Bonus if tag matches location
     private static readonly THRESHOLD = 0.01; // [Modified] Low threshold for multi-tiered filtering
 
     static async analyze(
+        apiKey: string, // [FIX] Require API Key explicitly
         gameState: GameState,
         summary: string,
         userInput: string = "",
@@ -179,8 +180,8 @@ export class AgentCasting {
             // If early game, boost Main Heroines to ensure they appear to guide the story.
             // [Fix] Uses injected 'is_main' flag from Loader
             if (cAny.is_main) {
-                baseScore = Math.max(baseScore, 1.5);
-                baseReasons.push(`Base(Main) (1.5)`);
+                baseScore = Math.max(baseScore, 4.0);
+                baseReasons.push(`Base(Main) (4.0)`);
                 // Early Game Bonus (+2.0) removed by user request ("15 points is enough")
             } else {
                 baseReasons.push(`Base (0.5)`);
@@ -433,10 +434,15 @@ export class AgentCasting {
             }
 
             // 3. Active Relation Bonus for Background too
+            // 3. Active Relation Bonus (Applied to BOTH Active and Background)
             for (const activeId of activeCharIds) {
                 if (relationships[activeId]) {
                     bgScore += 4.0;
                     bgReasons.push(`Related to Active(${activeId})`);
+
+                    // [Modified] Also apply to Active Score
+                    actScore += 4.0;
+                    actReasons.push(`Related to Active(${activeId})`);
                 }
             }
 
@@ -445,6 +451,17 @@ export class AgentCasting {
                 bgScore += AgentCasting.RELATIONSHIP_BONUS;
                 bgReasons.push(`Existing Relationship (+${AgentCasting.RELATIONSHIP_BONUS})`);
             }
+
+            // [NEW] Randomness (Noise) to break deterministic sorting
+            // 0.0 ~ 0.5 points of jitter to allow characters with similar scores to swap places
+            const actNoise = Math.random() * 0.5;
+            const bgNoise = Math.random() * 0.5;
+
+            actScore += actNoise;
+            bgScore += bgNoise;
+
+            if (actNoise > 0.1) actReasons.push(`Random Noise (+${actNoise.toFixed(2)})`);
+            if (bgNoise > 0.1) bgReasons.push(`Random Noise (+${bgNoise.toFixed(2)})`);
 
             allCandidates.push({
                 id,
@@ -459,61 +476,107 @@ export class AgentCasting {
 
         // --- Selection Phase ---
 
-        // 1. Select ACTIVE (Top 6)
+        // 1. Pre-Selection (Nomination)
+        // Select Top 20 Active and Top 30 Background candidates purely by Score
+        // This filters out "impossible" candidates (e.g. score near 0 or negative)
         allCandidates.sort((a, b) => b.activeScore - a.activeScore);
+        const nomineeActive = allCandidates
+            .filter(c => c.activeScore >= 0.1) // Minimum viability
+            .slice(0, 20);
 
-        const ACTIVE_THRESHOLD = 1.0;
+        const nomineeBg = allCandidates
+            .filter(c => !nomineeActive.slice(0, 6).includes(c) && c.bgScore >= 0.1) // Basic check
+            .sort((a, b) => b.bgScore - a.bgScore)
+            .slice(0, 30);
+
+        // Map for AI Input (Simplified)
+        const formatForAI = (list: typeof allCandidates) => list.map(c => ({
+            id: c.id,
+            name: c.name,
+            score: c.activeScore, // or bgScore
+            reasons: c.activeReasons // or bgReasons
+        }));
+
+        let finalActive = nomineeActive.slice(0, 6); // Default Fallback
+        let finalBackground = nomineeBg.slice(0, 12); // Default Fallback
+
+        // 2. AI Decision (If API Key available)
+        // [NOTE] apiKey is not directly in GameState in some versions.
+        // We need to check if 'gameState.apiKey' is available or if we can get it from somewhere.
+        // For now, let's assume AgentOrchestrator passes it or injected into gameState.
+        // [NOTE] apiKey is passed as Argument now.
+        // const apiKey = gameState.apiKey || gameState.secrets?.apiKey; // [REMOVED]
+
+        if (apiKey) {
+            // console.log(`[Casting] Requesting AI Decision for ${nomineeActive.length} Active / ${nomineeBg.length} BG candidates...`);
+
+            try {
+                // Dynamic Import to avoid cycle if necessary, or just use imported
+                const { generateCastingDecision } = await import('../ai/gemini');
+
+                const decision = await generateCastingDecision(
+                    apiKey,
+                    {
+                        location: fullLocation,
+                        summary: summary,
+                        userInput: userInput,
+                        activeCharacters: gameState.activeCharacters || []
+                    },
+                    nomineeActive.map(c => ({ id: c.id, name: c.name, score: c.activeScore, reasons: c.activeReasons })),
+                    nomineeBg.map(c => ({ id: c.id, name: c.name, score: c.bgScore, reasons: c.bgReasons }))
+                );
+
+                if (decision && decision.active && Array.isArray(decision.active)) {
+                    const aiActiveMap = new Map<string, number>();
+                    const aiScenarioMap = new Map<string, string>(); // [NEW] Store scenarios
+
+                    decision.active.forEach((item: any, idx: number) => {
+                        // Handle both string (Legacy) and object (New) formats
+                        if (typeof item === 'string') {
+                            aiActiveMap.set(item, idx);
+                        } else if (typeof item === 'object' && item.id) {
+                            aiActiveMap.set(item.id, idx);
+                            if (item.scenario) aiScenarioMap.set(item.id, item.scenario);
+                        }
+                    });
+
+                    const aiChosenActive = allCandidates.filter(c => aiActiveMap.has(c.id));
+                    aiChosenActive.sort((a, b) => (aiActiveMap.get(a.id) || 0) - (aiActiveMap.get(b.id) || 0));
+
+                    if (aiChosenActive.length > 0) {
+                        finalActive = aiChosenActive;
+                        // Attach scenarios to the source candidate objects temporarily
+                        // (We will map them in the final step)
+                        finalActive.forEach(c => {
+                            (c as any).aiScenario = aiScenarioMap.get(c.id);
+                        });
+                    }
+
+                    // Background Map (Keep original string array format for now, or update if needed)
+                    if (decision.background && Array.isArray(decision.background)) {
+                        const aiBgMap = new Map();
+                        decision.background.forEach((id: string, idx: number) => aiBgMap.set(id, idx));
+
+                        const aiChosenBg = allCandidates.filter(c => aiBgMap.has(c.id));
+                        aiChosenBg.sort((a, b) => (aiBgMap.get(a.id) || 0) - (aiBgMap.get(b.id) || 0));
+
+                        if (aiChosenBg.length > 0) {
+                            finalBackground = aiChosenBg;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("[Casting] AI Decision Failed, using Heuristic Fallback", e);
+            }
+        }
+
+        // Final Polish (Ensure limit)
+        // Heuristic fallback logic is already set in finalActive init
+        // Just slice to ensure max count
         const ACTIVE_MAX = 6;
+        const BG_MAX = 12;
 
-        const chosenActive = allCandidates
-            .filter(c => c.activeScore >= ACTIVE_THRESHOLD)
-            .slice(0, ACTIVE_MAX);
-
-        const chosenIds = new Set(chosenActive.map(c => c.id));
-
-        // 2. Select BACKGROUND (Top 6 from Remainder)
-        // [New Priority Logic]
-        // Priority 1: Home Ground (Must be included if slot available)
-        // Priority 2: Related to Active/Player
-        // Priority 3: High Relevance Score
-
-        const remainder = allCandidates.filter(c => !chosenIds.has(c.id));
-
-        const backgroundCandidates = remainder.filter(c => {
-            // Filter out completely irrelevant characters from Background
-            // Must be either HomeGround OR Related OR have high regional relevance/tag match.
-            // Bare minimum score check is not enough because randoms start at 0.5.
-            const isRelevant = c.bgReasons.some(r =>
-                r.includes("Home Ground") ||
-                r.includes("Related") ||
-                r.includes("User Mentioned") ||
-                r.includes("Context Mentioned") ||
-                r.includes("Tag Match") ||
-                r.includes("Region Match") ||
-                r.includes("Existing Relationship") // [Fix] Include Relationship
-            );
-            // Special case: If score is very high (e.g. > 3.0), keep it even if reason logic misses (shouldn't happen but safeguard)
-            // Also allow if we don't have enough candidates? No, better to have valid ones.
-            // Let's lower score threshold to 1.0 (Base 0.5 + Region 1.0 = 1.5)
-            return isRelevant || c.bgScore >= 1.0;
-        });
-
-        // Sort by Priority: Home Ground First, then Score
-        backgroundCandidates.sort((a, b) => {
-            const aHome = a.bgReasons.some(r => r.includes("Home Ground"));
-            const bHome = b.bgReasons.some(r => r.includes("Home Ground"));
-
-            if (aHome && !bHome) return -1;
-            if (!aHome && bHome) return 1;
-
-            return b.bgScore - a.bgScore;
-        });
-
-        const BG_MAX = 6;
-        const chosenBg = backgroundCandidates.slice(0, BG_MAX);
-
-        // Map to Output Format
-        const active = chosenActive.map(c => ({
+        const active = finalActive.slice(0, ACTIVE_MAX).map(c => ({
             id: c.id,
             name: c.name,
             score: c.activeScore,
@@ -521,7 +584,7 @@ export class AgentCasting {
             data: c.data
         }));
 
-        const background = chosenBg.map(c => ({
+        const background = finalBackground.slice(0, BG_MAX).map(c => ({
             id: c.id,
             name: c.name,
             score: c.bgScore,
@@ -530,8 +593,7 @@ export class AgentCasting {
         }));
 
         // Logging
-        if (active.length > 0) console.log(`[Casting(Active)] ${active.map(c => `${c.name}(${c.score.toFixed(1)})`).join(', ')}`);
-        if (background.length > 0) console.log(`[Casting(Background)] ${background.map(c => `${c.name}(${c.score.toFixed(1)})`).join(', ')}`);
+        if (active.length > 0) console.log(`[Casting(Final)] Active: ${active.map(c => c.name).join(', ')} | BG: ${background.length}`);
 
         return { active, background };
     }

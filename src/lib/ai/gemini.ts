@@ -617,6 +617,79 @@ export async function generateGameLogic(
     return null;
 }
 
+// [NEW] Casting Logic Model: Gemini 2.5 Flash
+export async function generateCastingDecision(
+    apiKey: string,
+    context: {
+        location: string;
+        summary: string;
+        userInput: string;
+        activeCharacters: string[];
+    },
+    candidates: { id: string; name: string; reasons: string[]; score: number }[],
+    bgCandidates: { id: string; name: string; reasons: string[]; score: number }[],
+    modelName: string = MODEL_CONFIG.LOGIC
+) {
+    if (!apiKey) throw new Error('API Key is missing');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+        model: modelName,
+        safetySettings,
+        generationConfig: { responseMimeType: "application/json" }
+    });
+
+    const prompt = `
+    당신은 비주얼 노벨 게임의 '캐스팅 디렉터'입니다.
+    현재 장면의 긴장감, 재미, 서사적 개연성을 고려하여 **가장 적절한 등장인물**을 선별해야 합니다.
+
+    [현재 상황]
+    - 장소: ${context.location}
+    - 이전 줄거리: ${context.summary}
+    - 플레이어 행동: "${context.userInput}"
+    - 현재 화면에 있는 인물: ${JSON.stringify(context.activeCharacters)}
+
+    [후보 명단 (점수순 정렬됨)]
+    ${JSON.stringify(candidates.map(c => ({ id: c.id, name: c.name, score: c.score.toFixed(1), reasons: c.reasons })))}
+    
+    [배경 인물 후보 (점수순)]
+    ${JSON.stringify(bgCandidates.map(c => ({ id: c.id, name: c.name, score: c.score.toFixed(1), reasons: c.reasons })))}
+
+    [지시사항]
+    1. **Active 선발 (최대 6명)**: 대화나 사건의 주체가 될 인물을 뽑으세요.
+       - 점수가 높더라도, 지금 분위기에 맞지 않거나 너무 뜬금없으면 제외하세요.
+       - 반대로 점수가 낮더라도, **"지금 등장하면 갈등이 고조되거나 재미있겠다"** 싶은 인물은 과감히 발탁하세요.
+       - 주인공이 직접 부른 인물은 반드시 포함하세요.
+       - **중요**: 각 Active 인물에 대해 "왜 지금 등장하며, 무엇을 하는지"에 대한 짧은 **[등장 시나리오]**를 제안해야 합니다. 단순 등장이 아니라, 사건이나 대화를 유발하는 구체적인 행동을 적으세요.
+    2. **Background 선발 (최대 12명)**: 배경에 서 있을 인물을 뽑으세요.
+       - 장소에 어울리는 인물(주인, 직원 등) 우선.
+       - Active 인물의 지인/부하 등.
+
+    [Output Format (JSON)]
+    {
+        "active": [
+            { "id": "char_id_1", "scenario": "Brief description of arrival action (e.g. 'Suddenly bursts in kicking the door')." },
+            { "id": "char_id_2", "scenario": "Quietly observing from corner." }
+        ],
+        "background": ["id3", "id4", "id5"],
+        "reason": "Brief explanation of why this casting was chosen."
+    }
+    `;
+
+    try {
+        const result = await retryWithBackoff(
+            () => model.generateContent(prompt),
+            2,
+            1000,
+            `Casting Decision (${modelName})`
+        );
+        const text = result.response.text();
+        return JSON.parse(text);
+    } catch (e: any) {
+        console.warn("AI Casting Failed:", e.message);
+        return null; // Fallback to heuristic
+    }
+}
+
 // Memory Summarization Model: Gemini 1.5 Flash (Cost-efficient)
 export async function generateSummary(
     apiKey: string,

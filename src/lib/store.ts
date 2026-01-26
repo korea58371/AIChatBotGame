@@ -762,9 +762,16 @@ export const useGameStore = create<GameState>()(
 
       triggeredEvents: [],
       activeEvent: null,
-      addTriggeredEvent: (eventId) => set((state) => ({
-        triggeredEvents: [...state.triggeredEvents, eventId]
-      })),
+      addTriggeredEvent: (eventId) => set((state) => {
+        const current = state.triggeredEvents || [];
+        console.log(`[Store] logicResult.triggerEventId received: ${eventId}. Current list:`, current);
+        if (current.includes(eventId)) {
+          console.log(`[Store] logicResult.triggerEventId duplicate ignored: ${eventId}`);
+          return {};
+        }
+        console.log(`[Store] Event Triggered & Persisted: ${eventId}`);
+        return { triggeredEvents: [...current, eventId] };
+      }),
       setActiveEvent: (event) => set({ activeEvent: event }),
 
       userCoins: 0,

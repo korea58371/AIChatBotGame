@@ -1714,8 +1714,9 @@ export default function VisualNovelUI() {
             // Sanitize state to remove functions and circular references
             // [OPTIMIZATION] Strip 'snapshot' (Client-Only) to strictly enforce <4MB Limit
             // Snapshots contain full state copies (100KB+ each), so 30 snapshots = ~3MB unnecessary data.
-            const historyPayload = (currentState.chatHistory.length > 30
-                ? currentState.chatHistory.slice(-30)
+            // [OPTIMIZATION] Reduced history slice to 10 (User Request & Summary Cycle Align)
+            const historyPayload = (currentState.chatHistory.length > 10
+                ? currentState.chatHistory.slice(-10)
                 : currentState.chatHistory).map(({ snapshot, ...rest }) => rest);
 
             const sanitizedState = JSON.parse(JSON.stringify({
@@ -1729,9 +1730,27 @@ export default function VisualNovelUI() {
                 currentMood: currentState.currentMood,
                 playerName: currentState.playerName,
                 activeCharacters: currentState.activeCharacters,
-                characterData: currentState.characterData,
+                // [OPTIMIZATION] Smart Character Pruning activeCharacters: currentState.activeCharacters,
+                characterData: Object.entries(currentState.characterData).reduce((acc, [key, val]) => {
+                    const isRelevant = currentState.activeCharacters.includes(key) || (val.memories && val.memories.length > 0) || val.relationship !== 0;
+                    if (isRelevant) {
+                        acc[key] = {
+                            id: val.id,
+                            name: val.name,
+                            relationship: val.relationship,
+                            relationshipInfo: val.relationshipInfo,
+                            memories: val.memories, // Critical for context
+                            description: val.description // Include only if dynamic
+                        };
+                    }
+                    return acc;
+                }, {} as any),
                 goals: currentState.goals, // [FIX] Pass Goals to Server for Logic Model Analysis
-                worldData: currentState.worldData,
+                // [OPTIMIZATION] Sanitize World Data
+                worldData: {
+                    locations: currentState.worldData?.locations || {},
+                    items: currentState.worldData?.items || {}
+                },
                 // [OPTIMIZATION] Static Asset Lists are Hydrated on Server
                 // availableBackgrounds: currentState.availableBackgrounds,
                 // availableCharacterImages: currentState.availableCharacterImages,
@@ -2202,6 +2221,7 @@ export default function VisualNovelUI() {
                                         id: c.id,
                                         name: c.name,
                                         score: c.score,
+                                        scenario: c.aiScenario || "N/A", // [New] Show AI Scenario
                                         reasons: (Array.isArray(c.reasons) ? c.reasons : []).join(", "),
                                         data: c.data
                                     }));
@@ -3679,6 +3699,7 @@ export default function VisualNovelUI() {
                     startedTurn: useGameStore.getState().turnCount
                 };
                 useGameStore.getState().setActiveEvent(eventPayload);
+                console.log(`[VisualNovelUI] Marking Event as Triggered: ${logicResult.triggerEventId}`);
                 useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
                 addToast("새로운 이벤트가 발생했습니다!", 'info');
                 console.log(`[Event System] New Event Triggered & Activated: ${logicResult.triggerEventId}`);
@@ -5666,7 +5687,11 @@ export default function VisualNovelUI() {
                                                     <p className="text-gray-300 mb-6 font-medium">{t.noActiveDialogue}</p>
                                                     <div className="flex gap-4 justify-center">
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); setIsInputOpen(true); }}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                console.log("[VisualNovelUI] Lost Way Continue Clicked. Opening Input.");
+                                                                setIsInputOpen(true);
+                                                            }}
                                                             className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded font-bold text-white shadow-lg hover:scale-105 transition-transform"
                                                         >
                                                             {t.continueInput}
@@ -5853,7 +5878,7 @@ export default function VisualNovelUI() {
                 {/* Input Modal */}
                 <AnimatePresence>
                     {isInputOpen && (
-                        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="fixed inset-0 bg-black/80 z-[2000] flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}

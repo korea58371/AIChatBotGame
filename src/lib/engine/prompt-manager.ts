@@ -473,7 +473,14 @@ ${prompt}
                     }
                 }
 
-                return `- ${c.name} (ID: ${idStr} | ${age}/${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr}${appearanceStr}${speechEnding} | (Score: ${item.score.toFixed(1)}) ${tagStr}`;
+                // [NEW] AI Scenario Injection
+                // If the Casting Agent provided a specific scenario, include it prominently
+                let scenarioStr = "";
+                if ((c as any).aiScenario) {
+                    scenarioStr = `\n  >> [SCENARIO SUGGESTION]: ${(c as any).aiScenario}`;
+                }
+
+                return `- ${c.name} (ID: ${idStr} | ${age}/${gender}) | Role: ${c.role || 'Unknown'} | Job: ${jobStr} | Personality: ${personaStr}${appearanceStr}${speechEnding} | (Score: ${item.score.toFixed(1)}) ${tagStr}${scenarioStr}`;
             })
             .join('\n');
     }

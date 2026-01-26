@@ -65,7 +65,7 @@ export class AgentOrchestrator {
         //    AgentRouter.analyze(history, lastContext, activeCharacterNames, lastTurnSummary),
         //    AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel)
         // ]);
-        const castingResult = await AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel);
+        const castingResult = await AgentCasting.analyze(apiKey, gameState, lastTurnSummary, userInput, playerLevel);
         const { active, background } = castingResult;
 
         const suggestions = [...active, ...background]; // [Fix] Return ALL 12 candidates to UI for debugging
@@ -180,6 +180,11 @@ ${userInput}
 
 [Narrative Direction]
 ${preLogicOut.narrative_guide}
+
+[Casting & Narrative Guidelines]
+1. **Selection Authority**: You have the final authority to ignore characters if they don't fit the current mood, even if they are in the [Context].
+2. **Narrative Priority**: Prioritize characters who create drama, conflict, or drive the plot forward. Do not force every active character to speak if it dilutes the scene.
+3. **Logic Check**: If a character's presence feels unnatural despite being cast, you may describe them as "silent in the background" or momentarily absent.
 ${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysis}` : ""}
 ${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
 ${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
@@ -685,7 +690,7 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
         const playerLevel = gameState.playerStats?.level || 1;
 
         // 2. Casting
-        const castingResult = await AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel);
+        const castingResult = await AgentCasting.analyze(apiKey, gameState, lastTurnSummary, userInput, playerLevel);
         const { active, background } = castingResult;
         const suggestions = [...active, ...background];
 

@@ -14,10 +14,9 @@ export async function loadGodBlessYouData(): Promise<GameData> {
         const assetsManifest = (await import('../../assets.json')).default;
         const gameAssets = assetsManifest?.['god_bless_you'];
         bgListModule = gameAssets?.backgrounds || [];
-        // [Fix] Merge mainCharacters and characters lists to ensure all images are available
-        const mainChars = gameAssets?.mainCharacters || [];
+        // [Fix] assets.json structure for GBY only has 'characters'
         const chars = gameAssets?.characters || [];
-        characterImageList = [...new Set([...mainChars, ...chars])];
+        characterImageList = [...new Set([...chars])];
         extraCharacterList = gameAssets?.extraCharacters || [];
     } catch (e) {
         console.warn("[GBYLoader] Failed to load assets.json:", e);
