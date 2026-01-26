@@ -1773,6 +1773,73 @@ export default function VisualNovelUI() {
 
             console.log(`[VisualNovelUI] Payload ActiveEvent:`, sanitizedState.activeEvent ? sanitizedState.activeEvent.id : "NULL");
 
+            // [DEBUG] Dynamic Payload Reduction (Self-Healing)
+            let finalPayload = {
+                history: historyPayload,
+                userInput: text,
+                gameState: sanitizedState,
+                language: language,
+                modelName: useGameStore.getState().storyModel || MODEL_CONFIG.STORY
+            };
+
+            try {
+                const getPayloadSizeMB = (obj: any) => JSON.stringify(obj).length / 1024 / 1024;
+                let currentSize = getPayloadSizeMB(finalPayload);
+                console.log(`%c[Payload Check] Initial: ${currentSize.toFixed(2)} MB`, "color: cyan");
+
+                // Level 1: Reduce History to 5
+                if (currentSize > 4.0) {
+                    console.warn("[Payload] Level 1 Reduction: History 10 -> 5");
+                    const reducedHistory = currentState.chatHistory.slice(-5).map(({ snapshot, ...rest }) => rest);
+                    finalPayload.gameState.chatHistory = reducedHistory;
+                    finalPayload.history = reducedHistory;
+                    currentSize = getPayloadSizeMB(finalPayload);
+                }
+
+                // Level 2: Strip Active Event Prompt & Reduce History to 2
+                if (currentSize > 4.0) {
+                    console.warn("[Payload] Level 2 Reduction: History 5 -> 2, Strip Event Prompt");
+                    const reducedHistory = currentState.chatHistory.slice(-2).map(({ snapshot, ...rest }) => rest);
+                    finalPayload.gameState.chatHistory = reducedHistory;
+                    finalPayload.history = reducedHistory;
+
+                    // Strip huge prompt from event
+                    if (finalPayload.gameState.activeEvent) {
+                        finalPayload.gameState.activeEvent = {
+                            id: finalPayload.gameState.activeEvent.id,
+                            type: finalPayload.gameState.activeEvent.type, // keep type
+                            // Remove prompt
+                        };
+                    }
+                    currentSize = getPayloadSizeMB(finalPayload);
+                }
+
+                // Level 3: Emergency (No History, No Event, Minimal Char Data)
+                if (currentSize > 4.0) {
+                    console.warn("[Payload] Level 3 Reduction: EMERGENCY MODE");
+                    finalPayload.gameState.chatHistory = [];
+                    finalPayload.history = [];
+                    finalPayload.gameState.activeEvent = null;
+                    // Aggressive Char Pruning (Only ID/Name)
+                    finalPayload.gameState.characterData = Object.entries(currentState.characterData).reduce((acc, [key, val]) => {
+                        if (currentState.activeCharacters.includes(key)) {
+                            acc[key] = { id: val.id, name: val.name };
+                        }
+                        return acc;
+                    }, {} as any);
+                    currentSize = getPayloadSizeMB(finalPayload);
+                }
+
+                console.log(`%c[Payload Check] Final: ${currentSize.toFixed(2)} MB`, "color: lime");
+
+                if (currentSize > 4.4) {
+                    alert("데이터 용량이 너무 커서 서버 전송에 실패할 수 있습니다. (4.5MB 초과)");
+                }
+
+            } catch (e) {
+                console.error("Payload optimization failed:", e);
+            }
+
             // Race Condition for Timeout
 
 
@@ -1840,13 +1907,7 @@ export default function VisualNovelUI() {
             try {
                 await Promise.race([
                     fetchAgentTurnStream(
-                        {
-                            history: currentHistory,
-                            userInput: text,
-                            gameState: sanitizedState,
-                            language: language,
-                            modelName: storyModel || MODEL_CONFIG.STORY
-                        },
+                        finalPayload, // [Fix] Use optimized payload
                         {
                             onToken: (token) => {
                                 if (!streamStarted) {
