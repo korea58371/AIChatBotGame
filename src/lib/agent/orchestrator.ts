@@ -176,7 +176,7 @@ ${retrievedContext}
 [Player Action]
 ${userInput}
 
-나레이션 가이드와 기존 설정 및 규칙을 참고하여 4000자 분량의 내용을 작성하세요.
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 6000자 분량의 내용을 작성하세요.
 
 [Narrative Direction]
 ${preLogicOut.narrative_guide}
@@ -766,7 +766,7 @@ ${contextRetrieved}
 [Player Action]
 ${userInput}
 
-나레이션 가이드와 기존 설정 및 규칙을 참고하여 4000자 분량의 내용을 작성하세요.
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 6000자 분량의 내용을 작성하세요.
 
 ${thinkingInstruction}
 `;
