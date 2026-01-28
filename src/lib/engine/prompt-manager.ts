@@ -1018,30 +1018,21 @@ ${spawnCandidates || "None"}
         }
 
         let context = `### [PLAYER] ${state.playerName || 'Player'}\n`;
-        context += `- Level: ${level} (${rankTitle})\n`;
+        context += `강함: ${rankTitle}\n`;
 
         // 1. Stats Summary & Reputation
         if (stats) {
             // Use destructuring to exclude relationships and redundant/derived stats
             const {
-                relationships, fame, fate,
+                relationships, fame,
                 level, exp, playerRank, realm, realmProgress, growthStagnation,
-                fameTitleIndex, final_goal, narrative_perspective
+                fameTitleIndex, final_goal, narrative_perspective, gold
             } = stats as any;
 
             let fameTitle = 'Unknown';
             const fameIdx = state.playerStats?.fameTitleIndex || 0;
 
-            // [LOC] Fame Titles (Wuxia Only mostly)
-            // Simplified Logic: Just use index to pick from translation array/keys if we want to support it properly,
-            // or we delegate this to GameRegistry as well? 
-            // For now, let's look up directly in translations to avoid import dependency.
-            // Assumption: FAME_TITLES order aligns with keys: unknown, rookie, third_rate... 
-            // This is brittle. Let's rely on a simplified lookup or legacy logic if config supports it.
-
             if (gameId === 'wuxia') {
-                // Hardcoded Map for now to resolve dependency, OR better: Move FAME_TITLES to GameConfig?
-                // Let's just use a safe array here to resolve the lint error and logic.
                 const FAME_KEYS = ['unknown', 'rookie', 'third_rate', 'second_rate', 'first_rate', 'peak', 'transcendent', 'harmony', 'mystic', 'life_death'];
                 const key = FAME_KEYS[fameIdx] || 'unknown';
                 // @ts-ignore
@@ -1050,41 +1041,46 @@ ${spawnCandidates || "None"}
                 fameTitle = `Fame Rank ${fameIdx}`;
             }
 
-            if (fame !== undefined) context += `- Fame: ${fame} (Titles: ${fameTitle})\n`;
-            if (fate !== undefined) context += `- Fate: ${fate}\n`;
-
-            // [RESTORED] Personality for PreLogic/Story Consistency
-            if (stats.personality) {
-                context += `- Personality: ${JSON.stringify(stats.personality)}\n`;
-                if (stats.personalitySummary) context += `- Personality Summary: ${stats.personalitySummary}\n`;
-            }
+            if (fame !== undefined) context += `명성: ${fameTitle}\n`;
 
             // Current Conditions (Active Injuries/Buffs)
             if (stats.active_injuries && stats.active_injuries.length > 0) {
-                context += `- [CONDITION]: Active Injuries: ${stats.active_injuries.join(', ')}\n`;
+                context += `부상: ${stats.active_injuries.join(', ')}\n`;
+            } else {
+                context += `부상: 없음\n`;
             }
-        }
 
-        // 2. Martial Arts (CRITICAL)
-        // 2. Skills / Martial Arts (CRITICAL)
-        if (skills.length > 0) {
-            context += `- Skills / Martial Arts:\n`;
-            skills.forEach((skill: any) => {
-                const proficiency = skill.proficiency || 0;
-                context += `  - [${skill.name}] (${skill.rank || 'Unranked'}) ${proficiency}%: ${skill.description || ''}\n`;
-            });
-        } else {
-            context += `- Martial Arts: No specific arts learned yet.\n`;
-        }
+            // Skills
+            if (skills.length > 0) {
+                context += `무공:\n`;
+                skills.forEach((skill: any) => {
+                    const proficiency = skill.proficiency || 0;
+                    context += `  - [${skill.name}] (${skill.rank || 'Unranked'}) ${proficiency}%: ${skill.description || ''}\n`;
+                });
+            } else {
+                context += `무공: 없음\n`;
+            }
 
-        // 3. Inventory Summary (Equipped + Key Items)
-        if (state.inventory && state.inventory.length > 0) {
-            const equipped = state.inventory.filter((i: any) => i.isEquipped).map((i: any) => i.name).join(', ');
-            const others = state.inventory.filter((i: any) => !i.isEquipped).map((i: any) => i.name).join(', ');
+            // Inventory Summary (Equipped + Key Items)
+            if (state.inventory && state.inventory.length > 0) {
+                const equipped = state.inventory
+                    .filter((i: any) => i.isEquipped)
+                    .map((i: any) => i.name + (i.quantity > 1 ? ` x${i.quantity}` : ''))
+                    .join(', ');
+                const others = state.inventory
+                    .filter((i: any) => !i.isEquipped)
+                    .map((i: any) => i.name + (i.quantity > 1 ? ` x${i.quantity}` : ''))
+                    .join(', ');
 
-            context += `- Inventory:\n`;
-            if (equipped) context += `  - Equipped: ${equipped}\n`;
-            if (others) context += `  - Bag: ${others}\n`;
+                context += `- Inventory:\n`;
+                if (equipped) context += `  - Equipped: ${equipped}\n`;
+                if (others) context += `  - Bag: ${others}\n`;
+            } else {
+                context += `- Inventory: 없음\n`;
+            }
+
+            // Gold / Money
+            context += `보유한 돈: ${gold || 0}원\n`;
         }
 
         return context;

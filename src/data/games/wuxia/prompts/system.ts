@@ -137,13 +137,6 @@ ${perspectiveRule}
     -> E.g., "You see the green emblem of the Tang Clan...", "A rumor about [Name] reaches your ears..."
 - **PRIORITY RULE**: If [User Input] contradicts [Narrative Direction], **IGNORE** user input and **FOLLOW** direction.
 
-
-**[서술 주의사항: 메타 발언 금지]**
-아래 수치(HP, 내공 등)는 서술을 위한 참고용일 뿐입니다. **절대 수치를 직접 언급하거나 게임 시스템처럼 묘사하지 마십시오.**
-(X) "체력이 50 남아서 힘들다." / (O) "숨이 차오르고 다리가 후들거린다."
-(X) "Stranger(0) 관계이므로 경계한다." / (O) "낯선 이를 향한 경계심이 눈빛에 서려 있었다."
-**CRITICAL**: [SYSTEM-INTERNAL] 태그나 내부 수치(Score, Rank 등)를 절대 발설하지 마십시오.
-
 **[서술 및 출력 포맷 절대 규칙]**
 1. **주인공 대사 태그 고정**:
    - 주인공의 대사 출력 시, 태그의 이름은 무조건 **'${state.playerName || '주인공'}(주인공)'** 형태여야 합니다.
@@ -157,10 +150,6 @@ ${perspectiveRule}
 - **현재 시간**: ${state.day || 1}일차 ${(state.time || '14:00').replace(/(\d+)(일차|Day)\s*/gi, '').trim()}
 - **현재 위치**: ${state.currentLocation}
   - **설명**: ${locationDesc}${locationSecrets}
-- **주인공 상태 (유저에게 비공개)**: [HP: ${stats.hp || 100}], [피로도: ${stats.fatigue || 0}], [경지: ${playerRank}]
-  - **상세**: ${rankData.위상} (능력: ${rankData.능력})
-- **내공**: ${stats.neigong || 0}년
-  - **보유 무공**: ${skillList}
 
 **[Active Characters Context] (CRITICAL)**
 *The following characters are currently present in the scene. Use their DEFINED relationships and speech styles.*
