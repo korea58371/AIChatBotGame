@@ -983,9 +983,7 @@ ${spawnCandidates || "None"}
     // [NEW] Get Player's Context (Stats + Martial Arts)
     static getPlayerContext(state: GameState, language: 'ko' | 'en' | null = 'ko'): string {
         const stats = state.playerStats || {};
-        // [Verified] Unified Skills System (Jan 2026)
-        // We now rely exclusively on playerStats.skills.
-        // Legacy 'martialArts' fields are deprecated.
+        // matches legacy
         const skills = state.playerStats?.skills || [];
 
         // [Refactor] Universal Level System

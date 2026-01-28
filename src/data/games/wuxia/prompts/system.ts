@@ -166,11 +166,24 @@ ${(state.activeCharacters || []).map((charId: string) => {
     // Format Memories (Limit to last 3 major memories to save tokens)
     const memories = (charData.memories || []).slice(-3).map((m: string) => `  * Memory: "${m}"`).join('\n');
 
+    const isUnknown = relStatus === 'Unknown' || !relStatus;
+
+    // [FIRST ENCOUNTER PROTOCOL]
+    let firstEncounterGuide = "";
+    if (isUnknown) {
+      firstEncounterGuide = `
+   - **[⚠️ FIRST ENCOUNTER (초면)]**:
+     - 당신은 이 인물(${charData.name})을 **처음 만났습니다**. (면식 없음)
+     - **절대 금지**: 서술에서 상대의 **'이름'**을 아는 척 부르거나, 상대의 **'신분/배경'**을 아는 척 서술하지 마십시오.
+     - **행동 지침**: 오직 **'외양'**(예: 푸른 옷의 여인, 험상궃은 사내)으로만 지칭하십시오.
+     - 주인공은 상대가 누구인지 모르며, 경계하거나 탐색해야 합니다.`;
+    }
+
     return `- **${charData.name || charId}**:
   - **Relationship**: ${relStatus} (CallSign: ${relInfo.callSign || 'None'})
   - **Speech Style**: ${speechStyle} ${endingStyle ? `(Ends with: ${endingStyle})` : ''}
   - **Key Memories**:
-${memories || "  (No significant shared memories yet)"}`;
+${memories || "  (No significant shared memories yet)"}${firstEncounterGuide}`;
   }).join('\n')}
 
 **[이동 및 여행 규칙 (Travel Pacing)] (CRITICAL)**:
