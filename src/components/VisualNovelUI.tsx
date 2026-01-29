@@ -2526,47 +2526,18 @@ export default function VisualNovelUI() {
 
 
                                         // [Fix] Drift Recovery: Capture Skipped Content Segments
-                                        // When "Granularity Drift" occurs (stream parses fewer segments than final),
-                                        // the match jumps forward (e.g., streaming index 3 -> final index 8).
-                                        // The segments between [currentIndex, bestMatchIndex) were NOT shown during streaming.
-                                        // We should prepend these skipped CONTENT segments to the queue so they're not lost.
+                                        // [Correction] If bestMatchIndex > currentIndex, it usually means the USER manually advanced (clicked)
+                                        // faster than the stream parser loop. The 'skipped' segments are actually SEEN segments.
+                                        // We should NOT rewind the user. We trust the User's Position (bestMatchIndex).
 
                                         if (bestMatchIndex !== -1) {
-                                            // The first 3 segments are typically metadata (background, bgm, command)
-                                            // which are already executed. We only care about skipped CONTENT.
-                                            const metadataTypes = ['background', 'bgm', 'command', 'event_cg'];
+                                            // The user is currently looking at 'bestMatchIndex'.
+                                            // The next content to show is simply the one after it.
 
-                                            // Check if we have significant index drift
-                                            // currentIndex is the stream's segment index, which corresponds to after metadata
-                                            // bestMatchIndex is where we found the content in final
-                                            // If bestMatchIndex > currentIndex, segments in between were "inserted" by final parsing
-
-                                            // Find where content starts in final segments
-                                            let firstContentIdx = 0;
-                                            for (let i = 0; i < finalSegments.length; i++) {
-                                                if (!metadataTypes.includes(finalSegments[i].type)) {
-                                                    firstContentIdx = i;
-                                                    break;
-                                                }
+                                            // [Debug] Log Advance
+                                            if (bestMatchIndex > (currentIndex || 0)) {
+                                                console.log(`[Sync] User is Ahead of Stream. Stream:${currentIndex} -> User:${bestMatchIndex}. Accepting User Position.`);
                                             }
-
-                                            // Collect skipped content between currentIndex and bestMatchIndex
-                                            // [Fix] Start from 'currentIndex' (what user has seen) instead of 'firstContentIdx' (start of turn)
-                                            // to avoid assuming the user missed everything if they are simply reading normally.
-                                            const startDriftIdx = Math.max(firstContentIdx, currentIndex);
-
-                                            for (let i = startDriftIdx; i < bestMatchIndex; i++) {
-                                                const seg = finalSegments[i];
-                                                if (!metadataTypes.includes(seg.type)) {
-                                                    // This is a content segment that was skipped
-                                                    skippedContentSegments.push(seg);
-                                                }
-                                            }
-
-                                            if (skippedContentSegments.length > 0) {
-
-                                            }
-
 
                                             newQueueIndex = bestMatchIndex + 1;
                                         } else {
@@ -2712,31 +2683,12 @@ export default function VisualNovelUI() {
 
                                     const remaining = finalSegments.slice(adjustedIndex);
 
-                                    // [Fix] Drift Recovery: Prepend skipped segments to queue
-                                    // If we found content segments that were skipped due to granularity drift,
-                                    // prepend them to the queue so the user sees them before continuing.
+                                    // [Fix] Drift Recovery: Logic Removed
+                                    // We now assume skipped segments were seen by user manual advance.
                                     let finalQueue = remaining;
                                     if (skippedContentSegments.length > 0) {
-
-                                        // The skipped segments come BEFORE the remaining segments
-                                        finalQueue = [...skippedContentSegments, ...remaining];
-
-                                        // [Critical Fix] UI Rewind
-                                        // If we recovered skipped segments, the current screen is likely showing a "Future" segment (caused by the jump).
-                                        // We must FORCE the screen to "Rewind" to the first recovered segment immediately.
-                                        // Otherwise, the user sees segment N, and clicking shows segment N-5, which is confusing.
-                                        const firstRecovered = finalQueue[0];
-                                        if (firstRecovered && firstRecovered.type !== 'choice') {
-
-                                            setCurrentSegment(firstRecovered);
-                                            currentSegmentRef.current = firstRecovered;
-
-                                            // Provide feedback to user/logs
-                                            // The activeSegmentIndexRef is technically desynced now, but we are queuing cleanly so it's fine.
-
-                                            // Remove the segment we just force-displayed from the queue
-                                            finalQueue = finalQueue.slice(1);
-                                        }
+                                        console.warn("[Sync] Unexpected skipped segments detected (Is Backfilling Enabled?):", skippedContentSegments);
+                                        // Redundant safety - normally empty now
                                     }
 
                                     setScriptQueue(finalQueue);
@@ -2790,7 +2742,9 @@ export default function VisualNovelUI() {
                                     fate: 0, // [Fate] Handled deterministically before request
                                     mpChange: finalMpChange,
                                     personalityChange: plPersonality,
-                                    mood: postLogicOut?.mood_update,
+                                    // [MOOD PERSISTENCE] Apply PreLogic Override if PostLogic is silent
+                                    // Priority: PostLogic (Result) > PreLogic (Intent)
+                                    mood: postLogicOut?.mood_update || preLogicOut?.mood_override,
                                     location: postLogicOut?.location_update,
                                     new_memories: postLogicOut?.new_memories,
                                     activeCharacters: postLogicOut?.activeCharacters,

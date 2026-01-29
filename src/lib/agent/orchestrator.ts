@@ -733,7 +733,8 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
 
         // --- PHASE 2: STORY STREAMING ---
 
-        const contextPlayer = PromptManager.getPlayerContext(effectiveGameState, language);
+        let contextPlayer = PromptManager.getPlayerContext(effectiveGameState, language);
+
         const contextCharacters = PromptManager.getActiveCharacterProps(effectiveGameState, undefined, language);
         const contextRetrieved = retrievedContext || "";
 
@@ -904,7 +905,7 @@ ${thinkingInstruction}
             },
             // [Debug Prompts]
             story_static_prompt: systemPrompt,
-            story_dynamic_prompt: compositeInput
+            story_dynamic_prompt: finalUserMessage || compositeInput
         };
 
         // Yield Final Data

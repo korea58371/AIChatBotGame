@@ -683,6 +683,7 @@ export async function generateCastingDecision(
             `Casting Decision (${modelName})`
         );
         const text = result.response.text();
+        console.log(`[GeminiCasting] Raw AI Decision: ${text.substring(0, 100)}...`);
         return JSON.parse(text);
     } catch (e: any) {
         console.warn("AI Casting Failed:", e.message);

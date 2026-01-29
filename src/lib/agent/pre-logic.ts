@@ -188,7 +188,7 @@ STEP 4: **Final Judgment**
 
 [Output Schema (JSON)]
 {
-    "mood_override": "daily" | "tension" | "combat" | "romance" | null,
+    "mood_override": "daily" | "tension" | "combat" | "romance" | "growth" | null,
     "plausibility_score": number, // 1-10
     "judgment_analysis": "Keywords only. (e.g. 'Rank Gap', 'Illogical').",
     "combat_analysis": "Keywords. (e.g. 'Win: High', 'Loss: Certain'). Null if safe.",
@@ -199,6 +199,13 @@ STEP 4: **Final Judgment**
     "narrative_guide": "Short directives. (e.g. 'Success. Funny tone.').",
     "location_inference": "Keywords. (e.g. 'Sichuan(Hot)'). Null if known."
 }
+
+[Mood Override Guidelines (STRICT)]
+1. **Default Mode**: 'daily' or null.
+2. **Escalation Trigger**:
+   - Only switch to 'tension' or 'combat' if there is **Killing Intent** or **Direct Violence**.
+   - Do NOT switch for: Asking directions, buying items, sparring, trivial arguments, or meeting friends.
+3. **Training**: If user is training, use 'growth'.
 
 [Guide Generation Instructions]
 **CRITICAL: EXTREME BREVITY REQUIRED.** 

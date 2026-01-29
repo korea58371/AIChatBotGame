@@ -62,6 +62,15 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 - **Format:** Keep it concise. "Promise: Meet at Teahouse", "Injury: Lost Left Eye".
 - **CRITICAL:** If the event is just a conversation without a major outcome, DO NOT RECORD IT.
 
+[Mood Update Guidelines (STRICT)]
+- **Principle**: The default mood is **'daily'** or **'growth'** (training).
+- **Escalation Threshold**:
+  - Do NOT switch to 'tension' or 'combat' unless there was **ACTUAL VIOLENCE** or **DEATH THREATS** in the story.
+  - Minor arguments, sparring, or "feeling uneasy" -> Stay 'daily'.
+- **De-Escalation**:
+  - If a fight ended or the threat left -> Immediately update to 'daily'.
+  - If unsure -> Update to 'daily'.
+
 [Goal Tracking]
 - **MANDATORY CHECK**: Review the [Active Goals] list provided in the context context.
 - For EACH active goal:
