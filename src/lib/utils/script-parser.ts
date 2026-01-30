@@ -33,6 +33,9 @@ export function parseScript(text: string): ScriptSegment[] {
     // [Fix] Normalize ellipses to prevent unwanted sentence splitting
     text = text.replace(/\.\.\./g, '…');
 
+    // [Fix] Strip all closing tags </...> (e.g., </나레이션>) as they are not used in this syntax and pollute valid content
+    text = text.replace(/<\/[^>]+>/g, '');
+
     // [Fix] Enforce Newline before ALL block tags to prevent swallowing/attachment issues
     // If AI writes "Text.<Tag> Title", we convert it to "Text.\n<Tag> Title"
     // Also explicitly handle \r for Windows consistency

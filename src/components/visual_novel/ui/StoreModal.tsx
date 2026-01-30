@@ -86,8 +86,21 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                         alert(`코인은 지급되었으나 서버 저장에 실패했습니다. (새로고침 시 사라질 수 있음)\n오류: ${dbError.message || dbError}`);
                     }
                 } else {
+                    // [Fix] Server-side Sync for Fate
                     const newFate = (playerStats.fate || 0) + totalAmount;
-                    setPlayerStats({ fate: newFate });
+                    setPlayerStats({ fate: newFate }); // Optimistic Update
+
+                    try {
+                        const { addFatePoints } = await import('@/app/actions/economy');
+                        const result = await addFatePoints(totalAmount);
+
+                        if (!result.success) {
+                            throw new Error(result.error);
+                        }
+                    } catch (dbError: any) {
+                        console.error('Failed to sync fate to Supabase:', dbError);
+                        alert(`포인트는 지급되었으나 서버 저장에 실패했습니다.\n오류: ${dbError.message || dbError}`);
+                    }
                 }
 
                 // Show success alert

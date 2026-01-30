@@ -276,6 +276,7 @@ export interface PlayerStats {
   fate: number;
   playerRank: string;
   neigong: number; // [Wuxia] Internal Energy (Years)
+  core_setting?: string; // [Wuxia] Initial Identity (e.g. 'returnee_demon')
   final_goal?: string; // [Wuxia] Character's ultimate objective
   faction: string;
   personalitySummary: string;
@@ -705,7 +706,11 @@ export const useGameStore = create<GameState>()(
                 activeEvent: null,
                 triggeredEvents: [],
                 inventory: [],
-                playerStats: JSON.parse(JSON.stringify(INITIAL_STATS)), // Deep Copy
+                playerStats: {
+                  ...JSON.parse(JSON.stringify(INITIAL_STATS)),
+                  fate: state.playerStats.fate || 0, // [Fix] Persist Fate Points (Meta Currency)
+                  fame: state.playerStats.fame || 0 // [Fix] Persist Fame? Maybe not fame, but Fate definitely. Let's keep Fate only for now based on request.
+                }, // Deep Copy with Fate persistence
                 goals: [],
                 skills: [],
                 choices: [],

@@ -2,6 +2,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MODEL_CONFIG } from '../ai/model-config';
 import { RelationshipManager } from '../engine/relationship-manager';
+import { normalizeWuxiaInjury } from '@/lib/utils/injury-cleaner';
 import { translations } from '../../data/translations'; // [NEW] Import translations
 
 export interface PostLogicOutput {
@@ -524,18 +525,12 @@ Generate the JSON output.
       try {
         const json = JSON.parse(text);
 
-        // [Sanitization] Bilingual Injury Scrubber
-        // Regex to remove English in parens: "골절 (Fracture)" -> "골절"
-        // But KEEP Korean/Numbers in parens: "내상 (경미)", "중독 (2단계)"
-        const sanitizeInjury = (injury: string) => {
-          return injury.replace(/\s*\([a-zA-Z\s]+\)/g, "").trim();
-        };
-
         if (json.new_injuries && Array.isArray(json.new_injuries)) {
-          json.new_injuries = json.new_injuries.map(sanitizeInjury);
+          // Map then Set to deduplicate
+          json.new_injuries = Array.from(new Set(json.new_injuries.map(normalizeWuxiaInjury)));
         }
         if (json.resolved_injuries && Array.isArray(json.resolved_injuries)) {
-          json.resolved_injuries = json.resolved_injuries.map(sanitizeInjury);
+          json.resolved_injuries = Array.from(new Set(json.resolved_injuries.map(normalizeWuxiaInjury)));
         }
 
         // [Validation] Ensure inline_triggers exist

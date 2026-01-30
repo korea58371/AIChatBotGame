@@ -100,11 +100,55 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
       ? inventory.map((i: any) => `${i.name} x${i.quantity}`).join(', ')
       : "없음";
 
+
+   // [IDENTITY CONTEXT INJECTION]
+   const coreSetting = stats.core_setting || 'incompetent';
+   let identityContext = "";
+
+   if (coreSetting === 'incompetent') {
+      identityContext = `
+**[IDENTITY: 무능력자 (Incompetent)]**
+- **Status**: 당신은 이 초능력 사회에서 아무런 능력도 각성하지 못한 '일반인'입니다.
+- **Narrative Tone**: 무력감, 서러움, 그러나 끈질긴 생존 본능. 블레서들의 싸움에 휘말리면 즉사할 수 있다는 공포를 항상 안고 있습니다.
+- **Social Perception**: 투명 인간 취급. 무시와 냉대.
+`;
+   } else if (coreSetting === 'superhuman') {
+      identityContext = `
+**[IDENTITY: 초인적인 일반인 (Superhuman Civilian)]**
+- **Status**: 마력은 없지만, 신체 능력 자체가 탈인간급인 괴물입니다.
+- **Narrative Tone**: 자신감, 호쾌함. "마법? 그게 뭐 필요해? 주먹이면 되는데."
+- **Ability**: 마법 방어력은 없지만, 물리적인 속도와 파워는 B급 헌터를 상회합니다.
+`;
+   } else if (coreSetting === 'd_rank_hunter') {
+      identityContext = `
+**[IDENTITY: D급 헌터 (D-Rank Hunter)]**
+- **Status**: 공인된 헌터 자격증을 가진 전문 직업인입니다.
+- **Narrative Tone**: 프로페셔널, 현실적, 비즈니스 마인드. "돈이 되어야 움직인다."
+- **Social Perception**: 안정적인 직업인. 시민들의 든든한 보호자(혹은 용역).
+`;
+   } else if (coreSetting === 'academy_student') {
+      identityContext = `
+**[IDENTITY: 아카데미 생도 (Academy Student)]**
+- **Status**: 명문 '블레서 아카데미'의 제복을 입은 엘리트 학생입니다.
+- **Narrative Tone**: 학구적, 성장 중심, 풋풋함. 캠퍼스 라이프와 훈련이 일상입니다.
+- **Goal**: 졸업 후 좋은 길드에 취직하거나 상위 랭커가 되는 것.
+`;
+   } else if (coreSetting === 's_rank_candidate') {
+      identityContext = `
+**[IDENTITY: S급 유망주 (S-Rank Candidate)]**
+- **Status**: 이제 막 각성했으나, 측정 불가의 마력을 가진 '국가적 자산'입니다.
+- **Narrative Tone**: 압도적 재능, 주변의 과도한 관심과 기대, 혹은 시기.
+- **Conflict**: 힘을 다루지 못해 폭주할 위험, 혹은 당신을 영입하려는 세력들의 암투.
+`;
+   }
+
    return `
 # [5. CURRENT GAME STATE (INJECTED)]
 *이 정보는 현재 턴의 상황입니다. 최우선으로 반영하여 서술하십시오.*
 
 ${perspectiveRule}
+
+${identityContext}
 
 # [ACTIVE CHARACTERS]
 {{CHARACTER_INFO}}

@@ -137,6 +137,18 @@ ${perspectiveRule}
     -> E.g., "You see the green emblem of the Tang Clan...", "A rumor about [Name] reaches your ears..."
 - **PRIORITY RULE**: If [User Input] contradicts [Narrative Direction], **IGNORE** user input and **FOLLOW** direction.
 
+**[주인공 핵심 정체성 (Identity Context)]**
+${(() => {
+      const setting = stats.core_setting || 'modern_man';
+      switch (setting) {
+        case 'possessed_noble': return `- **빙의자(Possessor)**: 당신은 소설 속 엑스트라 '몰락한 지략가'의 몸에 빙의한 현대인입니다. 뛰어난 지모(Int)와 화술(Eloquence)을 가졌으며, 원작의 흐름을 일부 알고 있습니다.`;
+        case 'rejuvenated_master': return `- **환골탈태(Rejuvenated Master)**: 당신은 늙어 죽기 직전, 기연을 통해 젊은 육체와 강력한 내공(60년)을 얻었습니다. 육체는 젊지만 말투나 사고방식은 노련한 고수일 수 있습니다.`;
+        case 'returnee_demon': return `- **회귀한 천마(Returnee Heavenly Demon)**: 당신은 천마신교의 교주 '천마'였으나, 배신당해 죽은 후 과거로 회귀했습니다.\n  - **상태**: 전생의 무학적 깨달음(Lv.100)과 기억은 온전하지만, 육체는 아직 단련되지 않아 내공이 없습니다(0년). 다시 처음부터 힘을 길러야 합니다.\n  - **성향**: 오만하고 독선적일 수 있으나, 이번 생은 다르게 살아보려 할 수도 있습니다.`;
+        case 'dimensional_merchant': return `- **차원 거상(Dimensional Merchant)**: 당신은 막대한 자본금을 가지고 무림에 떨어진 상인입니다. 모든 것을 '돈'과 '거래'의 관점에서 해석하려는 경향이 있습니다.`;
+        default: return `- **현대인(Modern Man)**: 당신은 평범한 현대인입니다. 무림의 이치는 낯설고 두렵기만 합니다.`;
+      }
+    })()}
+
 **[서술 및 출력 포맷 절대 규칙]**
 1. **주인공 대사 태그 고정**:
    - 주인공의 대사 출력 시, 태그의 이름은 무조건 **'${state.playerName || '주인공'}(주인공)'** 형태여야 합니다.
@@ -154,37 +166,39 @@ ${perspectiveRule}
 **[Active Characters Context] (CRITICAL)**
 *The following characters are currently present in the scene. Use their DEFINED relationships and speech styles.*
 ${(state.activeCharacters || []).map((charId: string) => {
-    const charData = state.characterData?.[charId];
-    if (!charData) return `- ${charId}: (No Data)`;
+      const charData = state.characterData?.[charId];
+      if (!charData) return `- ${charId}: (No Data)`;
 
-    // Format Relationship Info
-    const relInfo = charData.relationshipInfo || {};
-    const relStatus = relInfo.relation || 'Unknown';
-    const speechStyle = relInfo.speechStyle || 'Unknown';
-    const endingStyle = relInfo.endingStyle || '';
+      // Format Relationship Info
+      const relInfo = charData.relationshipInfo || {};
+      const relStatus = relInfo.relation || 'Unknown';
+      const speechStyle = relInfo.speechStyle || 'Unknown';
+      const endingStyle = relInfo.endingStyle || '';
 
-    // Format Memories (Limit to last 3 major memories to save tokens)
-    const memories = (charData.memories || []).slice(-3).map((m: string) => `  * Memory: "${m}"`).join('\n');
+      // Format Memories (Limit to last 3 major memories to save tokens)
+      const memories = (charData.memories || []).slice(-3).map((m: string) => `  * Memory: "${m}"`).join('\n');
 
-    const isUnknown = relStatus === 'Unknown' || !relStatus;
+      const isUnknown = relStatus === 'Unknown' || !relStatus;
 
-    // [FIRST ENCOUNTER PROTOCOL]
-    let firstEncounterGuide = "";
-    if (isUnknown) {
-      firstEncounterGuide = `
-   - **[⚠️ FIRST ENCOUNTER (초면)]**:
-     - 당신은 이 인물(${charData.name})을 **처음 만났습니다**. (면식 없음)
-     - **절대 금지**: 서술에서 상대의 **'이름'**을 아는 척 부르거나, 상대의 **'신분/배경'**을 아는 척 서술하지 마십시오.
-     - **행동 지침**: 오직 **'외양'**(예: 푸른 옷의 여인, 험상궃은 사내)으로만 지칭하십시오.
-     - 주인공은 상대가 누구인지 모르며, 경계하거나 탐색해야 합니다.`;
-    }
+      // [FIRST ENCOUNTER PROTOCOL]
+      let firstEncounterGuide = "";
+      if (isUnknown) {
+        firstEncounterGuide = `
+   - **[⚠️ FIRST ENCOUNTER (초면 / 면식 없음)]**:
+     - 당신은 이 인물(${charData.name})을 **처음 만났습니다**.
+     - **체면과 무시**: 무림의 고수는 자신보다 약해 보이거나 명성이 없는 자에게 관심을 주지 않습니다. (투명 인간 취급)
+     - **절대 금지**:
+       1. 상대의 '이름'을 아는 척 부르기 금지.
+       2. 상대의 '신분/내공'을 꿰뚫어보기 금지. (오직 겉모습만 서술)
+       3. **이유 없는 호의 금지**. (초면에 웃거나 친절하면 사기꾼 취급 받음)`;
+      }
 
-    return `- **${charData.name || charId}**:
+      return `- **${charData.name || charId}**:
   - **Relationship**: ${relStatus} (CallSign: ${relInfo.callSign || 'None'})
   - **Speech Style**: ${speechStyle} ${endingStyle ? `(Ends with: ${endingStyle})` : ''}
   - **Key Memories**:
 ${memories || "  (No significant shared memories yet)"}${firstEncounterGuide}`;
-  }).join('\n')}
+    }).join('\n')}
 
 **[이동 및 여행 규칙 (Travel Pacing)] (CRITICAL)**:
 - **순간이동 금지**: 먼 지역(다른 성/City)으로 이동할 때는 절대 한 턴 만에 도착하지 마십시오.

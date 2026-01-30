@@ -72,6 +72,12 @@ export const getStaticLogicPrompt = (rankCriteria: any = null, romanceGuide: any
 
 6. **출력 형식**: 동일한 JSON 구조.
 
+    **[CRITICAL: MOOD OVERRIDE RULES]**:
+    - **[Romance Gate] (철벽 방어)**:
+       - 만약 \`newMood\`를 'romance'나 'erotic'으로 설정하려 한다면, 반드시 해당 캐릭터와의 **호감도(Affinity)**를 확인하시오.
+       - **Rule**: 호감도가 40 미만이라면, \`newMood\`를 **'tension'**(경계) 또는 **'daily'**(무시)로 강제 변경하십시오. 절대 로맨스 무드를 켜지 마십시오.
+       - "초면에 반했다"는 무협에서 존재하지 않습니다. 의심하십시오.
+
 **OUTPUT FORMAT (JSON ONLY):**
 {
     "hpChange": number,

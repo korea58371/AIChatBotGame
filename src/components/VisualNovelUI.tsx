@@ -14,6 +14,7 @@ import { RelationshipManager } from '@/lib/engine/relationship-manager'; // Adde
 import { MODEL_CONFIG, PRICING_RATES, KRW_PER_USD } from '@/lib/ai/model-config';
 import { normalizeCharacterId } from '@/lib/utils/character-id'; // [NEW] ID Normalization
 import { fetchAgentTurnStream } from '@/lib/network/stream-client'; // [Stream] Client
+import { normalizeWuxiaInjury } from '@/lib/utils/injury-cleaner'; // [New] Injury Sanitization
 import { parseScript, ScriptSegment } from '@/lib/utils/script-parser';
 import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/utils/name-utils'; // [NEW] Fuzzy Match Helper
 import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
@@ -369,6 +370,43 @@ export default function VisualNovelUI() {
         return { stats, narrativeEvent: null };
     }, []);
 
+    // [New] Status Effects (Natural Healing Only + Sanitization)
+    const processStatusEffects = useCallback((currentStats: any, addToastCallback: (msg: string, type: any) => void) => {
+        let stats = { ...currentStats };
+        const maxHp = stats.maxHp || 100;
+        const maxMp = stats.maxMp || 100;
+
+        // [User Fix] Sanitize Existing Injuries (Collapse Duplicates)
+        // This fixes the "Minor/Stable" duplicate issue by forcing normalization every turn.
+        if (stats.active_injuries && stats.active_injuries.length > 0) {
+            const cleanInjuries = Array.from(new Set(stats.active_injuries.map(normalizeWuxiaInjury))) as string[];
+            if (cleanInjuries.length !== stats.active_injuries.length) {
+                console.log(`[Status] Auto-consolidated injuries: ${stats.active_injuries.length} -> ${cleanInjuries.length}`);
+                stats.active_injuries = cleanInjuries;
+            }
+        }
+
+        // [User Request] Removed Injury Drain (Double Dip Prevention)
+        // AI Narrative already handles damage. We only handle Natural Recovery here.
+        const drain = 0;
+
+        // 2. Natural Healing (if not critical)
+        // Recover if HP < 90%
+        if (stats.hp < maxHp * 0.9) {
+            const recoveryRate = 0.02; // 2% per turn
+            const amount = Math.floor(maxHp * recoveryRate);
+            stats.hp = Math.min(maxHp, stats.hp + amount);
+        }
+
+        // MP Recovery (Always slight recovery unless combat)
+        if (stats.mp < maxMp) {
+            const mpRec = Math.floor(maxMp * 0.03); // 3%
+            stats.mp = Math.min(maxMp, stats.mp + mpRec);
+        }
+
+        return stats;
+    }, []);
+
     // Core Game Store
     const {
         chatHistory,
@@ -717,16 +755,27 @@ export default function VisualNovelUI() {
     // handleRecharge removed in favor of Store redirection
 
     // [Refactor] Sync Auth State from Hook
-    const { session, coins: authCoins, refreshSession, loading: authLoading } = useAuthSession();
+    const { session, coins: authCoins, fatePoints: authFate, refreshSession, loading: authLoading } = useAuthSession();
 
-    // Sync Coins to Global Store when they change
+    // Sync Coins & Fate to Global Store when they change
     useEffect(() => {
-        // [Fix] Only sync if loaded and we have a valid number
-        // This prevents overwriting optimistic/local state with "loading" (0) state or stale state if network lags
-        if (!authLoading && typeof authCoins === 'number') {
-            setUserCoins(authCoins);
+        // [Fix] Only sync if loaded and 'user' exists (Don't wipe local data for guests)
+        if (!authLoading && session?.user) {
+            if (typeof authCoins === 'number') {
+                setUserCoins(authCoins);
+            }
+            // [Fix] Sync Fate Points from DB (Authoritative)
+            if (typeof authFate === 'number') {
+                const currentFate = useGameStore.getState().playerStats.fate;
+                // Only update if different (and non-zero/valid check if needed, but 0 is valid for DB)
+                if (currentFate !== authFate) {
+                    console.log(`[Sync] Updating Fate Points: ${currentFate} -> ${authFate}`);
+                    const currentStats = useGameStore.getState().playerStats;
+                    useGameStore.getState().setPlayerStats({ ...currentStats, fate: authFate });
+                }
+            }
         }
-    }, [authCoins, authLoading, setUserCoins]);
+    }, [authCoins, authFate, authLoading, setUserCoins, session]);
 
     // [Refactor] Cloud Conflict Logic Removal
     // The legacy auto-save conflict check is removed in favor of the manual slot system.
@@ -5202,7 +5251,6 @@ export default function VisualNovelUI() {
                                                             useGameStore.getState().setHiddenOverrides({ protagonistImage: finalImage });
                                                         }
 
-                                                        // [CRITICAL] RESET ALL PERSISTENT DATA FOR NEW GAME
                                                         const newStats = {
                                                             ...useGameStore.getState().playerStats,
                                                             skills: [] as Skill[],   // [Fixed] Unified Skills Type
@@ -5210,40 +5258,128 @@ export default function VisualNovelUI() {
                                                             gold: 0,           // Reset Gold
                                                         };
 
+                                                        // [NEW] Cost Deduction Logic
+                                                        let totalFateCost = 0;
+                                                        creationQuestions.forEach(q => {
+                                                            const selectedVal = updatedData[q.id];
+                                                            if (selectedVal) {
+                                                                const opt = q.options.find((o: any) => o.value === selectedVal);
+                                                                if (opt && opt.cost && opt.costType === 'fate') {
+                                                                    totalFateCost += opt.cost;
+                                                                }
+                                                            }
+                                                        });
+
+                                                        if (totalFateCost > 0) {
+                                                            newStats.fate = (newStats.fate || 0) - totalFateCost;
+                                                            console.log(`[Creation] Deducted ${totalFateCost} Fate Points. Remaining: ${newStats.fate}`);
+                                                            addToast(`${totalFateCost} 운명 포인트가 소모되었습니다. (잔여: ${newStats.fate})`, 'info');
+                                                        }
+
                                                         // [보너스 적용] 욕망 (4번째 질문)
-                                                        const desire = updatedData['desire_type'];
-                                                        if (desire === 'money') {
-                                                            newStats.gold = (newStats.gold || 0) + 500;
-                                                            addToast("보너스: 초기 자금 500냥 획득!", "success");
-                                                        } else if (desire === 'neigong') {
-                                                            newStats.neigong = (newStats.neigong || 0) + 10;
-                                                            addToast("보너스: 초기 내공 10년 획득!", "success");
-                                                        } else if (desire === 'martial_arts') {
-                                                            const basicSword = {
-                                                                id: 'basic_sword',
-                                                                name: '삼재검법',
-                                                                rank: '삼류',
-                                                                type: '검법',
-                                                                description: '기초적인 검법. 찌르기, 베기, 막기의 기본이 담겨있다.',
-                                                                proficiency: 50,
-                                                                effects: ['기본 공격력 상승'],
+                                                        // [보너스 적용] 핵심 설정 (4번째 질문)
+                                                        const coreSetting = updatedData['core_setting'];
+                                                        if (coreSetting) {
+                                                            newStats.core_setting = coreSetting;
+                                                        }
+
+                                                        if (coreSetting === 'possessed_noble') {
+                                                            newStats.int = (newStats.int || 10) + 20;
+
+                                                            if (!newStats.personality) {
+                                                                newStats.personality = {
+                                                                    morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
+                                                                    openness: 0, warmth: 0, eloquence: 0, leadership: 0,
+                                                                    humor: 0, lust: 0
+                                                                };
+                                                            }
+                                                            newStats.personality.eloquence = (newStats.personality.eloquence || 0) + 20;
+
+                                                            newStats.gold = (newStats.gold || 0) + 1000;
+                                                            addToast("특전: 지략가 보너스 적용 (지력/화술 +20, 금화 +1000)", "success");
+                                                        }
+                                                        else if (coreSetting === 'rejuvenated_master') {
+                                                            newStats.neigong = (newStats.neigong || 0) + 60;
+                                                            ['str', 'agi', 'int', 'vit', 'luk'].forEach(s => {
+                                                                // @ts-ignore
+                                                                newStats[s] = (newStats[s] || 10) + 10;
+                                                            });
+                                                            addToast("특전: 환골탈태 보너스 적용 (내공 60년, 전 스탯 +10)", "success");
+                                                        }
+                                                        else if (coreSetting === 'returnee_demon') {
+                                                            newStats.level = 100; // Returnee retains enlightenment
+                                                            // Neigong is 0 (reset body)
+
+                                                            if (!newStats.personality) {
+                                                                newStats.personality = {
+                                                                    morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
+                                                                    openness: 0, warmth: 0, eloquence: 0, leadership: 0,
+                                                                    humor: 0, lust: 0
+                                                                };
+                                                            }
+                                                            newStats.personality.morality = -50; // Evil alignment
+
+                                                            const demonArt = {
+                                                                id: 'heavenly_demon_art',
+                                                                name: '천마신공(天魔神功)',
+                                                                rank: '절대지경',
+                                                                type: '신공',
+                                                                description: '천마의 절대무공. 파괴적인 위력을 자랑한다.',
+                                                                proficiency: 10, // Reincarnated but needs practice? Or maybe 100? Let's say 10 (reset).
+                                                                effects: ['절대적인 파괴력', '마기 운용'],
                                                                 createdTurn: 0
                                                             };
-                                                            newStats.skills = [...(newStats.skills || []), basicSword];
-                                                            addToast("보너스: 삼재검법 습득!", "success");
-                                                        } else if (desire === 'love') {
-                                                            // [Randomize Heroine]
-                                                            const HEROINE_CANDIDATES = [
-                                                                '연화린', '백소유', '화영', '남궁세아', '모용예린',
-                                                                '당소율', '제갈연주', '주예서', '천예령', '한설희'
-                                                            ];
-                                                            const randomHeroine = HEROINE_CANDIDATES[Math.floor(Math.random() * HEROINE_CANDIDATES.length)];
+                                                            newStats.skills = [...(newStats.skills || []), demonArt];
+                                                            addToast("특전: 천마 재림 적용 (천마신공, 레벨 100)", "success");
+                                                        }
+                                                        else if (coreSetting === 'dimensional_merchant') {
+                                                            newStats.gold = (newStats.gold || 0) + 500000;
+                                                            addToast("특전: 거상 보너스 적용 (초기 자금 50만냥)", "success");
+                                                        }
 
-                                                            newStats.relationships = { [randomHeroine]: 30 };
-                                                            addToast(`보너스: ${randomHeroine}와의 소꿉친구 인연 형성!`, "success");
-                                                        } else if (desire === 'fame') {
-                                                            newStats.fame = (newStats.fame || 0) + 500;
-                                                            addToast("보너스: 초기 명성 500 획득!", "success");
+                                                        // [GBY: God Bless You Start Bonuses]
+                                                        if (activeGameId === 'god_bless_you') {
+                                                            if (coreSetting === 'incompetent') {
+                                                                // Hard Mode
+                                                                addToast("특성: 무능력자 (특별한 보너스 없음, 하드코어 시작)", "info");
+                                                            }
+                                                            else if (coreSetting === 'superhuman') {
+                                                                ['str', 'agi', 'vit'].forEach(s => {
+                                                                    // @ts-ignore
+                                                                    newStats[s] = (newStats[s] || 10) + 10;
+                                                                });
+                                                                newStats.level = 5;
+                                                                addToast("특전: 초인 (신체 능력 +10, 레벨 5)", "success");
+                                                            }
+                                                            else if (coreSetting === 'd_rank_hunter') {
+                                                                ['str', 'agi', 'vit', 'int', 'luk'].forEach(s => {
+                                                                    // @ts-ignore
+                                                                    newStats[s] = (newStats[s] || 10) + 5;
+                                                                });
+                                                                newStats.gold = (newStats.gold || 0) + 500000; // 50만원
+                                                                // @ts-ignore
+                                                                if (!(newStats as any).inventory) (newStats as any).inventory = [];
+                                                                // @ts-ignore
+                                                                (newStats as any).inventory.push({ id: 'hunter_license_d', name: 'D급 헌터 자격증', quantity: 1, type: 'item' });
+                                                                addToast("특전: D급 헌터 (전 스탯 +5, 자격증, 50만원)", "success");
+                                                            }
+                                                            else if (coreSetting === 'academy_student') {
+                                                                newStats.int = (newStats.int || 10) + 15;
+                                                                // @ts-ignore
+                                                                (newStats as any).potential = ((newStats as any).potential || 10) + 10;
+                                                                // @ts-ignore
+                                                                if (!(newStats as any).inventory) (newStats as any).inventory = [];
+                                                                // @ts-ignore
+                                                                (newStats as any).inventory.push({ id: 'blesser_academy_uniform', name: '아카데미 교복', quantity: 1, type: 'item' });
+                                                                addToast("특전: 아카데미 생도 (지능+15, 잠재력+10, 교복)", "success");
+                                                            }
+                                                            else if (coreSetting === 's_rank_candidate') {
+                                                                newStats.mp = (newStats.mp || 100) + 500;
+                                                                // @ts-ignore
+                                                                (newStats as any).potential = ((newStats as any).potential || 10) + 30; // S-Rank Potential
+                                                                newStats.level = 20;
+                                                                addToast("특전: S급 유망주 (마력 +500, 잠재력 +30, 레벨 20)", "success");
+                                                            }
                                                         }
 
                                                         // [Bonus Application] Personality (1문)
@@ -5545,20 +5681,40 @@ export default function VisualNovelUI() {
                                                                                 if (creationData[key] !== value) return null;
                                                                             }
 
+                                                                            const isAffordable = !opt.cost || (opt.costType === 'fate' ? (playerStats.fate || 0) >= opt.cost : true);
+
                                                                             return (
                                                                                 <button
                                                                                     key={opt.value}
+                                                                                    disabled={!isAffordable}
                                                                                     onClick={() => {
+                                                                                        if (!isAffordable) return;
                                                                                         playSfx('ui_click');
                                                                                         currentQuestion && handleOptionSelect(currentQuestion.id, opt.value);
                                                                                     }}
-                                                                                    className="group relative px-6 py-4 bg-[#252525] hover:bg-[#2a2a2a] border border-[#333] hover:border-[#D4AF37]/50 rounded-lg text-left transition-all shadow-md active:scale-[0.99] overflow-hidden"
+                                                                                    className={`group relative px-6 py-4 border rounded-lg text-left transition-all shadow-md overflow-hidden flex justify-between items-center
+                                                                                        ${isAffordable
+                                                                                            ? 'bg-[#252525] hover:bg-[#2a2a2a] border-[#333] hover:border-[#D4AF37]/50 active:scale-[0.99] cursor-pointer'
+                                                                                            : 'bg-[#1a1a1a] border-[#333] opacity-60 cursor-not-allowed grayscale'
+                                                                                        }
+                                                                                    `}
                                                                                 >
-                                                                                    <div className="absolute inset-y-0 left-0 w-1 bg-[#333] group-hover:bg-[#D4AF37] transition-colors" />
-                                                                                    <span className="font-bold text-[#666] group-hover:text-[#D4AF37] mr-3 font-serif transition-colors">◈</span>
-                                                                                    <span className="text-gray-300 group-hover:text-[#eee] font-medium transition-colors">
-                                                                                        {opt.label}
-                                                                                    </span>
+                                                                                    <div className="flex items-center">
+                                                                                        <div className={`absolute inset-y-0 left-0 w-1 transition-colors ${isAffordable ? 'bg-[#333] group-hover:bg-[#D4AF37]' : 'bg-red-900'}`} />
+                                                                                        <span className={`font-bold mr-3 font-serif transition-colors ${isAffordable ? 'text-[#666] group-hover:text-[#D4AF37]' : 'text-stone-600'}`}>◈</span>
+                                                                                        <span className={`font-medium transition-colors ${isAffordable ? 'text-gray-300 group-hover:text-[#eee]' : 'text-gray-500'}`}>
+                                                                                            {opt.label}
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    {opt.cost && (
+                                                                                        <div className={`text-xs font-bold px-2 py-1 rounded border ${isAffordable
+                                                                                            ? 'bg-purple-900/40 text-purple-300 border-purple-700/50'
+                                                                                            : 'bg-red-900/20 text-red-500 border-red-800/30'
+                                                                                            }`}>
+                                                                                            🔮 {opt.cost} Fate
+                                                                                        </div>
+                                                                                    )}
                                                                                 </button>
                                                                             );
                                                                         })}
@@ -6221,6 +6377,7 @@ export default function VisualNovelUI() {
                     t={t}
                     session={session}
                     coins={userCoins} // [Fix] Pass coins for display
+                    fatePoints={playerStats.fate} // [Fix] Pass Fate Points for display
                     onRefresh={refreshSession} // [Fix] Pass refresh handler
                     onResetGame={handleNewGame}
                 />

@@ -132,3 +132,96 @@ export async function addCoins(amount: number) {
         return { success: false, error: e.message || "Internal Server Error" };
     }
 }
+
+
+// [NEW] Fate Points Server Actions
+
+export async function addFatePoints(amount: number) {
+    if (amount <= 0) return { success: false, error: "Invalid amount" };
+
+    try {
+        const cookieStore = await cookies();
+        const supabase = createClient(cookieStore);
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) return { success: false, error: "Unauthorized" };
+
+        const userId = user.id;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+        if (!serviceKey || !supabaseUrl) return { success: false, error: "Server Config Error" };
+
+        const adminClient = createAdminClient(supabaseUrl, serviceKey);
+
+        const { data: profile, error: fetchError } = await adminClient
+            .from('profiles')
+            .select('fate_points')
+            .eq('id', userId)
+            .single();
+
+        if (fetchError || !profile) return { success: false, error: "Profile not found" };
+
+        const currentFate = profile.fate_points || 0;
+        const newBalance = currentFate + amount;
+
+        const { error: updateError } = await adminClient
+            .from('profiles')
+            .update({ fate_points: newBalance })
+            .eq('id', userId);
+
+        if (updateError) return { success: false, error: "Update failed" };
+
+        return { success: true, newBalance };
+
+    } catch (e: any) {
+        console.error("addFatePoints Exception:", e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function deductFatePoints(amount: number) {
+    if (amount <= 0) return { success: false, error: "Invalid amount" };
+
+    try {
+        const cookieStore = await cookies();
+        const supabase = createClient(cookieStore);
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) return { success: false, error: "Unauthorized" };
+
+        const userId = user.id;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+        if (!serviceKey || !supabaseUrl) return { success: false, error: "Server Config Error" };
+
+        const adminClient = createAdminClient(supabaseUrl, serviceKey);
+
+        const { data: profile, error: fetchError } = await adminClient
+            .from('profiles')
+            .select('fate_points')
+            .eq('id', userId)
+            .single();
+
+        if (fetchError || !profile) return { success: false, error: "Profile not found" };
+
+        const currentFate = profile.fate_points || 0;
+        if (currentFate < amount) return { success: false, error: "Not enough fate points" };
+
+        const newBalance = currentFate - amount;
+
+        const { error: updateError } = await adminClient
+            .from('profiles')
+            .update({ fate_points: newBalance })
+            .eq('id', userId);
+
+        if (updateError) return { success: false, error: "Update failed" };
+
+        return { success: true, newBalance };
+
+    } catch (e: any) {
+        console.error("deductFatePoints Exception:", e);
+        return { success: false, error: e.message };
+    }
+}

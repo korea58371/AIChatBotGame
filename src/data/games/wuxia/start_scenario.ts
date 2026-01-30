@@ -33,14 +33,14 @@ export const CHARACTER_CREATION_QUESTIONS = [
         ]
     },
     {
-        id: 'desire_type',
-        question: "4문) [욕망] 이 세계에서 가장 먼저 얻고 싶은 것은 무엇인가?",
+        id: 'core_setting',
+        question: "4문) [핵심 설정] 당신의 영혼에 새겨진 진정한 정체는 무엇인가? (특전 선택)",
         options: [
-            { value: 'money', label: "돈! (초기 자금 +500)" },
-            { value: 'neigong', label: "내공! (초기 내공 10년)" },
-            { value: 'martial_arts', label: "무공! (초기 기초무공 획득)" },
-            { value: 'love', label: "연인! (히로인 중 한명이 소꿉친구로 설정)" },
-            { value: 'fame', label: "명성! (초기 명성 +500)" }
+            { value: 'modern_man', label: "평범한 현대인 (추가 보너스 없음)" },
+            { value: 'possessed_noble', label: "환생한 지략가 (지력/화술 +20, 금화 +1000)", cost: 30, costType: 'fate' },
+            { value: 'rejuvenated_master', label: "환골탈태한 고수 (내공 60년, 전 스탯 +10)", cost: 100, costType: 'fate' },
+            { value: 'returnee_demon', label: "회귀한 천마 (천마신공, 레벨 100, 마기, 악성향)", cost: 300, costType: 'fate' },
+            { value: 'dimensional_merchant', label: "차원이동한 거상 (보유 자금 50만냥)", cost: 50, costType: 'fate' }
         ]
     },
     {
@@ -61,7 +61,8 @@ export const CHARACTER_CREATION_QUESTIONS = [
             { value: '1인칭', label: "1인칭 시점으로 서술" },
             { value: '3인칭', label: "3인칭 시점으로 서술" }
         ]
-    }
+    },
+
 ];
 
 // [START SCENARIO]: The protagonist reads the ending of "Cheonha Jeil" and wakes up in the novel.
