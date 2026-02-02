@@ -149,9 +149,6 @@ The Player controls ONLY their own character's *Body* and *Speech*.
         // [Unified System Prompt]
         // Router 기능(의도 파악) + PreLogic 기능(판정) 통합
         const systemInstruction = `
-[Worldview & Identity (TONE & MANNER)]
-${gameIdentity}
-
 You are the [Dungeon Master & Reality Judge] of a text-based Wuxia RPG.
 Your job is to:
 1. **CLASSIFY** the user's intent (Combat, Dialogue, Action, System).

@@ -310,44 +310,16 @@ export class AgentCasting {
                 }
             }
 
-            // 7. [NEW] Early Game Helper Bias (Opposite Sex + Righteous)
+            // 7. [REMOVED] Early Game Helper Bias (Opposite Sex + Righteous)
+            // User Request: Removed to prevent forced companion bias.
+            /*
             const playerGender = gameState.playerStats?.gender || 'male';
             const isEarlyGame = (gameState.turnCount || 0) < 30;
 
             if (isEarlyGame) {
-                const targetGender = playerGender === 'male' ? '여성' : '남성';
-                // Check if Righteous (Affiliation or Tags)
-                // Righteous: Not Magyo, Not Sapa. Or has 'Righteous' tag.
-                const isMagyo = region?.home?.includes('마교') || region?.home?.includes('십만대산') || tags.includes('마교');
-                const isSapa = region?.home?.includes('사파') || region?.home?.includes('패천맹') || tags.includes('녹림') || tags.includes('악당');
-
-                const isRighteous = !isMagyo && !isSapa;
-
-                // [FIX] Gender Inference Fallback
-                let charGender = cAny.profile?.성별;
-
-                if (!charGender) {
-                    // Try to infer from Tags or Title
-                    const indicators = (cAny.title || "") + " " + tags.join(" ");
-                    if (indicators.match(/여성|소녀|누나|언니|여제|성녀|마녀|퀸카|히로인|Lady|Girl|Princess/i)) {
-                        charGender = '여성';
-                    } else if (indicators.match(/남성|소년|형|오빠|황제|왕|Hero|Boy/i)) {
-                        charGender = '남성';
-                    } else {
-                        charGender = '남성'; // Ultimate default
-                    }
-                }
-
-                if (isRighteous && charGender === targetGender) {
-                    actScore += 3.0;
-                    actReasons.push(`Early Game Companion (${charGender} Righteous)`);
-                } else {
-                    // Debug Log for missed companion (Only log if score is relatively high to reduce noise)
-                    if (baseScore >= 1.5) {
-                        // actReasons.push(`Debug: Missed Companion (G:${charGender} vs T:${targetGender}, R:${isRighteous})`);
-                    }
-                }
+                // Logic removed
             }
+            */
 
 
             // 7.5. [NEW] Progressive Fatigue (Cooldown) System
@@ -388,6 +360,16 @@ export class AgentCasting {
                 }
             }
 
+            // 7.7. [NEW] Enemy Global Penalty (60% Efficiency)
+            // User Request: "Enemy correction 60% of normal"
+            // We apply this before Rank Penalty to lower their overall aggression unless highly relevant.
+            const isEnemy = cAny.system_logic?.is_enemy || tags.includes('마교') || tags.includes('사파') || tags.includes('악당') || tags.includes('빌런');
+
+            if (isEnemy) {
+                actScore *= 0.6;
+                actReasons.push(`Enemy Base Correction (x0.6)`);
+            }
+
             // -----------------------------------------------------------------------
             // 8. FINAL: Rank Penalty (Dynamic)
             // -----------------------------------------------------------------------
@@ -405,12 +387,19 @@ export class AgentCasting {
 
             if (!isUserInvoked && !isCrisis && rankGap >= 2) {
                 // Too Strong (Anti-Bullying/Gating)
-                // [FIX] Hard Disqualification for Active selection
-                // If they are significantly stronger (Gap >= 2), they should NOT appear as Active 
-                // unless explicitly called by User or it's a Crisis.
-                // We force them to 'Background' where their high Home/Relation score will place them at the top.
-                actScore = 0.01;
-                actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Disqualified Active`);
+
+                if (isEnemy) {
+                    // [Enemy] Keep strict disqualification
+                    // "적군의 경우 현재 보정치(0.01) 유지"
+                    actScore = 0.01;
+                    actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Enemy Disqualified`);
+                } else {
+                    // [Ally/Neutral] Relaxed Penalty (50%)
+                    // "아군일 경우, 0.01이 아닌 50% 정도로"
+                    actScore *= 0.5;
+                    actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Ally Soft Penalty (x0.5)`);
+                }
+
             } else if (!isUserInvoked && rankGap <= -3) {
                 // Too Weak (Fodder) - Only separate if gap is huge
                 // Gap -3 (e.g. Player A vs F)

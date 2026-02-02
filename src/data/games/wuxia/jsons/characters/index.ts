@@ -1,10 +1,11 @@
-import characters_extra from './characters_extra.json';
+import characters_enemy from './characters_enemy.json';
 import characters_main from './characters_main.json';
 import characters_supporting from './characters_supporting.json';
 
 // --- Type Definitions ---
 export interface SystemLogic {
     tags: string[];
+    is_enemy?: boolean; // Added is_enemy flag
 }
 
 export interface CharacterData {
@@ -23,10 +24,10 @@ export interface CharacterData {
 
 export const characters_main_typed = characters_main as Record<string, CharacterData>;
 export const characters_supporting_typed = characters_supporting as Record<string, CharacterData>;
-export const characters_extra_typed = characters_extra as unknown as Record<string, CharacterData>;
+export const characters_enemy_typed = characters_enemy as unknown as Record<string, CharacterData>;
 
 export {
-    characters_extra,
+    characters_enemy,
     characters_main,
     characters_supporting
 };
