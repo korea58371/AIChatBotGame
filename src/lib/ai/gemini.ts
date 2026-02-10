@@ -29,7 +29,7 @@ const safetySettings = [
 ];
 
 // Helper: Retry with Exponential Backoff
-async function retryWithBackoff<T>(
+export async function retryWithBackoff<T>(
     fn: () => Promise<T>,
     retries: number = 3,
     delay: number = 1000,
