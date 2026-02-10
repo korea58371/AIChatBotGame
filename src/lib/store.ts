@@ -1346,24 +1346,7 @@ export const useGameStore = create<GameState>()(
         if (!supabase) return;
 
         try {
-          // 1. Prepare Data (Filter non-essential & huge static data)
-          const {
-            // Functions & Actions
-            saveToCloud, loadFromCloud, checkForCloudConflict,
-            setGameId, addMessage, updateLastMessage, incrementTurnCount, // ...exclude all methods
-
-            // Static / Cache Data (Re-fetched on load)
-            isDataLoaded,
-            lore, worldData, availableBackgrounds, availableCharacterImages, availableExtraImages, backgroundMappings,
-
-            // Session specific
-            sessionUser, lastCloudSave,
-
-            // Target Data to Save
-            ...dataToSave
-          } = state;
-
-          // 2. Optimize History (Remove Snapshots)
+          // 1. Prepare Data (WHITELIST - Only include serializable game data)
           const optimizedChatHistory = state.chatHistory.map(msg => {
             const { snapshot, ...rest } = msg; return rest;
           });
@@ -1371,15 +1354,77 @@ export const useGameStore = create<GameState>()(
             const { snapshot, ...rest } = msg; return rest;
           });
 
-          // 3. Construct Payload
+          // 2. Construct Payload (Explicit whitelist, same pattern as saveToSlot)
           const payload = {
-            ...dataToSave,
+            // Core
+            activeGameId: state.activeGameId,
+            turnCount: state.turnCount,
+            userCoins: state.userCoins,
+            storyModel: state.storyModel,
+
+            // Narrative
             chatHistory: optimizedChatHistory,
             displayHistory: optimizedDisplayHistory,
-            // Ensure choices/queue are saved
-            choices: state.choices,
+            storyLog: state.storyLog,
+            scenarioSummary: state.scenarioSummary,
+            lastTurnSummary: state.lastTurnSummary,
+
+            // World
+            currentLocation: state.currentLocation,
+            currentBackground: state.currentBackground,
+            currentCG: state.currentCG,
+            currentBgm: state.currentBgm,
+            bgmVolume: state.bgmVolume,
+            sfxVolume: state.sfxVolume,
+            characterExpression: state.characterExpression,
+            currentMood: state.currentMood,
+
+            // Data
+            characterData: state.characterData,
+            inventory: state.inventory,
+            playerStats: state.playerStats,
+            goals: state.goals,
+            skills: state.skills,
+            worldData: state.worldData,
+            textMessageHistory: state.textMessageHistory,
+
+            // Technical
+            triggeredEvents: state.triggeredEvents,
+            activeEvent: state.activeEvent,
+            pendingLogic: state.pendingLogic,
+            currentEvent: state.currentEvent,
+            endingType: state.endingType,
+
+            // VN State
             scriptQueue: state.scriptQueue,
-            currentSegment: state.currentSegment
+            currentSegment: state.currentSegment,
+            choices: state.choices,
+
+            // Config
+            playerName: state.playerName,
+            language: state.language,
+            isGodMode: state.isGodMode,
+            day: state.day,
+            time: state.time,
+
+            // Lists
+            activeCharacters: state.activeCharacters,
+            deadCharacters: state.deadCharacters,
+            extraOverrides: state.extraOverrides,
+            choiceHistory: state.choiceHistory,
+
+            // Session Overrides
+            personaOverride: state.personaOverride,
+            scenarioOverride: state.scenarioOverride,
+            disabledEvents: state.disabledEvents,
+            protagonistImageOverride: state.protagonistImageOverride,
+
+            // Descriptions
+            statusDescription: state.statusDescription,
+            personalityDescription: state.personalityDescription,
+
+            // Scenario Director
+            scenario: state.scenario,
           };
 
           // 4. Compress

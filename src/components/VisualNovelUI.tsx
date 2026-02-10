@@ -61,9 +61,11 @@ import TVNews from './features/TVNews';
 import SmartphoneApp from './features/SmartphoneApp';
 import { checkRankProgression } from '@/data/games/wuxia/progression';
 import Article from './features/Article';
-import DebugPopup from './features/DebugPopup';
+import DebugPopup from './features/DebugPopup'; // [Fix] Restore Import
 import Link from 'next/link';
 import LanguageSelector from '@/components/LanguageSelector';
+import { useShallow } from 'zustand/react/shallow'; // [Optim] Shallow Selector
+import DialogueBox from './visual_novel/ui/DialogueBox'; // [Refactor] Dialogue Component
 
 // [Refactoring] New Components & Hooks
 import { useVNState } from './visual_novel/hooks/useVNState';
@@ -92,22 +94,14 @@ import { LOADING_TIPS } from '@/data/loading_tips';
 // Internal Component for Ad Simulation
 // AdButton moved to common/AdButton.tsx
 
-// Helper to format text (Bold support)
-const formatText = (text: string) => {
-    if (!text) return null;
-    // [Fix] Filter out Ending Tags (e.g. <GOOD ENDING>, <BAD ENDING>) to prevent leakage
-    const cleanText = text.replace(/<[A-Z_]+ ENDING>/g, '').trim();
+// Helper to format text (Bold support) - Moved to @/lib/utils/text-formatter.tsx and used in DialogueBox
+// kept here if used elsewhere, but we should remove it to strictly use the utility.
+// Logic moved to DialogueBox.
 
-    const parts = cleanText.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={index} className="text-yellow-400 font-extrabold">{part.slice(2, -2)}</strong>;
-        }
-        return part;
-    });
-};
 
 import EventCGLayer from '@/components/visual_novel/ui/EventCGLayer';
+import BackgroundLayer from '@/components/visual_novel/ui/BackgroundLayer';
+import CharacterLayer from '@/components/visual_novel/ui/CharacterLayer';
 
 
 
@@ -239,6 +233,15 @@ export default function VisualNovelUI() {
     // [New] Cost Calculation Logic
     const storyModel = useGameStore(state => state.storyModel);
     const currentCG = useGameStore(state => state.currentCG); // [New] Subscribe to CG state
+
+    // [Optimized] Subscribe to Segment Meta only (exclude content to prevent re-render on streaming)
+    // We cast it to ScriptSegment to satisfy TS, but 'content' will be missing or empty.
+    const currentSegment = useGameStore(useShallow(state => {
+        if (!state.currentSegment) return null;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { content, ...rest } = state.currentSegment;
+        return rest as ScriptSegment;
+    }));
     const costPerTurn = storyModel === 'gemini-3-pro-preview' ? 20 : 10;
     // [리팩토링 메모] UI 상태 관리 로직(모달, 입력, 디버그 등)은 `hooks/useVNState.ts`로 이동되었습니다.
 
@@ -427,7 +430,7 @@ export default function VisualNovelUI() {
         resetGame,
         scriptQueue,
         setScriptQueue,
-        currentSegment,
+        // currentSegment, // [Optimized] Removed to prevent re-render on streaming content
         setCurrentSegment,
         choices,
         setChoices,
@@ -570,9 +573,20 @@ export default function VisualNovelUI() {
 
     // [Fix] Keep Ref in sync with State
     // Crucial for Sync Logic which relies on Ref to know what user is currently reading.
+    // [Optimized] Sync Ref with FULL Segment (including Content) for History/Logs
+    // This avoids subscribing the component to 'content' changes.
     useEffect(() => {
-        currentSegmentRef.current = currentSegment;
-    }, [currentSegment]);
+        // Initial sync
+        currentSegmentRef.current = useGameStore.getState().currentSegment;
+
+        // Subscribe to changes (Standard Zustand)
+        const unsub = useGameStore.subscribe(
+            (state) => {
+                currentSegmentRef.current = state.currentSegment;
+            }
+        );
+        return unsub;
+    }, []);
 
     useEffect(() => {
         if (characterExpression) {
@@ -1778,6 +1792,13 @@ export default function VisualNovelUI() {
             }
             setChoices([]);
 
+            // [Fix] Clear previous turn's script data to prevent Auto-Advance replaying old choices
+            // Without this, scriptQueue may still contain old segments (including choices),
+            // causing the Auto-Advance useEffect to re-trigger setChoices with stale data
+            // and an unnecessary Cloud Save at the "choice point".
+            setScriptQueue([]);
+            setCurrentSegment(null);
+
             // [Fix] Reset active segment index for new turn to prevent skipping lines (Jump Bug)
             activeSegmentIndexRef.current = 0;
             console.log("[VisualNovelUI] Reset activeSegmentIndexRef to 0 for new turn.");
@@ -2573,7 +2594,12 @@ export default function VisualNovelUI() {
                                         (async () => {
                                             try {
                                                 const currentSummary = useGameStore.getState().scenarioSummary;
-                                                const recentHistory = useGameStore.getState().chatHistory.slice(-20); // Capture context
+                                                // [Fix] Strip `snapshot` field from history before passing to Server Action
+                                                // `snapshot` contains Partial<GameState> with functions/Module objects
+                                                // that cannot be serialized for Server Function calls
+                                                const recentHistory = useGameStore.getState().chatHistory.slice(-20).map(
+                                                    ({ snapshot, ...rest }) => rest
+                                                );
 
                                                 // Dynamic Import to avoid bundling issues if needed, or use the imported action
                                                 const { serverGenerateSummary } = await import('@/app/actions/game');
@@ -3191,10 +3217,29 @@ export default function VisualNovelUI() {
                 addToast("오프닝 생성 중...", "info");
 
                 // Fallback: Just trigger standard turn which will see empty history and generate intro
+                // [Fix] Sanitize gameState to avoid passing Module/function objects to Server Action
+                const fallbackState = useGameStore.getState();
+                const sanitizedFallbackState = JSON.parse(JSON.stringify({
+                    activeGameId: fallbackState.activeGameId,
+                    playerStats: fallbackState.playerStats,
+                    playerName: fallbackState.playerName,
+                    inventory: fallbackState.inventory,
+                    currentLocation: fallbackState.currentLocation,
+                    currentMood: fallbackState.currentMood,
+                    characterData: fallbackState.characterData,
+                    activeCharacters: fallbackState.activeCharacters,
+                    goals: fallbackState.goals,
+                    scenarioSummary: fallbackState.scenarioSummary,
+                    day: fallbackState.day,
+                    time: fallbackState.time,
+                    turnCount: fallbackState.turnCount,
+                    isGodMode: fallbackState.isGodMode,
+                    language: fallbackState.language,
+                }));
                 const result = await serverGenerateResponse(
                     [], // history (empty for start)
                     `게임 시작. 주인공 이름: ${effectiveName}. [Game Start]`, // userMessage
-                    useGameStore.getState(), // gameState
+                    sanitizedFallbackState, // gameState (sanitized)
                     'ko' // language
                 );
 
@@ -5704,6 +5749,16 @@ export default function VisualNovelUI() {
                                                             </div>
                                                         </div>
 
+                                                        {/* [New] Game Scene Layers */}
+                                                        {/* Background Layer */}
+                                                        <BackgroundLayer url={currentBackground} />
+
+                                                        {/* Event CG Layer (z-50) */}
+                                                        <EventCGLayer />
+
+                                                        {/* Character Layer (z-10) */}
+                                                        <CharacterLayer />
+
                                                         <div className="bg-[#1e1e1e]/95 p-8 rounded-xl border border-[#333] text-center shadow-2xl backdrop-blur-md flex flex-col gap-6 items-center max-w-2xl w-full relative overflow-hidden pointer-events-auto">
                                                             {/* Decorative Top Line */}
                                                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#D4AF37]/50 to-transparent" />
@@ -6859,57 +6914,7 @@ export default function VisualNovelUI() {
                 </AnimatePresence>
 
                 {/* Dialogue / Narration Layer */}
-                {
-                    currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article', 'time_skip'].includes(currentSegment.type) && (
-                        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-32 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[40vh] md:h-[min(30vh,600px)]">
-                            <div className="w-full max-w-screen-2xl pointer-events-auto relative">
-                                {/* Dialogue Control Bar */}
-
-                                <div
-                                    className="w-full relative flex flex-col items-center cursor-pointer"
-                                    onClick={handleScreenClick}
-                                >
-                                    {/* Name Tag */}
-                                    {currentSegment.type === 'dialogue' && (
-                                        <div className="absolute -top-[3vh] md:-top-[6vh] w-full text-center px-2">
-
-                                            <span className="text-[max(16px,4.5vw)] md:text-[clamp(20px,1.4vw,47px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
-                                                {(() => {
-                                                    if (!currentSegment) return '';
-                                                    const { characterData, playerName } = useGameStore.getState();
-
-                                                    // Handle Protagonist Name
-                                                    if (currentSegment.character === '주인공') {
-                                                        return playerName;
-                                                    }
-
-                                                    const charList = Array.isArray(characterData) ? characterData : Object.values(characterData);
-                                                    const charName = currentSegment.character || '';
-                                                    const found = charList.find((c: any) => c.englishName === charName || c.name === charName || c.id === charName);
-                                                    if (found) return found.name;
-                                                    return charName.split('_')[0];
-                                                })()}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Text Content */}
-                                    <div className="text-[max(16px,3.7vw)] md:text-[clamp(18px,1.3vw,39px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
-                                        {currentSegment.type === 'narration' ? (
-                                            <span className="text-gray-300 italic block">
-                                                {formatText(currentSegment.content)}
-                                            </span>
-                                        ) : (
-                                            <span>
-                                                {formatText(currentSegment.content)}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )
-                }
+                <DialogueBox onClick={handleScreenClick} />
                 {/* [Fix] Resetting Overlay */}
                 {
                     isResetting && (

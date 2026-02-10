@@ -762,6 +762,7 @@ ${thinkingInstruction}
         console.log(`[Orchestrator] Stream Turn Start...`);
         const startTime = Date.now();
         const t1 = Date.now();
+        console.log(`[Pipeline] ====== Turn ${gameState.turnCount || '?'} START ======`);
 
         // --- PHASE 1: PREPARATION (Hidden) ---
 
@@ -784,16 +785,25 @@ ${thinkingInstruction}
         const playerLevel = gameState.playerStats?.level || 1;
 
         // 2. Casting
+        const tCastStart = Date.now();
         const castingResult = await AgentCasting.analyze(apiKey, gameState, lastTurnSummary, userInput, playerLevel);
+        const tCastEnd = Date.now();
+        console.log(`[Pipeline] ① Casting: ${tCastEnd - tCastStart}ms (active: ${castingResult.active.length}, bg: ${castingResult.background.length})`);
         const { active, background } = castingResult;
         const suggestions = [...active, ...background];
 
         // 3. Retriever
+        const tRetStart = Date.now();
         let retrievedContext = await AgentRetriever.retrieveContext(userInput, gameState, active, background);
         const t3 = Date.now();
+        console.log(`[Pipeline] ② Retriever: ${t3 - tRetStart}ms`);
 
         // 4. Pre-Logic
+        const tPreStart = Date.now();
         const preLogicOut = await AgentPreLogic.analyze(history, retrievedContext, userInput, gameState, lastTurnSummary, [], language);
+        const t4 = Date.now();
+        console.log(`[Pipeline] ③ PreLogic: ${t4 - tPreStart}ms`);
+        console.log(`[Pipeline] --- Phase 1 Total: ${t4 - startTime}ms ---`);
 
         // Router Fake Output
         const routerOut = {
@@ -805,7 +815,6 @@ ${thinkingInstruction}
             usageMetadata: preLogicOut.usageMetadata,
             _debug_prompt: "Merged into PreLogic"
         };
-        const t4 = Date.now();
 
         // Pre-Logic State Update
         let effectiveGameState = { ...gameState };
@@ -880,6 +889,8 @@ ${thinkingInstruction}
 
         const cleanHistory = history.map(msg => msg.role === 'model' ? { ...msg, text: msg.text.replace(/<선택지[^>]*>.*?(\n|$)/g, '').trim() } : msg);
 
+        const tStoryStart = Date.now();
+        console.log(`[Pipeline] ④ Story Stream: Requesting...`);
         console.time("Stream - Time To First Token");
         const streamGen = generateResponseStream(
             apiKey,
@@ -898,6 +909,7 @@ ${thinkingInstruction}
         for await (const chunk of streamGen) {
             if (!firstChunkReceived) {
                 console.timeEnd("Stream - Time To First Token");
+                console.log(`[Pipeline] ④ Story TTFT: ${Date.now() - tStoryStart}ms (Phase1+Story TTFT: ${Date.now() - startTime}ms)`);
                 firstChunkReceived = true;
             }
 
@@ -921,6 +933,7 @@ ${thinkingInstruction}
         }
 
         const t5 = Date.now();
+        console.log(`[Pipeline] ④ Story Total: ${t5 - tStoryStart}ms`);
 
         // --- PHASE 3: POST-LOGIC & CLEANUP (Hidden) ---
 
@@ -987,7 +1000,10 @@ ${thinkingInstruction}
         const finalUserMessage = (storyMetadata as any)?.finalUserMessage;
 
         // Perform Phase 2
+        const tP2Start = Date.now();
         const p2 = await this.executeLogicPhase(apiKey, effectiveGameState, history, userInput, cleanStoryText, language);
+        console.log(`[Pipeline] ⑤ PostLogic Phase: ${Date.now() - tP2Start}ms`);
+        console.log(`[Pipeline] ====== Turn TOTAL: ${Date.now() - startTime}ms ======`);
 
         const totalCost = p1Costs.total + p2.costs.total;
 
