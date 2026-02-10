@@ -28,9 +28,33 @@ export function formatCharacter(c: any, mode: string, state?: any): string {
 
         // Brief Personality (Key Traits only)
         if (c.personality) {
-            const pStr = typeof c.personality === 'string' ? c.personality : JSON.stringify(c.personality);
-            // Truncate if too long (Concept: Just remind the vibe)
-            lines.push(`- Core Traits: ${pStr.slice(0, 150)}${pStr.length > 150 ? '...' : ''}`);
+            // [LOGIC] Affection-based visibility
+            // Filter Inner/Affection traits for Active Mode as well
+            if (typeof c.personality === 'string') {
+                // Truncate if too long (Concept: Just remind the vibe)
+                lines.push(`- Core Traits: ${c.personality.slice(0, 150)}${c.personality.length > 150 ? '...' : ''}`);
+            } else {
+                const charName = c.name || c.이름 || 'Unknown';
+                const charId = c.id || c.englishName || charName;
+                const relScore = state?.playerStats?.relationships?.[charName] ||
+                    state?.playerStats?.relationships?.[charId] || 0;
+
+                let traits: string[] = [];
+                Object.entries(c.personality).forEach(([k, v]) => {
+                    // Check for Hidden keys
+                    const isSecretTrait = k.includes('내면') || k.includes('애정') || k.includes('Inner') || k.includes('Affection');
+                    if (isSecretTrait) {
+                        if (relScore >= 40) {
+                            traits.push(`${k}: ${v}`);
+                        }
+                        // Else: Simply omit. Do not show [Locked].
+                    } else {
+                        traits.push(`${k}: ${v}`);
+                    }
+                });
+                const pStr = "{" + traits.join(', ') + "}";
+                lines.push(`- Core Traits: ${pStr.slice(0, 200)}${pStr.length > 200 ? '...' : ''}`);
+            }
         }
 
         return lines.join('\n');
@@ -164,8 +188,29 @@ export function formatCharacter(c: any, mode: string, state?: any): string {
             lines.push(`- Personality: ${c.personality}`);
         } else {
             lines.push(`- Personality:`);
+
+            // [LOGIC] Affection-based visibility
+            // Default score is 0 if state or relationships are missing
+            // Fix: Check multiple key variations for robustness
+            const charName = c.name || c.이름 || 'Unknown';
+            const charId = c.id || c.englishName || charName;
+
+            const relScore = state?.playerStats?.relationships?.[charName] ||
+                state?.playerStats?.relationships?.[charId] || 0;
+
             Object.entries(c.personality).forEach(([k, v]) => {
-                lines.push(`  - ${k}: ${v}`);
+                // Check if this is a 'Hidden/Inner' trait
+                const isSecretTrait = k.includes('내면') || k.includes('애정') || k.includes('Inner') || k.includes('Affection');
+
+                if (isSecretTrait) {
+                    if (relScore >= 40) {
+                        lines.push(`  - ${k}: ${v}`);
+                    }
+                    // Else: Omit
+                } else {
+                    // Surface traits always visible
+                    lines.push(`  - ${k}: ${v}`);
+                }
             });
         }
     }

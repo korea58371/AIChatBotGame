@@ -3,6 +3,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MODEL_CONFIG } from '../ai/model-config';
 // import { RouterOutput } from './router'; // [REMOVED]
 import { PromptManager } from '../engine/prompt-manager';
+import { PACING_RULES as WUXIA_PACING } from '../../data/games/wuxia/pacing';
+import { PACING_RULES as GBY_PACING } from '../../data/games/god_bless_you/pacing';
+
+const PACING_REGISTRY: Record<string, any> = {
+    'wuxia': WUXIA_PACING,
+    'god_bless_you': GBY_PACING
+};
+
 
 export interface PreLogicOutput {
     narrative_guide: string; // [가이드] 스토리 작가(Story Model)가 따라야 할 서술 지침
@@ -65,6 +73,7 @@ The AI MUST assign a score based on REALISM, LOGIC, and STRICT CONTEXT ADHERENCE
     // 2. 무협 현실성 체크 (등급 차이 vs 전술적 창의성)
     // 3. 서사적 흐름 (실패하더라도 재미있게)
     // 4. 전술적 창의성 우대 (지형지물, 심리전 사용 시 보정)
+    // 5. 완급 조절 (휴식 보장)
     private static readonly CORE_RULES = `
 [Protocol: Intent Preservation & Soft Correction]
 **CRITICAL**: Users often describe the *RESULT* they want ("I kill him"), not just the action.
@@ -76,6 +85,22 @@ The AI MUST assign a score based on REALISM, LOGIC, and STRICT CONTEXT ADHERENCE
    - IF (User Rank < Target Rank) -> DENY Result, BUT EXECUTE ATTEMPT (Score 2-3).
    - **Narrative**: "You swing your sword viciously at his neck (Intent preserved), BUT he stops it with a single finger (Reality enforced)."
 3. **NO "Dream" Endings**: NEVER describe the success and then say "it was a hallucination". Describe the RESISTANCE in real-time.
+
+[Protocol: Pacing & Incident Frequency (Slice of Life)]
+**CRITICAL**: DO NOT force "Plot Twists" or "Conflicts" every turn.
+1. **Downtime is Valid**: If the User is resting, talking, or shopping, allow the scene to be peaceful.
+2. **No Forced Drama**: Do not introduce a villain or a crisis just because the turn count increased.
+3. **Respect Mood**: If 'Mood' is 'Daily' or 'Romance', KEEP IT THAT WAY unless User provokes conflict.
+
+[Escalation Control Protocol (Anti-Drama Queen)]
+**CRITICAL**: Do NOT invent "Grand Plots" to explain "Petty Crimes".
+1. **The Rule of Proportionality**:
+   - Tiny triggers (Scams, Petty Theft, Insults) MUST invoke Tiny Consequences (Beatings, Fines, Chase), NOT "Mortal Enmity" or "Secret Conspiracies".
+   - **Example (Bad)**: User sells a fake ticket -> "Actually, that ticket was the key to the Demon God's Seal!" (Too dramatic).
+   - **Example (Good)**: User sells a fake ticket -> "The buyer realizes it's fake and demands a refund with his fists." (Appropriate).
+2. **Rational Villains**: 
+   - Powerful factions (like Namgung Clan) do NOT mobilize armies for a single street rat. They send *servants* or just ignore it.
+   - Do NOT escalate to "Kill on Sight" unless the user explicitly commits Murder or Heavy Grevious Harm.
 
 [Anti-God Mode Protocol]
 The Player controls ONLY their own character's *Body* and *Speech*.
@@ -214,6 +239,7 @@ STEP 4: **Final Judgment**
 2. **Emotional Guide**: "A loves B." (Null if neutral).
 3. **Character Suggestion**:
    - **ONLY suggest characters from [Casting Suggestions] or [Active Characters]. DO NOT invent names.**
+   - **Pacing**: If scene is peaceful, DO NOT suggest new characters unless they are explicitly called.
    - **Romance**: Null.
 4. **Goal Guide**: "Check Shop." (Null if irrelevant).
 5. **Location Guide**: "Sichuan (Hot)." (Null if known).
@@ -353,8 +379,12 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
                 // Remove heavy tags if needed, or keep them. 
                 // For now, we keep the text but truncate if excessively long to save tokens.
                 const rawText = lastModelMsg.text;
+                const noviceProtectionHint = "Consider 'Novice Protection' rules: Give the player a chance to learn mechanics. " +
+                    "Do NOT introduce major Faction Leaders (Munju/Head) directly. Use intermediaries or low-ranking disciples. " +
+                    "If conflict arises, make it low-stakes (e.g. insults, petty theft) rather than life-or-death." +
+                    "Suggest characters cautiously.";
                 const cleanText = rawText.length > 800 ? "..." + rawText.slice(-800) : rawText;
-                recentHistoryContext = `[Previous Turn Output (Immediate Context)]\n"${cleanText}"`;
+                recentHistoryContext = `[Previous Turn Output (Immediate Context)]\n"${noviceProtectionHint}\n${cleanText}"`;
             }
         }
 
@@ -362,7 +392,11 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
         const prompt = `
 [Current State Guide]
 "${physicalGuide}"
-${this.getEarlyGameGuidance(gameState.turnCount || 0, gameState.playerStats)}
+[Current State Guide]
+"${physicalGuide}"
+${this.getGenreAdaptivePacing(gameState.activeGameId, gameState.turnCount || 0)}
+- Growth Stagnation: ${gameState.playerStats?.growthStagnation || 0} / 10 turns
+
 - Growth Stagnation: ${gameState.playerStats?.growthStagnation || 0} / 10 turns
 
 
@@ -396,7 +430,7 @@ ${finalGoalGuide}
 [Execution Order]
 1. **IDENTIFY** the Target (if any). If the target is in [Casting Suggestions], allow interaction if logical (e.g. shouting).
 2. **JUDGE** the action's Plausibility (1-10). Check Player Capability vs Target Strength.
-3. **GENERATE** the Narrative Guide. **Aggressively suggest** new characters if the scene allows.
+3. **GENERATE** the Narrative Guide. **Only suggest new characters** if the current conversation is stalling or if it's a logical transition point. Use caution.
 4. **INFER LOCATION**: If unknown, deduce Region/Atmosphere and include in guide.
 `;
 
@@ -416,11 +450,27 @@ ${finalGoalGuide}
             // console.log(`[Fate System] Score: ${finalScore}, Used: ${gameState.fateUsage || 0}`);
 
 
-            return {
+            const output: PreLogicOutput = {
                 ...data,
                 usageMetadata: result.response.usageMetadata,
                 _debug_prompt: `[System Instruction]\n${enhancedInstruction}\n\n[User Prompt]\n${prompt}`
             };
+
+            // [STRICT SAFETY PROTOCOL (Turns 0-9)]
+            // User Request: "초반 10턴간은 긴장, 살기 등 위험한 상황을 일체 발생시키지 않도록 해줘"
+            if ((gameState?.turnCount || 0) < 10) {
+                if (output.mood_override === 'tension' || output.mood_override === 'combat') {
+                    console.log(`[PreLogic] Strict Safety Triggered: Downgrading mood from ${output.mood_override} to daily.`);
+                    output.mood_override = 'daily';
+                    if (output.combat_analysis) output.combat_analysis = undefined;
+                    if (output.judgment_analysis) output.judgment_analysis += " (Mood Downgraded by Safety Protocol)";
+                }
+
+                // [Force Safety in Narrative Guide]
+                output.narrative_guide = (output.narrative_guide || "") + " [ABSOLUTE RULE: NO SUDDEN CRISIS/COMBAT/BANDITS/ENEMIES. KEEP IT PEACEFUL.]";
+            }
+
+            return output;
 
         } catch (e) {
             console.error("PreLogic/Judge 분석 실패:", e);
@@ -491,6 +541,20 @@ ${finalGoalGuide}
             }
         }
 
+        // [New] Growth & Cultivation (성장 및 수련 가이드)
+        const isWuxia = stats?.internal_energy !== undefined || stats?.playerRank !== undefined; // Heuristic
+
+        guides.push(`
+*** GENIUS PROTOCOL (FAST-FORWARD CULTIVATION) ***
+- **IF user intent is 'Training' (수련/운동/공부)**:
+  - You MUST **SKIP TIME** (e.g., '10 days later...', 'A month of hard training...').
+  - **GROWTH RATE (Genius)**:
+    ${isWuxia
+                ? "- Wuxia: 10 days = +1 Year Internal Energy (내공), 30 days = +3 Years."
+                : "- Modern: 10 days = Significant Skill EXP / Physical Stat boost."}
+  - **OUTPUT**: Use <시간> tag to fast-forward. Describe the intense process and the final transformation/realization.
+`.trim());
+
         return guides.join("\n") || "Normal Condition.";
     }
 
@@ -505,6 +569,18 @@ ${finalGoalGuide}
 
         const activeGoals = goals.filter(g => g.status === 'ACTIVE');
         if (activeGoals.length === 0) return "No active goals.";
+
+        // [Pacing Control] If a MAIN goal exists, it overrides everything.
+        const mainGoal = activeGoals.find(g => g.type === 'MAIN');
+        if (mainGoal) {
+            return `
+*** PRIME DIRECTIVE (MAIN QUEST) ***
+- **CURRENT OBJECTIVE**: "${mainGoal.description}"
+- **MANDATE**: The Narrative MUST focus on steps to achieve this goal.
+- **RESTRICTION**: Do NOT introduce plots unrelated to this goal (e.g. No random Demon Lords if the goal is 'Pay Rent'). 
+- **SCOPE**: Keep the scale appropriate to the goal.
+`.trim();
+        }
 
         return activeGoals.map(g => `- [${g.type}] ${g.description} `).join("\n");
     }
@@ -558,5 +634,84 @@ ${finalGoalGuide}
         }
 
         return guide;
+    }
+
+    /**
+     * [New] Genre-Adaptive Pacing Logic
+     * Returns pacing constraints based on GameGenre and TurnCount.
+     * Uses external configuration from src/data/games/[id]/pacing.ts
+     */
+    private static getGenreAdaptivePacing(gameId: string, turnCount: number): string {
+        const chapter = Math.ceil((turnCount + 1) / 20);
+        let guidance = `[System Pacing: Turn ${turnCount} (Chapter ${chapter})]`;
+
+        const rules = PACING_REGISTRY[gameId];
+        if (!rules) return guidance; // Fallback if no rules found
+
+        // 0. Adaptation Phase (New)
+        if (rules.adaptation && turnCount < rules.adaptation.maxTurn) {
+            const adaptation = rules.adaptation;
+            guidance += `\n**PHASE: ADAPTATION (TUTORIAL)**`; // Explicit Name
+
+            if (rules.global?.directorNote) {
+                guidance += `\n${rules.global.directorNote}`;
+            }
+
+            if (adaptation.directorNote) {
+                guidance += `\n${adaptation.directorNote}`;
+            } else {
+                guidance += `\n- Focus: ${adaptation.focus}`;
+            }
+
+            if (adaptation.forbiddenKeywords) {
+                guidance += `\n- **FORBIDDEN**: ${adaptation.forbiddenKeywords.join(', ')}.`;
+            }
+        }
+        // 1. Introduction Phase
+        else if (turnCount < (rules.introduction?.maxTurn || 30)) { // Default 30 if undefined
+            const intro = rules.introduction;
+            guidance += `\n**PHASE: INTRODUCTION**`;
+
+            if (rules.global?.directorNote) {
+                guidance += `\n${rules.global.directorNote}`;
+            }
+
+            // [New] Director's Note Injection
+            if (intro.directorNote) {
+                guidance += `\n${intro.directorNote}`;
+            } else {
+                guidance += `\n- Focus: ${intro.focus}`;
+                if (intro.guidance) guidance += `\n- **MANDATE**: ${intro.guidance}`;
+            }
+
+            if (intro.forbiddenKeywords) {
+                guidance += `\n- **FORBIDDEN**: ${intro.forbiddenKeywords.join(', ')}.`;
+            }
+        }
+        // 2. Rising Action Phase
+        else if (turnCount < (rules.risingAction?.maxTurn || 60)) {
+            const rising = rules.risingAction;
+            guidance += `\n**PHASE: RISING ACTION**`;
+
+            if (rules.global?.directorNote) {
+                guidance += `\n${rules.global.directorNote}`;
+            }
+
+            if (rising.directorNote) {
+                guidance += `\n${rising.directorNote}`;
+            } else {
+                guidance += `\n- Focus: ${rising.focus}`;
+                if (rising.guidance) guidance += `\n- **MANDATE**: ${rising.guidance}`;
+            }
+
+            if (rising.forbiddenKeywords) {
+                guidance += `\n- **FORBIDDEN**: ${rising.forbiddenKeywords.join(', ')}.`;
+            }
+            if (rising.allowedKeywords) {
+                guidance += `\n- **ALLOWED**: ${rising.allowedKeywords.join(', ')}.`;
+            }
+        }
+
+        return guidance;
     }
 }

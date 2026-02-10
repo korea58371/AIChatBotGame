@@ -46,7 +46,9 @@ export interface GameState {
 
   // Meta State
   userCoins: number;
-  setUserCoins: (coins: number) => void;
+  setUserCoins: (coins: number) => void; // Keep for internal sync, but prefer fetchUserCoins
+  fetchUserCoins: () => Promise<void>;
+  spendCoins: (amount: number, reason?: string) => Promise<boolean>;
 
   addMessage: (message: Message) => void;
   updateLastMessage: (newText: string) => void; // Partial text update
@@ -57,6 +59,7 @@ export interface GameState {
   // [NEW] Story Log (Persistent Narrative History)
   storyLog: StoryLogEntry[];
   addStoryLogEntry: (entry: StoryLogEntry) => void;
+  recoverRecentHistory: () => void; // [restore] Recover chat context from storyLog
 
   turnCount: number;
   incrementTurnCount: () => void;
@@ -113,6 +116,8 @@ export interface GameState {
   // Dynamic Character Data (Relationship & Memories)
   characterData: Record<string, GameCharacterData>;
   updateCharacterRelationship: (charId: string, value: number) => void;
+  // [NEW] Update NPC-to-NPC relationships
+  updateCharacterRelations: (charId: string, relations: Record<string, string>) => void;
   // [NEW] Add specific memory to a character
   // [NEW] Add specific memory to a character
   addCharacterMemory: (charId: string, memory: string) => void;
@@ -162,7 +167,7 @@ export interface GameState {
   setTime: (time: string) => void;
   incrementDay: () => void;
 
-  resetGame: (forceId?: string) => void;
+  resetGame: (forceId?: string) => Promise<void>;
 
   // [NEW] Story Model Selection
   storyModel: string;
@@ -237,6 +242,24 @@ export interface GameState {
   // [NEW] Ending System
   endingType: 'none' | 'bad' | 'good' | 'true';
   setEndingType: (type: 'none' | 'bad' | 'good' | 'true') => void;
+
+  // [NEW] AI Scenario Director
+  scenario: ScenarioState | null;
+  setScenario: (scenario: ScenarioState | null) => void;
+  updateScenario: (updates: Partial<ScenarioState>) => void;
+}
+
+export interface ScenarioState {
+  active: boolean;
+  id: string;
+  title: string;
+  goal: string;
+  stage: string;
+  npcs: string[];
+  variables: Record<string, any>;
+  description: string;
+  turnCount: number;
+  currentNote?: string; // [NEW] Director's Note
 }
 
 export interface ChoiceHistoryEntry {
@@ -343,6 +366,7 @@ export interface GameCharacterData {
   memories?: string[];
   relationshipInfo?: RelationshipInfo; // [NEW] Explicit Social Contract
   lastActiveTurn?: number; // [NEW] Fatigue System: Last turn character was active (on-stage)
+  relationships?: Record<string, string>; // [NEW] NPC-to-NPC Relationships (TargetID -> Description)
   [key: string]: any; // Allow extensibility
 }
 
@@ -385,6 +409,13 @@ export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       activeGameId: 'wuxia', // Default
+
+      // [NEW] Scenario Director
+      scenario: null,
+      setScenario: (scenario) => set({ scenario }),
+      updateScenario: (updates) => set((state) => ({
+        scenario: state.scenario ? { ...state.scenario, ...updates } : null
+      })),
       storyModel: MODEL_CONFIG.STORY, // Default to Configured Model
       isDataLoaded: false,
       isHydrated: false, // Start false
@@ -627,6 +658,16 @@ export const useGameStore = create<GameState>()(
         console.log("[Store] setGameId called with:", id);
         console.log("[Store] Current Choices BEFORE setGameId:", get().choices);
         set({ isDataLoaded: false });
+
+        // [Optimization] Clear Heavy Data (Force re-fetch from DataManager)
+        // This prevents stale large objects from persisting across reloads if the code changed.
+        set({
+          events: undefined,
+          lore: undefined,
+          characterMap: undefined,
+          extraMap: undefined,
+          cgMap: undefined
+        });
         try {
           const data = await DataManager.loadGameData(id);
 
@@ -663,6 +704,42 @@ export const useGameStore = create<GameState>()(
             };
             return acc;
           }, {});
+
+          // [Wuxia Specific] Initial Relationship Boost (Starting Location Owner)
+          if (id === 'wuxia' && data.initialLocation && data.lore?.locations?.regions) {
+            try {
+              const [regionName, zoneName] = data.initialLocation.split('_');
+              const region = (data.lore.locations.regions as any)[regionName];
+              const zone = region?.zones?.[zoneName];
+
+              if (zone?.metadata?.owner) {
+                const ownerName = zone.metadata.owner;
+                console.log(`[Store] Initial Location: ${data.initialLocation}, Owner: ${ownerName}`);
+
+                // Find character in charState
+                const targetKey = Object.keys(charState).find(key => {
+                  const char = charState[key];
+                  return char.name === ownerName || char.이름 === ownerName;
+                });
+
+                if (targetKey) {
+                  const targetChar = charState[targetKey];
+                  targetChar.relationshipInfo = {
+                    status: 'Friendly (Mentor/Benefactor)',
+                    speechStyle: targetChar.relationshipInfo?.speechStyle || 'Polite',
+                    trust: 50 // [Game Logic] High initial trust
+                  };
+                  // Add narrative context
+                  targetChar.description = (targetChar.description || '') + `\n[Initial Bond]: 주인공은 ${zoneName}에서 시작하여 이 인물과 우호적인 관계를 맺고 있습니다. 무공 전수나 도움을 받을 수 있습니다.`;
+                  console.log(`[Store] Applied relationship boost to ${targetKey}`);
+                } else {
+                  console.warn(`[Store] Owner character not found: ${ownerName}`);
+                }
+              }
+            } catch (e) {
+              console.error('[Store] Error applying wuxia initial relationship:', e);
+            }
+          }
 
           // [Refactor] Load Logic from Registry
           const config = GameRegistry.get(id);
@@ -709,7 +786,12 @@ export const useGameStore = create<GameState>()(
                 playerStats: {
                   ...JSON.parse(JSON.stringify(INITIAL_STATS)),
                   fate: state.playerStats.fate || 0, // [Fix] Persist Fate Points (Meta Currency)
-                  fame: state.playerStats.fame || 0 // [Fix] Persist Fame? Maybe not fame, but Fate definitely. Let's keep Fate only for now based on request.
+
+                  // [New] Hidden Talent Injection (Wuxia Only)
+                  ...(id === 'wuxia' ? {
+                    str: 15, agi: 15, int: 15, vit: 15, luk: 15, // Superior Genetics
+                    statusDescription: "겉보기엔 평범해 보이지만, 사실 기혈이 뚫려있어 무공을 배우기에 최적화된 '선천진기(Natural Qi)'를 품은 신체입니다. 습득 속도가 남들보다 빠릅니다."
+                  } : {})
                 }, // Deep Copy with Fate persistence
                 goals: [],
                 skills: [],
@@ -762,8 +844,45 @@ export const useGameStore = create<GameState>()(
       storyLog: [],
 
       addStoryLogEntry: (entry) => set((state) => ({
-        storyLog: [...state.storyLog, entry]
+        // Ensure storyLog is always an array before pushing
+        storyLog: [...(state.storyLog || []), entry],
       })),
+
+      recoverRecentHistory: () => set((state) => {
+        const { storyLog, chatHistory } = state;
+        if (!storyLog || storyLog.length === 0) return {};
+
+        // 1. Get last 3 entries from storyLog
+        const recentLogs = storyLog.slice(-3);
+        const restoredMessages: Message[] = [];
+
+        // 2. Check overlap with chatHistory
+        recentLogs.forEach(log => {
+          // Normalize content for comparison (trim)
+          const logContent = log.content.trim();
+          // Check if this specific content exists in the last 20 messages of chat history (increased range for safety)
+          const exists = chatHistory.slice(-20).some(msg => msg.text && msg.text.trim().includes(logContent));
+
+          if (!exists) {
+            // 3. Reconstruct message
+            console.log(`[Context Restoration] Restoring missing turn ${log.turn} from Story Log`);
+            restoredMessages.push({
+              role: 'model',
+              text: log.content, // Restore full content
+              // No snapshot available, but text is sufficient for display
+            });
+          }
+        });
+
+        if (restoredMessages.length > 0) {
+          console.log(`[Context Restoration] ${restoredMessages.length} messages restored.`);
+          return {
+            chatHistory: [...chatHistory, ...restoredMessages],
+            displayHistory: [...(state.displayHistory || []), ...restoredMessages]
+          };
+        }
+        return {};
+      }),
 
       triggeredEvents: [],
       activeEvent: null,
@@ -780,7 +899,47 @@ export const useGameStore = create<GameState>()(
       setActiveEvent: (event) => set({ activeEvent: event }),
 
       userCoins: 0,
+      // [Security] syncCoins is now the primary way to update balance from server
+      fetchUserCoins: async () => {
+        try {
+          // Lazy load secure actions
+          const { getUserBalance } = await import('@/app/actions/economy');
+          const result = await getUserBalance();
+          if (result.success && typeof result.balance === 'number') {
+            set({ userCoins: result.balance });
+          }
+        } catch (e) {
+          console.error("Failed to fetch user coins", e);
+        }
+      },
+      // [Security] setUserCoins is deprecated for external use, mainly for internal sync
       setUserCoins: (coins) => set({ userCoins: coins }),
+
+      // [Security] Secure Spending Action
+      spendCoins: async (amount, reason) => {
+        if (amount <= 0) return true;
+        const current = get().userCoins;
+        if (current < amount) return false;
+
+        // 1. Optimistic Update
+        set({ userCoins: current - amount });
+
+        try {
+          const { deductCoins } = await import('@/app/actions/economy');
+          const result = await deductCoins(amount);
+          if (!result.success) {
+            // Revert on failure
+            set({ userCoins: current });
+            console.error(`Coin deduction failed: ${result.error}`);
+            return false;
+          }
+          return true;
+        } catch (e) {
+          set({ userCoins: current });
+          console.error("Spend coins exception", e);
+          return false;
+        }
+      },
 
       addMessage: (message) => set((state) => ({
         chatHistory: [...state.chatHistory, message],
@@ -907,6 +1066,28 @@ export const useGameStore = create<GameState>()(
       setAvailableExtraImages: (extraCharacters) => set({ availableExtraImages: extraCharacters }),
 
       characterData: {}, // Initialized empty, filled by setGameId
+
+      // [NEW] NPC-to-NPC Relationship Update
+      updateCharacterRelations: (charId, relations) => set((state) => {
+        const char = state.characterData[charId];
+        if (!char) return {};
+
+        const updatedChar = {
+          ...char,
+          relationships: {
+            ...(char.relationships || {}),
+            ...relations
+          }
+        };
+
+        return {
+          characterData: {
+            ...state.characterData,
+            [charId]: updatedChar
+          }
+        };
+      }),
+
       updateCharacterRelationship: (charId, value) => set((state) => {
         const normalizedId = normalizeCharacterId(charId, state.language || undefined);
         const char = state.characterData[normalizedId];
@@ -1122,59 +1303,31 @@ export const useGameStore = create<GameState>()(
       },
 
       choiceHistory: [],
+
       addChoiceToHistory: (entry) => set((state) => {
+        // [Fix] Prevent Double Logging (Debounce Effect)
+        // If the last entry is identical in text & type and added within 500ms, ignore it.
+        const lastEntry = state.choiceHistory[state.choiceHistory.length - 1];
+        if (lastEntry &&
+          lastEntry.text === entry.text &&
+          lastEntry.type === entry.type &&
+          Math.abs(entry.timestamp - lastEntry.timestamp) < 500) {
+          return {};
+        }
+
         const newHistory = [...state.choiceHistory, entry];
-        // Keep only the last 20 entries to prevent context bloat
-        return { choiceHistory: newHistory.slice(-20) };
+        // Keep only enough history for context
+        return { choiceHistory: newHistory.slice(-50) };
       }),
 
-      resetGame: (forceId?: string) => {
+      resetGame: async (forceId?: string) => {
         PromptManager.clearPromptCache();
         // [Fix] Capture current ID to ensure it persists explicitly
         // If forceId is provided (e.g. from session recovery), use it.
         const currentActiveGameId = forceId || get().activeGameId;
 
-        set({
-          activeGameId: currentActiveGameId, // [Fix] Re-assert activeGameId
-          chatHistory: [],
-          displayHistory: [],
-          currentBackground: 'default',
-          characterExpression: 'normal',
-          activeCharacters: [],
-          currentLocation: 'home',
-          // playerName: '주인공', // [Modified] Preserve playerName on reset (User request)
-          scenarioSummary: '',
-          turnCount: 0,
-          day: 1,
-          time: 'Morning',
-          currentEvent: '',
-          currentMood: 'daily',
-          // [Deleted] Duplicate Reset Logic
-
-          lastTurnSummary: '',
-          statusDescription: '건강함',
-          personalityDescription: '평범함',
-          playerStats: (() => {
-            const stats = JSON.parse(JSON.stringify(INITIAL_STATS));
-            if (currentActiveGameId === 'god_bless_you') {
-              stats.gold = 100000;
-              stats.level = 0; // Ensure Level 0
-            }
-            return stats;
-          })(), // [Fix] Deep clone to prevent polluted reference
-          inventory: [],
-          scriptQueue: [],
-          currentSegment: null,
-          choices: [],
-          textMessageHistory: {},
-          triggeredEvents: [],
-          activeEvent: null,
-          extraOverrides: {},
-          characterData: {}, // [Fix] Clear character data so it reloads fresh on next init
-          lore: {}, // [Fix] Clear lore as well
-          goals: [],
-
-        });
+        console.log(`[Store] resetGame called for ${currentActiveGameId}. Delegating to setGameId(..., true)`);
+        await get().setGameId(currentActiveGameId, true);
       },
 
       pendingLogic: null,
@@ -1405,10 +1558,12 @@ export const useGameStore = create<GameState>()(
           // Static content that rehydrates from files
           lore,
           worldData,
+          events, // [Fix] Exclude from persistence (Static Definitions)
           availableBackgrounds,
           availableCharacterImages,
           availableExtraImages,
           backgroundMappings,
+          // isDataLoaded, // [Moved to ephemeral section below]
 
           // Ephemeral execution state (no need to persist, should reset on reload)
           // scriptQueue, // [Persisted]
@@ -1439,8 +1594,8 @@ export const useGameStore = create<GameState>()(
           choices: state.choices, // [Fix] Explicitly persist
           scriptQueue: state.scriptQueue, // [Fix] Explicitly persist
           currentSegment: state.currentSegment, // [Fix] Explicitly persist
-          chatHistory: lightweightChatHistory,
-          displayHistory: lightweightDisplayHistory
+          displayHistory: lightweightDisplayHistory, // [Fix] Persist FULL history (No slicing)
+          chatHistory: lightweightChatHistory // [Fix] Persist FULL history (No slicing)
         };
       },
       storage: {
@@ -1492,11 +1647,28 @@ export const useGameStore = create<GameState>()(
       },
       onRehydrateStorage: () => (state) => {
         console.log("[Store] Rehydration Finished.", state ? "Success" : "No State");
+
         // [Fix] Signal availability using the Store Instance directly
-        // 'state' here is the rehydrated JSON (no methods), so state.setHydrated is undefined.
-        // We must reach into the store to set the flag on the opaque state.
         useGameStore.getState().setHydrated(true);
+
+        // [Fix] Force-Clear Static Data from Rehydrated State
+        // Even if we exclude them in `partialize`, old data might exist in IDB/LocalStorage.
+        // We must ensure they are undefined so the App re-fetches them from DataManager.
+        useGameStore.setState({
+          events: undefined,
+          wikiData: undefined,
+          isDataLoaded: false, // [Fix] Force reload of data
+          lore: undefined,
+          worldData: { locations: {}, items: {} },
+          // Keep persistent user data (chatHistory, etc.) intact
+        });
       }
     }
   )
 );
+
+// [DEV] Expose Store to Window for Console Debugging
+// To test coins: useGameStore.getState().setUserCoins(99999) (Will revert if server check fails)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as any).useGameStore = useGameStore;
+}

@@ -88,13 +88,25 @@ export function resolveBackground(tag: string): string {
         // Tie-breaking?
 
 
+        // [Improvement] Space-Insensitive Check
+        // If "냉동 감옥" (with space) matches "냉동감옥" (no space), give massive bonus to override mismatch.
+        if (keyParts.length > 0 && queryParts.length > 0) {
+            const lastPartQueryNormal = queryParts[queryParts.length - 1].replace(/\s/g, '');
+            const lastPartKeyNormal = keyParts[keyParts.length - 1].replace(/\s/g, '');
+
+            if (lastPartQueryNormal === lastPartKeyNormal) {
+                score += 50; // Same weight as exact match
+            }
+        }
+
+
         if (score > maxScore) {
             maxScore = score;
             bestKey = key;
         }
     }
 
-    if (bestKey && maxScore > 0) {
+    if (bestKey && maxScore >= 40) {
         // Tie-breaker or Logic verification
         console.log(`[BackgroundManager] Scoring Match: "${query}" -> "${bestKey}" (Score: ${maxScore})`);
         return `${basePath}/${backgroundMappings[bestKey]}`;

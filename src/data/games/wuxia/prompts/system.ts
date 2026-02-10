@@ -178,7 +178,7 @@ ${(state.activeCharacters || []).map((charId: string) => {
       // Format Memories (Limit to last 3 major memories to save tokens)
       const memories = (charData.memories || []).slice(-3).map((m: string) => `  * Memory: "${m}"`).join('\n');
 
-      const isUnknown = relStatus === 'Unknown' || !relStatus;
+      const isUnknown = (relStatus === 'Unknown' || !relStatus) && (!memories || memories.length === 0);
 
       // [FIRST ENCOUNTER PROTOCOL]
       let firstEncounterGuide = "";

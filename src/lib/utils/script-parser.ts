@@ -1,6 +1,6 @@
 import { useGameStore } from '@/lib/store';
 // 1. Add 'event_cg' to ScriptType
-export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'bgm' | 'event_cg' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'command' | 'unknown';
+export type ScriptType = 'dialogue' | 'narration' | 'choice' | 'background' | 'bgm' | 'event_cg' | 'system_popup' | 'text_message' | 'text_reply' | 'phone_call' | 'tv_news' | 'article' | 'command' | 'time_skip' | 'unknown';
 
 export interface ScriptSegment {
     type: ScriptType;
@@ -39,7 +39,7 @@ export function parseScript(text: string): ScriptSegment[] {
     // [Fix] Enforce Newline before ALL block tags to prevent swallowing/attachment issues
     // If AI writes "Text.<Tag> Title", we convert it to "Text.\n<Tag> Title"
     // Also explicitly handle \r for Windows consistency
-    text = text.replace(/([^\n\r])<(BGM|CG|배경|Sound|Effect|시간|나레이션|대사|선택지|시스템|떠남)>/gi, '$1\n<$2>');
+    text = text.replace(/([^\n\r])<(BGM|CG|배경|Sound|Effect|시간|시간경과|나레이션|대사|선택지|시스템|떠남)>/gi, '$1\n<$2>');
 
     // Regex to match tags like <TagName>Content or <TagName>Content...
     // We split by newlines first to handle line-based parsing safely, 
@@ -49,7 +49,7 @@ export function parseScript(text: string): ScriptSegment[] {
     // Block Tags: Start a new segment type (e.g. Dialogue, Choice, BGM)
     const blockTags = [
         '배경', 'BGM', 'CG', '시스템팝업', '시스템', '나레이션',
-        '선택지.*?', '대사', '문자', '답장', '전화', 'TV뉴스', '기사', '떠남', '시간'
+        '선택지.*?', '대사', '문자', '답장', '전화', 'TV뉴스', '기사', '떠남', '시간', '시간경과'
     ].join('|');
 
     // Pattern: < ( (Keyword)(Spaces...)? | (Any:Any) ) >
@@ -450,6 +450,28 @@ export function parseScript(text: string): ScriptSegment[] {
             // Special Tag: Character Exit
             if (segments.length > 0) {
                 segments[segments.length - 1].characterLeave = true;
+            }
+
+        } else if (tagName === '시간경과') {
+            // [New] Time Skip Effect
+            // <시간경과>3일 후...</시간경과>
+            // Content is the text to display centered on black screen.
+
+            // [Fix] Handle multi-line content (though usually short)
+            const lines = content.split('\n');
+            const skipText = lines[0].trim(); // Primary text
+
+            segments.push({
+                type: 'time_skip',
+                content: skipText
+            });
+
+            // If there's more content, treat as narration after the skip
+            if (lines.length > 1) {
+                const remaining = lines.slice(1).join('\n').trim();
+                if (remaining) {
+                    segments.push(...parseScript(remaining));
+                }
             }
 
         } else {

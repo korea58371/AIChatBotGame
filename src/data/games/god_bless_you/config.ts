@@ -46,23 +46,11 @@ export const GodBlessYouConfig: GameConfig = {
 
     // [Refactored] Rank Logic
     getRankTitle: (level: number, language: string = 'ko') => {
-        // GBY uses specific constants for ranks (F ~ SSS)
-        // Usually dependent on 'level' stats mapped to ranks
-        const LEVEL_TO_RANK_MAP = [
-            { min: 1, max: 9, id: 'rank_none', title: '일반인' },
-            { min: 10, max: 19, id: 'rank_f', title: 'F급' },
-            { min: 20, max: 29, id: 'rank_e', title: 'E급' },
-            { min: 30, max: 39, id: 'rank_d', title: 'D급' },
-            { min: 40, max: 49, id: 'rank_c', title: 'C급' },
-            { min: 50, max: 59, id: 'rank_b', title: 'B급' },
-            { min: 60, max: 69, id: 'rank_a', title: 'A급' },
-            { min: 70, max: 89, id: 'rank_s', title: 'S급' },
-            { min: 90, max: 999, id: 'rank_ss', title: 'SS급' }
-        ];
-
         const entry = LEVEL_TO_RANK_MAP.find(m => level >= m.min && level <= m.max);
         if (entry) return entry.id;
-        return 'unknown';
+        // Fallback for high levels
+        if (level >= 90) return 'rank_ss';
+        return 'rank_none';
     },
 
     // [Refactored] Background Localization Logic

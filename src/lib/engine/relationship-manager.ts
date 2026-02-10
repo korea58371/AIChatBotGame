@@ -24,13 +24,13 @@ export const RELATIONSHIP_TIERS: TierInfo[] = [
     { tier: 'Lvl -1 (냉담)', minScore: -10, maxScore: -1, description: "관심 없으나 부정적 기류.", allowedInteractions: "무관심, 사무적인 태도." },
 
     // --- POSITIVE RANGE (0 ~ 100) ---
-    { tier: 'Lvl 0 (초면)', minScore: 0, maxScore: 9, description: "완전한 타인. 무관심.", allowedInteractions: "격식체. 무관심. **로맨스 불가**." },
-    { tier: 'Lvl 1 (구면)', minScore: 10, maxScore: 19, description: "안면 튼 사이. 가벼운 인사.", allowedInteractions: "가벼운 존댓말/스몰토크. 이름 기억함." },
+    { tier: 'Lvl 0 (초면)', minScore: 0, maxScore: 9, description: "완전한 타인. 무관심.", allowedInteractions: "무관심. **로맨스 불가**." },
+    { tier: 'Lvl 1 (구면)', minScore: 10, maxScore: 19, description: "안면 튼 사이. 가벼운 인사.", allowedInteractions: "이름 기억함." },
     { tier: 'Lvl 2 (호감)', minScore: 20, maxScore: 29, description: "좋은 인상. 대화가 즐거움.", allowedInteractions: "웃음, 호의적인 태도. 식사 제안." },
     { tier: 'Lvl 3 (동료)', minScore: 30, maxScore: 39, description: "협력적인 관계.", allowedInteractions: "정보 공유. 가벼운 부탁. 등을 맡길 수 있음(초기)." },
     { tier: 'Lvl 4 (신뢰)', minScore: 40, maxScore: 49, description: "등을 맡길 수 있음.", allowedInteractions: "거짓 없는 대화. 위험 감수하고 도움." },
-    { tier: 'Lvl 5 (절친)', minScore: 50, maxScore: 59, description: "사적인 비밀 공유 가능.", allowedInteractions: "편한 말투(반말). 깊은 고민 상담. 맹목적 내 편." },
-    { tier: 'Lvl 6 (유대)', minScore: 60, maxScore: 69, description: "깊은 정서적 유대.", allowedInteractions: "눈빛만으로 통함. 강한 정서적 지지." },
+    { tier: 'Lvl 5 (절친)', minScore: 50, maxScore: 59, description: "사적인 비밀 공유 가능.", allowedInteractions: "깊은 고민 상담. 맹목적 내 편." },
+    { tier: 'Lvl 6 (유대)', minScore: 60, maxScore: 69, description: "깊은 정서적 유대.", allowedInteractions: "눈빛만으로 통함." },
     { tier: 'Lvl 7 (은애)', minScore: 70, maxScore: 79, description: "썸/존경. 로맨틱 텐션 시작.", allowedInteractions: "설렘, 가벼운 스킨십(손잡기), 간접적 고백." },
     { tier: 'Lvl 8 (헌신)', minScore: 80, maxScore: 89, description: "깊은 사랑.", allowedInteractions: "사랑 고백. 키스. 목숨 건 헌신." },
     { tier: 'Lvl 9 (연인)', minScore: 90, maxScore: 999, description: "운명의 상대. 생사를 함께함.", allowedInteractions: "영혼의 동반자. 모든 것을 공유함." }

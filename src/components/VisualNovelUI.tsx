@@ -50,7 +50,7 @@ import { useSaveLoad } from './visual_novel/hooks/useSaveLoad';
 
 
 
-import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User, Info, ShoppingBag, Home } from 'lucide-react';
+import { Send, Save, RotateCcw, History, SkipForward, Package, Settings, Bolt, Maximize, Minimize, Loader2, X, Book, User, Info, ShoppingBag, Home, FileJson, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { EventManager } from '@/lib/engine/event-manager';
@@ -161,27 +161,29 @@ export default function VisualNovelUI() {
                                 // [Fix] Fetch fresh coins from DB first (Store might be 0 on reload)
                                 // const processPayment = async () => { 
                                 {
+                                    /*
                                     const supabase = createClient();
                                     const { data: { session } } = await supabase.auth.getSession();
-                                    if (session?.user) {
-                                        // 1. Fetch Current
-                                        const { data: profile } = await supabase
-                                            .from('profiles')
-                                            .select('coins')
-                                            .eq('id', session.user.id)
-                                            .single();
+                                    */
 
-                                        const currentCoins = profile?.coins || 0;
-                                        const newCoins = currentCoins + totalAmount;
+                                    try {
+                                        // [Security] Use Server Action instead of Client DB Update
+                                        const { addCoins } = await import('@/app/actions/economy');
+                                        const result = await addCoins(totalAmount);
 
-                                        // 2. Update DB
-                                        await supabase.from('profiles').update({ coins: newCoins }).eq('id', session.user.id);
-
-                                        // 3. Update Store
-                                        useGameStore.getState().setUserCoins(newCoins);
+                                        if (result.success) {
+                                            // Update Store (Optimistic / Final)
+                                            // Since we just added, we can trust the return value if we wanted, 
+                                            // or just fetch fresh.
+                                            const { fetchUserCoins } = useGameStore.getState();
+                                            await fetchUserCoins();
+                                        } else {
+                                            throw new Error(result.error);
+                                        }
+                                    } catch (err: any) {
+                                        console.error("Payment Sync Failed", err);
+                                        alert(`결제는 성공했으나 코인 지급 처리에 실패했습니다. 고객센터에 문의해주세요. (Error: ${err.message})`);
                                     }
-                                    // };
-                                    // processPayment();
                                 }
                             } else {
                                 const currentFate = useGameStore.getState().playerStats.fate || 0;
@@ -434,7 +436,9 @@ export default function VisualNovelUI() {
         scenarioSummary,
         playerName, // Add playerName from hook
         userCoins,
+        fetchUserCoins, // [New] Fetch Server Coins
         setUserCoins,
+        recoverRecentHistory, // [New] Context Restoration
         availableExtraImages,
         turnCount,
         incrementTurnCount,
@@ -546,6 +550,7 @@ export default function VisualNovelUI() {
 
     const [isTyping, setIsTyping] = useState(false); // [Fix] Missing State
     const [isLogicPending, setIsLogicPending] = useState(false); // [Logic Lock] Track background logic
+    const [activeDebugTab, setActiveDebugTab] = useState<'logic' | 'context' | 'state' | 'characters' | 'transcript'>('transcript'); // [New] Debug Tab State
     const [showHistory_OLD, setShowHistory_OLD] = useState(false); // Placeholder to ensure clean delete if lines shift, but strictly 291-311 should be targeted.
     // [New] BGM State (Moved to Store)
     // const [currentBgm, setCurrentBgm] = useState<string | null>(null);
@@ -801,12 +806,12 @@ export default function VisualNovelUI() {
 
                 // [Critical Fix] Order swapped: Reset FIRST, then Load Data.
                 // Otherwise resetGame() wipes the characterData we just loaded.
-                state.resetGame(targetGameId || undefined);
+                // [Critical Fix] Order swapped: Reset FIRST, then Load Data.
+                // Otherwise resetGame() wipes the characterData we just loaded.
+                // [Fix] Await the async resetGame which now handles data loading via setGameId(..., true)
+                await state.resetGame(targetGameId || undefined);
 
-                if (targetGameId) {
-                    console.log(`[VisualNovelUI] Restoring Active Game ID: ${targetGameId}`);
-                    await state.setGameId(targetGameId); // [Fix] Await Async Load
-                }
+                // [Fix] Removed redundant setGameId call which caused race condition.
 
                 sessionStorage.removeItem('vn_force_reset');
                 sessionStorage.removeItem('vn_reset_game_id');
@@ -846,6 +851,15 @@ export default function VisualNovelUI() {
         checkDataLoaded();
 
     }, []); // Run once on mount (after hydration)
+
+    // [New] Initial Context Recovery & Coin Sync
+    useEffect(() => {
+        // 1. Recover any lost context checking Story Log vs Chat History
+        recoverRecentHistory();
+
+        // 2. Sync Coins from Server
+        fetchUserCoins();
+    }, [recoverRecentHistory, fetchUserCoins]);
 
     // Initialize Session ID
     useEffect(() => {
@@ -893,12 +907,12 @@ export default function VisualNovelUI() {
 
     const [isResetting, setIsResetting] = useState(false); // [Fix] Reset State
 
-    const handleNewGame = () => {
+    const handleNewGame = async () => {
         if (confirm(t.confirmNewGame)) {
             setIsResetting(true); // Show overlay
 
             // 1. Reset Internal State
-            resetGame();
+            await resetGame();
 
             // 2. Clear Session Storage (Optional but recommended)
             sessionStorage.removeItem('vn_session_id');
@@ -945,29 +959,49 @@ export default function VisualNovelUI() {
     // [Fix] Choice Recovery Mechanism (Lost Path Prevention)
     useEffect(() => {
         // [Fix] Do not recover if we are waiting for a deferred ending trigger OR generating Epilogue
-        if (pendingEndingRef.current || showTheEnd || isEpilogueRef.current) return;
+        // [Fix] Do not recover if we are currently processing an interaction (Prevents race condition where choices persist)
+        if (pendingEndingRef.current || showTheEnd || isEpilogueRef.current) {
+            // console.log("[Recovery] Blocked: Pending Ending/TheEnd/Epilogue");
+            return;
+        }
+
+        // [Debug] Log state when checking recovery
+        // console.log(`[Recovery] Check - Loaded: ${isDataLoaded}, Seg: ${!!currentSegment}, Queue: ${scriptQueue.length}, Choices: ${choices.length}, Hist: ${chatHistory.length}, Proc: ${isProcessing}`);
+
+        if (isProcessing) {
+            console.log("[Recovery] Blocked: Processing in progress");
+            return;
+        }
 
         if (isDataLoaded && !currentSegment && scriptQueue.length === 0 && choices.length === 0 && chatHistory.length > 0) {
             const lastMsg = chatHistory[chatHistory.length - 1];
+
+            // [Fix] Robust Guard: If last message is USER, absolutely definitely do NOT recover choices.
+            if (lastMsg.role === 'user') {
+                console.log("[Recovery] Blocked: Last message is USER (Input previously handled).");
+                return;
+            }
+
             if (lastMsg.role === 'model' && lastMsg.text.includes('<선택지')) {
-                console.log("[Recovery] Found lost choices in history. Restoring...");
+                console.log("[Recovery] Found lost choices in history. Checking validity...");
+
+                // [Diagnostic] Why is this triggering if we just clicked?
+                // It implies 'isProcessing' is false AND lastMsg is 'model'.
+
                 const recoveredChoices = [];
-                const regex = /<선택지(\d+)>\s*(.*?)(?=(<선택지|$))/g; // Simple regex, or reuse parse logic
-                // Better: Reuse the exact same parsing logic as advanceScript if possible, 
-                // but here we have text, not segments.
-                // Let's manually parse.
+                const regex = /<선택지(\d+)>\s*(.*?)(?=(<선택지|$))/g;
                 let match;
                 while ((match = regex.exec(lastMsg.text)) !== null) {
                     recoveredChoices.push({ type: 'choice' as const, content: match[2].trim() });
                 }
 
                 if (recoveredChoices.length > 0) {
-                    console.log("[Recovery] Restored choices:", recoveredChoices);
+                    console.warn("[Recovery] restoring choices:", recoveredChoices);
                     setChoices(recoveredChoices);
                 }
             }
         }
-    }, [isDataLoaded, currentSegment, scriptQueue, choices, chatHistory]);
+    }, [isDataLoaded, currentSegment, scriptQueue.length, choices.length, chatHistory.length, isProcessing]);
 
     // [Fix] Failsafe: Auto-Trigger Deferred Ending
     // If the queue is empty and we have a pending ending, ensure it triggers even if the user didn't click.
@@ -1515,6 +1549,10 @@ export default function VisualNovelUI() {
         setScriptQueue(currentQueue.slice(1));
         setCurrentSegment(nextSegment);
 
+        // [Fix] Normalize inputs to NFC (Standard) to match JSON keys
+        if (nextSegment.character) nextSegment.character = nextSegment.character.normalize('NFC');
+        if (nextSegment.characterImageKey) nextSegment.characterImageKey = nextSegment.characterImageKey.normalize('NFC');
+
         if (nextSegment.type === 'dialogue') {
             // [New] Dynamic Override for Extra Characters
             const charMap = useGameStore.getState().characterMap || {};
@@ -1662,6 +1700,7 @@ export default function VisualNovelUI() {
         const startTime = Date.now();
         console.log(`handleSend: "${text}", coins: ${userCoins}, session: ${!!session}, isDirectInput: ${isDirectInput}`);
 
+        let streamStarted = false;
         try {
             let activeSession = session;
             let currentCoins = userCoins;
@@ -1789,7 +1828,8 @@ export default function VisualNovelUI() {
                             relationship: val.relationship,
                             relationshipInfo: val.relationshipInfo,
                             memories: val.memories, // Critical for context
-                            description: val.description // Include only if dynamic
+                            description: val.description, // Include only if dynamic
+                            relationships: val.relationships // [Fix] Include NPC relationships for PromptManager on Server
                         };
                     }
                     return acc;
@@ -1942,7 +1982,7 @@ export default function VisualNovelUI() {
             // activeSegmentIndexRef.current = 0; // [Fix] Removed to prevent Replay of Old Turn
             setCurrentSegment(null);
             let accumulatedText = "";
-            let streamStarted = false;
+            streamStarted = false;
             setCharacterExpression('');
             setFateUsage(0);
             const p1Start = Date.now();
@@ -1950,7 +1990,7 @@ export default function VisualNovelUI() {
             // [Safety] Race with Timeout
             let timeoutId: NodeJS.Timeout;
             const timeoutRace = new Promise((_, reject) => {
-                timeoutId = setTimeout(() => reject(new Error("Request Timed Out")), 300000);
+                timeoutId = setTimeout(() => reject(new Error("Request Timed Out (Exceeded 10 minutes)")), 600000);
             });
 
             try {
@@ -2210,6 +2250,10 @@ export default function VisualNovelUI() {
                                                         else inlineAccumulatorRef.current.personality[key] = (inlineAccumulatorRef.current.personality[key] || 0) + val;
 
                                                         // Visual Update
+                                                        // [Safety] Ignore 0-value HP updates from inline tags to preventing confusion
+                                                        // (AI sometimes writes <Stat hp='0'> meaning 'no pain', but it looks buggy)
+                                                        if (key === 'hp' && val === 0) return;
+
                                                         applyGameLogic({
                                                             hpChange: key === 'hp' ? val : 0,
                                                             mpChange: key === 'mp' ? val : 0,
@@ -2296,109 +2340,119 @@ export default function VisualNovelUI() {
                                     usage,
                                     latencies,
                                     costs,
-                                    reply: finalStoryText // Mapped from 'reply'
+                                    reply: finalStoryText, // Mapped from 'reply'
+                                    thinking: thinkingContent // [New]
                                 } = data;
 
                                 // Extract Event Data specifically
                                 const eventOut = event_debug?.output;
 
                                 // [Debug] Structured Console Logs (Enhanced Readability)
-                                const logStyle = "font-weight: bold; color: #4ade80; background: #064e3b; padding: 2px 5px; border-radius: 3px;";
-                                const subLogStyle = "font-weight: bold; color: #60a5fa;";
+                                if (process.env.NODE_ENV === 'development') {
+                                    const logStyle = "font-weight: bold; color: #4ade80; background: #064e3b; padding: 2px 5px; border-radius: 3px;";
+                                    const subLogStyle = "font-weight: bold; color: #60a5fa;";
 
-                                console.groupCollapsed(`%c[Turn ${currentState.turnCount}] AI Processing Report`, "font-size: 14px; background: #111; color: #fff; padding: 4px; border-radius: 4px;");
+                                    console.groupCollapsed(`%c[Turn ${currentState.turnCount}] AI Processing Report`, "font-size: 14px; background: #111; color: #fff; padding: 4px; border-radius: 4px;");
 
-                                // 1. Pre-Logic
-                                console.groupCollapsed(`%c1. Pre-Logic [${latencies?.preLogic || 0}ms]`, logStyle);
-                                console.log("%c[Input Prompt]", subLogStyle, preLogicOut?._debug_prompt || "N/A");
-                                console.log("%c[Analysis]", subLogStyle, preLogicOut?.judgment_analysis);
-                                console.log("%c[Narrative Guide]", subLogStyle, preLogicOut?.narrative_guide);
+                                    // 1. Pre-Logic
+                                    console.groupCollapsed(`%c1. Pre-Logic [${latencies?.preLogic || 0}ms]`, logStyle);
+                                    console.log("%c[Input Prompt]", subLogStyle, preLogicOut?._debug_prompt || "N/A");
+                                    console.log("%c[Analysis]", subLogStyle, preLogicOut?.judgment_analysis);
+                                    console.log("%c[Narrative Guide]", subLogStyle, preLogicOut?.narrative_guide);
 
-                                // [Auxiliary Fields Log]
-                                if (preLogicOut?.combat_analysis) console.log("%c[Combat Analysis]", subLogStyle, preLogicOut.combat_analysis);
-                                if (preLogicOut?.emotional_context) console.log("%c[Emotional Context]", subLogStyle, preLogicOut.emotional_context);
-                                if (preLogicOut?.character_suggestion) console.log("%c[Char Suggestion]", subLogStyle, preLogicOut.character_suggestion);
-                                if (preLogicOut?.goal_guide) console.log("%c[Goal Guide]", subLogStyle, preLogicOut.goal_guide);
-                                if (preLogicOut?.location_inference) console.log("%c[Loc Inference]", subLogStyle, preLogicOut.location_inference);
+                                    // [Auxiliary Fields Log]
+                                    if (preLogicOut?.combat_analysis) console.log("%c[Combat Analysis]", subLogStyle, preLogicOut.combat_analysis);
+                                    if (preLogicOut?.emotional_context) console.log("%c[Emotional Context]", subLogStyle, preLogicOut.emotional_context);
+                                    if (preLogicOut?.character_suggestion) console.log("%c[Char Suggestion]", subLogStyle, preLogicOut.character_suggestion);
+                                    if (preLogicOut?.goal_guide) console.log("%c[Goal Guide]", subLogStyle, preLogicOut.goal_guide);
+                                    if (preLogicOut?.location_inference) console.log("%c[Loc Inference]", subLogStyle, preLogicOut.location_inference);
 
-                                console.groupEnd();
+                                    console.groupEnd();
 
-                                // [New] Casting Debug
-                                console.groupCollapsed(`%c1.5 Character Casting (${data.casting?.length || 0} candidates)`, logStyle);
-                                if (data.casting && data.casting.length > 0) {
-                                    // Format for Table (Reasons as String)
-                                    const formattedCasting = data.casting.map((c: any) => ({
-                                        id: c.id,
-                                        name: c.name,
-                                        score: c.score,
-                                        scenario: c.aiScenario || "N/A", // [New] Show AI Scenario
-                                        reasons: (Array.isArray(c.reasons) ? c.reasons : []).join(", "),
-                                        data: c.data
-                                    }));
-                                    console.table(formattedCasting);
-                                } else {
-                                    console.log("No characters selected for casting.");
+                                    // [New] Casting Debug
+                                    console.groupCollapsed(`%c1.5 Character Casting (${data.casting?.length || 0} candidates)`, logStyle);
+                                    if (data.casting && data.casting.length > 0) {
+                                        // Format for Table (Reasons as String)
+                                        const formattedCasting = data.casting.map((c: any) => ({
+                                            id: c.id,
+                                            name: c.name,
+                                            score: c.score,
+                                            scenario: c.aiScenario || "N/A", // [New] Show AI Scenario
+                                            reasons: (Array.isArray(c.reasons) ? c.reasons : []).join(", "),
+                                            data: c.data
+                                        }));
+                                        console.table(formattedCasting);
+                                    } else {
+                                        console.log("No characters selected for casting.");
+                                    }
+                                    console.groupEnd();
+
+                                    // 2. Story Generation
+                                    console.groupCollapsed(`%c2. Story Generation (${cleanStoryText?.length || 0} chars) [${latencies?.story || 0}ms]`, logStyle);
+
+                                    // [New] Thinking Process Log
+                                    if (thinkingContent) {
+                                        console.log("%c[Thinking Process]", "color: #fbbf24; font-style: italic; margin-bottom: 4px;", thinkingContent);
+                                    } else {
+                                        console.log("%c[Thinking Process]", "color: #fbbf24; font-style: italic; margin-bottom: 4px;", "(No Content or Extraction Failed)");
+                                    }
+
+                                    // [New] Detailed Input Breakdown
+                                    const components = data.story_debug?.components;
+                                    if (components) {
+                                        console.log("%c[Narrative Guide]", subLogStyle, components.narrative_guide);
+                                        console.log("%c[Player Context]", subLogStyle, components.context_player);
+                                        console.log("%c[Active Characters]", subLogStyle, components.context_characters);
+                                        console.log("%c[Retrieved Context]", subLogStyle, components.context_retrieved);
+                                        console.log("%c[Structure Instruction]", subLogStyle, components.instruction_thinking);
+                                    }
+
+                                    console.log("%c[Static Prompt]", subLogStyle, data.story_static_prompt || data.systemPrompt || "N/A");
+                                    console.log("%c[Dynamic Output (Full)]", subLogStyle, data.story_dynamic_prompt || components?.full_composite || "N/A");
+                                    console.log("%c[Generated Text]", subLogStyle, cleanStoryText);
+                                    console.groupEnd();
+
+                                    // 3. Game Logic (Post-Logic)
+                                    console.groupCollapsed(`%c3. Game Logic & Stats [${latencies?.postLogic || 0}ms]`, logStyle);
+                                    console.groupCollapsed("Post-Logic Input (Prompt)");
+                                    console.log(postLogicOut?._debug_prompt);
+                                    console.groupEnd();
+
+                                    console.groupCollapsed("Post-Logic System Prompt (Static Rules)");
+                                    console.log(postLogicOut?._debug_system_prompt || "Cached/Not Available");
+                                    console.groupEnd();
+
+                                    console.groupCollapsed("Post-Logic Output (Result)");
+                                    console.dir(postLogicOut);
+                                    console.groupEnd();
+
+                                    console.groupCollapsed("Martial Arts Logic");
+                                    console.log("System Prompt:", martialArtsOut?._debug_prompt);
+                                    console.dir(martialArtsOut);
+                                    console.groupEnd();
+                                    console.groupEnd();
+
+                                    // 4. Events
+                                    console.groupCollapsed(`%c4. Event System [${latencies?.eventSystem || 0}ms]`, logStyle); // Events run in parallel with PostLogic usually, or part of logic time
+
+                                    console.log("Event Data:", eventOut);
+                                    console.groupEnd();
+
+                                    // 5. Telemetry
+                                    console.groupCollapsed(`%c5. Performance & Cost ($${costs?.total?.toFixed(4) || '0.0000'})`, logStyle);
+                                    console.log(`%c[Timing Breakdown]`, "font-weight:bold; color: yellow;");
+                                    console.log(`- Retriever:  ${latencies?.retriever}ms`);
+                                    console.log(`- Pre-Logic:  ${latencies?.preLogic}ms %c(Blocking)`, "color:red");
+                                    console.log(`- Story Gen:  ${latencies?.story}ms`);
+                                    console.log(`- Post-Logic: ${latencies?.postLogic}ms`);
+                                    console.log(`- Total Turn: ${latencies?.total}ms`);
+                                    console.table(latencies);
+                                    console.log("Usage:", usage);
+                                    console.log("Detailed Costs:", costs);
+                                    console.groupEnd();
+
+                                    console.groupEnd(); // End Main Report
                                 }
-                                console.groupEnd();
-
-                                // 2. Story Generation
-                                console.groupCollapsed(`%c2. Story Generation (${cleanStoryText?.length || 0} chars) [${latencies?.story || 0}ms]`, logStyle);
-
-                                // [New] Detailed Input Breakdown
-                                const components = data.story_debug?.components;
-                                if (components) {
-                                    console.log("%c[Narrative Guide]", subLogStyle, components.narrative_guide);
-                                    console.log("%c[Player Context]", subLogStyle, components.context_player);
-                                    console.log("%c[Active Characters]", subLogStyle, components.context_characters);
-                                    console.log("%c[Retrieved Context]", subLogStyle, components.context_retrieved);
-                                    console.log("%c[Structure Instruction]", subLogStyle, components.instruction_thinking);
-                                }
-
-                                console.log("%c[Static Prompt]", subLogStyle, data.story_static_prompt || data.systemPrompt || "N/A");
-                                console.log("%c[Dynamic Output (Full)]", subLogStyle, data.story_dynamic_prompt || components?.full_composite || "N/A");
-                                console.log("%c[Generated Text]", subLogStyle, cleanStoryText);
-                                console.groupEnd();
-
-                                // 3. Game Logic (Post-Logic)
-                                console.groupCollapsed(`%c3. Game Logic & Stats [${latencies?.postLogic || 0}ms]`, logStyle);
-                                console.groupCollapsed("Post-Logic Input (Prompt)");
-                                console.log(postLogicOut?._debug_prompt);
-                                console.groupEnd();
-
-                                console.groupCollapsed("Post-Logic System Prompt (Static Rules)");
-                                console.log(postLogicOut?._debug_system_prompt || "Cached/Not Available");
-                                console.groupEnd();
-
-                                console.groupCollapsed("Post-Logic Output (Result)");
-                                console.dir(postLogicOut);
-                                console.groupEnd();
-
-                                console.groupCollapsed("Martial Arts Logic");
-                                console.log("System Prompt:", martialArtsOut?._debug_prompt);
-                                console.dir(martialArtsOut);
-                                console.groupEnd();
-                                console.groupEnd();
-
-                                // 4. Events
-                                console.groupCollapsed(`%c4. Event System [${latencies?.eventSystem || 0}ms]`, logStyle); // Events run in parallel with PostLogic usually, or part of logic time
-
-                                console.log("Event Data:", eventOut);
-                                console.groupEnd();
-
-                                // 5. Telemetry
-                                console.groupCollapsed(`%c5. Performance & Cost ($${costs?.total?.toFixed(4) || '0.0000'})`, logStyle);
-                                console.log(`%c[Timing Breakdown]`, "font-weight:bold; color: yellow;");
-                                console.log(`- Retriever:  ${latencies?.retriever}ms`);
-                                console.log(`- Pre-Logic:  ${latencies?.preLogic}ms %c(Blocking)`, "color:red");
-                                console.log(`- Story Gen:  ${latencies?.story}ms`);
-                                console.log(`- Post-Logic: ${latencies?.postLogic}ms`);
-                                console.log(`- Total Turn: ${latencies?.total}ms`);
-                                console.table(latencies);
-                                console.log("Usage:", usage);
-                                console.log("Detailed Costs:", costs);
-                                console.groupEnd();
-
-                                console.groupEnd(); // End Main Report
 
                                 // [Fix] Field Name Mismatch Support (Orchestrator uses 'reply', UI expects 'finalStoryText')
                                 const serverFinalText = finalStoryText || data.reply;
@@ -2510,6 +2564,30 @@ export default function VisualNovelUI() {
                                     }
 
                                     // [Fix] Content-Based Queue Synchronization
+                                    // ... existing code ...
+
+                                    // [Memory] Handle Summary Trigger
+                                    if (postLogicOut?.summary_trigger) {
+                                        console.log("[VisualNovelUI] Summary Triggered by PostLogic. Updating... ");
+                                        // Execute in background to not block UI
+                                        (async () => {
+                                            try {
+                                                const currentSummary = useGameStore.getState().scenarioSummary;
+                                                const recentHistory = useGameStore.getState().chatHistory.slice(-20); // Capture context
+
+                                                // Dynamic Import to avoid bundling issues if needed, or use the imported action
+                                                const { serverGenerateSummary } = await import('@/app/actions/game');
+                                                const newSummary = await serverGenerateSummary(currentSummary, recentHistory);
+
+                                                if (newSummary) {
+                                                    console.log("[VisualNovelUI] Summary Updated:", newSummary.substring(0, 50) + "...");
+                                                    useGameStore.getState().setScenarioSummary(newSummary);
+                                                }
+                                            } catch (e) {
+                                                console.error("[VisualNovelUI] Summary Update Failed:", e);
+                                            }
+                                        })();
+                                    }
                                     // Instead of blindly slicing by index (which fails if parser yields different segment counts for stream vs final),
                                     // we find WHERE in the finalSegments the user currently is, based on Content Matching.
 
@@ -2796,6 +2874,13 @@ export default function VisualNovelUI() {
                                     mood: postLogicOut?.mood_update || preLogicOut?.mood_override,
                                     location: postLogicOut?.location_update,
                                     new_memories: postLogicOut?.new_memories,
+                                    // [Fix] Map 'character_memories' (Record) to 'characterUpdates' (Array) for Persistence
+                                    characterUpdates: postLogicOut?.character_memories
+                                        ? Object.entries(postLogicOut.character_memories).map(([id, memories]) => ({
+                                            id,
+                                            memories: Array.isArray(memories) ? memories : [memories as string]
+                                        }))
+                                        : [],
                                     activeCharacters: postLogicOut?.activeCharacters,
                                     injuriesUpdate: {
                                         add: postLogicOut?.new_injuries,
@@ -2806,6 +2891,7 @@ export default function VisualNovelUI() {
                                     new_goals: postLogicOut?.new_goals,
                                     // [Fix] Inject Text-Detected Ending if JSON missed it, BUT suppress if in Epilogue
                                     ending_trigger: isEpilogueRef.current ? null : (postLogicOut?.ending_trigger ?? (detectedEndingType ? detectedEndingType.toUpperCase() : null)),
+                                    character_relationships: postLogicOut?.character_relationships, // [NEW] Pass for processing
                                     post_logic: {
                                         ...(postLogicOut || {}),
                                         stat_updates: plPersonality
@@ -2837,6 +2923,19 @@ export default function VisualNovelUI() {
                                 }
                                 // Reset Inline Accumulator
                                 inlineAccumulatorRef.current = { hp: 0, mp: 0, relationships: {}, personality: {} };
+
+                                // [NEW] Handle NPC-to-NPC Relationships Directly (Bypass applyGameLogic if needed)
+                                if (deferredLogic.character_relationships) {
+                                    Object.entries(deferredLogic.character_relationships).forEach(([subjectId, relations]) => {
+                                        try {
+                                            const normalizedId = normalizeCharacterId(subjectId);
+                                            useGameStore.getState().updateCharacterRelations(normalizedId, relations as Record<string, string>);
+                                            console.log(`[Relationships] Updated for ${normalizedId}:`, relations);
+                                        } catch (e) {
+                                            console.error(`[Relationships] Error updating for ${subjectId}`, e);
+                                        }
+                                    });
+                                }
 
                                 // [Fix] Apply Logic IMMEDIATELY to prevent "Choice Gap"
                                 // If we defer logic, the UI might show choices (enabling interaction)
@@ -2905,8 +3004,13 @@ export default function VisualNovelUI() {
             // [Streaming] Script playback is handled incrementally in onToken.
 
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            // [Fix] Ignore timeout if stream has already started (Partial Success)
+            if (streamStarted && error.message?.includes("Timed Out")) {
+                console.warn("[VisualNovelUI] Timeout ignored because stream is active.");
+                return;
+            }
             addToast(t.errorGenerating, 'warning');
         } finally {
             setIsProcessing(false);
@@ -3645,10 +3749,28 @@ export default function VisualNovelUI() {
                         return;
                     }
 
+                    // 1.5 Lenient Substring & Normalized Match (User Request)
+                    // If AI says "Internal Injury", it should remove "Severe Internal Injury" or "Internal Injury (Recovering)"
+                    const substringMatch = currentInjuries.find(curr => {
+                        // Normalize: Remove (...) and whitespace
+                        const cleanCurr = curr.replace(/\(.*\)/, '').replace(/\s+/g, '');
+                        const cleanTarget = targetInj.replace(/\(.*\)/, '').replace(/\s+/g, '');
+
+                        // Check containment (bi-directional)
+                        return curr.includes(targetInj) || targetInj.includes(curr) ||
+                            cleanCurr.includes(cleanTarget) || cleanTarget.includes(cleanCurr);
+                    });
+
+                    if (substringMatch) {
+                        console.log(`[Injury] Substring Removal: '${substringMatch}' matches target '${targetInj}'`);
+                        toRemove.add(substringMatch);
+                        return;
+                    }
+
                     // 2. Fuzzy Match (Fallback)
                     const best = findBestMatchDetail(targetInj, currentInjuries);
-                    // Threshold 0.6 (Dice Coefficient)
-                    if (best && best.rating >= 0.6) {
+                    // Threshold 0.6 (Dice Coefficient) -> Lowered to 0.5 for leniency
+                    if (best && best.rating >= 0.5) {
                         console.log(`[Injury] Fuzzy Removal: '${targetInj}' matches '${best.target}' (Score: ${best.rating.toFixed(2)})`);
                         toRemove.add(best.target);
                     }
@@ -3747,7 +3869,8 @@ export default function VisualNovelUI() {
                 };
                 // @ts-ignore
                 useGameStore.getState().addGoal(newGoal);
-                addToast(`New Goal: ${g.description}`, 'info');
+                // [Suppressed] New Goal Toast
+                // addToast(`New Goal: ${g.description}`, 'info');
             });
         }
 
@@ -3793,8 +3916,9 @@ export default function VisualNovelUI() {
             logicResult.goal_updates.forEach((u: any) => {
                 // @ts-ignore
                 useGameStore.getState().updateGoal(u.id, { status: u.status });
-                if (u.status === 'COMPLETED') addToast(`Goal Completed!`, 'success');
-                if (u.status === 'FAILED') addToast(`Goal Failed!`, 'warning');
+                // [Suppressed] Goal Status Toasts
+                // if (u.status === 'COMPLETED') addToast(`Goal Completed!`, 'success');
+                // if (u.status === 'FAILED') addToast(`Goal Failed!`, 'warning');
             });
         }
 
@@ -3823,13 +3947,15 @@ export default function VisualNovelUI() {
         if (logicResult.newItems && logicResult.newItems.length > 0) {
             logicResult.newItems.forEach((item: any) => {
                 addItem(item);
-                addToast(t.acquired.replace('{0}', item.name), 'success');
+                // [Suppressed] Item Acquired Toast
+                // addToast(t.acquired.replace('{0}', item.name), 'success');
             });
         }
         if (logicResult.removedItemIds && logicResult.removedItemIds.length > 0) {
             logicResult.removedItemIds.forEach((id: string) => {
                 removeItem(id);
-                addToast(t.usedLost.replace('{0}', id), 'info');
+                // [Suppressed] Item Lost Toast
+                // addToast(t.usedLost.replace('{0}', id), 'info');
             });
         }
 
@@ -4031,7 +4157,11 @@ export default function VisualNovelUI() {
                             } else {
                                 // [Fix] Silent Failure
                                 // If AI tries to heal something clearly not there, just log it. Do NOT annoy user.
-                                console.warn(`[Injury] AI tried to heal '${resolved}' but no match found in:`, updatedInjuries);
+                                if (updatedInjuries.length === 0) {
+                                    console.log(`[Injury] AI tried to heal '${resolved}' but character has no injuries. (Ignored)`);
+                                } else {
+                                    console.log(`[Injury] AI tried to heal '${resolved}' but no match found in:`, updatedInjuries);
+                                }
                             }
                         });
                     }
@@ -4265,7 +4395,7 @@ export default function VisualNovelUI() {
 
                 // 1. Check if it's the Player (Exact name or Alias)
                 const isPlayer = rawName === playerName
-                    || ['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인'].includes(cleaned.toLowerCase())
+                    || ['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인', '주인공'].includes(cleaned.toLowerCase())
                     || cleaned === playerName;
 
                 if (isPlayer) {
@@ -4464,6 +4594,10 @@ export default function VisualNovelUI() {
                 console.log(`[Event Found] Prompt Length: ${matchedEvent.prompt.length}`);
             } else {
                 console.warn(`[Logic Warning] Triggered ID '${logicResult.triggerEventId}' not found in Client Event Registry.`);
+
+                // [Fix] Even if local definition is missing, we must record that this ID triggered
+                // to prevent loop if the Server keeps suggesting it.
+                useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
 
                 // [Fallback] Construct Event from Server Data
                 if (logicResult.currentEvent) {
@@ -6036,6 +6170,7 @@ export default function VisualNovelUI() {
                     setCurrentSegment={setCurrentSegment}
                     setScriptQueue={setScriptQueue}
                     setBackground={setBackground}
+                    storyLog={useGameStore((state) => state.storyLog)} // [New] Pass Story Log
                 />
 
                 {/* Inventory Modal */}
@@ -6246,115 +6381,360 @@ export default function VisualNovelUI() {
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
-                                    className="bg-gray-900 p-6 rounded-xl w-full max-w-6xl border border-purple-500 shadow-2xl h-[90vh] flex flex-col"
+                                    className="bg-gray-900 rounded-xl w-full max-w-6xl border border-purple-500 shadow-2xl h-[90vh] flex flex-col overflow-hidden"
                                 >
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h2 className="text-xl font-bold text-purple-400">Debug Menu</h2>
-                                        <button onClick={() => setIsDebugOpen(false)} className="text-gray-400 hover:text-white text-xl">×</button>
+                                    {/* Header & Tabs */}
+                                    <div className="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center shrink-0">
+                                        <div className="flex items-center gap-6">
+                                            <h2 className="text-xl font-bold text-purple-400">Debug Menu</h2>
+                                            <div className="flex bg-black/40 rounded-lg p-1">
+                                                {(['logic', 'context', 'state', 'characters', 'transcript'] as const).map(tab => (
+                                                    <button
+                                                        key={tab}
+                                                        onClick={() => setActiveDebugTab(tab)}
+                                                        className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeDebugTab === tab
+                                                            ? 'bg-purple-600 text-white shadow-lg'
+                                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                                            }`}
+                                                    >
+                                                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <button onClick={() => setIsDebugOpen(false)} className="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
                                     </div>
 
-                                    <div className="flex-1 grid grid-cols-3 gap-4 overflow-hidden">
-                                        {/* Column 1: Injection & Logic */}
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex flex-col h-1/3">
-                                                <h3 className="text-white font-bold mb-2">Inject Script</h3>
-                                                <textarea
-                                                    value={debugInput}
-                                                    onChange={(e) => setDebugInput(e.target.value)}
-                                                    className="flex-1 bg-black/50 border border-gray-700 rounded p-4 text-white font-mono text-sm mb-2 focus:outline-none focus:border-purple-500 resize-none"
-                                                    placeholder="<배경> home&#10;<나레이션> ...&#10;<대사>Name: ..."
-                                                />
-                                                <button onClick={handleDebugSubmit} className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-500 font-bold text-white">Inject</button>
-                                            </div>
-                                            <div className="flex flex-col h-2/3">
-                                                <h3 className="text-white font-bold mb-2">Last Logic Result (Gemini 2.5)</h3>
-                                                <div className="flex-1 bg-black/50 border border-gray-700 rounded p-4 text-green-400 font-mono text-xs overflow-auto">
-                                                    {lastLogicResult ? (
-                                                        <pre>{JSON.stringify(lastLogicResult, null, 2)}</pre>
-                                                    ) : (
-                                                        <span className="text-gray-500">No logic executed yet.</span>
-                                                    )}
+                                    {/* Content Area */}
+                                    <div className="flex-1 p-6 overflow-hidden min-h-0 bg-black/20">
+
+                                        {/* TAB: LOGIC */}
+                                        {activeDebugTab === 'logic' && (
+                                            <div className="h-full grid grid-cols-2 gap-6">
+                                                <div className="flex flex-col h-full">
+                                                    <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+                                                        <span>Inject Script</span>
+                                                        <span className="text-xs text-gray-500 font-normal">(XML Style)</span>
+                                                    </h3>
+                                                    <textarea
+                                                        value={debugInput}
+                                                        onChange={(e) => setDebugInput(e.target.value)}
+                                                        className="flex-1 bg-black/50 border border-gray-700 rounded p-4 text-white font-mono text-sm mb-4 focus:outline-none focus:border-purple-500 resize-none custom-scrollbar"
+                                                        placeholder="<배경> home&#10;<나레이션> ...&#10;<대사 character='name' expression='happy'>Hello</대사>"
+                                                    />
+                                                    <div className="flex justify-end">
+                                                        <button onClick={handleDebugSubmit} className="px-6 py-2 bg-purple-600 rounded hover:bg-purple-500 font-bold text-white shadow-lg transition-transform active:scale-95">
+                                                            Inject Logic
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col h-full">
+                                                    <h3 className="text-white font-bold mb-2">Last Logic Result</h3>
+                                                    <div className="flex-1 bg-black/50 border border-gray-700 rounded p-4 text-green-400 font-mono text-xs overflow-auto custom-scrollbar">
+                                                        {lastLogicResult ? (
+                                                            <pre>{JSON.stringify(lastLogicResult, null, 2)}</pre>
+                                                        ) : (
+                                                            <div className="h-full flex items-center justify-center text-gray-600 italic">
+                                                                No AI Logic executed yet.
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        )}
 
-                                        {/* Column 2: Scenario & Context */}
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex flex-col h-1/2">
+                                        {/* TAB: CONTEXT */}
+                                        {activeDebugTab === 'context' && (
+                                            <div className="h-full flex flex-col gap-6">
+                                                {/* [New] AI Scenario Director */}
+                                                <div className="flex flex-col h-1/3 min-h-[150px]">
+                                                    <h3 className="text-white font-bold mb-2 border-b border-green-500/30 pb-1 flex justify-between">
+                                                        <span>AI Scenario Director</span>
+                                                        {useGameStore.getState().scenario?.active && <span className="text-xs text-green-400 animate-pulse">● ACTIVE</span>}
+                                                    </h3>
+                                                    <div className="flex-1 bg-black/50 border border-green-500/30 rounded p-4 text-xs overflow-auto custom-scrollbar">
+                                                        {useGameStore.getState().scenario ? (
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between"><span className="text-gray-500">Title</span> <span className="text-yellow-400 font-bold">{useGameStore.getState().scenario?.title}</span></div>
+                                                                <div className="flex justify-between"><span className="text-gray-500">Goal</span> <span className="text-white">{useGameStore.getState().scenario?.goal}</span></div>
+                                                                <div className="flex justify-between"><span className="text-gray-500">Stage</span> <span className="text-blue-400">{useGameStore.getState().scenario?.stage}</span></div>
+
+                                                                {/* Director's Note */}
+                                                                {useGameStore.getState().scenario?.currentNote && (
+                                                                    <div className="mt-2 bg-pink-900/20 border border-pink-500/30 p-2 rounded">
+                                                                        <div className="text-pink-500 font-bold mb-1">Director's Note</div>
+                                                                        <div className="text-pink-300 italic">{useGameStore.getState().scenario?.currentNote}</div>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Variables */}
+                                                                <div className="mt-2">
+                                                                    <div className="text-gray-500 mb-1">Variables</div>
+                                                                    <pre className="bg-black p-2 rounded text-green-300 overflow-x-auto">
+                                                                        {JSON.stringify(useGameStore.getState().scenario?.variables, null, 2)}
+                                                                    </pre>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-full flex items-center justify-center text-gray-500 italic">
+                                                                No active scenario. (Idle)
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col h-1/3">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <h3 className="text-white font-bold">Scenario Summary (Memory)</h3>
+                                                        <button
+                                                            onClick={() => { navigator.clipboard.writeText(scenarioSummary || ""); addToast("Summary copied", "success"); }}
+                                                            className="px-2 py-1 bg-yellow-600/20 text-yellow-500 hover:bg-yellow-600 hover:text-white border border-yellow-600/50 rounded text-xs transition-colors"
+                                                        >
+                                                            Copy Text
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex-1 bg-black/50 border border-yellow-600/30 rounded p-4 text-yellow-100/90 font-mono text-xs overflow-auto whitespace-pre-wrap custom-scrollbar leading-relaxed">
+                                                        {scenarioSummary || <span className="text-gray-600 italic">No summary generated yet.</span>}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col h-1/2">
+                                                    <h3 className="text-white font-bold mb-2">Active Runtime Context</h3>
+                                                    <div className="flex-1 bg-black/50 border border-blue-500/30 rounded p-4 text-blue-300 font-mono text-xs overflow-auto custom-scrollbar">
+                                                        <table className="w-full text-left border-collapse">
+                                                            <tbody>
+                                                                <tr className="border-b border-white/5"><th className="p-2 text-gray-400 w-32">Location</th><td className="p-2">{useGameStore.getState().currentLocation}</td></tr>
+                                                                <tr className="border-b border-white/5"><th className="p-2 text-gray-400">Event Info</th><td className="p-2">{useGameStore.getState().currentEvent || "None"}</td></tr>
+                                                                <tr className="border-b border-white/5"><th className="p-2 text-gray-400">Active IDs</th><td className="p-2 break-all">{JSON.stringify(useGameStore.getState().activeCharacters)}</td></tr>
+                                                                <tr className="border-b border-white/5"><th className="p-2 text-gray-400">Turn Count</th><td className="p-2">{useGameStore.getState().turnCount}</td></tr>
+                                                                <tr className="border-b border-white/5"><th className="p-2 text-gray-400">History Size</th><td className="p-2">{chatHistory.length} messages</td></tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* TAB: STATE */}
+                                        {activeDebugTab === 'state' && (
+                                            <div className="h-full flex flex-col">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <h3 className="text-white font-bold">Scenario Summary (Memory)</h3>
+                                                    <h3 className="text-white font-bold">Full Game State Dump (JSON)</h3>
                                                     <button
                                                         onClick={() => {
-                                                            navigator.clipboard.writeText(scenarioSummary || "");
-                                                            addToast("Summary copied", "success");
+                                                            const state = {
+                                                                playerStats,
+                                                                inventory,
+                                                                characterData: useGameStore.getState().characterData,
+                                                                worldData: useGameStore.getState().worldData,
+                                                                currentSegment,
+                                                                scriptQueueSize: scriptQueue.length
+                                                            };
+                                                            navigator.clipboard.writeText(JSON.stringify(state, null, 2));
+                                                            addToast("JSON copied", "success");
                                                         }}
-                                                        className="px-2 py-1 bg-yellow-600 hover:bg-yellow-500 rounded text-xs text-black font-bold"
+                                                        className="px-3 py-1 bg-blue-600 rounded text-xs text-white hover:bg-blue-500 font-bold"
                                                     >
-                                                        Copy
+                                                        Copy All
                                                     </button>
                                                 </div>
-                                                <div className="flex-1 bg-black/50 border border-yellow-600/50 rounded p-4 text-yellow-200 font-mono text-xs overflow-auto whitespace-pre-wrap">
-                                                    {scenarioSummary || "No summary generated yet."}
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col h-1/2">
-                                                <h3 className="text-white font-bold mb-2">Active Context</h3>
-                                                <div className="flex-1 bg-black/50 border border-gray-700 rounded p-4 text-blue-300 font-mono text-xs overflow-auto">
-                                                    <div className="mb-2"><span className="text-gray-400">Location:</span> {useGameStore.getState().currentLocation}</div>
-                                                    <div className="mb-2"><span className="text-gray-400">Event:</span> {useGameStore.getState().currentEvent || "None"}</div>
-                                                    <div className="mb-2"><span className="text-gray-400">Active Chars:</span> {JSON.stringify(useGameStore.getState().activeCharacters)}</div>
-                                                    <div><span className="text-gray-400">History Length:</span> {chatHistory.length} msgs</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Column 3: Full State Dump */}
-                                        <div className="flex flex-col h-full min-h-0">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h3 className="text-white font-bold">Current State (Saved)</h3>
-                                                <button
-                                                    onClick={() => {
-                                                        // This is a placeholder for serverAgentTurn, it should not be here.
-                                                        // The instruction seems to have misplaced this code.
-                                                        // Assuming the intent was to show the updated arguments for serverAgentTurn
-                                                        // if it were called here, but it's not.
-                                                        // The original code defines a 'state' object and copies it.
-                                                        // I will keep the original functionality of copying the state.
-                                                        const state = {
+                                                <div className="flex-1 bg-black/50 border border-gray-700 rounded p-4 text-gray-300 font-mono text-xs overflow-auto custom-scrollbar">
+                                                    <pre className="whitespace-pre-wrap break-all">
+                                                        {JSON.stringify({
                                                             playerStats,
                                                             inventory,
+                                                            activeCharacters: useGameStore.getState().activeCharacters,
                                                             characterData: useGameStore.getState().characterData,
                                                             worldData: useGameStore.getState().worldData,
                                                             currentSegment,
-                                                            scriptQueue: scriptQueue.length
-                                                        };
-                                                        navigator.clipboard.writeText(JSON.stringify(state, null, 2));
-                                                        addToast("State copied to clipboard", "success");
-                                                    }}
-                                                    className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs text-white"
-                                                >
-                                                    Copy JSON
-                                                </button>
+                                                            scriptQueue_length: scriptQueue.length
+                                                        }, null, 2)}
+                                                    </pre>
+                                                </div>
                                             </div>
-                                            <div className="flex-1 bg-black/50 border border-gray-700 rounded p-4 text-blue-300 font-mono text-xs overflow-auto custom-scrollbar">
-                                                <pre className="whitespace-pre-wrap break-all">
-                                                    {JSON.stringify({
-                                                        playerStats,
-                                                        inventory,
-                                                        characterData: useGameStore.getState().characterData,
-                                                        worldData: useGameStore.getState().worldData,
-                                                        currentSegment,
-                                                        scriptQueue: scriptQueue.length
-                                                    }, null, 2)}
-                                                </pre>
+                                        )}
+
+                                        {/* TAB: CHARACTERS (NEW) */}
+                                        {activeDebugTab === 'characters' && (
+                                            <div className="h-full flex gap-4">
+                                                {/* Char List */}
+                                                <div className="w-1/4 bg-black/40 border border-gray-700 rounded-lg overflow-hidden flex flex-col">
+                                                    <div className="p-3 bg-gray-800/50 border-b border-gray-700 font-bold text-gray-300 text-sm">
+                                                        Character List
+                                                    </div>
+                                                    <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                                                        {Object.values(useGameStore.getState().characterData || {})
+                                                            .sort((a: any, b: any) => {
+                                                                const relA = playerStats.relationships?.[a.id] || 0;
+                                                                const relB = playerStats.relationships?.[b.id] || 0;
+                                                                // [Fix] Push 0 to bottom, keep +/- sorted by value
+                                                                if (relA === 0 && relB !== 0) return 1;
+                                                                if (relA !== 0 && relB === 0) return -1;
+                                                                return relB - relA;
+                                                            })
+                                                            .map((char: any) => {
+                                                                const relScore = playerStats.relationships?.[char.id] || 0;
+                                                                return (
+                                                                    <div key={char.id} className="group relative">
+                                                                        <div className="bg-gray-800/50 p-2 rounded border border-gray-700 hover:border-purple-500 cursor-help transition-all">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="font-bold text-gray-200 text-sm">{char.name}</span>
+                                                                                <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${relScore > 0 ? 'bg-pink-900/50 text-pink-300' : 'bg-gray-700 text-gray-400'}`}>
+                                                                                    {relScore}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="text-[10px] text-gray-500 truncate mt-1">{char.id}</div>
+                                                                        </div>
+
+                                                                        {/* Tooltip / Detail View on Hover/Click? Let's just expand details in the right panel if selected? 
+                                                                        For simplicity, let's list ALL details in a masonry or just show ALL in the right panel.
+                                                                        Actually, let's make this list selectable? 
+                                                                        Wait, I can't easily add selection state without another useState.
+                                                                        Let's just render the FULL list in a rich view on the right, 
+                                                                        or just use a simple map across the whole area.
+                                                                    */}
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                        <div className="text-xs text-gray-600 text-center py-2 italic">
+                                                            Total: {Object.keys(useGameStore.getState().characterData || {}).length}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Char Details Grid */}
+                                                <div className="flex-1 bg-black/40 border border-gray-700 rounded-lg overflow-y-auto custom-scrollbar p-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                                                        {Object.values(useGameStore.getState().characterData || {})
+                                                            .sort((a: any, b: any) => {
+                                                                const relA = playerStats.relationships?.[a.id] || 0;
+                                                                const relB = playerStats.relationships?.[b.id] || 0;
+                                                                // [Fix] Push 0 to bottom, keep +/- sorted by value
+                                                                if (relA === 0 && relB !== 0) return 1;
+                                                                if (relA !== 0 && relB === 0) return -1;
+                                                                return relB - relA;
+                                                            })
+                                                            .map((char: any) => {
+                                                                const rel = playerStats.relationships?.[char.id] || 0;
+                                                                const memories = char.memories || [];
+                                                                return (
+                                                                    <div key={char.id} className="bg-gray-900/80 border border-gray-700 rounded-lg p-4 hover:border-purple-500/50 transition-colors">
+                                                                        <div className="flex justify-between items-start mb-3 border-b border-gray-800 pb-2">
+                                                                            <div>
+                                                                                <h4 className="font-bold text-purple-300">{char.name}</h4>
+                                                                                <span className="text-xs text-gray-500 font-mono">ID: {char.id}</span>
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <div className="text-xs text-gray-400">Relationship</div>
+                                                                                <div className={`text-lg font-bold ${rel >= 50 ? 'text-pink-400' : rel >= 20 ? 'text-pink-200' : 'text-gray-300'}`}>
+                                                                                    {rel}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="space-y-3">
+                                                                            <div>
+                                                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Title / Tags</div>
+                                                                                <div className="text-xs text-gray-300 line-clamp-1" title={char.title}>{char.title || "No Title"}</div>
+                                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                                                    {char.tags?.slice(0, 3).map((t: string) => (
+                                                                                        <span key={t} className="px-1.5 py-0.5 bg-gray-800 rounded text-[10px] text-gray-400">{t}</span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div>
+                                                                                <div className="flex justify-between items-center mb-1">
+                                                                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Memories ({memories.length})</div>
+                                                                                </div>
+                                                                                {memories.length > 0 ? (
+                                                                                    <ul className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/30 rounded p-2 text-xs text-gray-300">
+                                                                                        {memories.map((m: string, i: number) => (
+                                                                                            <li key={i} className="flex gap-2">
+                                                                                                <span className="text-purple-500/50">•</span>
+                                                                                                <span>{m}</span>
+                                                                                            </li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                ) : (
+                                                                                    <div className="text-xs text-gray-600 italic p-2 bg-black/20 rounded">No memories yet.</div>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
+
+                                        {/* TAB: TRANSCRIPT */}
+                                        {activeDebugTab === 'transcript' && (
+                                            <div className="h-full flex flex-col gap-4">
+                                                <div className="flex justify-between items-center pb-2 border-b border-gray-700">
+                                                    <div className="text-gray-400 text-sm">
+                                                        Full Session History ({chatHistory.length} turns)
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                const text = chatHistory.map((msg: any) => `[${msg.role.toUpperCase()}]\n${msg.text}\n`).join('\n---\n');
+                                                                navigator.clipboard.writeText(text).then(() => {
+                                                                    addToast("Transcript copied to clipboard", "success");
+                                                                });
+                                                            }}
+                                                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center gap-2 transition-colors"
+                                                        >
+                                                            <Copy size={14} /> Copy Text
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                const data = {
+                                                                    gameId: activeGameId,
+                                                                    timestamp: new Date().toISOString(),
+                                                                    history: chatHistory
+                                                                };
+                                                                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                                                                const url = URL.createObjectURL(blob);
+                                                                const a = document.createElement('a');
+                                                                a.href = url;
+                                                                a.download = `session_transcript_${activeGameId}_${Date.now()}.json`;
+                                                                document.body.appendChild(a);
+                                                                a.click();
+                                                                document.body.removeChild(a);
+                                                                URL.revokeObjectURL(url);
+                                                                addToast("Transcript saved as JSON", "success");
+                                                            }}
+                                                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center gap-2 transition-colors"
+                                                        >
+                                                            <FileJson size={14} /> Save JSON
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/50 p-4 rounded-lg font-mono text-sm border border-gray-700 text-gray-300">
+                                                    {chatHistory.length === 0 ? (
+                                                        <div className="text-gray-500 italic text-center mt-10">No history available yet.</div>
+                                                    ) : (
+                                                        chatHistory.map((msg: any, idx: number) => (
+                                                            <div key={idx} className="mb-6 border-b border-gray-800 pb-4 last:border-0">
+                                                                <div className={`text-xs font-bold mb-1 ${msg.role === 'user' ? 'text-blue-400' : 'text-purple-400'}`}>
+                                                                    [{msg.role.toUpperCase()}]
+                                                                </div>
+                                                                <div className="whitespace-pre-wrap leading-relaxed">
+                                                                    {msg.text}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </motion.div>
                             </div>
                         )
                     }
-                </AnimatePresence >
+                </AnimatePresence>
 
                 {/* Save/Load Modal */}
                 <SaveLoadModal
@@ -6401,6 +6781,31 @@ export default function VisualNovelUI() {
                     content={currentSegment?.type === 'system_popup' ? currentSegment.content : ''}
                     onAdvance={() => advanceScript()}
                 />
+
+                {/* [New] Time Skip Layer */}
+                <AnimatePresence>
+                    {currentSegment?.type === 'time_skip' && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 1.5 }}
+                            className="absolute inset-0 z-[60] bg-black flex items-center justify-center"
+                            onClick={() => advanceScript()}
+                        >
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5, duration: 1.5 }}
+                                className="text-center"
+                            >
+                                <div className="text-3xl md:text-5xl font-serif text-white font-bold tracking-wider leading-relaxed whitespace-pre-wrap">
+                                    {currentSegment.content}
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* New Feature Operations Layers */}
                 <AnimatePresence>
@@ -6455,7 +6860,7 @@ export default function VisualNovelUI() {
 
                 {/* Dialogue / Narration Layer */}
                 {
-                    currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article'].includes(currentSegment.type) && (
+                    currentSegment && !['system_popup', 'text_message', 'phone_call', 'tv_news', 'article', 'time_skip'].includes(currentSegment.type) && (
                         <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-32 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[40vh] md:h-[min(30vh,600px)]">
                             <div className="w-full max-w-screen-2xl pointer-events-auto relative">
                                 {/* Dialogue Control Bar */}

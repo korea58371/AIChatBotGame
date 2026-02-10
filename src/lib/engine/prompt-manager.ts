@@ -317,6 +317,27 @@ ${activeGoals.map((g: any) => `- [${g.type}] ${g.description}`).join('\n')}
 `;
         }
 
+        // 7. [AI Scenario Director Context]
+        if (state.scenario && state.scenario.active) {
+            const sn = state.scenario;
+            prompt += `
+\n[CURRENT SCENARIO: ${sn.title}]
+- Goal: ${sn.goal}
+- Stage: ${sn.stage}
+${sn.description ? `- Context: ${sn.description}` : ''}
+`;
+            // If there's a transient Director's Note (passed via variable or hypothetical logic)
+            // Ideally we store the note in the scenario itself or pass it as an arg.
+            // For now, let's assume the scenario object updates its 'directorsNote' field if we add one to the interface?
+            // Wait, I defined 'directorsNote' as a return value of Update, but didn't put it in the State interface.
+            // I should stick to the plan: Orchestrator injects it into the *User Message* or *Prompt*.
+            // OR I can add 'currentNote' to ScenarioState.
+            // Let's add it to ScenarioState for persistence and simplicity in PromptManager.
+            if ((sn as any).currentNote) {
+                prompt += `\n[DIRECTOR'S NOTE]: ${(sn as any).currentNote}\n(Follow this direction for the current turn's narrative style/events.)`;
+            }
+        }
+
         prompt = `
 ${moodGuideline}
 ${goalsContext}
@@ -325,10 +346,51 @@ ${prompt}
             `;
 
 
+        // [CAUSAL INTEGRITY PROTOCOL (ANTI-HALLUCINATION)] (⭐⭐⭐ CRITICAL)
+        // Prevent Story Model from inventing "Backstory" to justify simple failures.
+        prompt += `
+# [CAUSAL INTEGRITY & PROPORTIONALITY]
+1. **NO Retroactive Continuity (Retcon)**:
+   - Do NOT invent "hidden backstories" to explain current events unless they are explicitly in the Context.
+   - **Example**: If propery is stolen, it is just "stolen property". DO NOT write: "Actually, it was the Emperor's Lost Seal."
+   
+2. **Rule of Proportionality (Penalty Fits the Crime)**:
+   - **Minor Failures** (Scam, Petty Theft, rude comment) -> **Minor Consequences** (Beating, Fine, Jail for a night).
+   - **Major Failures** (Murder, Treason) -> **Major Consequences** (Execution, Hunted by Clan).
+   - **CRITICAL**: Do NOT escalate a simple "failed negotiation" into a "Blood Feud".
+
+# [IMMERSIVE NARRATIVE PROTOCOL (SHOW, DON'T TELL)]
+1. **NO Meta-Terms in Prose**:
+   - The Character Data contains tags like "Tsundere", "Yandere", "B-Rank", "First Rate".
+   - **NEVER** use these words in the narrative or dialogue. They are **ACTING INSTRUCTIONS**.
+   - **BAD**: "She acted like a tsundere." / "He released his First Rate pressure."
+   - **GOOD**: "She scoffed and turned her head, though her ears turned red." / "A heavy, suffocating weight pressed down on your shoulders."
+
+2. **Subjective Power Scaling**:
+   - The Protagonist is **Third Rate (Weak)**. 
+   - To them, high-level masters are not "Level 99" or "Peak Realm". They are "Monsters", "Unfathomable", or "Gods".
+   - Describe power through **Fear, Instinct, and Sensation** (Cold sweat, shaking knees, blurring speed), not data.
+
+# [NATURAL DIALOGUE PROTOCOL] (⭐⭐⭐ CRITICAL)
+1. **NO Parroting (Tone Reference ONLY)**:
+   - The "Tone Reference (Examples)" field in Character Data is a **STYLE GUDE**, not a rule.
+   - **NEVER** end every single sentence with the example phrases (like "~da", "~ji", "~guna").
+   - **BAD**: "I am strong-da. You are weak-da. Eat this-da." (Robot)
+   - **GOOD**: "I am strong. You act weak... Eat this!" (Natural variation)
+
+2. **Context-Aware Speech**:
+   - **Angry?** Shout, cut sentences short, use informal language.
+   - **Sad?** Mumble, trail off (...), use weak endings.
+   - **Formal?** Use proper endings only when addressing superiors.
+   - **Variety**: Mix short answers ("No.", "What?") with full sentences. DO NOT use the same sentence structure repeatedly.
+`;
+
+
+
 
         // [Language Instruction]
         if (language === 'ko') {
-            prompt += `\n\n ** [CRITICAL LANGUAGE INSTRUCTION] **\n1. **ALL OUTPUT MUST BE IN KOREAN (한국어).**\n2. Do NOT use English in the narrative, dialogue, or system messages.\n3. English is ONLY allowed for specific code keys if absolutely necessary, but strictly forbidden in visible text.\n4. Even if the Context contains English, you must TRANSLATE it to Korean for the output.`;
+            prompt += `\n\n ** [CRITICAL LANGUAGE INSTRUCTION] **\n1. ** ALL OUTPUT MUST BE IN KOREAN(한국어).**\n2.Do NOT use English in the narrative, dialogue, or system messages.\n3.English is ONLY allowed for specific code keys if absolutely necessary, but strictly forbidden in visible text.\n4.Even if the Context contains English, you must TRANSLATE it to Korean for the output.`;
         } else if (language === 'en') {
             prompt += `\n\n ** IMPORTANT: ALL OUTPUT MUST BE IN ENGLISH.** `;
         }
@@ -834,6 +896,23 @@ ${spawnCandidates || "None"}
                 charInfo += `\n- [Player Knows]: ${char.discoveredSecrets.join(' / ')}`;
             }
 
+            // [NEW] Persisted NPC-to-NPC Relationships (In Scene)
+            if (char.relationships && Object.keys(char.relationships).length > 0) {
+                // Filter to only show relationships with OTHER ACTIVE CHARACTERS to save tokens
+                const relevantRels = Object.entries(char.relationships)
+                    .filter(([targetId]) => {
+                        return activeCharIds.some(activeId =>
+                            activeId.toLowerCase() === targetId.toLowerCase() ||
+                            resolveChar(activeId)?.name === targetId
+                        );
+                    })
+                    .map(([targetId, status]) => `${targetId}: ${status}`);
+
+                if (relevantRels.length > 0) {
+                    charInfo += `\n- Known Relations in Scene: { ${relevantRels.join(', ')} }`;
+                }
+            }
+
             // [RELATIONAL CONTEXT EXPANSION]
             // Solve "Hallucinated Master" issue: 
             // If the active character references another character (e.g. Master, Rival) who is NOT active,
@@ -934,7 +1013,7 @@ ${spawnCandidates || "None"}
             // Priority 1: New 'speech' object (High Fidelity)
             if (char.speech) {
                 if (char.speech.style) charInfo += `\n- Speech Style: ${char.speech.style}`;
-                if (char.speech.ending) charInfo += `\n- Ending Style: ${char.speech.ending}`;
+                if (char.speech.ending) charInfo += `\n- Tone Reference (Examples): ${char.speech.ending}`;
                 if (char.speech.habits) charInfo += `\n- Speech Habits: ${char.speech.habits}`;
             }
             // Priority 2: Legacy Helper (Fallback)
@@ -942,7 +1021,7 @@ ${spawnCandidates || "None"}
                 const speechInfo = PromptManager.getSpeechStyle(char);
                 if (speechInfo) {
                     charInfo += `\n- Speech Style: ${speechInfo.style}`;
-                    if (speechInfo.ending !== 'Unknown') charInfo += `\n- Ending Style: ${speechInfo.ending}`;
+                    if (speechInfo.ending !== 'Unknown') charInfo += `\n- Tone Reference (Examples): ${speechInfo.ending}`;
                     if (speechInfo.callSign) charInfo += `\n- Call Sign (to Player): ${speechInfo.callSign}`;
                 }
             }
@@ -969,7 +1048,32 @@ ${spawnCandidates || "None"}
             } else {
                 // [DEFAULT/ALL MOODS] Inject Personality Summary ALWAYS (User Request)
                 if (char.personality) {
-                    const pVal = typeof char.personality === 'string' ? char.personality : JSON.stringify(char.personality);
+                    let pVal = "";
+                    if (typeof char.personality === 'string') {
+                        pVal = char.personality;
+                    } else {
+                        // [PRIVACY FILTER] Filter Inner/Affection traits
+                        // Replicated logic from character.ts for consistency in Core Engine
+                        const charName = char.name || char.이름 || 'Unknown';
+                        const charId = char.id || char.englishName || charName;
+                        // State is available in scope
+                        const relScore = state?.playerStats?.relationships?.[charName] ||
+                            state?.playerStats?.relationships?.[charId] || 0;
+
+                        const filtered: any = {};
+                        Object.entries(char.personality).forEach(([k, v]) => {
+                            const isSecretTrait = k.includes('내면') || k.includes('애정') || k.includes('Inner') || k.includes('Affection');
+                            if (isSecretTrait) {
+                                if (relScore >= 40) {
+                                    filtered[k] = v;
+                                }
+                                // Else: Omit completely.
+                            } else {
+                                filtered[k] = v;
+                            }
+                        });
+                        pVal = JSON.stringify(filtered);
+                    }
                     charInfo += `\n- Personality(Detailed): ${pVal}`;
                 }
             }

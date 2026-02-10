@@ -260,6 +260,10 @@ export const GBY_SPECIAL_FORMATS = `
 - **<시간>N일차 HH:MM(시간대)**
    - **중요**: 턴이 진행될 때뿐만 아니라, **장소가 전환될 때마다** 즉시 시간을 업데이트하여 출력하십시오.
    - 예시: \`<시간>1일차 19:00(저녁)\`
+- **<시간경과>연출 텍스트**
+   - 긴 시간(6시간 이상)이 흐를 때 사용하여 지루한 과정을 생략하고 결과를 보여주십시오.
+   - 예시: \`<시간경과>...3일 뒤...\`
+   - **[필수]**: 이 태그 사용 직후, 반드시 경과한 시간을 계산하여 **<시간>** 태그로 현재 시각을 업데이트하십시오.
 
 - **<CG>[Event_Key] 또는 off**
    - **기능**: 화면 전체를 덮는 중요 이벤트 일러스트(CG)를 출력합니다.
@@ -290,13 +294,13 @@ export const GBY_SPECIAL_FORMATS = `
 export const GBY_SYSTEM_GUIDE = GBY_OUTPUT_FORMAT;
 
 export const LEVEL_TO_RANK_MAP = [
-   { id: 'rank_none', min: 0, max: 0, title: "일반인" }, // [Added] Level 0 = Ordinary Person
-   { id: 'rank_f', min: 1, max: 9, title: "F-Rank" },
-   { id: 'rank_e', min: 10, max: 19, title: "E-Rank" },
-   { id: 'rank_d', min: 20, max: 29, title: "D-Rank" },
-   { id: 'rank_c', min: 30, max: 39, title: "C-Rank" },
-   { id: 'rank_b', min: 40, max: 59, title: "B-Rank" },
-   { id: 'rank_a', min: 60, max: 79, title: "A-Rank" },
-   { id: 'rank_s', min: 80, max: 99, title: "S-Rank" },
-   { id: 'rank_ss', min: 100, max: 999, title: "SS-Rank" },
+   { id: 'rank_none', min: 0, max: 9, title: "일반인" },
+   { id: 'rank_f', min: 10, max: 19, title: "F-Rank" },
+   { id: 'rank_e', min: 20, max: 29, title: "E-Rank" },
+   { id: 'rank_d', min: 30, max: 39, title: "D-Rank" },
+   { id: 'rank_c', min: 40, max: 49, title: "C-Rank" },
+   { id: 'rank_b', min: 50, max: 59, title: "B-Rank" },
+   { id: 'rank_a', min: 60, max: 69, title: "A-Rank" },
+   { id: 'rank_s', min: 70, max: 89, title: "S-Rank" },
+   { id: 'rank_ss', min: 90, max: 999, title: "SS-Rank" },
 ];

@@ -30,5 +30,5 @@ export const WuxiaLore = {
     martial_arts_skills,
 
     factionsDetail: factions_summary, // Now using the summary file
-    charactersDetail: CharactersDetail
+    charactersDetail: { ...CharactersDetail } // [Fix] Convert Module to Plain Object for Server Actions
 };

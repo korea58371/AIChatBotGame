@@ -45,6 +45,12 @@ export class EventManager {
 
             // 3. 조건 검사 fail이면 스킵
             try {
+                if (typeof event.condition !== 'function') {
+                    // [Safety] Serialized events might lose functions. Skip them.
+                    // console.warn(`[EventManager] Event ${event.id} has no valid condition function.`);
+                    continue;
+                }
+
                 if (!event.condition(state)) continue;
             } catch (e) {
                 console.warn(`[EventManager] Logic error in event ${event.id}:`, e);

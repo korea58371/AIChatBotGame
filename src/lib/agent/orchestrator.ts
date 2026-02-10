@@ -12,6 +12,8 @@ import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../ai/model-config'; // Moved to ai/model-config
 import { PromptManager } from '../engine/prompt-manager'; // Moved to engine/prompt-manager
 import { EventManager } from '../engine/event-manager'; // Moved to engine/event-manager
+import { AgentScenario } from './scenario-agent'; // [NEW]
+
 
 export class AgentOrchestrator {
 
@@ -62,10 +64,9 @@ export class AgentOrchestrator {
 
         // 2. Parallel Router & Casting
         // 2. Casting Only (Router Merged)
-        //    AgentRouter.analyze(history, lastContext, activeCharacterNames, lastTurnSummary),
-        //    AgentCasting.analyze(gameState, lastTurnSummary, userInput, playerLevel)
-        // ]);
+        console.time("Phase 1 - Casting");
         const castingResult = await AgentCasting.analyze(apiKey, gameState, lastTurnSummary, userInput, playerLevel);
+        console.timeEnd("Phase 1 - Casting");
         const { active, background } = castingResult;
 
         const suggestions = [...active, ...background]; // [Fix] Return ALL 12 candidates to UI for debugging
@@ -73,18 +74,19 @@ export class AgentOrchestrator {
 
         // 3. Retriever
         // 3. Retriever (Use userInput directly)
-        // [Refactor] Pass both Active and Background lists to Retriever for distinct formatting
+        console.time("Phase 1 - Retriever");
         let retrievedContext = await AgentRetriever.retrieveContext(userInput, gameState, active, background);
+        console.timeEnd("Phase 1 - Retriever");
 
         // [Cleanup] 'Regional Key Figures' injection is now handled by Retriever as '[Background Knowledge]'
 
         const t3 = Date.now();
 
         // 4. Pre-Logic
-        console.log(`[Orchestrator] PreLogic State Tension: ${gameState.tensionLevel}, PlayerStats Tension: ${gameState.playerStats?.tensionLevel}`);
-        // 4. Pre-Logic (Handles classification now)
+        console.time("Phase 1 - PreLogic");
         console.log(`[Orchestrator] PreLogic State Tension: ${gameState.tensionLevel}, PlayerStats Tension: ${gameState.playerStats?.tensionLevel}`);
         const preLogicOut = await AgentPreLogic.analyze(history, retrievedContext, userInput, gameState, lastTurnSummary, [], language);
+        console.timeEnd("Phase 1 - PreLogic");
 
         // [ADAPTER] Create fake router output for UI compatibility
         const routerOut = {
@@ -165,9 +167,79 @@ export class AgentOrchestrator {
             }
         }
 
-        // 5. Story Generation
-        const compositeInput = `
+        // 5. [NEW] AI Scenario Director
+        try {
+            // A. Update Existing Scenario
+            if (effectiveGameState.scenario && effectiveGameState.scenario.active) {
+                console.log(`[Orchestrator] Updating Scenario: ${effectiveGameState.scenario.title}`);
+                const updateResult = await AgentScenario.update(
+                    apiKey,
+                    effectiveGameState.scenario,
+                    userInput,
+                    lastTurnSummary
+                );
 
+                if (updateResult.status === 'COMPLETED' || updateResult.status === 'FAILED' || updateResult.status === 'IGNORED') {
+                    console.log(`[Orchestrator] Scenario Ended: ${updateResult.status}`);
+                    effectiveGameState.scenario = null; // Clear
+                    // Optional: Add log entry about completion
+                } else {
+                    // Update State
+                    effectiveGameState.scenario.stage = updateResult.stage;
+                    effectiveGameState.scenario.variables = updateResult.variables;
+                    effectiveGameState.scenario.currentNote = updateResult.directorsNote;
+                }
+            }
+            // B. Generate New Scenario (If Idle)
+            else {
+                // Trigger Condition: Calm/Daily mood + Random Chance (e.g. 20%)
+                const isIdle = !effectiveGameState.activeEvent && (effectiveGameState.currentMood === 'daily' || effectiveGameState.currentMood === 'calm');
+                const randomTrigger = Math.random() < 0.2; // 20% chance
+
+                if (isIdle && randomTrigger) {
+                    console.log(`[Orchestrator] Attempting to generate new scenario...`);
+                    const newScenario = await AgentScenario.generate(
+                        apiKey,
+                        effectiveGameState,
+                        {
+                            location: effectiveGameState.currentLocation,
+                            activeCharacters: activeCharacterNames,
+                            playerStats: effectiveGameState.playerStats
+                        }
+                    );
+
+                    if (newScenario) {
+                        console.log(`[Orchestrator] New Scenario Started: ${newScenario.title}`);
+                        effectiveGameState.scenario = newScenario;
+                        // Inject initial note if available (or wait for next turn update)
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`[Orchestrator] Scenario Error:`, e);
+        }
+
+        // 6. Story Generation
+
+        // [Think Process Strategy]
+        // Flash models need "Instruction (Do this)" / Pro models need "Review (Check this)"
+        const isFlashModel = modelName.toLowerCase().includes('flash');
+        const thinkingInstruction = isFlashModel
+            ? `[Thinking Process Required (Creative Planning)]
+답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
+1. [Situation Summary]: 현재 플레이어의 의도와 상황을 1문장으로 요약하시오.
+2. [Character Reaction]: 위 상황(1번)에 대해, 등장인물들이 보일 **가장 자연스럽고 개연성 있는 반응**을 스스로 판단하여 결정하시오. (특정 분위기를 강제하지 말 것)
+3. [Tone Planning]: 캐릭터 설정(말투, 어미)을 참고하여, 이번 턴에 사용할 **핵심 대사 키워드**를 미리 2개씩 선정하시오.
+4. [Narrative Focus]: 현재 분위기(Mood)가 평화롭다면, 감정선과 분위기 묘사에 집중하시오. 유저가 원하지 않는 한 억지 갈등(Conflict)이나 반전(Twist)을 생성하지 마시오.`
+            : `[Thinking Process Required]
+답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
+1. 현재 상황(Context)과 모순되는 점이 없는가?
+2. 등장인물의 말투(Speech Pattern)는 설정과 일치하는가?
+3. 이번 턴의 주요 사건(Key Events)은 무엇인가?
+4. 캐릭터들의 기억 정보와 현재 네러티브의 개연성/핍진성이 유지되는가?
+5. **[Time Skip Check]**: 이번 행동이 장기간(6시간 이상) 걸리는 일이라면, <시간경과> 태그 사용을 고려했는가?`;
+
+        const compositeInput = `
 [Context data]
 ${PromptManager.getPlayerContext(effectiveGameState, language)}
 ${PromptManager.getActiveCharacterProps(effectiveGameState, undefined, language)}
@@ -178,13 +250,28 @@ ${userInput}
 
 나레이션 가이드와 기존 설정 및 규칙을 참고하여 8000자 분량의 내용을 작성하세요.
 
+[Special Output Rule: Time Skip]
+- If the narrative involves a significant passage of time (Travel, Sleep, Training > 6 hours), you MUST use the <시간경과> tag.
+- Usage: <시간경과>Text to Display (Newline)
+- Example: <시간경과>3일 후, 낙양에 도착했다.
+- **[Time Update]**: Immediately after this tag, you MUST output a new <시간> tag adding the elapsed time.
+- This triggers a cinematic fade-out effect. Use it to skip boring repetitions.
+
 [Narrative Direction]
 ${preLogicOut.narrative_guide}
 
 [Casting & Narrative Guidelines]
 1. **Selection Authority**: You have the final authority to ignore characters if they don't fit the current mood, even if they are in the [Context].
-2. **Narrative Priority**: Prioritize characters who create drama, conflict, or drive the plot forward. Do not force every active character to speak if it dilutes the scene.
+2. **Narrative Priority**: Prioritize characters who fit the **Current Mood**. If 'Calm', prioritize bonding/dialogue. If 'Tense', prioritize conflict/action. Do not force every active character to speak if it dilutes the scene.
 3. **Logic Check**: If a character's presence feels unnatural despite being cast, you may describe them as "silent in the background" or momentarily absent.
+4. **Casting Discipline**: If the Current Mood is 'Calm' or 'Daily', avoid introducing more than 1 new character every 5-10 turns.
+   - **Focus**: Depth over Width.
+   - **Interaction Style**: If NPCs are present, prioritize **Lighthearted Banter (Manzai)** or **Comedic Misunderstandings** over serious plot progression. Making the user laugh is better than making them stressed.
+4. **Web Novel Consistency**: Current Turn is ${effectiveGameState.turnCount || 0} (Approx Chapter ${Math.ceil(((effectiveGameState.turnCount || 0) + 1) / 20)}).
+   - **MANDATE**: 사건의 규모를 키우지 말고, 현재의 템포를 유지하세요. (Maintain tempo, do not escalate scale).
+   - If Chapter 1-2: DO NOT rush the plot. Keep the scale small (Local/Village level). No major secrets.
+   - If Chapter 3+: You may introduce larger hooks.
+
 ${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysis}` : ""}
 ${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
 ${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
@@ -193,12 +280,7 @@ ${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_
 ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}
 
 
-[Thinking Process Required]
-답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
-1. 현재 상황(Context)과 모순되는 점이 없는가?
-2. 등장인물의 말투(Speech Pattern)는 설정과 일치하는가?
-3. 이번 턴의 주요 사건(Key Events)은 무엇인가?
-4. 캐릭터들의 기억 정보와 현재 네러티브의 개연성/핍진성이 유지되는가?
+${thinkingInstruction}
 
 그 후, <Output> 태그 안에 본문을 작성하세요.
 `;
@@ -241,6 +323,13 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
             rawText = rawText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '').trim();
         }
 
+        // [New] Extract Thinking Process for UI Log
+        let thinkingContent = null;
+        const thinkingMatch = (storyResult.text || "").match(/<Thinking>([\s\S]*?)<\/Thinking>/i);
+        if (thinkingMatch) {
+            thinkingContent = thinkingMatch[1].trim();
+        }
+
         let cleanStoryText = rawText
             .replace(/\[Stat[^\]]*\]/gi, '')
             .replace(/<Stat[^>]*>/gi, '')
@@ -265,7 +354,9 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
             .replace(/\[ResolvedInjury[^\]]*\]/gi, '')
             .replace(/<나레이션[^>]*>/gi, '')
             .replace(/<\/나레이션>/gi, '')
-            .replace(/\[나레이션[^\]]*\]/gi, '');
+            .replace(/\[나레이션[^\]]*\]/gi, '')
+            .replace(/<Skill[^>]*>/gi, '') // [NEW] Strip Skill XML tags
+            .replace(/\[Skill[^\]]*\]/gi, ''); // [NEW] Strip Skill Bracket tags
 
         // [Guard] Empty Story Validation
         if (!cleanStoryText || !cleanStoryText.trim()) {
@@ -307,6 +398,7 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
             usedModel: (storyResult as any).usedModel,
             effectiveGameState,
             retrievedContext, // Optional debug
+            thinking: thinkingContent, // [New] Pass Thinking Process to UI
             systemPrompt: (storyResult as any).systemPrompt, // [Fix] Expose Static Prompt
             finalUserMessage: (storyResult as any).finalUserMessage // [Fix] Expose Dynamic Prompt
         };
@@ -453,6 +545,7 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
         ]);
 
         const postLogicOut = postLogicRes.result;
+
         const martialArtsOut = martialArtsRes.result;
         const choicesOut = choicesRes.result;
         const eventOut = eventRes.result || { debug: { status: 'UNKNOWN_ERROR', serverGameId: 'UNKNOWN' } };
@@ -651,6 +744,7 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
                 total: Date.now() - startTime
             },
             cost: totalCost,
+            thinking: p1.thinking, // [New] Pass Thinking Content
             systemPrompt: (p1.storyResult as any).systemPrompt,
             finalUserMessage: (p1.storyResult as any).finalUserMessage
         };
@@ -747,7 +841,19 @@ ${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
 ${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_inference}` : ""}
 ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}`;
 
-        const thinkingInstruction = `[Thinking Process Required]
+        // [Stream] Conditional CoT Logic
+        const isFlashModel = modelName.toLowerCase().includes('flash');
+        const thinkingInstruction = isFlashModel
+            ? `[Thinking Process Required (Creative Planning)]
+답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
+1. [Situation Summary]: 현재 플레이어의 의도와 상황을 1문장으로 요약하시오.
+2. [Character Reaction]: 위 상황(1번)에 대해, 등장인물들이 보일 **가장 자연스럽고 개연성 있는 반응**을 스스로 판단하여 결정하시오. (특정 분위기를 강제하지 말 것)
+3. [Tone Planning]: 캐릭터 설정(말투, 어미)을 참고하여, 이번 턴에 사용할 **핵심 대사 키워드**를 미리 2개씩 선정하시오.
+4. [Narrative Focus]: 현재 분위기(Mood)가 평화롭다면, 감정선과 분위기 묘사에 집중하시오. 유저가 원하지 않는 한 억지 갈등(Conflict)이나 반전(Twist)을 생성하지 마시오.
+
+**[중요] 답변은 반드시 <Thinking> 태그로 시작해야 합니다.**
+그 후, <Output> 태그 안에 본문을 작성하세요.`
+            : `[Thinking Process Required]
 답변을 생성하기 전에, <Thinking> 태그 안에 다음 내용을 먼저 정리하세요:
 1. 현재 상황(Context)과 모순되는 점이 없는가?
 2. 등장인물의 말투(Speech Pattern)는 설정과 일치하는가?
@@ -774,6 +880,7 @@ ${thinkingInstruction}
 
         const cleanHistory = history.map(msg => msg.role === 'model' ? { ...msg, text: msg.text.replace(/<선택지[^>]*>.*?(\n|$)/g, '').trim() } : msg);
 
+        console.time("Stream - Time To First Token");
         const streamGen = generateResponseStream(
             apiKey,
             cleanHistory,
@@ -786,11 +893,28 @@ ${thinkingInstruction}
         let fullRawText = "";
         let storyMetadata: any = null;
 
+        let firstChunkReceived = false;
         // Yield chunks
         for await (const chunk of streamGen) {
+            if (!firstChunkReceived) {
+                console.timeEnd("Stream - Time To First Token");
+                firstChunkReceived = true;
+            }
+
             if (typeof chunk === 'string') {
                 fullRawText += chunk;
-                yield { type: 'text', content: chunk };
+                // [Fix] Real-time Scrubbing for Stream
+                // We must strip tags from chunks to prevent leakage during typing.
+                // Note: deeply split tags (e.g. <Sk|ill>) might still leak briefly, but this covers 99%.
+                const cleanChunk = chunk
+                    .replace(/<Skill[^>]*>/gi, '')
+                    .replace(/\[Skill[^\]]*\]/gi, '')
+                    .replace(/<Stat[^>]*>/gi, '') // Add other critical tags if needed
+                    .replace(/\[Stat[^\]]*\]/gi, '')
+                    .replace(/<Rel[^>]*>/gi, '')
+                    .replace(/\[Rel[^\]]*\]/gi, '');
+
+                yield { type: 'text', content: cleanChunk };
             } else {
                 storyMetadata = chunk;
             }
@@ -805,6 +929,21 @@ ${thinkingInstruction}
 
         // [Fix] Use LAST Output block for streaming text validation too
         const outputMatches = [...fullRawText.matchAll(/<Output>([\s\S]*?)<\/Output>/gi)];
+
+        // [New] Extract Thinking Process for Debugging
+        // Handle multiple/fragmented blocks (especially from streaming native thoughts)
+        const thinkingMatches = [...fullRawText.matchAll(/<Thinking>([\s\S]*?)<\/Thinking>/gi)];
+        let thinkingContent = "";
+
+        if (thinkingMatches.length > 0) {
+            thinkingContent = thinkingMatches.map(m => m[1]).join(' ').trim();
+            console.log(`[Orchestrator] Extracted Thinking Content (${thinkingContent.length} chars)`);
+        } else {
+            // Fallback: If no tags, but we have text and use thinking model? 
+            // Unlikely to recover native thoughts if tags missing.
+            console.warn(`[Orchestrator] Failed to Extract Thinking. Raw Preview: ${fullRawText.substring(0, 200)}...`);
+        }
+
         if (outputMatches.length > 0) {
             const lastMatch = outputMatches[outputMatches.length - 1];
             cleanStoryText = lastMatch[1];
@@ -856,6 +995,7 @@ ${thinkingInstruction}
         const finalPayload = {
             reply: p2.finalStoryText, // Has choices appended
             raw_story: cleanStoryText,
+            thinking: thinkingContent, // [New] Pass Thinking to UI
             story_debug: { // [NEW] Detailed Prompt Breakdown
                 components: {
                     narrative_guide: narrativeGuide,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '@/lib/store';
 import { parseScript } from '@/lib/utils/script-parser';
-import { X, Play, Database, BookOpen, Terminal } from 'lucide-react';
+import { X, Play, Database, BookOpen, Terminal, FileJson, Copy, Check } from 'lucide-react';
 
 interface DebugPopupProps {
     isOpen: boolean;
@@ -21,8 +21,9 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
     const gameId = useGameStore(state => state.activeGameId);
 
 
-    const [activeTab, setActiveTab] = useState<'script' | 'memory' | 'story'>('script');
+    const [activeTab, setActiveTab] = useState<'script' | 'memory' | 'story' | 'transcript'>('script');
     const [scriptInput, setScriptInput] = useState('');
+    const [copied, setCopied] = useState(false);
 
     if (!isOpen) return null;
 
@@ -38,6 +39,31 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
         } catch (e) {
             alert(`Error parsing script: ${e}`);
         }
+    };
+
+    const handleCopyTranscript = () => {
+        const text = chatHistory.map(msg => `[${msg.role.toUpperCase()}]\n${msg.text}\n`).join('\n---\n');
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+
+    const handleDownloadTranscript = () => {
+        const data = {
+            gameId,
+            timestamp: new Date().toISOString(),
+            history: chatHistory
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `session_transcript_${gameId}_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -86,6 +112,12 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                         className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'story' ? 'bg-green-500/10 text-green-500 border-b-2 border-green-500' : 'text-gray-500 hover:text-gray-300'}`}
                     >
                         <BookOpen size={16} /> Storyline
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('transcript')}
+                        className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'transcript' ? 'bg-purple-500/10 text-purple-500 border-b-2 border-purple-500' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                        <FileJson size={16} /> Transcript
                     </button>
                 </div>
 
@@ -223,6 +255,40 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                         <div className="h-full overflow-y-auto space-y-6 pr-2 custom-scrollbar">
                             <section>
                                 <details className="group" open>
+                                    <summary className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1 cursor-pointer select-none">AI Scenario Director</summary>
+                                    <div className="bg-gray-900 p-4 rounded text-sm text-gray-300 leading-relaxed group-open:block">
+                                        {useGameStore.getState().scenario ? (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between"><span className="text-gray-500">Title</span> <span className="text-yellow-400 font-bold">{useGameStore.getState().scenario?.title}</span></div>
+                                                <div className="flex justify-between"><span className="text-gray-500">Goal</span> <span className="text-white">{useGameStore.getState().scenario?.goal}</span></div>
+                                                <div className="flex justify-between"><span className="text-gray-500">Stage</span> <span className="text-blue-400">{useGameStore.getState().scenario?.stage}</span></div>
+                                                <div className="flex justify-between"><span className="text-gray-500">Turns</span> <span className="text-gray-400">{useGameStore.getState().scenario?.turnCount}</span></div>
+
+                                                <div className="border-t border-gray-800 pt-2 mt-2">
+                                                    <div className="text-gray-500 mb-1 text-xs">Variables</div>
+                                                    <pre className="bg-black p-2 rounded text-xs text-green-300 overflow-x-auto">
+                                                        {JSON.stringify(useGameStore.getState().scenario?.variables, null, 2)}
+                                                    </pre>
+                                                </div>
+
+                                                {useGameStore.getState().scenario?.currentNote && (
+                                                    <div className="border-t border-gray-800 pt-2 mt-2">
+                                                        <div className="text-pink-500 mb-1 text-xs font-bold">Director's Note (Next Turn Guide)</div>
+                                                        <div className="text-pink-300 italic text-xs bg-pink-900/10 p-2 rounded border border-pink-500/20">
+                                                            {useGameStore.getState().scenario?.currentNote}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="text-gray-500 italic">No active scenario. (Idle)</div>
+                                        )}
+                                    </div>
+                                </details>
+                            </section>
+
+                            <section>
+                                <details className="group" open>
                                     <summary className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1 cursor-pointer select-none">Scenario Summary</summary>
                                     <div className="bg-gray-900 p-4 rounded text-sm text-gray-300 leading-relaxed whitespace-pre-wrap group-open:block">
                                         {scenarioSummary || "No summary available."}
@@ -243,6 +309,48 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                     </div>
                                 </details>
                             </section>
+                        </div>
+                    )}
+
+                    {activeTab === 'transcript' && (
+                        <div className="flex flex-col h-full gap-4">
+                            <div className="flex justify-between items-center pb-2 border-b border-gray-800">
+                                <div className="text-gray-400 text-sm">
+                                    Full Session History ({chatHistory.length} turns)
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleCopyTranscript}
+                                        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center gap-2 transition-colors"
+                                    >
+                                        {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                                        {copied ? 'Copied' : 'Copy Text'}
+                                    </button>
+                                    <button
+                                        onClick={handleDownloadTranscript}
+                                        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-xs flex items-center gap-2 transition-colors"
+                                    >
+                                        <FileJson size={14} />
+                                        Save JSON
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-950 p-4 rounded-lg font-mono text-sm border border-gray-800">
+                                {chatHistory.length === 0 ? (
+                                    <div className="text-gray-600 italic text-center mt-10">No history available yet.</div>
+                                ) : (
+                                    chatHistory.map((msg, idx) => (
+                                        <div key={idx} className="mb-6 border-b border-gray-900 pb-4 last:border-0">
+                                            <div className={`text-xs font-bold mb-1 ${msg.role === 'user' ? 'text-blue-400' : 'text-purple-400'}`}>
+                                                [{msg.role.toUpperCase()}]
+                                            </div>
+                                            <div className="text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                                {msg.text}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>

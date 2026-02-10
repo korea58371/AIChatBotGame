@@ -53,6 +53,7 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
     const setLanguage = useGameStore(state => state.setLanguage);
     const userCoins = useGameStore(state => state.userCoins);
     const setUserCoins = useGameStore(state => state.setUserCoins);
+    const fetchUserCoins = useGameStore(state => state.fetchUserCoins); // [Security]
 
     const setSessionUser = useGameStore(state => state.setSessionUser);
 
@@ -65,11 +66,12 @@ export default function TitleScreen({ onLoginSuccess }: TitleScreenProps) {
             setUser(authUser);
             setSession(authSession); // [Fix] Sync session
             setCoins(authCoins);
-            setUserCoins(authCoins || 0); // [Sync] Sync DB coins to Store
+            setUserCoins(authCoins || 0); // [Sync] Initial fast sync from session
+            if (authUser) fetchUserCoins(); // [Security] Verify with server
             setSessionUser(authUser); // [Fix] Sync User to Global Store for Cloud Ops
             setIsLoading(false);
         }
-    }, [authUser, authSession, authLoading, authCoins, setUserCoins, setSessionUser]);
+    }, [authUser, authSession, authLoading, authCoins, setUserCoins, setSessionUser, fetchUserCoins]);
 
     // [Localization]
     const t = (language && translations[language as keyof typeof translations]) || translations.ko;

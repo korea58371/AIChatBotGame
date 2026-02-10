@@ -11,18 +11,37 @@ export function resolveLocationHierarchy(locName: string): string[] {
     if (!locName) return [];
 
     // 0. Tokenize (Split by space, _, >)
+    // 0. Tokenize (Split by space, _, >)
     const tokens = locName.split(/[\s_>]+/).filter(Boolean);
     if (tokens.length === 0) return [locName];
 
     // 1. ANCHOR: Find explicit Region first
-    // This is crucial to prevent "Cave" from matching a random region's cave when the user implies a specific context.
     const regionKeys = Object.keys(locations.regions);
     let matchedRegionKey: string | null = null;
 
-    for (const token of tokens) {
-        if (regionKeys.includes(token)) {
-            matchedRegionKey = token;
-            break; // Found the region anchor
+    // [Fix] Normalized English Code Check (e.g. "North Sea" -> "NorthSea" -> Match "북해")
+    // We check the FULL string against eng_codes first, because tokens might split "North Sea" into ["North", "Sea"]
+    const normalizedLocName = locName.toLowerCase().replace(/[\s_>(),.-]/g, ''); // aggressive normalization
+
+    for (const rKey of regionKeys) {
+        // 1. Check Korean Key (Exact token match)
+        if (tokens.includes(rKey)) {
+            matchedRegionKey = rKey;
+            break;
+        }
+
+        // 2. Check English Code (Substring match on normalized input)
+        const regionData = locations.regions[rKey as keyof typeof locations.regions] as any;
+        if (regionData.eng_code) {
+            const normEng = regionData.eng_code.toLowerCase().replace(/\s/g, '');
+            if (normalizedLocName.includes(normEng)) {
+                matchedRegionKey = rKey;
+                // Don't break yet, prioritize Korean key if multiple match? 
+                // Actually English match is strong evidence if Korean is absent.
+                // We continue to see if there's a specific Korean token match (higher fidelity?), 
+                // but "North Sea" vs "북해" are exclusive usually.
+                break;
+            }
         }
     }
 
@@ -393,8 +412,14 @@ export class AgentCasting {
                     // "적군의 경우 현재 보정치(0.01) 유지"
                     actScore = 0.01;
                     actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Enemy Disqualified`);
+                } else if (rankGap >= 3) {
+                    // [Gatekeeper Protocol] Huge Gap (>= 3) for Allies/Neutrals
+                    // Even if Ally, if the gap is too huge (e.g. Level 1 vs Level 99), they shouldn't just hang out.
+                    // Force heavy penalty unless User Mentioned.
+                    actScore *= 0.1;
+                    actReasons.push(`Rank Gap(${rankGap}) [Gatekeeper] Too High (x0.1)`);
                 } else {
-                    // [Ally/Neutral] Relaxed Penalty (50%)
+                    // [Ally/Neutral] Moderate Gap (2) -> Relaxed Penalty (50%)
                     // "아군일 경우, 0.01이 아닌 50% 정도로"
                     actScore *= 0.5;
                     actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Ally Soft Penalty (x0.5)`);
@@ -418,15 +443,17 @@ export class AgentCasting {
 
             // 2. Home Ground Super Bonus (Background)
             if (affiliationStr && fullLocation && (fullLocation.includes(affiliationStr) || affiliationStr.includes(fullLocation))) {
-                bgScore += 50.0; // User Request: Super Strong Bonus
-                bgReasons.push("Home Ground Super Bonus (+50.0)");
+                // [FIX] Nerfed from 50.0 to 15.0 to prevent instant boss spawns
+                bgScore += 15.0;
+                bgReasons.push("Home Ground Bonus (+15.0)");
             }
 
             // 3. Active Relation Bonus for Background too
             // 3. Active Relation Bonus (Applied to BOTH Active and Background)
             for (const activeId of activeCharIds) {
                 if (relationships[activeId]) {
-                    bgScore += 4.0;
+                    // [FIX] Nerfed from 4.0 to 2.5
+                    bgScore += 2.5;
                     bgReasons.push(`Related to Active(${activeId})`);
 
                     // [Modified] Also apply to Active Score
@@ -570,6 +597,7 @@ export class AgentCasting {
             name: c.name,
             score: c.activeScore,
             reasons: c.activeReasons,
+            scenario: (c as any).aiScenario, // [Fix] Propagate AI scenario to result
             data: c.data
         }));
 

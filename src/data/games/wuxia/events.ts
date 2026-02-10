@@ -3,6 +3,28 @@ import { EventManager, GameEvent } from '@/lib/engine/event-manager';
 
 export const GAME_EVENTS: GameEvent[] = [
     // ============================================================
+    // [INTRO] 시작 이벤트
+    // ============================================================
+    {
+        id: 'intro_survival',
+        type: 'MAIN',
+        priority: 0, // Highest Priority
+        once: true,
+        name: '강호의 비정함',
+        condition: (state) => {
+            return (state.turnCount || 0) <= 1;
+        },
+        prompt: `
+        ## [EVENT: 강호의 비정함 (Ruthless Jianghu)]
+        [Trigger]: 강호에 첫발을 내디뎠으나, 현실은 냉혹하다.
+        
+        **상황**: 가진 것 없는 떠돌이 신세. 배가 고프고 날은 저물어간다.
+        **목표 설정**: 무공 비급을 찾는 것이 문제가 아니다. **'오늘 밤 묵을 곳과 한 끼 식사'**를 해결하는 것이 급선무다.
+        **행동 유도**: 주막에서 설거지를 하거나, 장작을 패는 등 **단순 육체노동**이나 **구걸**을 통해 끼니를 해결하라.
+        **금지 사항 (MANDATORY)**: '의문의 사람을 돕거나', '비밀 물건을 운반하는' 클리셰 전개를 절대 금지한다. 오직 처절한 생존 노동에만 집중하라.
+        `
+    },
+    // ============================================================
     // [MAIN STORY] 핵심 서사
     // ============================================================
     {
@@ -85,6 +107,30 @@ export const GAME_EVENTS: GameEvent[] = [
         - **분위기**: 젊은 혈기가 넘치는 축제 분위기.
         - **기대감**: 우승자에게는 '별호(Title)'와 '영약'이 주어진다.
         - **주인공의 위치**: '듣보잡' 취급을 받으며 예선에 참가하지만, 본선에서 모두를 경악시킬 잠재력을 가지고 있다.
+        `
+    },
+    // ============================================================
+    // [SYSTEM] 자동 성장 및 시간 스킵 이벤트
+    // ============================================================
+    {
+        id: 'generic_cultivation',
+        type: 'SUB',
+        priority: 10,
+        once: false, // Can happen multiple times
+        name: '무도수련 (Martial Cultivation)',
+        condition: (state) => {
+            // Only if user explicitly wants to train
+            return false; // Triggered via AI reasoning or manual call in some systems, 
+            // but here we define it so the AI can reference the 'template'.
+        },
+        prompt: `
+        ## [EVENT: 무도수련 (Martial Cultivation)]
+        [Trigger]: 유저가 수련, 운기조식, 혹은 무공 익히기를 시도함.
+        
+        **가이드**:
+        1. **시간 스킵**: "...열흘이 흘렀다.", "...한 달이 지났다." 등 과감한 시간 경과를 묘사하라.
+        2. **경지 상승**: 주인공의 '천재성'을 강조하며, 단련된 기운이 단전에 쌓이는 과정을 생생히 묘사하라. (10일 당 내공 약 1년치 응축 가능)
+        3. **상태 변화**: <시간> 태그를 경과된 시간만큼 업데이트하라.
         `
     }
 ];

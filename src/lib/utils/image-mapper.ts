@@ -71,6 +71,9 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
         return ''; // 빈 문자열 반환 (시스템이 처리하도록)
     }
 
+    // [Fix] Normalize NFD -> NFC
+    koreanName = koreanName.normalize('NFC');
+
     // [Alias Resolution] Normalize '주인공'/'나' -> Player Name
     // This ensures consistent lookup for both Overrides and CharMap
     let resolvedName = koreanName;
@@ -90,24 +93,11 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
         // [Fix] Check if the override image is in ExtraCharacters (e.g. Generated Protagonists)
         // or in Characters (e.g. Hidden Named Protagonists like Im Seong-jun)
 
-        // Debugging logs
-        console.log(`[ImageMapper] Hidden Protagonist Check: '${state.protagonistImageOverride}'`);
-        console.log(`[ImageMapper] Available Extras Count: ${availableExtraImages.length}`);
         const foundInExtra = availableExtraImages.includes(state.protagonistImageOverride!) || availableExtraImages.includes(state.protagonistImageOverride + '.png');
-        console.log(`[ImageMapper] Found in Extras? ${foundInExtra}`);
-        if (!foundInExtra && availableExtraImages.length > 0) {
-            // Print first few to check encoding/structure
-            console.log(`[ImageMapper] Sample Extras: ${availableExtraImages.slice(0, 5).join(', ')}`);
-            // Check specific match attempt
-            const specificMatch = availableExtraImages.find(x => x.normalize('NFC') === state.protagonistImageOverride?.normalize('NFC'));
-            console.log(`[ImageMapper] NFC Match Check: ${specificMatch}`);
-        }
 
         if (state.protagonistImageOverride && foundInExtra) {
-            console.log(`[ImageMapper] Found Override in Extras: ${extraBasePath}/${state.protagonistImageOverride}.png`);
             return `${extraBasePath}/${state.protagonistImageOverride}.png`;
         }
-        console.log(`[ImageMapper] Defaulting Override to CharPath: ${charBasePath}/${state.protagonistImageOverride}.png`);
         return `${charBasePath}/${state.protagonistImageOverride}.png`;
     }
 
@@ -147,7 +137,8 @@ export function getCharacterImage(koreanName: string, koreanEmotion: string): st
 
     // A. Direct File Match (Priority for Static Extras in Wuxia)
     // If input name is "마을의원_늙은" and it exists as a file, use it.
-    if (availableExtraImages.includes(koreanName)) {
+    // [Fix] Block '주인공' from being caught here if it happens to exist as a phantom file or valid extra
+    if (availableExtraImages.includes(koreanName) && koreanName !== '주인공') {
         return `${extraBasePath}/${koreanName}.png`;
     }
 

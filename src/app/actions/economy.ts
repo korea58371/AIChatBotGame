@@ -225,3 +225,31 @@ export async function deductFatePoints(amount: number) {
         return { success: false, error: e.message };
     }
 }
+
+export async function getUserBalance() {
+    try {
+        const cookieStore = await cookies();
+        const supabase = createClient(cookieStore);
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) return { success: false, error: "Unauthorized" };
+
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+        if (!serviceKey || !supabaseUrl) return { success: false, error: "Server Config Error" };
+        const adminClient = createAdminClient(supabaseUrl, serviceKey);
+
+        const { data: profile, error: fetchError } = await adminClient
+            .from('profiles')
+            .select('coins')
+            .eq('id', user.id)
+            .single();
+
+        if (fetchError || !profile) return { success: false, error: "Profile not found" };
+
+        return { success: true, balance: profile.coins };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}

@@ -71,7 +71,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                 if (product.type === 'token') {
                     // Optimistic Update
                     const newCoins = userCoins + totalAmount;
-                    setUserCoins(newCoins); // Update Store
+                    setUserCoins(newCoins); // [Optimistic] Update Store immediately
 
                     try {
                         // [Fix] Use Server Action (Admin) to bypass RLS and ensure security
@@ -81,6 +81,11 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                         if (!result.success) {
                             throw new Error(result.error);
                         }
+
+                        // [Security] Sync with Server to ensure final consistency
+                        const { fetchUserCoins } = useGameStore.getState();
+                        await fetchUserCoins();
+
                     } catch (dbError: any) {
                         console.error('Failed to sync coins to Supabase:', dbError);
                         alert(`코인은 지급되었으나 서버 저장에 실패했습니다. (새로고침 시 사라질 수 있음)\n오류: ${dbError.message || dbError}`);

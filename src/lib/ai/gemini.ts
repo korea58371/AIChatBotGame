@@ -420,14 +420,17 @@ export async function* generateResponseStream(
                 }
 
                 // Handle thoughts if present but no text
-                if (!chunkText && chunk.candidates && chunk.candidates.length > 0) {
-                    // Check candidates for parts
-                    /* 
+                if (chunk.candidates && chunk.candidates.length > 0) {
                     const parts = chunk.candidates[0].content?.parts || [];
-                    parts.forEach(p => {
-                       // if (p.thought) console.log(`[GeminiStream] THOUGHT:`, p.text);
-                    });
-                    */
+                    for (const p of parts as any[]) {
+                        // Relaxed check and debug logging
+                        if (p.thought && p.text) {
+                            // console.log(`[GeminiStream] Native Thought Chunk: ${p.text.length} chars`);
+                            yield `<Thinking>${p.text}</Thinking>`;
+                        } else if (p.thought) {
+                            console.log(`[GeminiStream] Found thought part with no text:`, JSON.stringify(p));
+                        }
+                    }
                 }
 
                 if (chunkText) {

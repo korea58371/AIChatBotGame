@@ -379,8 +379,8 @@ export function selectProtagonistImage(
 
     // 3. Fallback Defaults
     if (gender === 'male') {
-        return 'protagonist_wuxia_male_default';
+        return '유쾌한주인공1'; // Default Male
     } else {
-        return 'protagonist_wuxia_female_default';
+        return '여무사여'; // Default Female
     }
 }

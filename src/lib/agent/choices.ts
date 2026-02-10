@@ -159,6 +159,13 @@ ${storyText}
 
 [Task]
 Generate 3 distinct choices based on the **IMMEDIATE END STATE** of the [Current Story Segment] for [${gameState.playerName}].
+
+**[CRITICAL INSTRUCTION - FORWARD MOMENTUM]**
+- **Do NOT just repeat what happened.** (e.g., If the text says "I sat down", do NOT offer "Sit down".)
+- **Do NOT just think about what happened.** (e.g., If the text says "I wondered why", do NOT offer "Wonder why".)
+- **OFFER THE NEXT ACTION.** (e.g., "Ask him about it", "Look around for clues", "Stand up and leave".)
+- Choices must drive the plot *forward* from the current moment.
+
 - Choice 1: Active/Aggressive/Bold (Align with [Final Goal]).
 - Choice 2: Cautious/Observant/Pragmatic.
 - Choice 3: Creative/Social/Humorous (Reflecting the specific [Personality]).
@@ -174,6 +181,9 @@ Generate 3 distinct choices based on the **IMMEDIATE END STATE** of the [Current
 - Does the choice describe *someone else's* action? -> REJECT.
 - Is it the Player's action? -> ACCEPT.
 - Is the target character present in [Active Characters]? -> If NO, REJECT.
+- **[ANTI-REPETITION]**: Does the choice repeat an action/thought ALREADY completed in the [Current Story Segment]? -> REJECT. (e.g. If narrative says "I asked myself...", do not offer "Ask myself..." as a choice.)
+- **[FORWARD-LOOKING]**: Does the choice move the plot forward? -> PREFER. (e.g. Instead of "Think about X", use "Decide to do X" or "Investigate X".)
+- **[Clear Intent]**: The choice must imply a clear *next step*, not just a thought loop.
 `;
         try {
             const result = await model.generateContent(dynamicPrompt);

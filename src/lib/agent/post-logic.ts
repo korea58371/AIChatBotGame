@@ -3,7 +3,19 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { MODEL_CONFIG } from '../ai/model-config';
 import { RelationshipManager } from '../engine/relationship-manager';
 import { normalizeWuxiaInjury } from '@/lib/utils/injury-cleaner';
-import { translations } from '../../data/translations'; // [NEW] Import translations
+import { translations } from '../../data/translations';
+
+// [Helper] JSON 정제 함수 (Markdown 제거)
+function cleanJsonText(text: string): string {
+  // \`\`\`json ... \`\`\` 또는 { ... } 패턴 추출
+  const match = text.match(/\{[\s\S]*\}/);
+  return match ? match[0] : text;
+}
+
+// [Helper] 문자열 정규화 (인용구 매칭용)
+function normalizeString(str: string): string {
+  return str.replace(/[^\w가-힣]/g, ""); // 공백, 특수문자 제거
+}
 
 export interface PostLogicOutput {
   _analysis?: string; // [NEW] CoT Internal Thought (Reasoning Step)
@@ -13,6 +25,7 @@ export interface PostLogicOutput {
   stat_updates?: Record<string, number>; // [NEW] Personality Stat Updates (morality, eloquence, etc.)
   new_memories?: string[];
   character_memories?: Record<string, string[]>; // [NEW] Character specific memories (Long-term ONLY)
+  character_relationships?: Record<string, Record<string, string>>; // [NEW] NPC-to-NPC Relationship Updates
   activeCharacters?: string[]; // [NEW] Active characters in scene
   inline_triggers?: { quote: string, tag: string }[]; // [NEW] Quotes to inject tags into
   summary_trigger?: boolean;
@@ -110,18 +123,22 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
     - Valid: "Blood trickled down your arm", "You felt a rib crack", "The poison entered your veins".
     - Invalid: "You felt tired", "Your pride was hurt", "You felt a phantom pain".
 
-- **Healing**: If player visits a doctor, rests, uses medicine, OR if time passes significantly, identify which 'Active Injuries' are cured.
-  - **Rule**: "Noticeable relief", "Pain reduced", "Meridians Reconstructed", "Washed away", "Fully recovered" counts as RESOLVED.
-  - **CRITICAL**: You MUST check [Context Data] -> [Current Stats] -> 'active_injuries' list.
-  - **Match Strategy (Semantic Mapping)**:
-    - If the text says "Your arm is better", and active_injuries has "Fractured Left Arm" -> **MATCH** (Resolve it).
-    - If the text says "You feel healthy again", and active_injuries has ["Internal Injury", "Bruise"] -> **MATCH ALL** (Resolve both).
-    - If the text implies **Functional Recovery** (e.g., Player runs fast despite "Broken Leg"), assume it healed during the time skip -> **MATCH** (Resolve "Broken Leg").
-    - **Auto-Resolve Minor**: If an active injury is minor (e.g., "Bruise", "Contusion", "Slight Pain") and is **NOT mentioned** in the current text, mark it as RESOLVED.
-      - Reason: Minor injuries fade quickly if not aggravated.
-  - OUTPUT: "resolved_injuries": [${t.부상_회복_예시}]
-  - **Note**: You do not need an exact string match if the *meaning* is clear.
-  - **STRICT RULE**: If you cannot find a matching injury to heal, return an empty list.
+- **Healing (Auto-Resolve Protocol)**: 
+  - **Principle**: "No news is good news." If the narrative **DOES NOT mention** an active injury, assume it has healed or become negligible.
+  - **Action**: actively check 'active_injuries'.
+  - **Auto-Resolve Rule**: 
+    - For every injury in 'active_injuries':
+    - If the text implies the player is moving fine, fighting well, or simply **does not mention pain/handicap** -> **RESOLVE IT**.
+    - **EXCEPTION (Permanent/Major)**: Do NOT auto-resolve "Permanent Injuries" (e.g., "Severed Arm", "Blindness", "Dantian Destroyed", "영구", "절단", "불구"). These require explicit miraculous events to heal.
+    - **EXCEPTION (Major Story Arc)**: If the injury is the *central theme* of the current arc (e.g., "Poisoned by the Sect Leader"), do not resolve until explicitly cured.
+  - **Validation**: If you are 50% sure it might be healed, **HEAL IT**. It is better to remove a debuff than to annoy the player with a stuck status.
+  - OUTPUT: "resolved_injuries": ["Bruise", "Internal Injury"]
+  - **STRICT RULE**: If the text says "The pain is gone" or "I feel better", verify strictly that you output the **EXACT KOREAN STRING** from 'active_injuries' to 'resolved_injuries'.
+
+- **Narrative Truth > Context Inertia (CRITICAL)**:
+  - **Problem**: You see "Internal Injury" in the Context, so you write "My chest still hurts" even if the story implies recovery.
+  - **Correction**: **TRUST THE NARRATIVE.** If the logic/story implication is "He is better", you MUST removing the injury from the list.
+  - **Do NOT** maintain an injury just because it is in the list. The list is the PAST. The story is the PRESENT.
 
 - **Worsening/Mutation**: 
   - **Restrictive Rule**: Only worsen an injury if the narrative describes a **CRITICAL FAILURE** or a **DIRECT HIT** to the wound.
@@ -129,6 +146,20 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - Example (Fracture -> Disabled): 
     - "resolved_injuries": ["Right Arm Fracture"]
     - "new_injuries": [${t.치명적_부상_예시}]
+
+- **Narrative Healing Override (HIGHEST PRIORITY)**:
+  - **Thinking Process**: Before generating JSON, ask yourself: 
+    1. "Does the text say 'Complete Recovery' (완치), 'All better' (다 나았다), 'Pain is gone' (통증이 사라졌다), or 'Washed away' (씻은 듯이)?"
+    2. "Are there any active injuries in the context?"
+  - **ACTION**: If BOTH are true, you **MUST** output all 'active_injuries' into 'resolved_injuries'.
+  - **Strict Mapping**: 
+    - Text: "몸이 씻은 듯이 나았다." -> JSON: "resolved_injuries": ["Internal Injury", "Fracture"] (ALL of them).
+  - **HP Safeguard**: In a healing/recovery scene, **NEVER** set 'hp' to 0 unless the narrative explicitly describes death.
+  - **Training Safety**: Training can reduce HP/MP, but **NEVER** below 1.
+
+- **Death Safeguard (HP = 0)**:
+  - **Rule**: You are FORBIDDEN from outputting 'hp: 0' or reducing HP to 0 UNLESS the narrative explicitly describes "Death", "Mortal Wound", or "Collapse with no pulse".
+  - If the player is just "fainting" or "exhausted", set HP to 1.
 
 - **New Injury Logic (STRICT)**:
   - **Target**: **ONLY** record injuries for the **Player ({playerName})**. Do not record injuries for NPCs here.
@@ -254,19 +285,6 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - Even if the vibe is 'Romantic', if the score is 0 (Stranger), only give +5 (Medium increase). Do not jump to 50.
   - Advance ONE tier at a time.
 
-- **Diminishing Returns (Saturation):**
-  - **High Tiers (Lvl 5+):** Routine compliments or small talk (+1) should eventually have 0 effect. Only meaningful events matter.
-    - Example: A 'Lover' saying "I love you" is expected (0 or +1), not a major event (+10).
-    - To gain score at high tiers, the player must show *new* devotion or shared hardship.
-  - **Low Tiers (Lvl 0~2):** Small talk (+1~3) is effective for building initial rapport.
-
-- **Relative Impact (Betrayal):**
-  - **High Tiers:** A betrayal or rude remark hits HARDER. (e.g., Stranger being rude = -2, Lover being rude = -10).
-
-- **Extreme Thresholds (Lock-in / Resilience):**
-  - **Blind Devotion (Score > 90):** The character is deeply devoted. 
-    - Minor offenses (-1 ~ -10) are ignored or interpreted positively (teasing). 
-    - Only "Catastrophic Betrayal" (e.g., trying to kill them) can break this state (-50).
   - **Vendetta / Nemesis (Score < -90):** The character loathes the player.
     - Compliments or gifts (+1 ~ +10) are REJECTED or viewed as insults/traps (0 change).
     - Only a "Life Debt" or "World-Shaking Redemption" can unlock this state.
@@ -289,6 +307,19 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
        "namgung_se_ah": { "speech_style": "존댓말" }
   }
 
+[NPC-to-NPC Relationship Updates] (PERSISTENT MEMORY)
+- **Goal**: Track how NPCs feel about EACH OTHER (not just the player).
+- **Trigger**: When NPCs interact significantly (Introduction, Fight, Friendship, Betrayal).
+- **Consistnecy**: If A meets B for the first time, record "Acquaintance". If they fight, "Enemy".
+- **Format**: "character_relationships": { "SubjectID": { "TargetID": "Status Description" } }
+- **Example**:
+  "character_relationships": {
+      "han_gaeul": { 
+          "namgung_se_ah": "언니라고 부르며 따름 (Follows as big sister)",
+          "so_so": "경계함 (Wary)"
+      }
+  }
+
 [Inline Event Triggers] (CRITICAL)
 You must identify the EXACT sentence segment (quote) where a change happens and generate a tag for it.
 - Usage: When the text describes an event that justifies a stat/relationship change.
@@ -306,10 +337,19 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 - Use standard Wuxia region names: 중원, 사천, 하북, 산동, 북해, 남만, 서역, 등.
 - If no change, return null.
 
-[Faction & Rank Updates]
+[Faction Updates]
 - **factionChange**: If the narrative explicitly states the player has joined or left a faction/sect (${t.소속_변경_설명}).
-- **playerRank**: If the narrative explicitly awards a new title or martial rank (${t.등급_변경_설명}).
 - **Constraint**: Only valid if explicitly confirmed in the text. Do not guess.
+
+[Protocol: Relationship Inertia (Realistic Bonding)]
+**CRITICAL**: Trust is built slowly. Love takes time.
+1. **First Meeting Cap**: If activeRelationships[id] is 0 or undefined (Stranger):
+   - **MAX GAIN**: +5 (Friendly/Interested).
+   - **FORBIDDEN**: Do NOT jump to +20 (Lover/Trusted) in one turn.
+2. **Per Turn Cap**: 
+   - Normal Max Change: +/- 10.
+   - Exception: Life Saving Act (+20), Betrayal (-30).
+3. **Anti-Inflation**: If the story is just "polite conversation", gain is +1 or +2. NOT +10.
 
 [Ending Detection] (CRITICAL - STRICT)
 - **Concept**: Detect if the story has reached a definitive conclusion.
@@ -329,8 +369,18 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
   - Action: Set "ending_trigger": "GOOD".
   - Constraint: Must be a satisfying conclusion to the current narrative arc.
 - **TRUE ENDING**:
-  - Condition: Achieving a secret or perfect conclusion.
+- Condition: Achieving a secret or perfect conclusion.
   - Action: Set "ending_trigger": "TRUE".
+
+[Summary Trigger Logic] (Memory Consolidation)
+- **Goal**: Decide if the current turn is a good time to summarize recent events into long-term memory.
+- **Trigger Conditions (Set "summary_trigger": true)**:
+  1. **Scene Change**: The characters moved to a new location.
+  2. **Major Event**: A Goal was Completed/Failed, or a Rank Up occurred.
+  3. **Time Skip**: significant time passed.
+  4. **Conversation End**: A long dialogue scene has concluded.
+  5. **New Chapter**: A new major character was introduced or a faction change occurred.
+- **Constraint**: Do not trigger on every turn. Only when a "segment" of the story closes.
 
 
 [Output Schema (JSON)]
@@ -344,6 +394,9 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
       "soso": ["Player praised my cooking"], 
       "chilsung": ["Player defeated me"] 
   },
+  "character_relationships": {
+      "soso": { "chilsung": "불편한 관계 (Uncomfortable)" }
+  },
   "inline_triggers": [
       { "quote": ${t.인라인_인용_예시}, "tag": "<Stat hp='-5'>" },
       { "quote": ${t.인라인_태그_예시}, "tag": "<Rel char='NamgungSeAh' val='5'>" }
@@ -355,8 +408,7 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
   "activeCharacters": ["soso", "chilsung"], 
   "summary_trigger": false,
   "dead_character_ids": ["bandit_leader"],
-  "factionChange": "Mount Hua Sect",
-  "playerRank": "First Rate Warrior"
+  "factionChange": "Mount Hua Sect"
 }
 
 [Critically Important]
@@ -402,10 +454,11 @@ ${RelationshipManager.getPromptContext()}
 
     // [Context Caching]
     // Split Static (System Instruction) and Dynamic (User Message)
-    let staticSystemPrompt = this.getSystemPrompt(language || 'ko'); // [CHANGE] Use getSystemPrompt
+    let staticSystemPrompt = this.getSystemPrompt(language || 'ko');
 
     // [God Mode Protocol]
-    if (gameState.isGodMode || gameState.playerName === "김현준갓모드") {
+    const isGodMode = gameState.isGodMode || gameState.playerName === "김현준갓모드";
+    if (isGodMode) {
       staticSystemPrompt += `
 \n\n[SYSTEM ALERT: GOD MODE ACTIVE]
 CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
@@ -510,8 +563,11 @@ ${aiResponse}
 """
 
 [Instruction]
-Analyze the [Input Story Turn] based on the rules in the System Prompt.
-Generate the JSON output.
+1. Analyze the [Input Story Turn].
+2. **[Healing Check]**: Does the text say "완치", "다 나았다", "통증이 사라졌다"? 
+   - IF YES -> You MUST output 'resolved_injuries': [ALL Active Injuries].
+   - **Do NOT** let the "Active Injuries" list bias you. Trust the Text.
+3. Generate the JSON output.
 `;
 
     try {
@@ -523,7 +579,7 @@ Generate the JSON output.
       const usage = response.usageMetadata;
 
       try {
-        const json = JSON.parse(text);
+        const json = JSON.parse(cleanJsonText(text));
 
         if (json.new_injuries && Array.isArray(json.new_injuries)) {
           // Map then Set to deduplicate
@@ -536,13 +592,20 @@ Generate the JSON output.
         // [Validation] Ensure inline_triggers exist
         if (!json.inline_triggers) json.inline_triggers = [];
 
-        // [Sanitization] Filter inline_triggers allowed tags ONLY
+        // [Sanitization & Normalization]
+        const aiResponseNormalized = normalizeString(aiResponse);
         json.inline_triggers = json.inline_triggers.filter((trigger: { quote: string, tag: string }) => {
           if (!trigger.tag) return false;
+          if (!trigger.quote) return false;
+
           // Only allow <Stat> and <Rel>
           const isStat = trigger.tag.startsWith('<Stat');
           const isRel = trigger.tag.startsWith('<Rel');
-          return isStat || isRel;
+          if (!isStat && !isRel) return false;
+
+          // Quote Matching (Normalized)
+          const quoteNorm = normalizeString(trigger.quote);
+          return aiResponse.includes(trigger.quote) || aiResponseNormalized.includes(quoteNorm);
         });
 
         // [Sanitization] Filter stat_updates keys
@@ -578,45 +641,36 @@ Generate the JSON output.
           }
         }
 
-        // [Safety Clamp & Diminishing Returns] Check Relationship Inertia
+        // [Relationship Logic: God Mode & Dead Zone Prevention]
         if (json.relationship_updates) {
           const currentRels = activeRelationships || {};
 
           for (const key in json.relationship_updates) {
             let val = json.relationship_updates[key];
-
-            // Validate value type
             if (typeof val !== 'number') continue;
 
-            // [Damping Logic]
-            // Principle: Building trust gets harder as it gets higher. Destroying it is always fast.
-            const currentScore = currentRels[key] || 0;
+            // God Mode가 아닐 때만 밸런스 조정 로직 수행
+            if (!isGodMode) {
+              const currentScore = currentRels[key] || 0;
 
-            // Only apply damping to POSITIVE growth
-            if (val > 0) {
-              let factor = 1.0;
+              // 양수(+) 변화일 때만 감쇠 적용
+              if (val > 0) {
+                let factor = 1.0;
+                // 프롬프트의 지시는 무시하고, 코드에서 확실하게 제어
+                const absScore = Math.abs(currentScore);
+                if (absScore >= 90) factor = 0.2;
+                else if (absScore >= 70) factor = 0.5;
+                else if (absScore >= 50) factor = 0.8;
 
-              // Tier Thresholds for Damping
-              if (currentScore >= 90) factor = 0.1;       // Lvl 9 (Soulmate): Requires life-altering events
-              else if (currentScore >= 70) factor = 0.3;  // Lvl 7+ (Admired): Very hard to progress
-              else if (currentScore >= 50) factor = 0.5;  // Lvl 5+ (Close Friend): Harder
-              else if (currentScore >= 30) factor = 0.8;  // Lvl 3+ (Companion): Slightly resistant
+                const dampened = val * factor;
 
-              // Apply factor
-              const dampened = val * factor;
+                // [Dead Zone Fix] 0점 방지: 의도된 상승이라면 최소 1점 보장
+                val = Math.max(1, Math.round(dampened));
+              }
 
-              // Rounding Strategy:
-              // - Normal Rounding allows +1 to become 0 (which is desired for trivial acts at high tiers)
-              // - Ensure at least 1 point if the original event was HUGE (> 5) and factor didn't kill it completely?
-              //   Math.round handles this well. 0.3 * 5 = 1.5 -> 2. 0.1 * 5 = 0.5 -> 1.
-              val = Math.round(dampened);
+              // Hard Clamp (최대 10점 제한)
+              if (val > 10) val = 10;
             }
-
-            // [Hard Clamp] Absolute Turn Limit
-            // Positive growth is CAPPED at +10 (Slow trust).
-            // Negative drop is UNLIMITED (Fast betrayal).
-            if (val > 10) val = 10;
-            // if (val < -10) val = -10; // REMOVED: Allow catastrophic drops
 
             json.relationship_updates[key] = val;
           }
@@ -671,21 +725,20 @@ Generate the JSON output.
           const verifyActive = new Set(json.activeCharacters || []);
           const prevActive = gameState.activeCharacters;
           const storyText = aiResponse;
+          const deadIds = new Set(json.dead_character_ids || []);
 
           prevActive.forEach((charId: string) => {
-            // Skip if already kept
-            if (verifyActive.has(charId)) return;
+            if (verifyActive.has(charId) || deadIds.has(charId)) return;
 
-            // Check if mentioned
-            // We need the Name (Korean) to check existence in text
-            // Use validCharacters (IDs) to lookup Data? No, validCharacters is just keys.
-            // We need access to characterData. gameState passed in `analyze` has it.
             const charData = gameState.characterData?.[charId];
             if (charData) {
-              const name = charData.name || charData.이름;
-              if (name && storyText.includes(name)) {
+              const namesToCheck = [charData.name, charData.이름, ...(charData.aliases || [])].filter(Boolean);
+              // 이름이나 별호 중 하나라도 포함되면 유지
+              const isMentioned = namesToCheck.some((n: string) => storyText.includes(n));
+
+              if (isMentioned) {
                 verifyActive.add(charId);
-                console.log(`[AgentPostLogic] Persistence Guard: Forced '${name}' (${charId}) to stay active.`);
+                console.log(`[AgentPostLogic] Persistence Guard: Forced '${namesToCheck[0]}' (${charId}) to stay active.`);
               }
             }
           });
