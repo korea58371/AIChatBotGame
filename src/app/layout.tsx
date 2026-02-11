@@ -46,6 +46,18 @@ export default function RootLayout({
           src="https://cdn.iamport.kr/v1/iamport.js"
           strategy="lazyOnload"
         />
+        {/* [DEV] Mobile Console for debugging — only in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <script dangerouslySetInnerHTML={{
+            __html: `
+            (function(){
+              var s=document.createElement('script');
+              s.src='https://cdn.jsdelivr.net/npm/eruda';
+              s.onload=function(){eruda.init()};
+              document.head.appendChild(s);
+            })();
+          `}} />
+        )}
         {children}
       </body>
     </html>

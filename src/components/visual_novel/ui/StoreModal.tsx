@@ -8,13 +8,21 @@ import { X, MessageSquare, Star, Zap, Info, Shield, ShoppingBag, Coins, Lock, Lo
 import { useVNAudio } from '@/components/visual_novel/hooks/useVNAudio';
 import { isFeatureEnabled, FEATURES } from '@/lib/features'; // [NEW] Feature Flag Import
 
+import { useShallow } from 'zustand/react/shallow';
+
 interface StoreModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
 export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
-    const { userCoins, setUserCoins, playerStats, setPlayerStats, isGodMode } = useGameStore();
+    const { userCoins, setUserCoins, playerStats, setPlayerStats, isGodMode } = useGameStore(useShallow(state => ({
+        userCoins: state.userCoins,
+        setUserCoins: state.setUserCoins,
+        playerStats: state.playerStats,
+        setPlayerStats: state.setPlayerStats,
+        isGodMode: state.isGodMode,
+    })));
     const { requestPayment, isSdkLoaded } = usePortOne();
     const [processingId, setProcessingId] = useState<string | null>(null);
     // [Fix] Hook for SFX

@@ -71,7 +71,7 @@ export default function CharacterProfile({
 
     const t = translations[language];
     // Access goals from store
-    const { goals } = useGameStore();
+    const goals = useGameStore(state => state.goals);
 
     // [Refactor] Dynamic Trait Mapping using translations.ts (Jan 2026)
     const PERSONALITY_TRAITS_DYNAMIC = [

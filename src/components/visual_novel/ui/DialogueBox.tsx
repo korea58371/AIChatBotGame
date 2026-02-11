@@ -9,7 +9,7 @@ interface DialogueBoxProps {
     onClick: (e: React.MouseEvent) => void;
 }
 
-export default function DialogueBox({ onClick }: DialogueBoxProps) {
+const DialogueBox = React.memo(function DialogueBox({ onClick }: DialogueBoxProps) {
     // Granular Selectors to prevent unnecessary re-renders
     const currentSegmentType = useGameStore(state => state.currentSegment?.type);
     const currentSegmentContent = useGameStore(state => state.currentSegment?.content);
@@ -72,4 +72,6 @@ export default function DialogueBox({ onClick }: DialogueBoxProps) {
             </div>
         </div>
     );
-}
+});
+
+export default DialogueBox;
