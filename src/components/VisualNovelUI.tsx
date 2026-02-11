@@ -418,7 +418,8 @@ export default function VisualNovelUI() {
     // Heavy objects (chatHistory, characterData, inventory, scriptQueue) use getState() on demand.
     const {
         currentBackground, characterExpression, playerStats,
-        choices, language, scenarioSummary,
+        choices, language,
+        scenarioMemory,
         playerName, userCoins, turnCount,
         day, time, activeGameId, currentLocation,
         isDataLoaded, isHydrated, endingType,
@@ -428,7 +429,7 @@ export default function VisualNovelUI() {
         playerStats: state.playerStats,
         choices: state.choices,
         language: state.language,
-        scenarioSummary: state.scenarioSummary,
+        scenarioMemory: state.scenarioMemory,
         playerName: state.playerName,
         userCoins: state.userCoins,
         turnCount: state.turnCount,
@@ -1346,13 +1347,49 @@ export default function VisualNovelUI() {
             // 0. Update Logic & Turn Count
             incrementTurnCount();
             const nextTurnCount = useGameStore.getState().turnCount; // Get updated value
-            const SUMMARY_THRESHOLD = 10;
+            const TIER1_INTERVAL = 10;
+            const FIRST_SUMMARY_TURN = 15;
 
             console.log(`[VisualNovelUI] Turn: ${nextTurnCount}`);
 
-            // 5. [Core] Memory Summarization Logic (Turn-Based)
-            // 5. [Core] Memory Summarization Logic MOVED to Phase 2 (Background) to prevent blocking.
-            // Check approx line 1200+ inside the async block.
+            // [Memory] Hierarchical Memory Summarization (Non-blocking, fire-and-forget)
+            const mem = useGameStore.getState().scenarioMemory;
+            const shouldTier1 = nextTurnCount >= FIRST_SUMMARY_TURN &&
+                (nextTurnCount - FIRST_SUMMARY_TURN) % TIER1_INTERVAL === 0 &&
+                mem.lastSummarizedTurn < nextTurnCount;
+
+            if (shouldTier1) {
+                (async () => {
+                    try {
+                        const recentHistory = useGameStore.getState().chatHistory
+                            .slice(-TIER1_INTERVAL * 2)
+                            .map(({ snapshot, ...rest }) => rest);
+
+                        const { serverGenerateTier1Summary } = await import('@/app/actions/game');
+                        const summary = await serverGenerateTier1Summary(recentHistory);
+
+                        if (summary) {
+                            useGameStore.getState().addTier1Summary(summary);
+                            console.log(`[Memory] Tier1 Summary Added (Turn ${nextTurnCount}): ${summary.slice(0, 50)}...`);
+
+                            // Check if Tier2 compression needed (10+ Tier1 summaries)
+                            const updatedMem = useGameStore.getState().scenarioMemory;
+                            if (updatedMem.tier1Summaries.length >= 10) {
+                                const { serverGenerateTier2Summary } = await import('@/app/actions/game');
+                                const megaSummary = await serverGenerateTier2Summary(
+                                    updatedMem.tier1Summaries.slice(0, 10)
+                                );
+                                if (megaSummary) {
+                                    useGameStore.getState().compressTier2(megaSummary);
+                                    console.log(`[Memory] Tier2 Compression Done: ${megaSummary.slice(0, 50)}...`);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('[Memory] Summary Generation Failed:', e);
+                    }
+                })();
+            }
 
             // 1. Generate Narrative
             console.log(`[VisualNovelUI] Sending state to server.`);
@@ -1370,7 +1407,7 @@ export default function VisualNovelUI() {
                 playerStats: currentState.playerStats,
                 inventory: currentState.inventory,
                 currentLocation: currentState.currentLocation,
-                scenarioSummary: currentState.scenarioSummary,
+                scenarioMemory: currentState.scenarioMemory,
                 currentEvent: currentState.currentEvent,
                 activeEvent: currentState.activeEvent, // [CRITICAL] Pass the full Event Object (with prompt)
                 currentMood: currentState.currentMood,
@@ -1531,7 +1568,7 @@ export default function VisualNovelUI() {
                 day: snapshotState.day,
                 time: snapshotState.time,
                 turnCount: snapshotState.turnCount,
-                scenarioSummary: snapshotState.scenarioSummary,
+                scenarioMemory: snapshotState.scenarioMemory,
                 currentLocation: snapshotState.currentLocation,
                 currentBackground: snapshotState.currentBackground,
             };
@@ -2131,32 +2168,7 @@ export default function VisualNovelUI() {
                                     // ... existing code ...
 
                                     // [Memory] Handle Summary Trigger
-                                    if (postLogicOut?.summary_trigger) {
-                                        console.log("[VisualNovelUI] Summary Triggered by PostLogic. Updating... ");
-                                        // Execute in background to not block UI
-                                        (async () => {
-                                            try {
-                                                const currentSummary = useGameStore.getState().scenarioSummary;
-                                                // [Fix] Strip `snapshot` field from history before passing to Server Action
-                                                // `snapshot` contains Partial<GameState> with functions/Module objects
-                                                // that cannot be serialized for Server Function calls
-                                                const recentHistory = useGameStore.getState().chatHistory.slice(-20).map(
-                                                    ({ snapshot, ...rest }) => rest
-                                                );
-
-                                                // Dynamic Import to avoid bundling issues if needed, or use the imported action
-                                                const { serverGenerateSummary } = await import('@/app/actions/game');
-                                                const newSummary = await serverGenerateSummary(currentSummary, recentHistory);
-
-                                                if (newSummary) {
-                                                    console.log("[VisualNovelUI] Summary Updated:", newSummary.substring(0, 50) + "...");
-                                                    useGameStore.getState().setScenarioSummary(newSummary);
-                                                }
-                                            } catch (e) {
-                                                console.error("[VisualNovelUI] Summary Update Failed:", e);
-                                            }
-                                        })();
-                                    }
+                                    // [Memory] Legacy summary_trigger removed — now handled by turn-based trigger
                                     // Instead of blindly slicing by index (which fails if parser yields different segment counts for stream vs final),
                                     // we find WHERE in the finalSegments the user currently is, based on Content Matching.
 
@@ -2538,7 +2550,7 @@ export default function VisualNovelUI() {
                                     meta: {
                                         hp: useGameStore.getState().playerStats.hp,
                                         pre_logic_score: preLogicOut?.plausibility_score,
-                                        scenario_summary: useGameStore.getState().scenarioSummary
+                                        scenario_summary: useGameStore.getState().getScenarioContext()
                                     },
                                     story_output: finalStoryText || cleanStoryText
                                 });
@@ -2773,7 +2785,7 @@ export default function VisualNovelUI() {
                     characterData: fallbackState.characterData,
                     activeCharacters: fallbackState.activeCharacters,
                     goals: fallbackState.goals,
-                    scenarioSummary: fallbackState.scenarioSummary,
+                    scenarioMemory: fallbackState.scenarioMemory,
                     day: fallbackState.day,
                     time: fallbackState.time,
                     turnCount: fallbackState.turnCount,
@@ -3889,14 +3901,39 @@ export default function VisualNovelUI() {
                                                     <div className="flex justify-between items-center mb-2">
                                                         <h3 className="text-white font-bold">Scenario Summary (Memory)</h3>
                                                         <button
-                                                            onClick={() => { navigator.clipboard.writeText(scenarioSummary || ""); addToast("Summary copied", "success"); }}
+                                                            onClick={() => {
+                                                                const ctx = useGameStore.getState().getScenarioContext();
+                                                                navigator.clipboard.writeText(ctx || "");
+                                                                addToast("Summary copied", "success");
+                                                            }}
                                                             className="px-2 py-1 bg-yellow-600/20 text-yellow-500 hover:bg-yellow-600 hover:text-white border border-yellow-600/50 rounded text-xs transition-colors"
                                                         >
                                                             Copy Text
                                                         </button>
                                                     </div>
                                                     <div className="flex-1 bg-black/50 border border-yellow-600/30 rounded p-4 text-yellow-100/90 font-mono text-xs overflow-auto whitespace-pre-wrap custom-scrollbar leading-relaxed">
-                                                        {scenarioSummary || <span className="text-gray-600 italic">No summary generated yet.</span>}
+                                                        {scenarioMemory && (scenarioMemory.tier1Summaries.length > 0 || scenarioMemory.tier2Summaries.length > 0) ? (
+                                                            <>
+                                                                {scenarioMemory.tier2Summaries.length > 0 && (
+                                                                    <div className="mb-2">
+                                                                        <span className="text-amber-400 font-bold">[장기 기억] ({scenarioMemory.tier2Summaries.length}개)</span>
+                                                                        {scenarioMemory.tier2Summaries.map((s, i) => (
+                                                                            <div key={`t2-${i}`} className="mt-1 pl-2 border-l-2 border-amber-600/50">{s}</div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                {scenarioMemory.tier1Summaries.length > 0 && (
+                                                                    <div>
+                                                                        <span className="text-cyan-400 font-bold">[최근 줄거리] ({scenarioMemory.tier1Summaries.length}개)</span>
+                                                                        {scenarioMemory.tier1Summaries.map((s, i) => (
+                                                                            <div key={`t1-${i}`} className="mt-1 pl-2 border-l-2 border-cyan-600/50">{s}</div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-gray-600 italic">No summary generated yet.</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col h-1/2">

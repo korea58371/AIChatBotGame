@@ -160,7 +160,7 @@ export const getDynamicLogicPrompt = (
 ${JSON.stringify(prunedStats, null, 2)}
 
 **최근 맥락 (Recent Context):**
-- **시나리오 요약**: "${prunedStats.scenarioSummary || "게임 시작"}"
+- **시나리오 요약**: "${prunedStats.scenarioContext || "게임 시작"}"
 - 유저 행동: "${lastUserMessage}"
 - AI 스토리 출력: "${lastAiResponse}"
 

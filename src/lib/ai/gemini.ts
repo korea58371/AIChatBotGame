@@ -223,7 +223,8 @@ export async function generateResponse(
             // 최근 대화(예: 마지막 10개 메시지 = 5턴)만 남겨 토큰을 절약하고
             // 요약본과 전체 히스토리가 중복되어 정보가 왜곡되는 것을 방지합니다.
             let effectiveHistory = history;
-            if (gameState.scenarioSummary && gameState.scenarioSummary.length > 50) {
+            const scenarioMem = gameState.scenarioMemory;
+            if (scenarioMem && (scenarioMem.tier1Summaries?.length > 0 || scenarioMem.tier2Summaries?.length > 0)) {
                 // 마지막 10개 메시지만 유지
                 effectiveHistory = history.slice(-10);
             }
@@ -539,6 +540,21 @@ export async function generateGameLogic(
                 ...prunedStats
             } = gameState;
 
+            // [NEW] Inject computed scenarioContext into prunedStats for prompt templates
+            const mem = gameState.scenarioMemory;
+            if (mem) {
+                const parts: string[] = [];
+                if (mem.tier2Summaries?.length > 0) {
+                    parts.push('[장기 기억]\n' + mem.tier2Summaries.join('\n---\n'));
+                }
+                if (mem.tier1Summaries?.length > 0) {
+                    parts.push('[최근 줄거리]\n' + mem.tier1Summaries.join('\n---\n'));
+                }
+                (prunedStats as any).scenarioContext = parts.join('\n\n') || '게임 시작';
+            } else {
+                (prunedStats as any).scenarioContext = '게임 시작';
+            }
+
             const worldData = gameState.worldData || { locations: {}, items: {} }; // Fallback to empty if missing
 
             // Get lightweight context for Logic Model
@@ -699,13 +715,21 @@ export async function generateCastingDecision(
     }
 }
 
-// Memory Summarization Model: Gemini 1.5 Flash (Cost-efficient)
+// [LEGACY] Memory Summarization - kept for backward compat, delegates to Tier1
 export async function generateSummary(
     apiKey: string,
     currentSummary: string,
     recentDialogue: Message[]
 ) {
-    if (!apiKey) return currentSummary;
+    return generateTier1Summary(apiKey, recentDialogue);
+}
+
+// [NEW] Tier 1 Summary: 10-turn chunk → 2000 chars
+export async function generateTier1Summary(
+    apiKey: string,
+    recentDialogue: Message[]
+): Promise<string> {
+    if (!apiKey) return '';
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
@@ -719,37 +743,82 @@ export async function generateSummary(
 
     const prompt = `
     당신은 방대한 서사를 핵심만 추려 기록하는 '왕실 서기'입니다.
-    플레이어의 모험이 길어짐에 따라, 오래된 기록은 과감히 축약하고 **현재의 상태와 직면한 상황** 위주로 요약본을 갱신해야 합니다.
+    최근 10턴의 대화를 읽고, 핵심 사건만 요약하십시오.
 
-    [입력 데이터]
-    1. 이전 요약 (Save Data): ${currentSummary || "없음"}
-    2. 최근 대화 (Log): 
+    [최근 대화]
     ${dialogueText}
 
     [작성 지침]
-    1. **압축 및 갱신**: 과거의 '이전 요약'과 '최근 대화'를 합쳐서 하나의 새로운 요약문을 만드십시오. 단순한 덧붙이기가 아닙니다.
-    2. **분량 제한**: 전체 요약은 절대 *2500자(공백 포함)** 를 넘지 않도록 문장을 간결하게 다듬으십시오. 요약이 너무 길어지면 가장 오래된 사건부터 과감히 삭제하거나 한 문장으로 압축하십시오.
-    3. **현재성 유지**: 지금 플레이어가 어디에 있고, 무엇을 하고, 누구와 함께 있는지, 어떤 부상을 입었는지 **'현재 상태'**가 가장 중요합니다.
-    4. **형식**: 줄글 형식으로 작성하되, 가독성을 위해 단락을 나누십시오.
+    1. **독립적 요약**: 이 대화 구간에서 일어난 사건만 요약하십시오. 과거 맥락은 별도로 관리됩니다.
+    2. **분량 제한**: 반드시 **2000자(공백 포함)** 이내로 작성하십시오.
+    3. **현재성**: 이 구간이 끝날 때 플레이어의 위치, 동행인, 상태를 명시하십시오.
+    4. **형식**: 줄글, 간결한 문장.
 
     [필수 포함 항목]
-    - 현재 위치 및 상황
-    - 주요 인물과의 관계 변화 (특히 호감도/적대감)
-    - 현재 획득한 비급/아이템 및 신체 상태(부상 등)
-    - 당면한 목표
+    - 이 구간에서 발생한 주요 사건
+    - 위치 변경
+    - 인물 관계 변화
+    - 획득/소실한 아이템
+    - 당면한 목표 변화
 
-    [갱신된 요약본]:
+    [요약]:
     `;
 
     try {
         const result = await model.generateContent(prompt);
         const response = result.response;
         const text = response.text();
-        console.log("Generated Summary:", text);
-        return text;
+        console.log("[Tier1 Summary] Generated:", text.substring(0, 80) + "...");
+        return text.slice(0, 2000); // Hard cap
     } catch (error: any) {
-        console.warn("Summarization failed:", error.message || error);
-        return currentSummary; // Return old summary on failure
+        console.warn("[Tier1 Summary] Failed:", error.message || error);
+        return '';
+    }
+}
+
+// [NEW] Tier 2 Summary: Compress 10 Tier1 summaries → 5000 chars
+export async function generateTier2Summary(
+    apiKey: string,
+    tier1Summaries: string[]
+): Promise<string> {
+    if (!apiKey) return '';
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+        model: MODEL_CONFIG.SUMMARY,
+        safetySettings
+    });
+
+    const summaryText = tier1Summaries.map((s, i) =>
+        `[구간 ${i + 1}]\n${s}`
+    ).join('\n\n');
+
+    const prompt = `
+    당신은 방대한 서사를 핵심만 추려 기록하는 '왕실 서기'입니다.
+    아래 10개의 구간별 요약을 읽고, 하나의 대서사 요약으로 압축하십시오.
+
+    [구간별 요약들]
+    ${summaryText}
+
+    [작성 지침]
+    1. **압축**: 10개 구간의 사건을 하나의 연속된 이야기로 통합하십시오.
+    2. **분량 제한**: 반드시 **5000자(공백 포함)** 이내로 작성하십시오.
+    3. **시간 순서**: 가장 오래된 사건부터 최근 순으로 서술하되, 오래된 사건일수록 과감히 축약하십시오.
+    4. **핵심 유지**: 인물 관계, 주요 전투, 성장 이벤트, 소속 변화 등 장기적으로 중요한 사건만 남기십시오.
+    5. **형식**: 줄글, 단락 구분.
+
+    [통합 요약]:
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = result.response;
+        const text = response.text();
+        console.log("[Tier2 Summary] Generated:", text.substring(0, 80) + "...");
+        return text.slice(0, 5000); // Hard cap
+    } catch (error: any) {
+        console.warn("[Tier2 Summary] Failed:", error.message || error);
+        return '';
     }
 }
 
@@ -871,8 +940,8 @@ export async function handleGameTurn(
     history: Message[],     // UI display history
     userInput: string
 ) {
-    console.log(`[handleGameTurn] Turn: ${state.turnCount}, Summary Length: ${state.scenarioSummary?.length || 0
-        }`);
+    console.log(`[handleGameTurn] Turn: ${state.turnCount}, Memory Tier1: ${state.scenarioMemory?.tier1Summaries?.length || 0
+        }, Tier2: ${state.scenarioMemory?.tier2Summaries?.length || 0}`);
 
     // 1. Add user message to a temporary history for the AI call
     // Note: The caller updates the actual UI history. This is for the AI logic.
@@ -956,32 +1025,29 @@ export async function handleGameTurn(
     nextState.playerStats = { ...currentStats, fatigue: currentFatigue };
 
     // Logic result might have specific fields like hpChange, etc. 
-    // We are interested in 'turnCount' and 'scenarioSummary'.
+    // We are interested in 'turnCount' and 'scenarioMemory'.
     // The user's snippet implies we handle turn counting here or assume it's passed.
     // If the state passed in is the *current* state (before this turn), we should increments turn info.
 
     const currentTurnCount = (state.turnCount || 0) + 1;
 
-    // Update summary if threshold reached
-    let newSummary = state.scenarioSummary;
+    // [LEGACY] Summary logic - now handled by turn-based trigger in VisualNovelUI
+    // Keeping minimal compat for any direct callers
+    let newSummary = '';
 
-    if (currentTurnCount > 0 && currentTurnCount % SUMMARY_THRESHOLD === 0) {
-        console.log(`[handleGameTurn] Triggering Memory Summarization at turn ${currentTurnCount}...`);
+    if (currentTurnCount >= 15 && (currentTurnCount - 15) % 10 === 0) {
+        console.log(`[handleGameTurn] Triggering Tier1 Summary at turn ${currentTurnCount}...`);
 
-        // A. Select recent dialogue (Last 10 turns = 20 messages)
-        // We use newHistory which includes the latest user message.
-        // We also need the model's response we just generated.
         const fullDialogue = [...newHistory, { role: 'model', text: storyResult.text } as Message];
-        const recentDialogue = fullDialogue.slice(-SUMMARY_THRESHOLD * 2);
+        const recentDialogue = fullDialogue.slice(-20);
 
-        // B. Generate Summary
         newSummary = await generateSummary(
             apiKey,
-            state.scenarioSummary || "",
+            '',
             recentDialogue
         );
 
-        console.log("[handleGameTurn] New Summary Generated.");
+        console.log("[handleGameTurn] New Tier1 Summary Generated.");
     }
 
     // Calculate Total Cost

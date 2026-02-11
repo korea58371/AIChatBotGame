@@ -230,7 +230,7 @@ ${directInputConstraints}
 # [SCENARIO & EVENTS]
 - **활성 이벤트**: ${state.currentEvent ? state.currentEvent.name : "없음"}
 ${state.currentEvent ? `  - **이벤트 지침**: ${state.currentEvent.prompt}` : ""}
-- **현재 시나리오**: ${state.scenarioSummary || "이야기가 계속됩니다."}
+- **현재 시나리오**: ${state.scenarioContext || "이야기가 계속됩니다."}
 
 ### [⚡ 중요: 이벤트 - 최우선 실행]
 **위 '활성 이벤트'가 비어있지 않다면, 다른 어떤 맥락보다 최우선으로 해당 내용을 실행하라.**

@@ -93,8 +93,14 @@ export interface GameState {
   addDeadCharacter?: (id: string) => void;
   currentLocation: string;
   setCurrentLocation: (loc: string) => void;
-  scenarioSummary: string;
-  setScenarioSummary: (summary: string) => void;
+  // [NEW] Hierarchical Memory System (replaces scenarioSummary)
+  scenarioMemory: ScenarioMemory;
+  addTier1Summary: (summary: string) => void;
+  compressTier2: (megaSummary: string) => void;
+  getScenarioContext: () => string;
+  // [Compat] Legacy alias for backward compatibility
+  scenarioSummary: string; // Computed from scenarioMemory
+  setScenarioSummary: (summary: string) => void; // Legacy: adds to tier1
   currentEvent: string;
   setCurrentEvent: (event: string) => void;
   // [Deleted] Duplicate Interface Definition
@@ -345,6 +351,19 @@ export interface StoryLogEntry {
   timestamp: number;
 }
 
+// [NEW] Hierarchical Memory System
+export interface ScenarioMemory {
+  tier1Summaries: string[];   // 10-turn summaries (~2000 chars each)
+  tier2Summaries: string[];   // 100-turn mega-summaries (~5000 chars each)
+  lastSummarizedTurn: number; // Last turn number that was summarized
+}
+
+const INITIAL_SCENARIO_MEMORY: ScenarioMemory = {
+  tier1Summaries: [],
+  tier2Summaries: [],
+  lastSummarizedTurn: 0
+};
+
 export interface SaveSlotMetadata {
   id: number;
   gameId: string;
@@ -460,7 +479,7 @@ export const useGameStore = create<GameState>()(
           chatHistory: state.chatHistory,
           displayHistory: state.displayHistory, // [Fix] Persist Display History too
           storyLog: state.storyLog,
-          scenarioSummary: state.scenarioSummary,
+          scenarioMemory: state.scenarioMemory,
           lastTurnSummary: state.lastTurnSummary, // Important for Logic
           // World
           currentLocation: state.currentLocation,
@@ -550,7 +569,12 @@ export const useGameStore = create<GameState>()(
             chatHistory: snapshot.chatHistory || [],
             displayHistory: snapshot.displayHistory || [],
             storyLog: snapshot.storyLog || [],
-            scenarioSummary: snapshot.scenarioSummary || "",
+            // [Migration] Old saves have scenarioSummary:string, new saves have scenarioMemory
+            scenarioMemory: snapshot.scenarioMemory || {
+              tier1Summaries: snapshot.scenarioSummary ? [snapshot.scenarioSummary] : [],
+              tier2Summaries: [],
+              lastSummarizedTurn: snapshot.turnCount || 0
+            },
             lastTurnSummary: snapshot.lastTurnSummary || "",
 
             // World & Visuals
@@ -800,7 +824,7 @@ export const useGameStore = create<GameState>()(
                 currentSegment: null,
                 currentBackground: '', // Will be set by init logic or script
                 currentLocation: data.initialLocation || '', // [Fix] Dynamic Location from Loader
-                scenarioSummary: '', // [Fix] Reset Summary
+                scenarioMemory: { ...INITIAL_SCENARIO_MEMORY }, // [Fix] Reset Summary
                 lastTurnSummary: '', // [Fix] Reset Logic Context
                 currentCG: null, // [New] Reset CG
                 currentBgm: null,
@@ -1042,8 +1066,46 @@ export const useGameStore = create<GameState>()(
       addDeadCharacter: (id) => set((state) => ({ deadCharacters: [...(state.deadCharacters || []), id] })),
       currentLocation: '폐가', // Default Wuxia Start (Abandoned House)
       setCurrentLocation: (loc) => set({ currentLocation: loc }),
+      // [NEW] Hierarchical Memory System
+      scenarioMemory: { ...INITIAL_SCENARIO_MEMORY },
+      addTier1Summary: (summary) => set((state) => ({
+        scenarioMemory: {
+          ...state.scenarioMemory,
+          tier1Summaries: [...state.scenarioMemory.tier1Summaries, summary.slice(0, 2000)],
+          lastSummarizedTurn: state.turnCount
+        }
+      })),
+      compressTier2: (megaSummary) => set((state) => {
+        const keepCount = state.scenarioMemory.tier1Summaries.length % 10;
+        return {
+          scenarioMemory: {
+            ...state.scenarioMemory,
+            tier2Summaries: [...state.scenarioMemory.tier2Summaries, megaSummary.slice(0, 5000)],
+            tier1Summaries: state.scenarioMemory.tier1Summaries.slice(-keepCount || undefined),
+          }
+        };
+      }),
+      getScenarioContext: () => {
+        const mem = get().scenarioMemory;
+        const parts: string[] = [];
+        if (mem.tier2Summaries.length > 0) {
+          parts.push('[장기 기억]\n' + mem.tier2Summaries.join('\n---\n'));
+        }
+        if (mem.tier1Summaries.length > 0) {
+          parts.push('[최근 줄거리]\n' + mem.tier1Summaries.join('\n---\n'));
+        }
+        return parts.join('\n\n') || '게임 시작';
+      },
+      // [Compat] Legacy scenarioSummary (computed from scenarioMemory)
       scenarioSummary: '',
-      setScenarioSummary: (summary) => set({ scenarioSummary: summary }),
+      setScenarioSummary: (summary) => set((state) => ({
+        // Legacy: treat incoming summary as a Tier1 entry
+        scenarioMemory: {
+          ...state.scenarioMemory,
+          tier1Summaries: [...state.scenarioMemory.tier1Summaries, summary.slice(0, 2000)],
+          lastSummarizedTurn: state.turnCount
+        }
+      })),
       currentEvent: '',
       setCurrentEvent: (event) => set({ currentEvent: event }),
       currentMood: 'daily',
@@ -1366,7 +1428,7 @@ export const useGameStore = create<GameState>()(
             chatHistory: optimizedChatHistory,
             displayHistory: optimizedDisplayHistory,
             storyLog: state.storyLog,
-            scenarioSummary: state.scenarioSummary,
+            scenarioMemory: state.scenarioMemory,
             lastTurnSummary: state.lastTurnSummary,
 
             // World

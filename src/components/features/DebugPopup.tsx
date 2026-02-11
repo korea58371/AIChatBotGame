@@ -16,7 +16,7 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
     const activeCharacters = useGameStore(state => state.activeCharacters);
     const currentLocation = useGameStore(state => state.currentLocation);
     const inventory = useGameStore(state => state.inventory);
-    const scenarioSummary = useGameStore(state => state.scenarioSummary);
+    const scenarioMemory = useGameStore(state => state.scenarioMemory);
     const userCoins = useGameStore(state => state.userCoins);
     const gameId = useGameStore(state => state.activeGameId);
 
@@ -291,7 +291,29 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                 <details className="group" open>
                                     <summary className="text-green-400 font-bold mb-2 border-b border-green-500/30 pb-1 cursor-pointer select-none">Scenario Summary</summary>
                                     <div className="bg-gray-900 p-4 rounded text-sm text-gray-300 leading-relaxed whitespace-pre-wrap group-open:block">
-                                        {scenarioSummary || "No summary available."}
+                                        {scenarioMemory && (scenarioMemory.tier1Summaries.length > 0 || scenarioMemory.tier2Summaries.length > 0) ? (
+                                            <div className="space-y-3">
+                                                {scenarioMemory.tier2Summaries.length > 0 && (
+                                                    <div>
+                                                        <div className="text-amber-400 font-bold text-xs mb-1">[장기 기억] ({scenarioMemory.tier2Summaries.length}개)</div>
+                                                        {scenarioMemory.tier2Summaries.map((s, i) => (
+                                                            <div key={`t2-${i}`} className="pl-2 border-l-2 border-amber-600/50 mt-1 text-xs">{s}</div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {scenarioMemory.tier1Summaries.length > 0 && (
+                                                    <div>
+                                                        <div className="text-cyan-400 font-bold text-xs mb-1">[최근 줄거리] ({scenarioMemory.tier1Summaries.length}개)</div>
+                                                        {scenarioMemory.tier1Summaries.map((s, i) => (
+                                                            <div key={`t1-${i}`} className="pl-2 border-l-2 border-cyan-600/50 mt-1 text-xs">{s}</div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div className="text-gray-500 text-xs">Last Summarized: Turn {scenarioMemory.lastSummarizedTurn}</div>
+                                            </div>
+                                        ) : (
+                                            "No summary available."
+                                        )}
                                     </div>
                                 </details>
                             </section>

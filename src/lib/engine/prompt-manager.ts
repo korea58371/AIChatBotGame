@@ -251,7 +251,21 @@ export class PromptManager {
         if (state.getSystemPromptTemplate && typeof state.getSystemPromptTemplate === 'function') {
             console.log(`[PromptManager] 동적 템플릿 사용: ${state.activeGameId}`);
             try {
-                prompt = state.getSystemPromptTemplate(state, language);
+                // [NEW] Inject computed scenarioContext for prompt templates
+                const mem = state.scenarioMemory;
+                let scenarioContext = '게임 시작';
+                if (mem) {
+                    const parts: string[] = [];
+                    if (mem.tier2Summaries?.length > 0) {
+                        parts.push('[장기 기억]\n' + mem.tier2Summaries.join('\n---\n'));
+                    }
+                    if (mem.tier1Summaries?.length > 0) {
+                        parts.push('[최근 줄거리]\n' + mem.tier1Summaries.join('\n---\n'));
+                    }
+                    if (parts.length > 0) scenarioContext = parts.join('\n\n');
+                }
+                const augmentedState = { ...state, scenarioContext };
+                prompt = state.getSystemPromptTemplate(augmentedState, language);
             } catch (e) {
                 console.error(`[PromptManager] 템플릿 실행 실패:`, e);
                 // 실패 시 아래의 기본 포맷으로 대체됩니다.

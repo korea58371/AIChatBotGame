@@ -230,6 +230,23 @@ export async function serverGenerateSummary(
     return generateSummary(API_KEY, currentSummary, recentDialogue);
 }
 
+// [NEW] Tiered Summary Server Actions
+export async function serverGenerateTier1Summary(
+    recentDialogue: Message[]
+) {
+    if (!API_KEY) return '';
+    const { generateTier1Summary } = await import('@/lib/ai/gemini');
+    return generateTier1Summary(API_KEY, recentDialogue);
+}
+
+export async function serverGenerateTier2Summary(
+    tier1Summaries: string[]
+) {
+    if (!API_KEY) return '';
+    const { generateTier2Summary } = await import('@/lib/ai/gemini');
+    return generateTier2Summary(API_KEY, tier1Summaries);
+}
+
 export async function serverGenerateCharacterMemorySummary(
     characterName: string,
     existingMemories: string[]
