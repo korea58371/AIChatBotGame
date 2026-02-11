@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
 
@@ -61,6 +61,8 @@ import PhoneCall from './features/PhoneCall';
 import TVNews from './features/TVNews';
 import SmartphoneApp from './features/SmartphoneApp';
 import { checkRankProgression } from '@/data/games/wuxia/progression';
+import { applyGameLogic as applyGameLogicExtracted } from '@/lib/game/applyGameLogic'; // [Refactor] Extracted
+import { advanceScript as advanceScriptExtracted } from '@/lib/game/advanceScript'; // [Refactor] Extracted
 import Article from './features/Article';
 import DebugPopup from './features/DebugPopup'; // [Fix] Restore Import
 import Link from 'next/link';
@@ -429,42 +431,37 @@ export default function VisualNovelUI() {
         return stats;
     }, []);
 
-    // [Performance] Core Game Store — Selective Subscription
-    // Data fields: trigger re-render ONLY when their specific value changes
+    // [Performance] Core Game Store — Selective Subscription (Optimized)
+    // ONLY subscribe to values that directly affect JSX rendering.
+    // Heavy objects (chatHistory, characterData, inventory, scriptQueue) use getState() on demand.
     const {
-        chatHistory, currentBackground, characterExpression, playerStats,
-        inventory, scriptQueue, choices, language, scenarioSummary,
-        playerName, userCoins, availableExtraImages, turnCount,
-        initialScenario, characterCreationQuestions, day, time,
-        characterData, lastTurnSummary, activeGameId, currentLocation,
-        isDataLoaded, isHydrated, goals, endingType,
+        currentBackground, characterExpression, playerStats,
+        choices, language, scenarioSummary,
+        playerName, userCoins, turnCount,
+        day, time, activeGameId, currentLocation,
+        isDataLoaded, isHydrated, endingType,
     } = useGameStore(useShallow(state => ({
-        chatHistory: state.chatHistory,
         currentBackground: state.currentBackground,
         characterExpression: state.characterExpression,
         playerStats: state.playerStats,
-        inventory: state.inventory,
-        scriptQueue: state.scriptQueue,
         choices: state.choices,
         language: state.language,
         scenarioSummary: state.scenarioSummary,
         playerName: state.playerName,
         userCoins: state.userCoins,
-        availableExtraImages: state.availableExtraImages,
         turnCount: state.turnCount,
-        initialScenario: state.initialScenario,
-        characterCreationQuestions: state.characterCreationQuestions,
         day: state.day,
         time: state.time,
-        characterData: state.characterData,
-        lastTurnSummary: state.lastTurnSummary,
         activeGameId: state.activeGameId,
         currentLocation: state.currentLocation,
         isDataLoaded: state.isDataLoaded,
         isHydrated: state.isHydrated,
-        goals: state.goals,
         endingType: state.endingType,
     })));
+
+    // [Performance] Atomic selectors — subscribe to LENGTH only, not full arrays
+    const scriptQueueLength = useGameStore(state => state.scriptQueue.length);
+    const chatHistoryLength = useGameStore(state => state.chatHistory.length);
 
     // [Performance] Store Actions — stable references, never trigger re-render
     const {
@@ -499,10 +496,10 @@ export default function VisualNovelUI() {
     useEffect(() => {
         const store = useGameStore.getState();
         // Condition: Empty Queue, No Segment, Data Loaded, Initial Scenario Exists
-        if (scriptQueue.length === 0 && !currentSegment && store.isDataLoaded && store.initialScenario) {
+        if (scriptQueueLength === 0 && !currentSegment && store.isDataLoaded && store.initialScenario) {
 
             // Defensively check if we already have history (don't re-run start scenario if we are just paused)
-            if (chatHistory.length > 0) {
+            if (chatHistoryLength > 0) {
                 console.log("[VisualNovelUI] History exists, skipping bootstrap (Assumed paused/idle).");
                 return;
             }
@@ -521,7 +518,7 @@ export default function VisualNovelUI() {
             setScriptQueue(initialSegments);
             console.log(`[VisualNovelUI] Bootstrapped ${initialSegments.length} segments.`);
         }
-    }, [isDataLoaded, scriptQueue.length, currentSegment, chatHistory.length, turnCount]);
+    }, [isDataLoaded, scriptQueueLength, currentSegment, chatHistoryLength, turnCount]);
 
     useEffect(() => {
         // [Fix] Race Condition Guard
@@ -572,7 +569,7 @@ export default function VisualNovelUI() {
                 useGameStore.getState().setPlayerStats({ gold: 100000, level: 0 });
             }
         }
-    }, [turnCount, characterCreationQuestions, activeGameId, isDataLoaded, isHydrated, scriptQueue, choices]);
+    }, [turnCount, activeGameId, isDataLoaded, isHydrated, scriptQueueLength, choices]);
 
 
 
@@ -580,7 +577,7 @@ export default function VisualNovelUI() {
     const t = translations[language as keyof typeof translations] || translations.en;
 
 
-    const creationQuestions = characterCreationQuestions; // Alias for UI Usage
+    const creationQuestions = useGameStore.getState().characterCreationQuestions; // [Perf] Read on demand
 
     // VN State
     const [isProcessing, setIsProcessing] = useState(false);
@@ -729,8 +726,8 @@ export default function VisualNovelUI() {
     // [Refactor] Inline Stat Accumulator (Shared across Turn)
     // Tracks stats applied via <Stat> tags during playback to prevent double-counting in Post-Logic
     const currentSegmentRef = useRef<ScriptSegment | null>(null); // [Fix] Live Ref for Sync
-    const scriptQueueRef = useRef(scriptQueue); // [Perf] Ref for advanceScript stability
-    scriptQueueRef.current = scriptQueue; // Keep in sync
+    const scriptQueueRef = useRef(useGameStore.getState().scriptQueue); // [Perf] Ref for advanceScript stability
+    scriptQueueRef.current = useGameStore.getState().scriptQueue; // Keep in sync
     const inlineAccumulatorRef = useRef<{
         hp: number;
         mp: number;
@@ -877,6 +874,7 @@ export default function VisualNovelUI() {
     // Initialize Session ID
     // [Logging] Hydrate lastStoryOutput from history on mount (in case of refresh)
     useEffect(() => {
+        const chatHistory = useGameStore.getState().chatHistory;
         if (chatHistory && chatHistory.length > 0) {
             // Find last model message
             for (let i = chatHistory.length - 1; i >= 0; i--) {
@@ -988,7 +986,7 @@ export default function VisualNovelUI() {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [chatHistory.length, showHistory]); // [Perf] .length instead of full array ref
+    }, [chatHistoryLength, showHistory]); // [Perf] atomic selector — number comparison only
 
     // Status Message Timer
     useEffect(() => {
@@ -998,14 +996,13 @@ export default function VisualNovelUI() {
         }
     }, [statusMessage]);
 
-    // Auto-apply pending logic if script is finished
     useEffect(() => {
-        if (scriptQueue.length === 0 && !currentSegment && pendingLogic) {
+        if (scriptQueueLength === 0 && !currentSegment && pendingLogic) {
             console.log("Auto-applying pending logic (Script finished early)");
             applyGameLogic(pendingLogic);
             setPendingLogic(null);
         }
-    }, [scriptQueue, currentSegment, pendingLogic]);
+    }, [scriptQueueLength, currentSegment, pendingLogic]);
 
     // [Fix] Choice Recovery Mechanism (Lost Path Prevention)
     useEffect(() => {
@@ -1024,7 +1021,8 @@ export default function VisualNovelUI() {
             return;
         }
 
-        if (isDataLoaded && !currentSegment && scriptQueue.length === 0 && choices.length === 0 && chatHistory.length > 0) {
+        if (isDataLoaded && !currentSegment && scriptQueueLength === 0 && choices.length === 0 && chatHistoryLength > 0) {
+            const chatHistory = useGameStore.getState().chatHistory;
             const lastMsg = chatHistory[chatHistory.length - 1];
 
             // [Fix] Robust Guard: If last message is USER, absolutely definitely do NOT recover choices.
@@ -1052,18 +1050,18 @@ export default function VisualNovelUI() {
                 }
             }
         }
-    }, [isDataLoaded, currentSegment, scriptQueue.length, choices.length, chatHistory.length, isProcessing]);
+    }, [isDataLoaded, currentSegment, scriptQueueLength, choices.length, chatHistoryLength, isProcessing]);
 
     // [Fix] Failsafe: Auto-Trigger Deferred Ending
     // If the queue is empty and we have a pending ending, ensure it triggers even if the user didn't click.
     useEffect(() => {
-        if (!currentSegment && scriptQueue.length === 0 && pendingEndingRef.current) {
+        if (!currentSegment && scriptQueueLength === 0 && pendingEndingRef.current) {
             console.log(`[Ending] Failsafe Trigger: ${pendingEndingRef.current}`);
             const type = pendingEndingRef.current.toLowerCase() as any;
             pendingEndingRef.current = null;
             useGameStore.getState().setEndingType(type);
         }
-    }, [currentSegment, scriptQueue.length]); // [Perf] .length only
+    }, [currentSegment, scriptQueueLength]); // [Perf] atomic selector
 
     // Helper Functions
     const getBgUrl = (bg: string) => {
@@ -1202,546 +1200,34 @@ export default function VisualNovelUI() {
     }, [currentBackground]);
 
     // [fix] Auto-Advance Script: Moved below advanceScript definition
+    // [Refactor] advanceScript extracted to lib/game/advanceScript.ts
     const advanceScript = useCallback(() => {
-        const _t0 = performance.now(); // [PERF]
-        // [Stream] Increment consumed count
-        activeSegmentIndexRef.current += 1;
-
-        // Handle Character Exit (Exit Tag Logic)
-        if (currentSegmentRef.current?.characterLeave) {
-            console.log("Character leaving based on <떠남> tag.");
-            setCharacterExpression(''); // Clear character (use empty string as per type definition)
-        }
-
-        // Use a local copy of the queue to process immediately
-        let currentQueue = [...scriptQueueRef.current];
-
-        if (currentQueue.length === 0) {
-            setCurrentSegment(null);
-
-            // [Fix] Epilogue Completion
-            // If we are in Epilogue Mode and the queue is empty, we are DONE.
-            // Do NOT trigger pending logic (which might be a new turn loop).
-            // [Fix] Add !isProcessing check to prevent premature trigger while generating epilogue
-            if (isEpilogueRef.current) {
-                console.log(`[Epilogue] Completion Check: isProcessing=${isProcessing}, Queue=${currentQueue.length}`);
-                if (!isProcessing) {
-                    console.log("[Epilogue] Script finished. Triggering THE END.");
-                    setShowTheEnd(true);
-                    setPendingLogic(null); // Clear any pending logic
-                    return;
-                } else {
-                    console.log("[Epilogue] Queue empty but Processing... Waiting.");
-                }
-            }
-
-            // Check for pending logic
-            if (pendingLogic) {
-                applyGameLogic(pendingLogic);
-                setPendingLogic(null);
-            }
-            return;
-        }
-
-        let nextSegment = currentQueue[0];
-
-        // Process background, command, and BGM segments iteratively to avoid recursion
-        while (nextSegment && (nextSegment.type === 'background' || nextSegment.type === 'command' || nextSegment.type === 'bgm' || nextSegment.type === 'event_cg')) {
-            console.log(`[ScriptLoop] Processing Segment: Type=${nextSegment.type}, Content=${nextSegment.content}`);
-
-            if (nextSegment.type === 'background') {
-                // Resolve fuzzy tag to actual file path
-                console.log(`[Background Debug] AI Tag: "${nextSegment.content}"`);
-                const resolvedBg = resolveBackground(nextSegment.content);
-                console.log(`[Background Debug] Resolved to: "${resolvedBg}"`);
-                setBackground(resolvedBg);
-
-                // [Fix] Sync Current Location with Narrative Tag
-                console.log(`[Location] Updating Current Location: ${nextSegment.content}`);
-                useGameStore.getState().setCurrentLocation(nextSegment.content);
-
-                useGameStore.getState().setEventCG(null); // [Fix] Clear Event CG on background change
-                setCharacterExpression(''); // Clear character on scene change
-
-                // [Fix] Force React Render Cycle for Background
-                // Sometimes state update doesn't reflect in time for the next frame if logic is heavy.
-                // We rely on 'setBackground' (Zustand) which should trigger re-render.
-                // But to be safe for "Streaming", we ensure this runs before next text segment.
-                setTimeout(() => { }, 0);
-            } else if (nextSegment.type === 'command') {
-                // [New] Handle Commands
-                if (nextSegment.commandType === 'set_time') {
-                    const rawContent = nextSegment.content;
-                    console.log(`[Command] Updating Time/Day: ${rawContent}`);
-
-                    // [Fix] Parse Day explicitly to update State
-                    // Format: "2일차 07:00 (아침)"
-                    const dayMatch = rawContent.match(/(\d+)(일차|Day)/i);
-                    if (dayMatch) {
-                        const newDay = parseInt(dayMatch[1], 10);
-                        if (!isNaN(newDay)) {
-                            console.log(`[Command] Day Update: ${newDay}`);
-                            useGameStore.getState().setDay(newDay);
-                        }
-                    }
-
-                    // [Fix] Clean Time String (Remove Day part to avoid duplication in HUD)
-                    // "2일차 07:00 (아침)" -> "07:00 (아침)"
-                    const cleanTime = rawContent.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
-                    if (cleanTime) {
-                        useGameStore.getState().setTime(cleanTime);
-                    }
-                } else if (nextSegment.commandType === 'update_stat') {
-                    try {
-                        const changes = JSON.parse(nextSegment.content);
-                        console.log(`[Command] Update Stat:`, changes);
-                        const currentStats = useGameStore.getState().playerStats;
-                        const newStats = { ...currentStats };
-
-                        Object.keys(changes).forEach(originalKey => {
-                            const key = originalKey.toLowerCase(); // [Fix] Normalize key to handle 'Morality' vs 'morality'
-
-                            if (['hp', 'mp', 'gold', 'fame', 'morality'].includes(key)) return; // Handled above (assuming changes.hp check uses original key? No, changes.hp is case-sensitive!)
-
-                            // Wait, if I access `changes.hp` explicitly above, and changes has "HP", `changes.hp` is undefined.
-                            // I should probably iterate ALL keys and handle them dynamically to be safe, 
-                            // OR map changes to a lower-cased object first.
-
-                        });
-
-                        // Better approach: Normalize entire changes object first
-                        const normalizedChanges: Record<string, any> = {};
-                        Object.keys(changes).forEach(k => normalizedChanges[k.toLowerCase()] = changes[k]);
-
-                        // Now use normalizedChanges for everything
-                        if (normalizedChanges.hp !== undefined) {
-                            const val = Number(normalizedChanges.hp);
-                            if (!isNaN(val)) {
-                                newStats.hp = Math.min(Math.max(0, newStats.hp + val), newStats.maxHp);
-                                addToast(`${t.hp} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
-
-                                // [Fix] Trigger Visual Damage for Inline Tag
-                                if (val < 0) {
-                                    handleVisualDamage(val, newStats.hp, newStats.maxHp);
-                                }
-                            }
-                        }
-                        if (normalizedChanges.mp !== undefined) {
-                            const val = Number(normalizedChanges.mp);
-                            if (!isNaN(val)) {
-                                newStats.mp = Math.min(Math.max(0, newStats.mp + val), newStats.maxMp);
-                                addToast(`${t.mp} ${val > 0 ? '+' : ''}${val}`, 'info');
-                            }
-                        }
-                        if (normalizedChanges.gold !== undefined) {
-                            const val = Number(normalizedChanges.gold);
-                            if (!isNaN(val)) {
-                                newStats.gold = Math.max(0, newStats.gold + val);
-                                addToast(`${t.gold} ${val > 0 ? '+' : ''}${val}`, 'success');
-                            }
-                        }
-                        if (normalizedChanges.fame !== undefined) {
-                            const val = Number(normalizedChanges.fame);
-                            if (!isNaN(val)) {
-                                newStats.fame = Math.max(0, (newStats.fame || 0) + val);
-                                addToast(`${t.fame} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
-                            }
-                        }
-                        if (normalizedChanges.morality !== undefined) {
-                            const val = Number(normalizedChanges.morality);
-                            if (!isNaN(val)) {
-                                newStats.personality = { ...newStats.personality, morality: Math.min(100, Math.max(-100, (newStats.personality?.morality || 0) + val)) };
-                                addToast(`${t.morality} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
-                            }
-                        }
-                        // [Fix] Explicit Neigong Handling (Years)
-                        if (normalizedChanges.neigong !== undefined) {
-                            const val = Number(normalizedChanges.neigong);
-                            if (!isNaN(val)) {
-                                const oldVal = newStats.neigong || 0;
-                                newStats.neigong = Math.max(0, oldVal + val);
-
-                                console.log(`[Stat] Neigong Update: ${oldVal} -> ${newStats.neigong} (Change: ${val})`);
-
-                                // Distinct Toast for Years
-                                if (val > 0) {
-                                    addToast(`내공(갑자) ${val}년 증가!`, 'success');
-                                } else if (val < 0) {
-                                    addToast(`내공(갑자) ${Math.abs(val)}년 손실! (심각한 부상)`, 'error');
-                                }
-                            }
-                        }
-
-                        // Generic Fallback
-                        Object.keys(normalizedChanges).forEach(key => {
-                            if (['hp', 'mp', 'gold', 'fame', 'morality', 'neigong'].includes(key)) return;
-
-                            const val = Number(normalizedChanges[key]);
-                            if (!isNaN(val)) {
-                                if (typeof (newStats as any)[key] === 'number') {
-                                    (newStats as any)[key] = ((newStats as any)[key] as number) + val;
-                                    // @ts-ignore
-                                    const label = t[key] || key.toUpperCase();
-                                    addToast(`${label} ${val > 0 ? '+' : ''}${val}`, 'info');
-                                } else if (newStats.personality && typeof (newStats.personality as any)[key] === 'number') {
-                                    (newStats.personality as any)[key] = ((newStats.personality as any)[key] as number) + val;
-                                    // @ts-ignore
-                                    const label = t[key] || key.toUpperCase();
-                                    addToast(`${label} ${val > 0 ? '+' : ''}${val}`, 'info');
-                                }
-                            }
-                        });
-
-
-
-                        // [New] Apply Realm/Level Logic
-                        const progression = processRealmProgression(newStats, addToast);
-                        if (progression.narrativeEvent) {
-                            console.log("[Progression] Event Triggered:", progression.narrativeEvent);
-                            // Append to LastTurnSummary for PreLogic to see next turn
-                            const currentSummary = useGameStore.getState().lastTurnSummary || "";
-                            setLastTurnSummary(currentSummary + "\n" + progression.narrativeEvent);
-                        }
-
-                        useGameStore.getState().setPlayerStats(progression.stats);
-
-
-                    } catch (e) {
-                        console.error("Failed to parse update_stat command:", e);
-                    }
-                } else if (nextSegment.commandType === 'update_relationship') {
-                    try {
-                        const data = JSON.parse(nextSegment.content);
-                        if (data.charId && data.value) {
-                            // [Fix] Normalize ID
-                            const canonicalId = normalizeCharacterId(data.charId, useGameStore.getState().language || 'ko');
-                            const val = Number(data.value);
-                            console.log(`[Command] Update Rel: ${canonicalId} (User: ${data.charId}) += ${val}`);
-
-                            // [Fix] Update PlayerStats (Primary Data Source for UI)
-                            const currentStats = useGameStore.getState().playerStats;
-                            const currentRel = currentStats.relationships[canonicalId] || 0;
-                            const newRel = currentRel + val;
-
-                            useGameStore.getState().setPlayerStats({
-                                relationships: {
-                                    ...currentStats.relationships,
-                                    [canonicalId]: newRel
-                                }
-                            });
-
-                            // [Fix] Sync CharacterData (Secondary)
-                            useGameStore.getState().updateCharacterRelationship(canonicalId, newRel);
-
-                            // Try to resolve name for toast
-                            const charData = useGameStore.getState().characterData[canonicalId];
-                            const name = charData ? charData.name : canonicalId;
-                            addToast(`${name} 호감도 ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse update_relationship command:", e);
-                    }
-                } else if (nextSegment.commandType === 'update_time') {
-                    // [New] Inline Time Update
-                    // [New] Inline Time Update
-                    const rawContent = nextSegment.content;
-                    console.log(`[Command] Inline Time Update: ${rawContent}`);
-
-                    // Parse Day (reused logic from set_time)
-                    const dayMatch = rawContent.match(/(\d+)(일차|Day)/i);
-                    if (dayMatch) {
-                        const newDay = parseInt(dayMatch[1], 10);
-                        if (!isNaN(newDay)) {
-                            useGameStore.getState().setDay(newDay);
-                        }
-                    }
-
-                    // Clean Time String
-                    const cleanTime = rawContent.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
-                    if (cleanTime) {
-                        useGameStore.getState().setTime(cleanTime);
-                        addToast(`시간 업데이트: ${cleanTime}`, 'info');
-                    }
-
-                } else if (nextSegment.commandType === 'add_injury') {
-                    // [New] Inline Injury
-                    try {
-                        const data = JSON.parse(nextSegment.content);
-                        if (data.name) {
-                            console.log(`[Command] Inline Injury: ${data.name}`);
-                            const state = useGameStore.getState();
-                            const currentInjuries = state.playerStats.active_injuries || [];
-
-                            if (!currentInjuries.includes(data.name)) {
-                                state.setPlayerStats({
-                                    active_injuries: [...currentInjuries, data.name]
-                                });
-                                addToast(`부상 발생: ${data.name}`, 'warning');
-                                handleVisualDamage(-10, state.playerStats.hp, state.playerStats.maxHp);
-                            }
-                        }
-                    } catch (e) {
-                        console.error("Failed to parse add_injury command:", e);
-                    }
-                }
-            } else if (nextSegment.type === 'bgm') {
-                // [New] Handle BGM
-                playBgm(nextSegment.content);
-            } else if (nextSegment.type === 'event_cg') {
-                // [New] Handle Event CG
-                const content = nextSegment.content;
-                if (content.toLowerCase() === 'off') {
-                    useGameStore.getState().setEventCG(null);
-                } else {
-                    useGameStore.getState().setEventCG(content);
-                }
-            }
-
-            currentQueue.shift(); // Remove processed segment
-            if (currentQueue.length === 0) break;
-            nextSegment = currentQueue[0];
-        }
-
-        // If queue is empty after processing backgrounds
-        if (currentQueue.length === 0) {
-            setScriptQueue([]);
-            setCurrentSegment(null);
-            if (pendingLogic) {
-                applyGameLogic(pendingLogic);
-                setPendingLogic(null);
-            }
-            return;
-        }
-
-        // Handle Text Messages (Store)
-        if (nextSegment.type === 'text_message') {
-            console.log(`[Script] Text Message from ${nextSegment.character}: ${nextSegment.content}`);
-            addTextMessage(nextSegment.character || 'Unknown', {
-                sender: nextSegment.character || 'Unknown',
-                content: nextSegment.content,
-                timestamp: Date.now()
-            });
-            addToast(`📩 ${nextSegment.character}: ${nextSegment.content.substring(0, 15)}...`, 'info');
-            setScriptQueue(currentQueue.slice(1));
-            setCurrentSegment(nextSegment); // [Changed] Show Popup
-            return;
-        }
-
-        // Handle Text Replies (Player)
-        if (nextSegment.type === 'text_reply') {
-            const receiver = nextSegment.character || 'Unknown';
-            console.log(`[Script] Text Reply to ${receiver}: ${nextSegment.content}`);
-            addTextMessage(receiver, {
-                sender: '주인공',
-                content: nextSegment.content,
-                timestamp: Date.now()
-            });
-            addToast(`📤 답장 전송: ${receiver}`, 'info');
-            setScriptQueue(currentQueue.slice(1));
-            setCurrentSegment(null);
-            return;
-        }
-
-        // Handle Phone Call
-        if (nextSegment.type === 'phone_call') {
-            console.log(`[Script] Phone Call: ${nextSegment.content}`);
-            // Logic for phone call (UI component)
-            // Falls through to default segment handling
-        }
-
-        // If queue is empty after processing backgrounds
-        if (currentQueue.length === 0) {
-            setScriptQueue([]);
-            setCurrentSegment(null);
-            if (pendingLogic) {
-                applyGameLogic(pendingLogic);
-                setPendingLogic(null);
-            }
-
-            // [Fix] Trigger Deferred Ending (After text finishes)
-            if (pendingEndingRef.current) {
-                console.log(`[Ending] Triggering Deferred Ending: ${pendingEndingRef.current}`);
-                useGameStore.getState().setEndingType(pendingEndingRef.current.toLowerCase() as any);
-                pendingEndingRef.current = null;
-            }
-            return;
-        }
-
-        // Handle Choices
-        if (nextSegment.type === 'choice') {
-            const newChoices = [];
-            let i = 0;
-            while (i < currentQueue.length && currentQueue[i].type === 'choice') {
-                newChoices.push(currentQueue[i]);
-                i++;
-            }
-
-            // [Epilogue Guard] Do NOT show choices during Epilogue (Streaming Fix)
-            if (isEpilogueRef.current) {
-                console.log("[Epilogue] Choices detected in queue. Suppressing and auto-advancing.");
-                // We consumed them, so we just clear choices to be safe and continue
-                setChoices([]);
-            } else {
-                setChoices(newChoices);
-            }
-
-            setScriptQueue(currentQueue.slice(i));
-            setCurrentSegment(null);
-
-            // [Fix] Apply Pending Logic when Reaching Choices (End of Turn)
-            if (pendingLogic) {
-                console.log("[VisualNovelUI] Applying Pending Logic at Choice Boundary", pendingLogic);
-                applyGameLogic(pendingLogic);
-                setPendingLogic(null);
-            }
-            return;
-        }
-
-        // Handle Normal Segment (Dialogue/Narration)
-        setScriptQueue(currentQueue.slice(1));
-        setCurrentSegment(nextSegment);
-
-        // [Fix] Normalize inputs to NFC (Standard) to match JSON keys
-        if (nextSegment.character) nextSegment.character = nextSegment.character.normalize('NFC');
-        if (nextSegment.characterImageKey) nextSegment.characterImageKey = nextSegment.characterImageKey.normalize('NFC');
-
-        if (nextSegment.type === 'dialogue') {
-            // [New] Dynamic Override for Extra Characters
-            const charMap = useGameStore.getState().characterMap || {};
-            const isMainCharacter = !!charMap[nextSegment.character || ''];
-
-            // Prevent override if it is a Main Character
-            if (nextSegment.characterImageKey && nextSegment.character && !isMainCharacter) {
-                useGameStore.getState().setExtraOverride(nextSegment.character, nextSegment.characterImageKey);
-            }
-
-            if (nextSegment.character) {
-                // Determine Name and Emotion from AI output
-                // AI is instructed to output Korean Name and Korean Emotion.
-                const charName = nextSegment.character === playerName ? '주인공' : nextSegment.character;
-                const emotion = nextSegment.expression || 'Default'; // AI output (e.g., '기쁨', 'Happy')
-
-                let imagePath = '';
-
-                // Prevent Protagonist Image from showing (Immersion)
-                // [Modified] Allow if Override exists (Persisted Choice)
-                const state = useGameStore.getState();
-                // [Fix] Priority 0: Hidden Protagonist Override
-                // If this is a hidden character, we MUST show their specific image.
-                if (isHiddenProtagonist(charName, playerName, state.protagonistImageOverride)) {
-                    // [Fix] Force distinct image for hidden protagonist
-                    // We can now safely rely on getCharacterImage because image-mapper also checks isHiddenProtagonist
-                    imagePath = getCharacterImage(charName, emotion);
-                    setCharacterExpression(imagePath);
-                    return; // Skip standard hiding logic
-                }
-
-                if (charName === '주인공' || charName === playerName) {
-                    const state = useGameStore.getState();
-                    // [Fix] Check PlayerName key (Standard) OR '주인공' key (Legacy/Fallback)
-                    const overrideKey = state.extraOverrides?.[playerName] || state.extraOverrides?.['주인공'];
-
-                    if (overrideKey) {
-                        const extraMap = state.extraMap;
-                        let finalImage = '';
-
-                        if (extraMap && extraMap[overrideKey]) {
-                            finalImage = extraMap[overrideKey];
-                        } else {
-                            finalImage = `${overrideKey}.png`;
-                        }
-
-                        // Set full path
-                        imagePath = `/assets/${useGameStore.getState().activeGameId || 'wuxia'}/ExtraCharacters/${finalImage}`;
-                        setCharacterExpression(imagePath);
-                        return;
-                    }
-
-                    setCharacterExpression('');
-                    return;
-                }
-
-                const combinedKey = `${charName}_${emotion}`;
-                const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
-                const extraMap = useGameStore.getState().extraMap; // Get extraMap from store
-
-                // [Fix] Explicit Key Lookup (Priority)
-                // Only use characterImageKey if NOT a Main Character
-                if (nextSegment.characterImageKey && !isMainCharacter) {
-                    if (extraMap && extraMap[nextSegment.characterImageKey]) {
-                        imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[nextSegment.characterImageKey]}`;
-                    } else {
-                        // Fallback for direct matches?
-                        imagePath = getCharacterImage(nextSegment.characterImageKey, emotion);
-                    }
-                }
-                // Existing Logic
-                else if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
-                    // Check direct file match (name_emotion)
-                    imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
-                } else if (extraMap && extraMap[charName]) {
-                    // Check exact name match in extraMap (e.g. "점소이(비굴한)" -> "점소이_비굴한.png")
-                    imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
-                } else {
-                    // Clean up emotion input (remove parens if any, though system prompt forbids them)
-                    // The mapper expects clean distinct Korean words.
-                    imagePath = getCharacterImage(charName, emotion);
-
-                    // [Fallback] Fuzzy Match for Missing Images
-                    // If imagePath is empty, try to find the best match from availableExtraImages
-                    if (!imagePath && availableExtraImages && availableExtraImages.length > 0) {
-                        // Priority 1: Match defined image key (e.g. "냉철한사파무인남")
-                        let targetKey = nextSegment.characterImageKey || charName;
-
-                        // Clean target key (remove brackets if any remaining)
-                        targetKey = targetKey.replace(/\(.*\)/, '').trim();
-
-                        const candidates = availableExtraImages;
-                        // Use Detail version for Score Access
-                        const bestMatch = findBestMatchDetail(targetKey, candidates);
-
-                        if (bestMatch && bestMatch.rating > 0.4) { // 40% similarity threshold
-                            console.log(`[Image Fallback] Fuzzy Match: ${targetKey} -> ${bestMatch.target}`);
-                            imagePath = `/assets/${gameId}/ExtraCharacters/${bestMatch.target}.png`; // Simplified assumption: extra images are flat
-                            // Wait, availableExtraImages might be full filenames or keys? 
-                            // Usually they are keys like "점소이_비굴한" or just "점소이".
-                            // Let's assume they are keys without extension if coming from store, 
-                            // BUT lines 926 and 950 add .png extension.
-                            // Let's check how availableExtraImages is populated. 
-                            // It is likely filenames without extension or keys.
-                            // Line 950: `.../${combinedKey}.png` implies combinedKey is the filename base.
-                            // If bestMatch.target is the filename base, we append .png.
-
-                            // Re-verify: availableExtraImages comes from store.
-
-                        }
-                    }
-                }
-
-                setCharacterExpression(imagePath);
-            }
-        }
-
-
-        // Response Time Tracking
-        console.log(`%c[PERF] advanceScript took ${(performance.now() - _t0).toFixed(1)}ms`, 'color: orange;');
-    }, []); // [Perf] Stable reference — uses refs internally
+        advanceScriptExtracted({
+            setBackground, setCharacterExpression, setChoices, setCurrentSegment,
+            setScriptQueue, setShowTheEnd, setPendingLogic, setLastTurnSummary,
+            setEventCG: (cg: string | null) => useGameStore.getState().setEventCG(cg),
+            setExtraOverride: (charId: string, key: string) => useGameStore.getState().setExtraOverride(charId, key),
+            activeSegmentIndexRef, currentSegmentRef, isEpilogueRef, pendingEndingRef, scriptQueueRef,
+            addToast, applyGameLogic, handleVisualDamage, playBgm, addTextMessage, processRealmProgression,
+            isProcessing, pendingLogic, availableExtraImages: useGameStore.getState().availableExtraImages || [], playerName, t,
+        });
+    }, []); // [Perf] Stable reference  uses refs internally
 
     // [fix] Auto-Advance Script when Queue fills (Streaming Support)
     // [fix] Auto-Advance Script when Queue fills OR when Epilogue finishes (Transition to The End)
     useEffect(() => {
         // Condition 1: Queue has items (Streaming)
-        if (!currentSegment && scriptQueue.length > 0) {
+        if (!currentSegment && scriptQueueLength > 0) {
             console.log("[Auto-Advance] Queue has items. currentSegment is null. Advancing...");
             advanceScript();
         }
         // Condition 2: Queue is empty, but we are in Epilogue Mode (and not yet showing The End)
         // This forces the "Final Call" to advanceScript which triggers setShowTheEnd(true)
-        else if (!currentSegment && scriptQueue.length === 0 && isEpilogueRef.current && !showTheEnd) {
+        else if (!currentSegment && scriptQueueLength === 0 && isEpilogueRef.current && !showTheEnd) {
             console.log("[Auto-Advance] Epilogue finished. Triggering Final Advance for The End.");
             advanceScript();
         }
-    }, [currentSegment, scriptQueue.length, showTheEnd]); // [Perf] .length to reduce comparisons
+    }, [currentSegment, scriptQueueLength, showTheEnd]); // [Perf] atomic selector
 
 
     const [avgResponseTime, setAvgResponseTime] = useState(30000); // Default 30 seconds as per request
@@ -1911,7 +1397,7 @@ export default function VisualNovelUI() {
                 // worldData: currentState.worldData, 
                 isDirectInput: isDirectInput, // Inject Flag
                 isGodMode: currentState.isGodMode, // Pass God Mode Flag to Server
-                lastTurnSummary: lastTurnSummary, // [NEW] Pass Last Turn Summary
+                lastTurnSummary: currentState.lastTurnSummary, // [Perf] Read from getState()
                 fateUsage: fateUsage, // [Fate System] Pass requested fate points
 
                 day: currentState.day, // [FIX] Pass Day to Server
@@ -3091,7 +2577,7 @@ export default function VisualNovelUI() {
         // to prevent spoilers and ensure the log matches the user's experience.
         const state = useGameStore.getState();
         const history = state.chatHistory;
-        const queue = scriptQueue; // Use local state which is in-sync with UI
+        const queue = useGameStore.getState().scriptQueue; // [Perf] Read from getState()
 
         // [Fate System] Deterministic Deduction
         // Must happen BEFORE handleSend to prevent "Free Usage" if network fails, 
@@ -3176,7 +2662,7 @@ export default function VisualNovelUI() {
         performance.mark('click-start'); // [PERF]
         // [Fix] Allow clicking if we have buffered segments, even if still processing (Streaming Mode)
         // Block only if processing AND queue is empty (Waiting for tokens)
-        if ((isProcessing && scriptQueue.length === 0) || isInputOpen || isDebugOpen || showHistory || showInventory || showCharacterInfo || showSaveLoad || showWiki) return;
+        if ((isProcessing && scriptQueueLength === 0) || isInputOpen || isDebugOpen || showHistory || showInventory || showCharacterInfo || showSaveLoad || showWiki) return;
         if (choices.length > 0) return;
 
         const now = Date.now();
@@ -3245,7 +2731,7 @@ export default function VisualNovelUI() {
 
             // Replace Placeholder with Real Name
             const effectiveName = (playerName === '김현준갓모드' ? '김현준' : playerName) || '성현우';
-            const processedScenario = (initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
+            const processedScenario = (useGameStore.getState().initialScenario || "").replace(/{{PLAYER_NAME}}/g, effectiveName);
             setLastStoryOutput(processedScenario); // [Logging] Capture initial scenario
 
             // Parse the raw text scenario
@@ -3368,7 +2854,7 @@ export default function VisualNovelUI() {
                             imagePath = getCharacterImage(first.characterImageKey, emotion);
                         }
                     }
-                    else if (availableExtraImages && availableExtraImages.includes(combinedKey) && !isHiddenProtagonist) {
+                    else if ((useGameStore.getState().availableExtraImages || []).includes(combinedKey) && !isHiddenProtagonist) {
                         imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
                     } else if (extraMap && extraMap[charName] && !isHiddenProtagonist) {
                         imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
@@ -3504,1252 +2990,18 @@ export default function VisualNovelUI() {
         setChoices([]); // [Fix] Clear choices
     };
 
+    // [Refactor] applyGameLogic extracted to lib/game/applyGameLogic.ts
     function applyGameLogic(logicResult: any) {
-        // [Refactor] Collapsible Console Group for Cleaner Logs
-        console.groupCollapsed("▶ [applyGameLogic] Received Payload");
-        console.dir(logicResult);
-        console.groupEnd();
-
-        if (!logicResult) {
-            console.warn('applyGameLogic: logicResult is null or undefined');
-            return;
-        }
-        setLastLogicResult(logicResult);
-
-        // [New] Ending Trigger
-        // [Fix] Epilogue Guard: Do not re-trigger ending if already in Epilogue mode
-        if (logicResult.ending_trigger && ['BAD', 'GOOD', 'TRUE'].includes(logicResult.ending_trigger) && !isEpilogueRef.current) {
-            console.log(`[Ending] Detected: ${logicResult.ending_trigger}. Deferring trigger until text completion.`);
-            // [Fix] Defer ending trigger until script queue is empty
-            pendingEndingRef.current = logicResult.ending_trigger;
-            setChoices([]); // [Fix] Force-clear any floating choices to prevent UI overlap
-        }
-
-        // Update Stats
-        const currentStats = useGameStore.getState().playerStats;
-        console.log('Current Stats before update:', currentStats);
-
-        const newStats = { ...currentStats };
-        let hasInjuryChanges = false;
-
-        // [Fix] Deep clone nested objects to prevent mutation of INITIAL_STATS
-        newStats.relationships = { ...(newStats.relationships || {}) };
-        newStats.personality = {
-            ...(newStats.personality || {
-                morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
-                openness: 0, warmth: 0, eloquence: 0, leadership: 0,
-                humor: 0, lust: 0
-            })
-        };
-        newStats.skills = [...(newStats.skills || [])];
-        // Initialize stagnation if missing
-        if (typeof newStats.growthStagnation !== 'number') newStats.growthStagnation = 0;
-
-        // [Growth Monitoring] Detect significant growth to reset Stagnation
-        const isGrowthEvent =
-            (logicResult.neigongChange && logicResult.neigongChange > 0) ||
-            logicResult.realmChange || // Hypothetical field, but let's assume specific realm update logic down below covers it
-            (logicResult.expChange && logicResult.expChange > 10) || // Major EXP gain
-            // [NEW] Check for new skills (unified)
-            (logicResult.new_skills && logicResult.new_skills.length > 0);
-
-        if (isGrowthEvent) {
-            newStats.growthStagnation = 0;
-            // console.log("[Growth] Stagnation Reset!");
-        }
-
-        // Initialize if missing (Redundant but safe)
-        if (!newStats.relationships) newStats.relationships = {};
-
-        // [New] Generic Stat Updates (PostLogic)
-        if (logicResult.stat_updates) {
-            console.log("[applyGameLogic] Processing Generic Stat Updates:", logicResult.stat_updates);
-            Object.entries(logicResult.stat_updates).forEach(([key, val]) => {
-                const numVal = Number(val);
-                if (isNaN(numVal) || numVal === 0) return;
-
-                const lowerKey = key.toLowerCase();
-
-                // 1. Core Stats
-                if (lowerKey === 'hp') {
-                    newStats.hp = Math.min(Math.max(0, newStats.hp + numVal), newStats.maxHp);
-                    handleVisualDamage(numVal, newStats.hp, newStats.maxHp);
-
-                    // [Fix] HARD Auto-Death Trigger (Backup if AI misses it)
-                    if (newStats.hp <= 0 && useGameStore.getState().endingType === 'none') {
-                        console.log("HP <= 0 detected. Queuing DEFERRED BAD ENDING.");
-                        // Do NOT set immediately, as user might still be reading the "You died" description.
-                        pendingEndingRef.current = 'bad';
-                    }
-                }
-                else if (lowerKey === 'mp') newStats.mp = Math.min(Math.max(0, newStats.mp + numVal), newStats.maxMp);
-                else if (lowerKey === 'gold') newStats.gold = Math.max(0, newStats.gold + numVal);
-                else if (lowerKey === 'fame') {
-                    newStats.fame = Math.max(0, (newStats.fame || 0) + numVal);
-                    addToast(`${t.fame} ${numVal > 0 ? '+' : ''}${numVal}`, numVal > 0 ? 'success' : 'warning');
-                }
-                else if (lowerKey === 'neigong') newStats.neigong = Math.max(0, (newStats.neigong || 0) + numVal);
-                else if (lowerKey === 'fate') newStats.fate = Math.max(0, (newStats.fate || 0) + numVal);
-
-                // 2. Personality Stats
-                else if (newStats.personality && Object.prototype.hasOwnProperty.call(newStats.personality, lowerKey)) {
-                    // @ts-ignore
-                    newStats.personality[lowerKey] = Math.min(100, Math.max(-100, (newStats.personality[lowerKey] || 0) + numVal));
-                    // Optional: Toast for personality update? Maybe too spammy if handled by tag injection.
-                }
-
-                // 3. Base Stats
-                else if (['str', 'agi', 'int', 'vit', 'luk'].includes(lowerKey)) {
-                    // @ts-ignore
-                    newStats[lowerKey] = (newStats[lowerKey] || 10) + numVal;
-                }
-            });
-        }
-
-        // [New] Deterministic Rank Progression (Wuxia Only)
-        // If we are in Wuxia mode, check for rank up based on updated stats (Level + Neigong).
-        if (activeGameId === 'wuxia') {
-            const progression = checkRankProgression(newStats, useGameStore.getState().playerStats.playerRank);
-            if (progression) {
-                console.log(`[Progression] Rank Up Detected: ${progression.newRankId}`);
-                useGameStore.getState().setPlayerStats({ playerRank: progression.newRankId });
-                // [Suppressed] Rank Up Toast
-                // addToast(`[승급] ${progression.title}의 경지에 올랐습니다!`, 'success');
-                // addToast(progression.message, 'info');
-            }
-        }
-
-        if (logicResult.hpChange) {
-            newStats.hp = Math.min(Math.max(0, newStats.hp + logicResult.hpChange), newStats.maxHp);
-            handleVisualDamage(logicResult.hpChange, newStats.hp, newStats.maxHp);
-        }
-        if (logicResult.mpChange) newStats.mp = Math.min(Math.max(0, newStats.mp + logicResult.mpChange), newStats.maxMp);
-        if (logicResult.goldChange) newStats.gold = Math.max(0, newStats.gold + logicResult.goldChange);
-
-        if (logicResult.expChange) newStats.exp += logicResult.expChange;
-        if (logicResult.fameChange) newStats.fame = Math.max(0, (newStats.fame || 0) + logicResult.fameChange);
-        // [Fate System] Update Fate (Generic 'fate' or legacy 'fateChange')
-        if (logicResult.fate !== undefined) {
-            console.log(`[applyGameLogic] Applying Fate Change: ${logicResult.fate}`);
-            // [Toast] Visual Feedback
-            if (logicResult.fate !== 0) addToast(`운명 포인트 ${logicResult.fate > 0 ? '+' : ''}${logicResult.fate}`, 'info');
-            newStats.fate = Math.max(0, (newStats.fate || 0) + logicResult.fate);
-        }
-        else if (logicResult.fateChange !== undefined) {
-            console.log(`[applyGameLogic] Applying Fate Change (Legacy): ${logicResult.fateChange}`);
-            newStats.fate = Math.max(0, (newStats.fate || 0) + logicResult.fateChange);
-        }
-
-        // Base Stats
-        if (logicResult.statChange) {
-            newStats.str = (newStats.str || 10) + (logicResult.statChange.str || 0);
-            newStats.agi = (newStats.agi || 10) + (logicResult.statChange.agi || 0);
-            newStats.int = (newStats.int || 10) + (logicResult.statChange.int || 0);
-            newStats.vit = (newStats.vit || 10) + (logicResult.statChange.vit || 0);
-            newStats.luk = (newStats.luk || 10) + (logicResult.statChange.luk || 0);
-        }
-
-        // [New] Sleep Logic (Overrides Time Consumed if present)
-        if (logicResult.isSleep) {
-            newStats.fatigue = 0; // Reset Fatigue
-            const currentState = useGameStore.getState();
-            currentState.setDay((currentState.day || 1) + 1); // Advance Day
-            currentState.setTime('Morning'); // Reset Time to Morning
-            addToast("휴식을 취했습니다. (피로도 초기화)", 'success');
-            console.log("[Logic] isSleep: True -> Day Advanced, Fatigue Reset");
-        }
-
-        // [New] Location Update (From PostLogic)
-        if (logicResult.location) {
-            const currentLoc = useGameStore.getState().currentLocation;
-            // Only update if changed (ignoring null/undefined)
-            if (logicResult.location && currentLoc !== logicResult.location) {
-                useGameStore.getState().setCurrentLocation(logicResult.location);
-                console.log(`[Logic] Location Updated: ${currentLoc} -> ${logicResult.location}`);
-            }
-        }
-
-        // [New] Time Progression Logic (Only if not sleeping)
-        else if (logicResult.timeConsumed) {
-            const timeMap = ['morning', 'afternoon', 'evening', 'night'];
-            const currentState = useGameStore.getState();
-            // Normalize & Legacy Fallback
-            let currentTime = (currentState.time || 'morning').toLowerCase();
-            const koMap: Record<string, string> = { '아침': 'morning', '점심': 'afternoon', '저녁': 'evening', '밤': 'night' };
-            if (koMap[currentTime]) currentTime = koMap[currentTime];
-
-            let timeIndex = timeMap.indexOf(currentTime);
-            if (timeIndex === -1) timeIndex = 0; // Default
-
-            const consumed = logicResult.timeConsumed; // 1=Small, 2=Medium, 4=Long
-            const totalIndex = timeIndex + consumed;
-
-            const daysPassed = Math.floor(totalIndex / 4);
-            const newTimeIndex = totalIndex % 4;
-
-            if (daysPassed > 0) {
-                const newDay = (currentState.day || 1) + daysPassed;
-                currentState.setDay(newDay);
-                addToast(`${daysPassed}일이 지났습니다. (Day ${newDay})`, 'info');
-            }
-
-            const newTime = timeMap[newTimeIndex];
-            if (newTime !== currentTime) {
-                currentState.setTime(newTime);
-                console.log(`[Time] ${currentTime} -> ${newTime} (+${daysPassed} days)`);
-            }
-
-            // [Growth Monitoring] Increment Stagnation if time passed AND no growth this turn
-            if (!isGrowthEvent) {
-                // Increment by 1 per logic execution (Turn)
-                newStats.growthStagnation = (newStats.growthStagnation || 0) + 1;
-            }
-        }
-
-        if (logicResult.goldChange) {
-            newStats.gold = Math.max(0, (newStats.gold || 0) + logicResult.goldChange);
-        }
-        // [Fix] REMOVED Redundant Fame & Fate Logic Update
-        // Similar to HP/MP, these are now handled via tags or were duplicated above.
-        // if (logicResult.fameChange) {
-        //     newStats.fame = (newStats.fame || 0) + logicResult.fameChange;
-        // }
-        // if (logicResult.fateChange) {
-        //     newStats.fate = (newStats.fate || 0) + logicResult.fateChange;
-        // }
-
-        // Personality
-        if (logicResult.personalityChange) {
-            const p = newStats.personality;
-            const c = logicResult.personalityChange;
-            if (c.morality) p.morality = Math.min(100, Math.max(-100, (p.morality || 0) + c.morality));
-            if (c.courage) p.courage = Math.min(100, Math.max(-100, (p.courage || 0) + c.courage));
-            if (c.energy) p.energy = Math.min(100, Math.max(-100, (p.energy || 0) + c.energy));
-            if (c.decision) p.decision = Math.min(100, Math.max(-100, (p.decision || 0) + c.decision));
-            if (c.lifestyle) p.lifestyle = Math.min(100, Math.max(-100, (p.lifestyle || 0) + c.lifestyle));
-            if (c.openness) p.openness = Math.min(100, Math.max(-100, (p.openness || 0) + c.openness));
-            if (c.warmth) p.warmth = Math.min(100, Math.max(-100, (p.warmth || 0) + c.warmth));
-            if (c.eloquence) p.eloquence = Math.min(100, Math.max(-100, (p.eloquence || 0) + c.eloquence));
-            if (c.leadership) p.leadership = Math.min(100, Math.max(-100, (p.leadership || 0) + c.leadership));
-        }
-
-        if (logicResult.neigongChange) {
-            newStats.neigong = Math.max(0, (newStats.neigong || 0) + logicResult.neigongChange);
-            addToast(`내공(Internal Energy) ${logicResult.neigongChange > 0 ? '+' : ''}${logicResult.neigongChange}년`, logicResult.neigongChange > 0 ? 'success' : 'warning');
-        }
-
-        // [New] Player Rank & Faction Update
-        if (logicResult.playerRank) {
-            newStats.playerRank = logicResult.playerRank;
-            addToast(`등급 변경: ${logicResult.playerRank}`, 'success');
-        }
-        if (logicResult.factionChange) {
-            newStats.faction = logicResult.factionChange;
-            addToast(`소속 변경: ${logicResult.factionChange}`, 'info');
-        }
-
-        // Skills
-        // Skills (Unified System)
-        // logicResult.new_skills is Array of Skill Objects
-        if (logicResult.new_skills) {
-            logicResult.new_skills.forEach((skill: Skill) => {
-                // Check duplicate by ID
-                if (!newStats.skills.find(s => s.id === skill.id)) {
-                    newStats.skills.push(skill);
-                    addToast(`신규 스킬 획득: ${skill.name}`, 'success');
-                }
-            });
-        }
-
-        // [Unified] Skill Proficiency Updates
-        if (logicResult.updated_skills) {
-            logicResult.updated_skills.forEach((update: { id: string, proficiency_delta: number }) => {
-                const skillIndex = newStats.skills.findIndex(s => s.id === update.id);
-                if (skillIndex > -1) {
-                    const skill = newStats.skills[skillIndex];
-                    const oldProf = skill.proficiency || 0;
-                    const newProf = Math.min(100, Math.max(0, oldProf + update.proficiency_delta));
-
-                    // Direct mutation of the clones array object
-                    newStats.skills[skillIndex] = { ...skill, proficiency: newProf };
-
-                    if (newProf !== oldProf) {
-                        addToast(`${skill.name} 숙련도: ${oldProf}% -> ${newProf}% (${update.proficiency_delta > 0 ? '+' : ''}${update.proficiency_delta})`, 'info');
-                    }
-                }
-            });
-        }
-
-        // Relationships
-        if (logicResult.relationshipChange) {
-            // [Fix] Defensive check for AI hallucination (returning object instead of array)
-            const changes = Array.isArray(logicResult.relationshipChange)
-                ? logicResult.relationshipChange
-                : [logicResult.relationshipChange];
-
-            changes.forEach((rel: any) => {
-                if (!rel || !rel.characterId) return;
-                // [Fix] Normalize ID
-                const normalizedId = normalizeCharacterId(rel.characterId);
-                newStats.relationships[normalizedId] = (newStats.relationships[normalizedId] || 0) + (rel.change || 0);
-            });
-        }
-
-        console.log('New Stats after update:', newStats);
-
-        // [New] Injuries Update
-        if (logicResult.injuriesUpdate) {
-            let currentInjuries = [...(newStats.active_injuries || [])];
-            let changed = false;
-
-            // Add
-            if (logicResult.injuriesUpdate.add) {
-                const addList = Array.isArray(logicResult.injuriesUpdate.add)
-                    ? logicResult.injuriesUpdate.add
-                    : [logicResult.injuriesUpdate.add];
-
-                addList.forEach((injury: string) => {
-                    if (!currentInjuries.includes(injury)) {
-                        currentInjuries.push(injury);
-                        addToast(`부상 발생(Injury): ${injury}`, 'warning');
-                        changed = true;
-                    }
-                });
-            }
-
-            // Remove
-            // Remove
-            if (logicResult.injuriesUpdate.remove) {
-                const initialLen = currentInjuries.length;
-                const toRemove = new Set<string>();
-
-                const removeList = Array.isArray(logicResult.injuriesUpdate.remove)
-                    ? logicResult.injuriesUpdate.remove
-                    : [logicResult.injuriesUpdate.remove];
-
-                removeList.forEach((targetInj: string) => {
-                    // 1. Exact Match
-                    if (currentInjuries.includes(targetInj)) {
-                        toRemove.add(targetInj);
-                        return;
-                    }
-
-                    // 1.5 Lenient Substring & Normalized Match (User Request)
-                    // If AI says "Internal Injury", it should remove "Severe Internal Injury" or "Internal Injury (Recovering)"
-                    const substringMatch = currentInjuries.find(curr => {
-                        // Normalize: Remove (...) and whitespace
-                        const cleanCurr = curr.replace(/\(.*\)/, '').replace(/\s+/g, '');
-                        const cleanTarget = targetInj.replace(/\(.*\)/, '').replace(/\s+/g, '');
-
-                        // Check containment (bi-directional)
-                        return curr.includes(targetInj) || targetInj.includes(curr) ||
-                            cleanCurr.includes(cleanTarget) || cleanTarget.includes(cleanCurr);
-                    });
-
-                    if (substringMatch) {
-                        console.log(`[Injury] Substring Removal: '${substringMatch}' matches target '${targetInj}'`);
-                        toRemove.add(substringMatch);
-                        return;
-                    }
-
-                    // 2. Fuzzy Match (Fallback)
-                    const best = findBestMatchDetail(targetInj, currentInjuries);
-                    // Threshold 0.6 (Dice Coefficient) -> Lowered to 0.5 for leniency
-                    if (best && best.rating >= 0.5) {
-                        console.log(`[Injury] Fuzzy Removal: '${targetInj}' matches '${best.target}' (Score: ${best.rating.toFixed(2)})`);
-                        toRemove.add(best.target);
-                    }
-                });
-
-                currentInjuries = currentInjuries.filter(inj => !toRemove.has(inj));
-
-                if (currentInjuries.length !== initialLen) {
-                    addToast("부상 회복!", 'success');
-                    changed = true;
-                }
-            }
-
-            if (changed) {
-                // [Sanitization] Auto-clean invalid injuries (Psychological, duplicates)
-                const INVALID_KEYWORDS = ['심리적', '정신적', '공포', '두려움', '위축', '긴장', '불안', '경직', '뻐근함'];
-                currentInjuries = currentInjuries.filter(inj => {
-                    // 1. Check Blacklist
-                    if (INVALID_KEYWORDS.some(kw => inj.includes(kw))) return false;
-                    // 2. Check Empty/Short
-                    if (!inj || inj.trim().length < 2) return false;
-                    return true;
-                });
-                // Deduplicate
-                currentInjuries = Array.from(new Set(currentInjuries));
-
-                newStats.active_injuries = currentInjuries;
-                hasInjuryChanges = true;
-            }
-        }
-
-        // [Universal] Level & Rank Progression
-        const maResult = logicResult.martial_arts;
-        if (maResult && maResult.level_delta) {
-            const delta = maResult.level_delta;
-            const oldLevel = newStats.level || 1;
-            newStats.level = oldLevel + delta;
-            // [Suppressed] Generic Level Growth Toast
-            // queueToast(`성장 (Growth): +${delta.toFixed(2)} Level`, 'success');
-
-            // Check for Rank Up (Title Change)
-            const gameId = useGameStore.getState().activeGameId || 'wuxia';
-            let newTitle = '';
-            let map = null;
-
-            if (gameId === 'wuxia') map = LEVEL_TO_REALM_MAP;
-            else if (gameId === 'god_bless_you') map = LEVEL_TO_RANK_MAP;
-
-            if (map) {
-                const entry = map.find(m => newStats.level >= m.min && newStats.level <= m.max);
-                if (entry) {
-                    if ((entry as any).id) {
-                        // [Localization Fix] Unified Title Resolution
-                        const lang = useGameStore.getState().language || 'ko';
-                        const category = gameId === 'wuxia' ? 'realms' : 'ranks';
-                        // @ts-ignore
-                        const t = translations[lang]?.[gameId]?.[category];
-                        newTitle = (t && t[(entry as any).id]) ? t[(entry as any).id] : (entry as any).title || "Unknown";
-                    } else {
-                        newTitle = (entry as any).title || "Unknown";
-                    }
-                }
-            }
-
-            if (newTitle && newTitle !== newStats.playerRank) {
-                newStats.playerRank = newTitle;
-                // useGameStore.getState().setPlayerRealm(newTitle); // [Removed] Legacy State
-                addToast(`Rank Up! [${newTitle}]`, 'success');
-                console.log(`[Progression] Level ${oldLevel.toFixed(2)} -> ${newStats.level.toFixed(2)} | Rank: ${newTitle}`);
-            }
-        }
-
-        // [New Wuxia] New Skills Logic
-        if (maResult && maResult.new_skills && maResult.new_skills.length > 0) {
-            const currentSkills = useGameStore.getState().playerStats.skills || [];
-            maResult.new_skills.forEach((skill: any) => {
-                // Check duplicate ID
-                if (!currentSkills.find((s: any) => s.id === skill.id)) {
-                    // Logic to add skill is handled in setState below, but we can do a toast here
-                    addToast(`New Skill: ${skill.name}`, 'success');
-                }
-            });
-        }
-
-
-
-        // [Narrative Systems: Tension & Goals]
-        if (logicResult.new_goals) {
-            logicResult.new_goals.forEach((g: any) => {
-                const newGoal = {
-                    id: `goal_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                    description: g.description,
-                    type: g.type,
-                    status: 'ACTIVE',
-                    createdTurn: useGameStore.getState().turnCount
-                };
-                // @ts-ignore
-                useGameStore.getState().addGoal(newGoal);
-                // [Suppressed] New Goal Toast
-                // addToast(`New Goal: ${g.description}`, 'info');
-            });
-        }
-
-        // [New] Event Lifecycle Management (Fix for Event Loop Bug)
-        // 1. Trigger New Event
-        if (logicResult.triggerEventId) {
-            const currentActive = useGameStore.getState().activeEvent;
-            // Only trigger if not already active (or different)
-            if (!currentActive || currentActive.id !== logicResult.triggerEventId) {
-                const eventPayload = {
-                    id: logicResult.triggerEventId,
-                    prompt: logicResult.currentEvent || "", // Save prompt for context
-                    startedTurn: useGameStore.getState().turnCount
-                };
-                useGameStore.getState().setActiveEvent(eventPayload);
-                console.log(`[VisualNovelUI] Marking Event as Triggered: ${logicResult.triggerEventId}`);
-                useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
-                addToast("새로운 이벤트가 발생했습니다!", 'info');
-                console.log(`[Event System] New Event Triggered & Activated: ${logicResult.triggerEventId}`);
-            }
-        }
-
-        // 2. Clear Completed/Ignored Event (From PreLogic)
-        if (logicResult.event_status === 'completed' || logicResult.event_status === 'ignored') {
-            const currentActive = useGameStore.getState().activeEvent;
-            if (currentActive) {
-                // [Fix] Failsafe: Ensure it is marked as triggered (Prevent Loops)
-                if (logicResult.event_status === 'completed') {
-                    const triggered = useGameStore.getState().triggeredEvents || [];
-                    if (!triggered.includes(currentActive.id)) {
-                        useGameStore.getState().addTriggeredEvent(currentActive.id);
-                        console.log(`[Event System] Failsafe: Added ${currentActive.id} to triggeredEvents on completion.`);
-                    }
-                }
-
-                useGameStore.getState().setActiveEvent(null);
-                console.log(`[Event System] Event Cleared (${logicResult.event_status}): ${currentActive.id}`);
-                addToast(logicResult.event_status === 'completed' ? "이벤트가 종료되었습니다." : "이벤트가 넘어갔습니다.", 'info');
-            }
-        }
-
-        if (logicResult.goal_updates) {
-            logicResult.goal_updates.forEach((u: any) => {
-                // @ts-ignore
-                useGameStore.getState().updateGoal(u.id, { status: u.status });
-                // [Suppressed] Goal Status Toasts
-                // if (u.status === 'COMPLETED') addToast(`Goal Completed!`, 'success');
-                // if (u.status === 'FAILED') addToast(`Goal Failed!`, 'warning');
-            });
-        }
-
-        // Final Commit
-        if (Object.keys(logicResult).some(k => k === 'hpChange' || k === 'mpChange' || k === 'goldChange' || k === 'statChange' || k === 'personalityChange' || k === 'relationshipChange') || hasInjuryChanges) {
-            useGameStore.getState().setPlayerStats(newStats);
-        }
-
-
-
-        // Toasts
-        if (logicResult.hpChange) addToast(`${t.hp} ${logicResult.hpChange > 0 ? '+' : ''}${logicResult.hpChange}`, logicResult.hpChange > 0 ? 'success' : 'warning');
-        if (logicResult.mpChange) addToast(`${t.mp} ${logicResult.mpChange > 0 ? '+' : ''}${logicResult.mpChange}`, 'info');
-        if (logicResult.goldChange) addToast(`${t.gold} ${logicResult.goldChange > 0 ? '+' : ''}${logicResult.goldChange}`, 'success');
-        if (logicResult.fameChange) addToast(`Fame ${logicResult.fameChange > 0 ? '+' : ''}${logicResult.fameChange}`, logicResult.fameChange > 0 ? 'success' : 'warning');
-        if (logicResult.fateChange) addToast(`Fate ${logicResult.fateChange > 0 ? '+' : ''}${logicResult.fateChange}`, logicResult.fateChange > 0 ? 'info' : 'warning');
-
-        // Stat Toasts
-        if (logicResult.statChange) {
-            Object.entries(logicResult.statChange).forEach(([stat, value]: [string, any]) => {
-                if (value !== 0) addToast(`${stat.toUpperCase()} ${value > 0 ? '+' : ''}${value}`, 'info');
-            });
-        }
-
-        // Inventory
-        if (logicResult.newItems && logicResult.newItems.length > 0) {
-            logicResult.newItems.forEach((item: any) => {
-                addItem(item);
-                // [Suppressed] Item Acquired Toast
-                // addToast(t.acquired.replace('{0}', item.name), 'success');
-            });
-        }
-        if (logicResult.removedItemIds && logicResult.removedItemIds.length > 0) {
-            logicResult.removedItemIds.forEach((id: string) => {
-                removeItem(id);
-                // [Suppressed] Item Lost Toast
-                // addToast(t.usedLost.replace('{0}', id), 'info');
-            });
-        }
-
-        // Personality Toasts (Dynamic)
-        if (logicResult.personalityChange) {
-            Object.entries(logicResult.personalityChange).forEach(([trait, value]: [string, any]) => {
-                if (value !== 0) {
-                    // [Fix] Access flattened keys directly
-                    const label = (t as any)[trait] || trait.charAt(0).toUpperCase() + trait.slice(1);
-                    // [Suppressed] Personality Toast
-                    // queueToast(`${label} ${value > 0 ? '+' : ''}${value}`, value > 0 ? 'success' : 'warning');
-                }
-            });
-        }
-
-        // [New] Player Rank Update (Sync mechanism if Logic returns direct rank)
-        if (logicResult.playerRank) {
-            const currentRank = useGameStore.getState().playerStats.playerRank;
-            if (currentRank !== logicResult.playerRank) {
-                // Update Rank AND Realm to remain consistent
-                newStats.playerRank = logicResult.playerRank;
-                // We don't call setPlayerStats here directly anymore, as newStats is committed at the end
-                // setPlayerStats({ ...newStats, playerRank: logicResult.playerRank }); <-- Removed direct set
-
-                // Also update top-level playerRealm State immediately for safety
-                // useGameStore.getState().setPlayerRealm(logicResult.playerRank); // [Removed] Legacy
-
-                // [Suppressed] Rank Up Toast
-                // queueToast(`Rank Up: ${logicResult.playerRank}`, 'success');
-                console.log(`Rank updated from ${currentRank} to ${logicResult.playerRank}`);
-            }
-        }
-
-        // [New] Faction Update
-        if (logicResult.factionChange) {
-            const currentFaction = useGameStore.getState().playerStats.faction;
-            if (currentFaction !== logicResult.factionChange) {
-                newStats.faction = logicResult.factionChange;
-                useGameStore.getState().setPlayerStats(newStats);
-                addToast(`소속 변경: ${logicResult.factionChange}`, 'success');
-                console.log(`Faction updated from ${currentFaction} to ${logicResult.factionChange}`);
-            }
-        }
-
-        // Debug Fame Change
-        if (logicResult.fameChange !== undefined) {
-            console.log(`[Logic] Fame Change: ${logicResult.fameChange}`);
-        }
-
-        // [Fix] Update Active Characters FIRST to ensure they exist in store
-        if (logicResult.activeCharacters) {
-            useGameStore.getState().setActiveCharacters(logicResult.activeCharacters);
-        }
-
-        // Character Updates (Bio & Memories)
-        if (logicResult.characterUpdates && logicResult.characterUpdates.length > 0) {
-            logicResult.characterUpdates.forEach((char: any) => {
-                // [Fix] Normalize ID
-                const normalizedId = normalizeCharacterId(char.id, useGameStore.getState().language || 'ko');
-
-                // [Fix] Fetch existing data to safely merge
-                const existingData = useGameStore.getState().characterData[normalizedId] || {
-                    id: normalizedId,
-                    name: char.name || normalizedId,
-                    relationship: 0,
-                    memories: []
-                };
-
-                const updateData = { ...char, id: normalizedId };
-
-                // [Critical Fix] Merge Memories instead of Replacing
-                // The Logic Model returns NEW memories or relevant ones. We must not wipe old ones.
-                if (updateData.memories && Array.isArray(updateData.memories)) {
-                    const oldMemories = existingData.memories || [];
-                    const newMemories = updateData.memories;
-
-                    // Deduplicate and Append
-                    const mergedMemories = [...oldMemories];
-                    newMemories.forEach((m: string) => {
-                        if (!mergedMemories.includes(m)) {
-                            mergedMemories.push(m);
-                        }
-                    });
-
-                    updateData.memories = mergedMemories;
-                    addToast(`Memories Updated: ${normalizedId} (+${newMemories.length})`, 'info');
-                } else {
-                    // If no memories provided in update, DO NOT touch existing memories
-                    delete updateData.memories;
-                }
-
-                // [Safe Update] Use updateCharacterData (which now works because we initialized above, or we can use dedicated setter if needed)
-                // Since updateCharacterData might fail if ID missing (though setActiveCharacters handles it), 
-                // we can rely on it now.
-                useGameStore.getState().updateCharacterData(normalizedId, updateData);
-
-                if (!char.memories) addToast(`Character Updated: ${normalizedId}`, 'info');
-            });
-        }
-
-        // Location Update
-        if (logicResult.newLocation) {
-            useGameStore.getState().setCurrentLocation(logicResult.newLocation);
-            // Optional: Add toast or log
-            console.log(`Location updated to: ${logicResult.newLocation}`);
-        }
-
-        // Location Updates (Description & Secrets)
-        if (logicResult.locationUpdates && logicResult.locationUpdates.length > 0) {
-            logicResult.locationUpdates.forEach((loc: any) => {
-                // If secrets are provided, they REPLACE the old list
-                const updateData: any = {};
-                if (loc.description) updateData.description = loc.description;
-                if (loc.secrets) {
-                    updateData.secrets = loc.secrets;
-                    addToast(t.systemMessages?.secretsUpdated?.replace('{0}', loc.id) || `Secrets Updated: ${loc.id}`, 'info');
-                }
-
-                if (Object.keys(updateData).length > 0) {
-                    useGameStore.getState().updateLocation(loc.id, updateData);
-                }
-            });
-        }
-
-        // [Moved] Post-Logic Processing (Apply Outcomes)
-        if (logicResult.post_logic) {
-            const postLogic = logicResult.post_logic;
-
-            if (postLogic.mood_update) {
-                useGameStore.getState().setMood(postLogic.mood_update as any);
-            }
-
-            if (postLogic.relationship_updates) {
-                console.log("Relations Update:", postLogic.relationship_updates);
-                // TODO: Implement actual relationship update in store if needed
-            }
-
-            // [NEW] Faction Update (PostLogic)
-            if (postLogic.factionChange) {
-                const currentFaction = useGameStore.getState().playerStats.faction;
-                if (currentFaction !== postLogic.factionChange) {
-                    newStats.faction = postLogic.factionChange;
-                    useGameStore.getState().setPlayerStats(newStats);
-                    addToast(`소속 변경: ${postLogic.factionChange}`, 'success');
-                    console.log(`[PostLogic] Faction updated: ${postLogic.factionChange}`);
-                }
-            }
-
-            // [NEW] Rank Update (PostLogic)
-            if (postLogic.playerRank) {
-                const currentRank = useGameStore.getState().playerStats.playerRank;
-                if (currentRank !== postLogic.playerRank) {
-                    newStats.playerRank = postLogic.playerRank;
-                    useGameStore.getState().setPlayerStats(newStats);
-                    addToast(`Rank Up: ${postLogic.playerRank}`, 'success');
-                    console.log(`[PostLogic] Rank updated: ${postLogic.playerRank}`);
-                }
-            }
-
-            // [NEW] Injury Management (Healing & Mutation)
-            if (postLogic.resolved_injuries || postLogic.new_injuries) {
-                useGameStore.setState(state => {
-                    const currentInjuries = state.playerStats.active_injuries || [];
-                    let updatedInjuries = [...currentInjuries];
-
-                    // 1. Resolve (Remove) Injuries
-                    if (postLogic.resolved_injuries && postLogic.resolved_injuries.length > 0) {
-                        postLogic.resolved_injuries.forEach((resolved: string) => {
-                            // [Fix] Fuzzy Match Logic (Dice Coefficient)
-                            // We attempt to find the BEST match in the current injury list.
-                            // If match score > 0.5, we accept it as the target.
-
-                            let targetToRemove: string | null = null;
-                            const candidates = updatedInjuries;
-
-                            // 1. Exact or Simple Inclusion Match (Legacy)
-                            const exact = candidates.find(c => c === resolved);
-                            if (exact) targetToRemove = exact;
-                            else {
-                                // 2. Fuzzy Match
-                                const bestMatch = findBestMatchDetail(resolved, candidates);
-                                if (bestMatch && bestMatch.rating >= 0.5) { // 0.5 Threshold (Lenient)
-                                    console.log(`[Injury] Fuzzy Resolved: "${resolved}" -> "${bestMatch.target}" (Score: ${bestMatch.rating.toFixed(2)})`);
-                                    targetToRemove = bestMatch.target;
-                                } else {
-                                    // 3. Fallback: Check for substring inclusion (Aggressive)
-                                    const subMatch = candidates.find(c => c.includes(resolved) || resolved.includes(c));
-                                    if (subMatch) {
-                                        console.log(`[Injury] Substring Resolved: "${resolved}" -> "${subMatch}"`);
-                                        targetToRemove = subMatch;
-                                    }
-                                }
-                            }
-
-                            if (targetToRemove) {
-                                // Remove specific instance
-                                updatedInjuries = updatedInjuries.filter(i => i !== targetToRemove);
-                                addToast(t.systemMessages?.statusRecovered?.replace('{0}', targetToRemove) || `상태 회복: ${targetToRemove}`, 'success');
-                            } else {
-                                // [Fix] Silent Failure
-                                // If AI tries to heal something clearly not there, just log it. Do NOT annoy user.
-                                if (updatedInjuries.length === 0) {
-                                    console.log(`[Injury] AI tried to heal '${resolved}' but character has no injuries. (Ignored)`);
-                                } else {
-                                    console.log(`[Injury] AI tried to heal '${resolved}' but no match found in:`, updatedInjuries);
-                                }
-                            }
-                        });
-                    }
-
-                    // 2. Add New Injuries (Mutation/New)
-                    if (postLogic.new_injuries && postLogic.new_injuries.length > 0) {
-                        postLogic.new_injuries.forEach((newInjury: string) => {
-                            if (!updatedInjuries.includes(newInjury)) {
-                                updatedInjuries.push(newInjury);
-                                addToast(t.systemMessages?.injuryOccurred?.replace('{0}', newInjury) || `부상 발생/악화: ${newInjury}`, 'warning');
-                            }
-                        });
-                    }
-
-                    return {
-                        playerStats: {
-                            ...state.playerStats,
-                            active_injuries: updatedInjuries
-                        }
-                    };
-                });
-            }
-
-            // [NEW] Persist Personality Stats
-            if (postLogic.stat_updates) {
-                const currentStats = useGameStore.getState().playerStats;
-                const newPersonality = { ...currentStats.personality };
-                let hasChanges = false;
-
-                Object.entries(postLogic.stat_updates).forEach(([key, val]) => {
-                    if (key in newPersonality) {
-                        // Clamp between -100 and 100
-                        const newValue = Math.max(-100, Math.min(100, (newPersonality as any)[key] + (val as number)));
-                        (newPersonality as any)[key] = newValue;
-                        hasChanges = true;
-                        if (Math.abs(val as number) >= 1) {
-                            // [Localization] Use flattened keys from translations
-                            const label = (t as any)[key] || key;
-                            // [Suppressed] Personality Toast
-                            // queueToast(`${label} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
-                        }
-                    } else if (['hp', 'mp', 'gold', 'fame', 'neigong'].includes(key)) {
-                        // [Fix] Handle Core Stats in stat_updates
-                        const currentVal = (currentStats as any)[key] || 0;
-                        const newVal = Math.max(0, currentVal + (val as number));
-
-                        // Apply update immediately
-                        const updatePayload: any = {};
-                        updatePayload[key] = newVal;
-
-                        // Ensure we use the latest state structure
-                        const freshStats = useGameStore.getState().playerStats;
-                        useGameStore.getState().setPlayerStats({ ...freshStats, ...updatePayload });
-                    }
-                });
-
-                if (hasChanges) {
-                    useGameStore.getState().setPlayerStats({ personality: newPersonality });
-                    console.log("Updated Personality:", newPersonality);
-                }
-            }
-
-            if (postLogic.new_memories && postLogic.new_memories.length > 0) {
-                // Initial stub for memory handling
-            }
-
-            // [Deleted] Duplicate/Broken Memory Logic
-            // The correct logic is implemented below (after activeCharacters)
-        }
-
-        // [NEW] Martial Arts & Realm Updates (Sync with Server)
-        // This is the SINGLE SOURCE OF TRUTH for Martial Arts updates.
-        if (logicResult.martial_arts) {
-            const ma = logicResult.martial_arts;
-            console.log("[MartialArts] Update Received:", ma);
-
-            useGameStore.setState(state => {
-                const currentStats = { ...state.playerStats };
-                let hasUpdates = false;
-
-                // 1. Realm Update
-                if (ma.realm_update) {
-                    // Update generic PlayerRank (Unified Skill System)
-                    const normalizedRealm = ma.realm_update.split('(')[0].trim(); // Normalize "이류 (2nd Rate)" -> "이류"
-
-                    if (currentStats.playerRank !== normalizedRealm) {
-                        currentStats.playerRank = normalizedRealm;
-                        // currentStats.realm = ma.realm_update; // [Removed] Legacy
-                        // currentStats.realmProgress = 0; // [Removed] Legacy
-                        hasUpdates = true;
-                        // [Suppressed] Realm Ascension Toast
-                        // queueToast(t.systemMessages?.realmAscension?.replace('{0}', ma.realm_update) || `경지 등극: ${ma.realm_update}`, 'success');
-                    }
-                }
-
-                // 2. Realm Progress Delta -> Map to EXP
-                if (ma.realm_progress_delta !== undefined) {
-                    // Treat progress delta as EXP gain for now
-                    const currentExp = currentStats.exp || 0;
-                    currentStats.exp = currentExp + ma.realm_progress_delta;
-                    hasUpdates = true;
-                    // Only toast for significant gain
-                    if (ma.realm_progress_delta >= 5) {
-                        // [Suppressed] Realm Progress Toast
-                        // queueToast(t.systemMessages?.realmProgress?.replace('{0}', ma.realm_progress_delta) || `깨달음: 경험치 +${ma.realm_progress_delta}`, 'info');
-                    }
-                }
-
-                // 3. Neigong (Internal Energy) Update
-                if (ma.stat_updates?.neigong) {
-                    const delta = ma.stat_updates.neigong;
-                    currentStats.neigong = (currentStats.neigong || 0) + delta;
-                    // Float correction (optional, but display usually handles it)
-                    currentStats.neigong = Math.round(currentStats.neigong * 100) / 100;
-                    hasUpdates = true;
-                    const sign = delta > 0 ? '+' : '';
-                    // [Suppressed] Neigong Gain Toast (often frequent)
-                    // queueToast(t.systemMessages?.neigongGain?.replace('{0}', `${sign}${delta}`) || `내공 ${sign}${delta}년`, 'success');
-                }
-
-                // 3.5. HP/MP Logic from Martial Arts (Penalty/Growth)
-                if (ma.stat_updates?.hp) {
-                    currentStats.hp = Math.max(0, (currentStats.hp || 0) + ma.stat_updates.hp);
-                    hasUpdates = true;
-                }
-                if (ma.stat_updates?.mp) {
-                    currentStats.mp = Math.max(0, (currentStats.mp || 0) + ma.stat_updates.mp);
-                    hasUpdates = true;
-                }
-
-                // 3.6 Merge Injuries from Martial Arts
-                if (ma.stat_updates?.active_injuries) {
-                    const currentInj = currentStats.active_injuries || [];
-                    ma.stat_updates.active_injuries.forEach((inj: string) => {
-                        if (!currentInj.includes(inj)) {
-                            currentInj.push(inj);
-                            addToast(t.systemMessages?.internalInjury?.replace('{0}', inj) || `내상(Internal Injury): ${inj}`, 'warning');
-                            hasUpdates = true;
-                        }
-                    });
-                    currentStats.active_injuries = currentInj;
-                }
-
-
-                // 4. Skills Update
-                // Add New Skills
-                if (ma.new_skills && ma.new_skills.length > 0) {
-                    const currentSkills = currentStats.skills || [];
-                    const newSkills = ma.new_skills.filter((n: any) => !currentSkills.find((e: any) => e.name === n.name));
-                    if (newSkills.length > 0) {
-                        currentStats.skills = [...currentSkills, ...newSkills];
-                        hasUpdates = true;
-                        newSkills.forEach((skill: any) => addToast(t.systemMessages?.newArt?.replace('{0}', skill.name) || `신규 스킬 습득: ${skill.name}`, 'success'));
-                    }
-                }
-
-                // Update Existing Skills (Proficiency)
-                if (ma.updated_skills && ma.updated_skills.length > 0) {
-                    const currentSkills = currentStats.skills || [];
-                    let skillUpdated = false;
-                    const updatedList = currentSkills.map((skill: any) => {
-                        const update = ma.updated_skills.find((u: any) => u.id === skill.id || u.name === skill.name); // Support Name or ID
-                        if (update) {
-                            skillUpdated = true;
-                            // Update Proficiency
-                            const newProf = Math.min(100, Math.max(0, (skill.proficiency || 0) + update.proficiency_delta));
-                            return { ...skill, proficiency: newProf };
-                        }
-                        return skill;
-                    });
-
-                    if (skillUpdated) {
-                        currentStats.skills = updatedList;
-                        hasUpdates = true;
-                    }
-                }
-
-                // 5. Growth Stagnation - Calculated from update existence
-                if (hasUpdates) {
-                    currentStats.growthStagnation = 0;
-                } else {
-                    // Only increment if we actually ran MA logic but got no growth?
-                    // Rely on external cycle for general stagnation, but here we reset it on growth.
-                }
-
-                if (hasUpdates) {
-                    console.log("[MartialArts] State Updated:", currentStats);
-                    // Also update top-level playerRealm if a realm update occurred
-                    if (ma.realm_update) {
-                        return { playerStats: currentStats, playerRealm: ma.realm_update };
-                    }
-                    return { playerStats: currentStats };
-                }
-                return {};
-            });
-        }
-
-
-
-        // Mood Update
-        if (logicResult.newMood) {
-            const currentMood = useGameStore.getState().currentMood;
-            if (currentMood !== logicResult.newMood) {
-                useGameStore.getState().setMood(logicResult.newMood);
-                addToast(t.systemMessages?.moodChanged?.replace('{0}', logicResult.newMood.toUpperCase()) || `Mood Changed: ${logicResult.newMood.toUpperCase()}`, 'info');
-                console.log(`Mood changed from ${currentMood} to ${logicResult.newMood}`);
-            }
-        }
-
-        if (logicResult.activeCharacters) {
-            // [Safety] Ensure it's an array (AI might return single string)
-            const activeList = Array.isArray(logicResult.activeCharacters)
-                ? logicResult.activeCharacters
-                : [logicResult.activeCharacters];
-
-            // [Fix] Fuzzy Match & Normalize Logic
-            const store = useGameStore.getState();
-            const availableChars = store.availableCharacterImages || [];
-
-            // Map AI output names to Valid Image Keys
-            const resolvedChars = activeList.map((rawName: string) => {
-                // [Clean] Strip emotion suffixes (e.g. "_Anger_Lv1", "_Smile")
-                // Assumption: Character ID is the first part before the first underscore acting as a delimiter for emotion
-                // BUT: Some IDs actully have underscores (e.g. "jun_seo_yeon"). 
-                // Hybrid Strategy:
-                const playerName = useGameStore.getState().playerName || 'Player';
-
-                // Use Regex to remove _Emotion or _Lv patterns for cleaning
-                // Example: BaekSoYu_Anger_Lv1 -> BaekSoYu
-                const cleaned = rawName.replace(/(_[A-Z][a-z]+)+(_Lv\d+)?$/, '');
-
-                // 1. Check if it's the Player (Exact name or Alias)
-                const isPlayer = rawName === playerName
-                    || ['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인', '주인공'].includes(cleaned.toLowerCase())
-                    || cleaned === playerName;
-
-                if (isPlayer) {
-                    return playerName;
-                }
-
-                // 2. Check exact match in assets
-                if (availableChars.includes(rawName)) return rawName;
-
-                // Check if cleaned version exists
-                // We also need to handle cases like "baek_so_yu" vs "BaekSoYu" -> normalize to lowercase for check
-
-                if (['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인'].includes(cleaned.toLowerCase())) {
-                    return useGameStore.getState().playerName || 'Player';
-                }
-
-                // Try fuzzy match on Cleaned Name first
-                const matchClean = findBestMatch(cleaned, availableChars);
-                if (matchClean) {
-                    console.log(`[ActiveChar] Cleaned Match: "${rawName}" -> "${cleaned}" -> "${matchClean}"`);
-                    return matchClean;
-                }
-
-                // 3. Fuzzy match against available characters
-                const match = findBestMatch(rawName, availableChars);
-                if (match) {
-                    console.log(`[ActiveChar] Fuzzy Request: "${rawName}" -> Resolved: "${match}"`);
-                    return match;
-                }
-
-                return rawName;
-            });
-
-            // De-duplicate & Remove Player
-            const playerName = useGameStore.getState().playerName || 'Player';
-            const uniqueChars = Array.from(new Set(resolvedChars)).filter(c => c !== playerName) as string[];
-
-            useGameStore.getState().setActiveCharacters(uniqueChars);
-            console.log("Active Characters Updated:", uniqueChars);
-        }
-
-        // [New] Dead Character Processing
-        if (logicResult.post_logic?.dead_character_ids) {
-            const deadList = logicResult.post_logic.dead_character_ids;
-            if (Array.isArray(deadList) && deadList.length > 0) {
-                const store = useGameStore.getState();
-                deadList.forEach((id: string) => {
-                    // Prevent duplicates in logic (Store handles it too but safe to check)
-                    if (!store.deadCharacters?.includes(id)) {
-                        if (store.addDeadCharacter) {
-                            store.addDeadCharacter(id);
-                            addToast(t.systemMessages?.characterDefeated?.replace('{0}', id) || `Character Defeated: ${id}`, 'warning');
-                            console.log(`[Death] Character ${id} marked as dead.`);
-                        }
-                    }
-                });
-            }
-        }
-
-        // [New] Character Memories Update
-        // Fix: content is nested in post_logic
-        const memorySource = logicResult.post_logic?.character_memories || logicResult.character_memories;
-
-        if (memorySource) {
-            console.log("Processing Character Memories:", logicResult.character_memories); // [DEBUG]
-            const store = useGameStore.getState();
-            const availableChars = store.availableCharacterImages || [];
-            const playerStats = store.playerStats;
-
-            Object.entries(memorySource).forEach(([charId, memories]) => {
-                if (!Array.isArray(memories) || memories.length === 0) return;
-
-                // Resolve ID (Fuzzy Match + Player Map)
-                let targetId = charId;
-
-                // Handle Player Aliases
-                if (['player', 'me', 'i', 'myself', '나', '자신', '플레이어', '본인'].includes(charId.toLowerCase())) {
-                    targetId = useGameStore.getState().playerName || 'Player'; // Use actual player name
-                } else {
-                    // [Fix] Resolve ID against Character Data Keys (Primary) to prevent Phantom Entries
-                    const dataKeys = Object.keys(store.characterData);
-
-                    // 1. Try match against Data Keys first (Name-based)
-                    let match = findBestMatch(charId, dataKeys);
-
-                    // 2. Reverse Lookup via Maps (Asset ID -> Data Key)
-                    // If the AI output an Asset ID (e.g. "NamgungSeAh") instead of Name ("남궁세아")
-                    if (!match) {
-                        const potentialAssetId = findBestMatch(charId, availableChars) || charId;
-
-                        // Helper to find key for value
-                        const findKeyForValue = (map: Record<string, string> | undefined, val: string) => {
-                            if (!map) return null;
-                            return Object.keys(map).find(key => map[key] === val && dataKeys.includes(key));
-                        };
-
-                        const mappedKey = findKeyForValue(store.characterMap, potentialAssetId)
-                            || findKeyForValue(store.extraMap, potentialAssetId);
-
-                        if (mappedKey) {
-                            match = mappedKey;
-                            console.log(`[ID Resolution] Resolved ${charId} -> ${potentialAssetId} -> ${mappedKey}`);
-                        }
-                    }
-
-                    // 3. Fallback: Asset ID
-                    if (!match) {
-                        match = findBestMatch(charId, availableChars);
-                    }
-
-                    if (match) targetId = match;
-                }
-
-                console.log(`[MemoryUpdate] Adding memory to ${targetId} (raw: ${charId}):`, memories);
-
-                // Update Store
-                store.addCharacterMemory(targetId, memories[0]);
-                if (memories.length > 1) {
-                    for (let i = 1; i < memories.length; i++) {
-                        store.addCharacterMemory(targetId, memories[i]);
-                    }
-                }
-
-                // [Optimization] Memory Summarization Logic
-                // Trigger if memories exceed threshold (12) -> Summarize down to ~10
-                const updatedCharData = useGameStore.getState().characterData[targetId];
-                const currentMemories = updatedCharData?.memories || [];
-
-                if (currentMemories.length > 12) {
-                    console.log(`[Memory Limit] ${targetId} has ${currentMemories.length} memories. Triggering Summary...`);
-                    // activeToast is annoying if it happens too often, maybe just log? 
-                    // User requested functionality so a toast is good feedback.
-                    addToast(`${targetId}의 기억을 정리하는 중...`, 'info');
-
-                    // Fire-and-forget (don't await) to not block UI
-                    serverGenerateCharacterMemorySummary(targetId, currentMemories)
-                        .then((summarized: string[]) => {
-                            if (summarized && Array.isArray(summarized) && summarized.length > 0) {
-                                console.log(`[Memory Summary] ${targetId}: ${currentMemories.length} -> ${summarized.length}`);
-                                // Verify we actually reduced it or at least didn't break it
-                                if (summarized.length < currentMemories.length) {
-                                    useGameStore.getState().updateCharacterData(targetId, { memories: summarized });
-                                    addToast(`${targetId}의 중요한 기억만 남겼습니다.`, 'success');
-                                }
-                            }
-                        })
-                        .catch(err => console.error(`[Memory Summary Failed] ${targetId}`, err));
-                }
-            });
-        }
-
-        // [New] Status & Personality Description Updates (Natural Language)
-        if (logicResult.statusDescription) {
-            useGameStore.getState().setStatusDescription(logicResult.statusDescription);
-        }
-        if (logicResult.personalityDescription) {
-            useGameStore.getState().setPersonalityDescription(logicResult.personalityDescription);
-        }
-
-        // [New] Event System Check
-        // Check events based on the NEW stats
-        const { mandatory: triggeredEvents } = EventManager.checkEvents({
-            ...useGameStore.getState(),
-            playerStats: newStats // Use the updated stats for checking
+        applyGameLogicExtracted(logicResult, {
+            addToast,
+            t,
+            setLastLogicResult,
+            setChoices,
+            handleVisualDamage,
+            pendingEndingRef,
+            isEpilogueRef,
         });
-
-        // [CRITICAL FIX] Merge Server-Side Logic Events with Client-Side triggers
-        // If Logic Model explicitly returned a 'triggerEventId' and 'currentEvent' prompt, we MUST process it.
-        // This fixes the issue where 'wuxia_intro' (triggered by LLM) was ignored by client.
-
-        let activeEventPrompt = '';
-        let hasActiveEvent = false;
-
-        // 1. Prioritize Server-Side Event (Narrative Logic)
-        // 1. Prioritize Server-Side Event (Narrative Logic)
-        if (logicResult.triggerEventId) { // [Fix] Removed check for .currentEvent which is usually null
-            console.log(`[Validating Logic] Server triggered event ID: ${logicResult.triggerEventId}`);
-
-            // Lookup the event prompt from the Store
-            const storedEvents = useGameStore.getState().events || [];
-            const matchedEvent = storedEvents.find((e: any) => e.id === logicResult.triggerEventId);
-
-            if (matchedEvent) {
-                // Add to triggered list (so it doesn't trigger again if 'once')
-                useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
-
-                // Set as current prompt
-                activeEventPrompt = matchedEvent.prompt;
-                hasActiveEvent = matchedEvent.id; // Store ID as truthy value
-
-                addToast(t.systemMessages?.eventTriggered?.replace('{0}', matchedEvent.id) || `Event Triggered: ${matchedEvent.id}`, 'info');
-
-                // [CRITICAL] Persist Active Event for Next Turn's Context
-                useGameStore.getState().setActiveEvent(matchedEvent);
-
-                console.log(`[Event Found] Prompt Length: ${matchedEvent.prompt.length}`);
-            } else {
-                console.warn(`[Logic Warning] Triggered ID '${logicResult.triggerEventId}' not found in Client Event Registry.`);
-
-                // [Fix] Even if local definition is missing, we must record that this ID triggered
-                // to prevent loop if the Server keeps suggesting it.
-                useGameStore.getState().addTriggeredEvent(logicResult.triggerEventId);
-
-                // [Fallback] Construct Event from Server Data
-                if (logicResult.currentEvent) {
-                    console.log(`[Fallback] Using Server-provided Event Prompt for '${logicResult.triggerEventId}'`);
-                    const syntheticEvent = {
-                        id: logicResult.triggerEventId,
-                        title: logicResult.triggerEventId, // Fallback title
-                        prompt: logicResult.currentEvent,
-                        type: logicResult.type || 'SERVER_EVENT',
-                        priority: 100
-                    };
-
-                    useGameStore.getState().setActiveEvent(syntheticEvent);
-                    activeEventPrompt = syntheticEvent.prompt;
-                    hasActiveEvent = syntheticEvent.id;
-
-                    addToast(t.systemMessages?.eventTriggered?.replace('{0}', syntheticEvent.id) || `Event Triggered: ${syntheticEvent.id}`, 'info');
-                }
-            }
-        }
-
-
-        // [Event System Refactor] PreLogic determines Event Lifecycle
-        // Instead of auto-clearing, we listen to the AI's judgment.
-        // 'active': Keep event / 'completed' or 'ignored': Clear event.
-        if (logicResult.logic && (logicResult.logic.event_status === 'completed' || logicResult.logic.event_status === 'ignored')) {
-            const currentActiveEvent = useGameStore.getState().activeEvent;
-            if (currentActiveEvent) {
-                console.log(`[Event System] PreLogic signaled '${logicResult.logic.event_status}'. Clearing Active Event: ${currentActiveEvent.id}`);
-                addToast(`Event Resolved: ${currentActiveEvent.title || currentActiveEvent.id}`, 'info');
-                useGameStore.getState().setActiveEvent(null);
-            }
-        }
-
-        // 2. Client-Side Stat Events (e.g. Low HP, Injuries)
-        if (triggeredEvents.length > 0) {
-            console.log("Client Events Triggered:", triggeredEvents.map(e => e.id));
-
-            triggeredEvents.forEach(event => {
-                // If it's the SAME event as server (duplicate), skip adding prompt again
-                if (event.id === logicResult.triggerEventId) return;
-
-                if (event.once) {
-                    useGameStore.getState().addTriggeredEvent(event.id);
-                }
-
-                // Append prompt
-                activeEventPrompt += (activeEventPrompt ? '\n\n' : '') + event.prompt;
-                hasActiveEvent = true;
-            });
-
-            if (!logicResult.triggerEventId) {
-                addToast(t.systemMessages?.eventsTriggered?.replace('{0}', triggeredEvents.length.toString()) || `${triggeredEvents.length} Event(s) Triggered`, 'info');
-            }
-        }
-
-        if (hasActiveEvent) {
-            console.log(`[VisualNovelUI] Setting Current Event Prompt (Length: ${activeEventPrompt.length})`);
-            useGameStore.getState().setCurrentEvent(activeEventPrompt);
-            // Optionally set active event object if needed for UI, prioritizing Server one if available
-            // For now, just ensuring the PROMPT is set is key for the Story Model.
-        } else {
-            // Clear active event if none triggered
-            useGameStore.getState().setActiveEvent(null);
-            useGameStore.getState().setCurrentEvent('');
-        }
-    };
+    }
 
     // [New] Text Message Auto-Save Logic
     const lastSavedMessageRef = useRef<string | null>(null);
@@ -5136,7 +3388,7 @@ export default function VisualNovelUI() {
                 {/* [Refactor] Choice Overlay Component */}
                 <ChoiceOverlay
                     choices={choices}
-                    goals={goals}
+                    goals={useGameStore.getState().goals}
                     turnSummary={turnSummary}
                     costPerTurn={costPerTurn}
                     isProcessing={isProcessing}
@@ -5154,7 +3406,7 @@ export default function VisualNovelUI() {
 
                 {/* Fallback for stuck state or Start Screen */}
                 {
-                    isMounted && !currentSegment && choices.length === 0 && scriptQueue.length === 0 && !isProcessing && endingType === 'none' && (
+                    isMounted && !currentSegment && choices.length === 0 && scriptQueueLength === 0 && !isProcessing && endingType === 'none' && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
                             {/* [Fix] Use turnCount === 0 to prioritize Creation Wizard even if logs exist */}
                             <AnimatePresence mode="popLayout">
@@ -5231,7 +3483,7 @@ export default function VisualNovelUI() {
 
                 {/* Interactive Loading Indicator (Ad/Tip Overlay) */}
                 <AnimatePresence>
-                    {(isProcessing || (isLogicPending && !currentSegment && scriptQueue.length === 0 && choices.length === 0 && endingType === 'none')) && (
+                    {(isProcessing || (isLogicPending && !currentSegment && scriptQueueLength === 0 && choices.length === 0 && endingType === 'none')) && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -5380,7 +3632,7 @@ export default function VisualNovelUI() {
                 <HistoryModal
                     isOpen={showHistory}
                     onClose={() => setShowHistory(false)}
-                    chatHistory={chatHistory}
+                    chatHistory={useGameStore.getState().chatHistory}
                     t={t}
                     setCurrentSegment={setCurrentSegment}
                     setScriptQueue={setScriptQueue}
@@ -5392,7 +3644,7 @@ export default function VisualNovelUI() {
                 <InventoryModal
                     isOpen={showInventory}
                     onClose={() => setShowInventory(false)}
-                    inventory={inventory}
+                    inventory={useGameStore.getState().inventory}
                     t={t}
                 />
 
@@ -5638,7 +3890,7 @@ export default function VisualNovelUI() {
                                                                 <tr className="border-b border-white/5"><th className="p-2 text-gray-400">Event Info</th><td className="p-2">{useGameStore.getState().currentEvent || "None"}</td></tr>
                                                                 <tr className="border-b border-white/5"><th className="p-2 text-gray-400">Active IDs</th><td className="p-2 break-all">{JSON.stringify(useGameStore.getState().activeCharacters)}</td></tr>
                                                                 <tr className="border-b border-white/5"><th className="p-2 text-gray-400">Turn Count</th><td className="p-2">{useGameStore.getState().turnCount}</td></tr>
-                                                                <tr className="border-b border-white/5"><th className="p-2 text-gray-400">History Size</th><td className="p-2">{chatHistory.length} messages</td></tr>
+                                                                <tr className="border-b border-white/5"><th className="p-2 text-gray-400">History Size</th><td className="p-2">{useGameStore.getState().chatHistory.length} messages</td></tr>
                                                             </tbody>
                                                         </table>
                                                     </div>
@@ -5655,11 +3907,11 @@ export default function VisualNovelUI() {
                                                         onClick={() => {
                                                             const state = {
                                                                 playerStats,
-                                                                inventory,
+                                                                inventory: useGameStore.getState().inventory,
                                                                 characterData: useGameStore.getState().characterData,
                                                                 worldData: useGameStore.getState().worldData,
                                                                 currentSegment,
-                                                                scriptQueueSize: scriptQueue.length
+                                                                scriptQueueSize: scriptQueueLength
                                                             };
                                                             navigator.clipboard.writeText(JSON.stringify(state, null, 2));
                                                             addToast("JSON copied", "success");
@@ -5673,12 +3925,12 @@ export default function VisualNovelUI() {
                                                     <pre className="whitespace-pre-wrap break-all">
                                                         {JSON.stringify({
                                                             playerStats,
-                                                            inventory,
+                                                            inventory: useGameStore.getState().inventory,
                                                             activeCharacters: useGameStore.getState().activeCharacters,
                                                             characterData: useGameStore.getState().characterData,
                                                             worldData: useGameStore.getState().worldData,
                                                             currentSegment,
-                                                            scriptQueue_length: scriptQueue.length
+                                                            scriptQueue_length: scriptQueueLength
                                                         }, null, 2)}
                                                     </pre>
                                                 </div>
@@ -5805,12 +4057,12 @@ export default function VisualNovelUI() {
                                             <div className="h-full flex flex-col gap-4">
                                                 <div className="flex justify-between items-center pb-2 border-b border-gray-700">
                                                     <div className="text-gray-400 text-sm">
-                                                        Full Session History ({chatHistory.length} turns)
+                                                        Full Session History ({chatHistoryLength} turns)
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <button
                                                             onClick={() => {
-                                                                const text = chatHistory.map((msg: any) => `[${msg.role.toUpperCase()}]\n${msg.text}\n`).join('\n---\n');
+                                                                const text = useGameStore.getState().chatHistory.map((msg: any) => `[${msg.role.toUpperCase()}]\n${msg.text}\n`).join('\n---\n');
                                                                 navigator.clipboard.writeText(text).then(() => {
                                                                     addToast("Transcript copied to clipboard", "success");
                                                                 });
@@ -5824,7 +4076,7 @@ export default function VisualNovelUI() {
                                                                 const data = {
                                                                     gameId: activeGameId,
                                                                     timestamp: new Date().toISOString(),
-                                                                    history: chatHistory
+                                                                    history: useGameStore.getState().chatHistory
                                                                 };
                                                                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                                                                 const url = URL.createObjectURL(blob);
@@ -5844,10 +4096,10 @@ export default function VisualNovelUI() {
                                                     </div>
                                                 </div>
                                                 <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/50 p-4 rounded-lg font-mono text-sm border border-gray-700 text-gray-300">
-                                                    {chatHistory.length === 0 ? (
+                                                    {chatHistoryLength === 0 ? (
                                                         <div className="text-gray-500 italic text-center mt-10">No history available yet.</div>
                                                     ) : (
-                                                        chatHistory.map((msg: any, idx: number) => (
+                                                        useGameStore.getState().chatHistory.map((msg: any, idx: number) => (
                                                             <div key={idx} className="mb-6 border-b border-gray-800 pb-4 last:border-0">
                                                                 <div className={`text-xs font-bold mb-1 ${msg.role === 'user' ? 'text-blue-400' : 'text-purple-400'}`}>
                                                                     [{msg.role.toUpperCase()}]
