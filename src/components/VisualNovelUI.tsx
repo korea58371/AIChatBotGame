@@ -124,17 +124,8 @@ export default function VisualNovelUI() {
     // [Fix] Initialize Supabase Client
     const supabase = createClient();
 
-    // [AuthDebug] Verify Client-Side Cookie Visibility
+    // [Fix] Reset Epilogue Guard on Mount
     useEffect(() => {
-        if (typeof document !== 'undefined') {
-            const cookieNames = document.cookie.split(';').map(c => c.trim().split('=')[0]);
-            console.log("[AuthDebug] VisualNovelUI: Visible Cookies:", cookieNames);
-            const hasAuthToken = cookieNames.some(name => name.startsWith('sb-') && name.includes('-auth-token'));
-            console.log("[AuthDebug] VisualNovelUI: Has Auth Token?", hasAuthToken);
-            console.log("[AuthDebug] VisualNovelUI: Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-        }
-
-        // [Fix] Reset Epilogue Guard on Mount
         isEpilogueRef.current = false;
     }, []);
 
@@ -218,16 +209,7 @@ export default function VisualNovelUI() {
     }, []);
     const activeSegmentIndexRef = useRef(0);
 
-    // [PERF DIAGNOSTIC] Render counter & timing — remove after debugging
-    const renderCountRef = useRef(0);
-    renderCountRef.current += 1;
-    const renderStartTime = performance.now();
-    useEffect(() => {
-        const renderDuration = performance.now() - renderStartTime;
-        if (renderDuration > 16) { // Only log slow renders (>1 frame at 60fps)
-            console.warn(`%c[PERF] Render #${renderCountRef.current} took ${renderDuration.toFixed(1)}ms`, 'color: red; font-weight: bold;');
-        }
-    });
+
 
     // [Refactor] UI State Hook
     const {
@@ -784,13 +766,13 @@ export default function VisualNovelUI() {
     // Toast State
     const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'warning' | 'error' }[]>([]);
 
-    const addToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'info') => {
+    const addToast = useCallback((message: string, type: 'success' | 'info' | 'warning' | 'error' = 'info') => {
         const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         setToasts(prev => [...prev, { id, message, type }]);
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
         }, 3000);
-    };
+    }, []);
 
     // Auth State (Event-Based)
 
@@ -1202,14 +1184,44 @@ export default function VisualNovelUI() {
     // [fix] Auto-Advance Script: Moved below advanceScript definition
     // [Refactor] advanceScript extracted to lib/game/advanceScript.ts
     const advanceScript = useCallback(() => {
+        // [Perf] Batched Deferred Zustand Setters
+        // Instead of individual queueMicrotask per setter (which causes N separate re-renders),
+        // we collect ALL pending updates and flush them in a SINGLE microtask → SINGLE re-render.
+        const pending: {
+            scriptQueue?: any[];
+            currentSegment?: any;
+            background?: string;
+            charExpr?: string;
+            choices?: any[];
+        } = {};
+
         advanceScriptExtracted({
-            setBackground, setCharacterExpression, setChoices, setCurrentSegment,
-            setScriptQueue, setShowTheEnd, setPendingLogic, setLastTurnSummary,
+            setBackground: (bg: string) => { pending.background = bg; },
+            setCharacterExpression: (expr: string) => { pending.charExpr = expr; },
+            setChoices: (c: any[]) => { pending.choices = c; },
+            setCurrentSegment: (seg: any) => {
+                currentSegmentRef.current = seg;
+                pending.currentSegment = seg;
+            },
+            setScriptQueue: (queue: any[]) => {
+                scriptQueueRef.current = queue;
+                pending.scriptQueue = queue;
+            },
+            setShowTheEnd, setPendingLogic, setLastTurnSummary,
             setEventCG: (cg: string | null) => useGameStore.getState().setEventCG(cg),
             setExtraOverride: (charId: string, key: string) => useGameStore.getState().setExtraOverride(charId, key),
             activeSegmentIndexRef, currentSegmentRef, isEpilogueRef, pendingEndingRef, scriptQueueRef,
             addToast, applyGameLogic, handleVisualDamage, playBgm, addTextMessage, processRealmProgression,
             isProcessing, pendingLogic, availableExtraImages: useGameStore.getState().availableExtraImages || [], playerName, t,
+        });
+
+        // [Perf] SINGLE microtask → ALL setters called in one synchronous block → React batches into ONE re-render
+        queueMicrotask(() => {
+            if (pending.scriptQueue !== undefined) setScriptQueue(pending.scriptQueue);
+            if (pending.currentSegment !== undefined) setCurrentSegment(pending.currentSegment);
+            if (pending.background !== undefined) setBackground(pending.background);
+            if (pending.charExpr !== undefined) setCharacterExpression(pending.charExpr);
+            if (pending.choices !== undefined) setChoices(pending.choices);
         });
     }, []); // [Perf] Stable reference  uses refs internally
 
@@ -1724,7 +1736,7 @@ export default function VisualNovelUI() {
                                                 const currentBg = useGameStore.getState().currentBackground;
                                                 if (currentBg !== resolvedBg) {
                                                     console.log(`[Stream] Hoisted Background Update: ${resolvedBg}`);
-                                                    setBackground(resolvedBg);
+                                                    queueMicrotask(() => setBackground(resolvedBg));
                                                 }
                                             } catch (e) { }
                                         }
@@ -1766,8 +1778,10 @@ export default function VisualNovelUI() {
 
                                                 if (shouldUpdate) {
 
-                                                    setBackground(resolvedBg);
-                                                    setCharacterExpression('');
+                                                    queueMicrotask(() => {
+                                                        setBackground(resolvedBg);
+                                                        setCharacterExpression('');
+                                                    });
                                                 }
                                             } catch (e) { console.error("[Stream] BG Update Error:", e); }
                                         } else if (seg.type === 'bgm') {
@@ -1832,7 +1846,8 @@ export default function VisualNovelUI() {
                                         // Content (Dialogue/Narration/Choice)
                                         if (allSegments[currentIndex]) {
                                             const seg = allSegments[currentIndex];
-                                            setCurrentSegment(seg);
+                                            currentSegmentRef.current = seg;
+                                            queueMicrotask(() => setCurrentSegment(seg));
                                             // [Fix] Ensure Typewriter receives the update
                                             if (currentSegmentRef.current?.content !== seg.content) {
                                                 currentSegmentRef.current = seg;
@@ -1841,15 +1856,17 @@ export default function VisualNovelUI() {
 
                                         // Handle Choices Lookahead
                                         if (seg.type === 'choice') {
-                                            const newChoices = [];
+                                            const newChoices: any[] = [];
                                             let tempIdx = currentIndex;
                                             while (tempIdx < allSegments.length && allSegments[tempIdx].type === 'choice') {
                                                 newChoices.push(allSegments[tempIdx]);
                                                 tempIdx++;
                                             }
-                                            setChoices(newChoices);
-                                            setCurrentSegment(null); // Clear text box for choices
-                                            setCharacterExpression(''); // Clear character for choices (optional)
+                                            queueMicrotask(() => {
+                                                setChoices(newChoices);
+                                                setCurrentSegment(null);
+                                                setCharacterExpression('');
+                                            });
                                         }
 
                                         // Update Queue for Next Click
@@ -1867,7 +1884,8 @@ export default function VisualNovelUI() {
                                             }
                                         }
 
-                                        setScriptQueue(allSegments.slice(queueStart));
+                                        scriptQueueRef.current = allSegments.slice(queueStart);
+                                        queueMicrotask(() => setScriptQueue(scriptQueueRef.current));
                                         break; // Stop auto-advance
                                     }
                                 }
@@ -3768,25 +3786,25 @@ export default function VisualNovelUI() {
                                     className="bg-gray-900 rounded-xl w-full max-w-6xl border border-purple-500 shadow-2xl h-[90vh] flex flex-col overflow-hidden"
                                 >
                                     {/* Header & Tabs */}
-                                    <div className="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center shrink-0">
-                                        <div className="flex items-center gap-6">
-                                            <h2 className="text-xl font-bold text-purple-400">Debug Menu</h2>
-                                            <div className="flex bg-black/40 rounded-lg p-1">
-                                                {(['logic', 'context', 'state', 'characters', 'transcript'] as const).map(tab => (
-                                                    <button
-                                                        key={tab}
-                                                        onClick={() => setActiveDebugTab(tab)}
-                                                        className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeDebugTab === tab
-                                                            ? 'bg-purple-600 text-white shadow-lg'
-                                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                                            }`}
-                                                    >
-                                                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                    <div className="bg-gray-800 p-3 sm:p-4 border-b border-gray-700 flex flex-col gap-2 shrink-0">
+                                        <div className="flex justify-between items-center">
+                                            <h2 className="text-lg sm:text-xl font-bold text-purple-400">Debug Menu</h2>
+                                            <button onClick={() => setIsDebugOpen(false)} className="text-gray-400 hover:text-white text-2xl leading-none ml-2 shrink-0 w-8 h-8 flex items-center justify-center rounded hover:bg-white/10">&times;</button>
                                         </div>
-                                        <button onClick={() => setIsDebugOpen(false)} className="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+                                        <div className="flex overflow-x-auto bg-black/40 rounded-lg p-1 gap-0.5 no-scrollbar">
+                                            {(['logic', 'context', 'state', 'characters', 'transcript'] as const).map(tab => (
+                                                <button
+                                                    key={tab}
+                                                    onClick={() => setActiveDebugTab(tab)}
+                                                    className={`px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-all whitespace-nowrap shrink-0 ${activeDebugTab === tab
+                                                        ? 'bg-purple-600 text-white shadow-lg'
+                                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                                        }`}
+                                                >
+                                                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     {/* Content Area */}

@@ -84,6 +84,20 @@ export async function POST(req: NextRequest) {
         const stream = new ReadableStream({
             async start(controller) {
                 const encoder = new TextEncoder();
+                let closed = false;
+
+                // [Safety] Server-side timeout: 3 minutes for entire pipeline
+                const serverTimeout = setTimeout(() => {
+                    if (!closed) {
+                        console.error("[API] Server Pipeline Timeout (3 minutes)");
+                        const errorPayload = JSON.stringify({ type: 'error', content: 'Server Pipeline Timeout (3 minutes). Gemini API may be unresponsive.' }) + '\n';
+                        try {
+                            controller.enqueue(encoder.encode(errorPayload));
+                            controller.close();
+                        } catch { /* already closed */ }
+                        closed = true;
+                    }
+                }, 180000);
 
                 try {
                     const generator = AgentOrchestrator.executeTurnStream(
@@ -96,6 +110,7 @@ export async function POST(req: NextRequest) {
                     );
 
                     for await (const chunk of generator) {
+                        if (closed) break; // Stop if timeout already fired
                         // Protocol: JSON string + newline
                         // chunk is { type: 'text'|'data', content: ... }
                         const payload = JSON.stringify(chunk) + '\n';
@@ -103,10 +118,16 @@ export async function POST(req: NextRequest) {
                     }
                 } catch (e: any) {
                     console.error("[API] Stream Error:", e);
-                    const errorPayload = JSON.stringify({ type: 'error', content: e.message || 'Unknown Error' }) + '\n';
-                    controller.enqueue(encoder.encode(errorPayload));
+                    if (!closed) {
+                        const errorPayload = JSON.stringify({ type: 'error', content: e.message || 'Unknown Error' }) + '\n';
+                        controller.enqueue(encoder.encode(errorPayload));
+                    }
                 } finally {
-                    controller.close();
+                    clearTimeout(serverTimeout);
+                    if (!closed) {
+                        controller.close();
+                        closed = true;
+                    }
                 }
             }
         });

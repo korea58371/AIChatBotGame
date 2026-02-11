@@ -390,10 +390,15 @@ export async function* generateResponseStream(
             const chatSession = model.startChat({ history: processedHistory });
             const finalUserMessage = `${dynamicPrompt}\n\n${userMessage}`;
 
-            // STREAMING CALL
+            // STREAMING CALL (with retry for transient API failures)
             console.log(`[GeminiStream] Sending message to API... (User Msg: ${finalUserMessage.length} chars)`);
             const streamStartTime = Date.now();
-            const result = await chatSession.sendMessageStream(finalUserMessage);
+            const result = await retryWithBackoff(
+                () => chatSession.sendMessageStream(finalUserMessage),
+                2,       // 2 retries (3 total attempts)
+                2000,    // Initial delay 2s
+                `Stream Story Generation (${currentModel})`
+            );
             console.log(`[GeminiStream] Stream object received. Waiting for first chunk...`);
 
             let accumulatedText = "";

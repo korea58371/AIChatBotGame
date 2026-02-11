@@ -31,7 +31,7 @@ export interface AdvanceScriptDeps {
     pendingEndingRef: React.MutableRefObject<string | null>;
     scriptQueueRef: React.MutableRefObject<any[]>;
     // Callbacks
-    addToast: (message: string, type: string) => void;
+    addToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
     applyGameLogic: (logicResult: any) => void;
     handleVisualDamage: (changeAmount: number, currentHp: number, maxHp: number) => void;
     playBgm: (bgm: string) => void;
@@ -56,6 +56,7 @@ export function advanceScript(deps: AdvanceScriptDeps) {
     } = deps;
 
     const _t0 = performance.now(); // [PERF]
+    const _timings: Record<string, number> = {};
     // [Stream] Increment consumed count
     activeSegmentIndexRef.current += 1;
 
@@ -66,7 +67,9 @@ export function advanceScript(deps: AdvanceScriptDeps) {
     }
 
     // Use a local copy of the queue to process immediately
+    _timings['queue_copy_start'] = performance.now() - _t0;
     let currentQueue = [...scriptQueueRef.current];
+    _timings['queue_copy_end'] = performance.now() - _t0;
 
     if (currentQueue.length === 0) {
         setCurrentSegment(null);
@@ -450,7 +453,9 @@ export function advanceScript(deps: AdvanceScriptDeps) {
     }
 
     // Handle Normal Segment (Dialogue/Narration)
+    _timings['before_setQueue'] = performance.now() - _t0;
     setScriptQueue(currentQueue.slice(1));
+    _timings['after_setQueue'] = performance.now() - _t0;
     setCurrentSegment(nextSegment);
 
     // [Fix] Normalize inputs to NFC (Standard) to match JSON keys
@@ -538,6 +543,7 @@ export function advanceScript(deps: AdvanceScriptDeps) {
                 // Clean up emotion input (remove parens if any, though system prompt forbids them)
                 // The mapper expects clean distinct Korean words.
                 imagePath = getCharacterImage(charName, emotion);
+                _timings['getCharacterImage_done'] = performance.now() - _t0;
 
                 // [Fallback] Fuzzy Match for Missing Images
                 // If imagePath is empty, try to find the best match from availableExtraImages
@@ -570,11 +576,17 @@ export function advanceScript(deps: AdvanceScriptDeps) {
                 }
             }
 
+            _timings['before_setCharExpr'] = performance.now() - _t0;
             setCharacterExpression(imagePath);
+            _timings['after_setCharExpr'] = performance.now() - _t0;
         }
     }
 
 
     // Response Time Tracking
-    console.log(`%c[PERF] advanceScript took ${(performance.now() - _t0).toFixed(1)}ms`, 'color: orange;');
+    _timings['total'] = performance.now() - _t0;
+    console.log(`%c[PERF] advanceScript took ${_timings['total'].toFixed(1)}ms`, 'color: orange;');
+    if (_timings['total'] > 50) {
+        console.log('[PERF] advanceScript breakdown:', Object.fromEntries(Object.entries(_timings).map(([k, v]) => [k, `${v.toFixed(1)}ms`])));
+    }
 }

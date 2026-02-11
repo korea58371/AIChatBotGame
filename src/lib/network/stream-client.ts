@@ -51,7 +51,11 @@ export async function fetchAgentTurnStream(
                         console.log("[StreamClient] Received DATA payload (Length: " + JSON.stringify(json.content).length + ")");
                         callbacks.onComplete(json.content);
                     } else if (json.type === 'error') {
-                        throw new Error(json.content);
+                        // [Fix] Propagate server errors via onError callback instead of throwing
+                        // inside try-catch, which was silently swallowing the error as a parse warning.
+                        console.error("[StreamClient] Server Error Received:", json.content);
+                        callbacks.onError(new Error(json.content));
+                        return; // Stop processing this stream
                     }
                 } catch (e) {
                     console.warn("[StreamClient] Failed to parse line:", line, e);

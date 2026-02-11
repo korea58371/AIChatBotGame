@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface Goal {
@@ -42,6 +42,19 @@ const ChoiceOverlay = React.memo(function ChoiceOverlay({
     playSfx,
     t,
 }: ChoiceOverlayProps) {
+    // [Perf/UX] Click guard — prevent accidental choice selection from rapid text-advance clicking
+    const [isClickGuarded, setIsClickGuarded] = useState(true);
+    const guardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        if (choices.length > 0) {
+            setIsClickGuarded(true);
+            if (guardTimerRef.current) clearTimeout(guardTimerRef.current);
+            guardTimerRef.current = setTimeout(() => setIsClickGuarded(false), 400); // 400ms cooldown
+        }
+        return () => { if (guardTimerRef.current) clearTimeout(guardTimerRef.current); };
+    }, [choices]);
+
     if (choices.length === 0 || endingType !== 'none') return null;
 
     const activeGoals = (goals || [])
@@ -100,16 +113,16 @@ const ChoiceOverlay = React.memo(function ChoiceOverlay({
                             animate={{ opacity: 1, y: 0, skewX: -12 }}
                             whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
                             transition={{ delay: idx * 0.1 }}
-                            disabled={isProcessing || isLogicPending}
+                            disabled={isProcessing || isLogicPending || isClickGuarded}
                             className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
                             w-[85vw] md:w-[min(50vw,1200px)] 
                             py-4 px-[5vw] md:py-5 md:px-[min(2vw,48px)] h-auto min-h-[60px]
                             text-[max(18px,3.5vw)] md:text-[clamp(20px,1.1vw,32px)] leading-relaxed
                             shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
-                            ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
+                            ${(isProcessing || isLogicPending || isClickGuarded) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                         `}
                             onClick={(e) => {
-                                if (isProcessing || isLogicPending) return;
+                                if (isProcessing || isLogicPending || isClickGuarded) return;
                                 playSfx('ui_confirm');
                                 e.stopPropagation();
                                 onChoiceSelect(choice);
@@ -136,12 +149,12 @@ const ChoiceOverlay = React.memo(function ChoiceOverlay({
                         py-4 px-[5vw] md:py-5 md:px-[min(2vw,48px)] h-auto min-h-[60px]
                         text-[max(18px,3.5vw)] md:text-[clamp(20px,1.1vw,32px)] leading-relaxed 
                         shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
-                        ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
+                        ${(isProcessing || isLogicPending || isClickGuarded) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                     `}
                         onMouseEnter={() => playSfx('ui_hover')}
                         onClick={(e) => {
                             e.stopPropagation();
-                            if (isProcessing || isLogicPending) return;
+                            if (isProcessing || isLogicPending || isClickGuarded) return;
                             playSfx('ui_confirm');
                             onDirectInput();
                         }}
