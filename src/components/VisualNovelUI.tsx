@@ -67,6 +67,11 @@ import Link from 'next/link';
 import LanguageSelector from '@/components/LanguageSelector';
 import { useShallow } from 'zustand/react/shallow'; // [Optim] Shallow Selector
 import DialogueBox from './visual_novel/ui/DialogueBox'; // [Refactor] Dialogue Component
+import ChoiceOverlay from './visual_novel/ui/ChoiceOverlay'; // [Refactor] Choice UI
+import TopControls from './visual_novel/ui/TopControls'; // [Refactor] Top Controls
+import BottomControls from './visual_novel/ui/BottomControls'; // [Refactor] Bottom Controls
+import InputModal from './visual_novel/ui/InputModal'; // [Refactor] Input Modal
+import ToastContainer from './visual_novel/ui/ToastContainer'; // [Refactor] Toast UI
 
 // [Refactoring] New Components & Hooks
 import { useVNState } from './visual_novel/hooks/useVNState';
@@ -4867,84 +4872,25 @@ export default function VisualNovelUI() {
                     </AnimatePresence>
                 </div>
 
-                {/* [무협 UI 개선] HUD 레이어 */}
-                {/* [Legacy HUD Removed] Replaced by Modular HUD Layer via GameRegistry */}
-                {/* [Common UI] Top-Right Controls (Tokens, Settings, Debug) */}
-                <div className="absolute top-4 right-4 z-[60] flex items-center gap-3 pointer-events-auto">
-                    {/* Token Display */}
-                    {/* Token Display */}
-                    <div
-                        onClick={(e) => { e.stopPropagation(); setIsStoreOpen(true); }}
-                        className="bg-black/60 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-500/30 flex items-center gap-2 shadow-lg cursor-pointer transition-all active:scale-95 group"
-                    >
-                        <span className="text-lg group-hover:scale-110 transition-transform">🪙</span>
-                        <span className="text-yellow-400 font-bold font-mono text-sm md:text-base">
-                            {userCoins?.toLocaleString() || 0}
-                        </span>
-                        <button
-                            className="bg-yellow-600 group-hover:bg-yellow-500 text-black text-[10px] md:text-xs font-bold px-1.5 py-0.5 rounded ml-1 transition-colors"
-                        >
-                            +
-                        </button>
-                    </div>
-
-                    {/* Shop Button */}
-
-
-                    {/* Home Button */}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            playSfx('ui_click');
-                            if (confirm('타이틀 화면으로 돌아가시겠습니까? 저장되지 않은 진행 상황은 손실될 수 있습니다.')) {
-                                router.push('/');
-                            }
-                        }}
-                        className="p-2 bg-black/60 hover:bg-gray-800/80 rounded-full border border-gray-600 text-gray-300 hover:text-white transition-all shadow-lg"
-                        title="홈으로"
-                    >
-                        <Home className="w-5 h-5 md:w-6 md:h-6" />
-                    </button>
-
-                    {/* Settings Button */}
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setShowResetConfirm(true); }}
-                        className="p-2 bg-black/60 hover:bg-gray-800/80 rounded-full border border-gray-600 text-gray-300 hover:text-white transition-all shadow-lg"
-                        title={(t as any).settings || "Settings"}
-                    >
-                        <Settings className="w-5 h-5 md:w-6 md:h-6" />
-                    </button>
-
-
-                    {/* Debug Button (Conditional) */}
-
-
-                </div>
-
-                {/* [New] Debug Button (Bottom Left) */}
-                {/* [New] Debug Button (Middle Left) */}
-                {(isLocalhost || isDebugOpen) && (
-                    <div className="absolute top-1/2 left-4 -translate-y-1/2 z-[100] pointer-events-auto">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setIsDebugOpen(true); }}
-                            className="p-2 bg-purple-900/60 hover:bg-purple-800/80 rounded-full border border-purple-500/50 text-purple-300 hover:text-white transition-all shadow-lg backdrop-blur-sm"
-                            title="Debug Menu"
-                        >
-                            <Bolt className="w-5 h-5 md:w-6 md:h-6" />
-                        </button>
-                    </div>
-                )}
-
-                {/* [New] Fullscreen Button (Bottom Left) */}
-                <div className="absolute bottom-4 left-4 z-[90] pointer-events-auto">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
-                        className={`p-2 rounded-lg border transition-all shadow-lg backdrop-blur-sm ${isFullscreen ? 'bg-yellow-900/40 border-yellow-500/50 text-yellow-500' : 'bg-black/60 border-white/20 text-gray-400 hover:text-white hover:border-white/50'}`}
-                        title={isFullscreen ? "전체화면 종료" : "전체화면"}
-                    >
-                        {isFullscreen ? <Minimize className="w-5 h-5 md:w-6 md:h-6" /> : <Maximize className="w-5 h-5 md:w-6 md:h-6" />}
-                    </button>
-                </div>
+                {/* [Refactor] Top Controls Component */}
+                <TopControls
+                    userCoins={userCoins}
+                    isFullscreen={isFullscreen}
+                    isLocalhost={isLocalhost}
+                    isDebugOpen={isDebugOpen}
+                    t={t}
+                    onOpenStore={() => setIsStoreOpen(true)}
+                    onGoHome={() => {
+                        playSfx('ui_click');
+                        if (confirm('타이틀 화면으로 돌아가시겠습니까? 저장되지 않은 진행 상황은 손실될 수 있습니다.')) {
+                            router.push('/');
+                        }
+                    }}
+                    onOpenSettings={() => setShowResetConfirm(true)}
+                    onToggleDebug={() => setIsDebugOpen(true)}
+                    onToggleFullscreen={toggleFullscreen}
+                    playSfx={playSfx}
+                />
 
                 {/* [리팩토링 메모] HUD 렌더링 로직은 `ui/ModernHUD.tsx` 및 `ui/WuxiaHUD.tsx`로 분리되었습니다. */}
 
@@ -4965,43 +4911,15 @@ export default function VisualNovelUI() {
                     )}
                 </AnimatePresence>
 
-                {/* Persistent Bottom Controls (History/Save) - Always visible Z-50 -> Z-20 (Basic UI) */}
-                <div className={`absolute bottom-[5vh] right-[4vw] md:bottom-10 md:right-8 flex gap-[1vw] md:gap-2 z-[100] transition-opacity pointer-events-auto ${choices.length > 0 ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`}>
-                    {/* [NEW] Intervention / Mid-Turn Direct Input */}
-                    <button
-                        className="px-3 py-2 md:px-3 md:py-1.5 bg-green-800/60 hover:bg-green-700/80 rounded border border-green-600 text-green-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
-                        onClick={(e) => { e.stopPropagation(); setIsInputOpen(true); }}
-                        title="이야기에 개입하기"
-                    >
-                        <span className="text-lg md:text-lg">⚡</span>
-                        <span className="hidden md:inline">개입</span>
-                    </button>
-
-                    <button
-                        className="px-3 py-2 md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
-                        onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
-                        title={t.chatHistory}
-                    >
-                        <History className="w-5 h-5 md:w-[14px] md:h-[14px]" />
-                        <span className="hidden md:inline">{t.chatHistory}</span>
-                    </button>
-                    <button
-                        className="px-3 py-2 md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
-                        onClick={(e) => { e.stopPropagation(); setShowSaveLoad(true); }}
-                        title={t.save}
-                    >
-                        <Save className="w-5 h-5 md:w-[14px] md:h-[14px]" />
-                        <span className="hidden md:inline">{t.save}</span>
-                    </button>
-                    <button
-                        className="px-3 py-2 md:px-3 md:py-1.5 bg-gray-800/60 hover:bg-gray-700/80 rounded border border-gray-600 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-lg backdrop-blur-md flex items-center gap-1"
-                        onClick={(e) => { e.stopPropagation(); setShowWiki(true); }}
-                        title={(t as any).wiki || "Wiki"}
-                    >
-                        <Book className="w-5 h-5 md:w-[14px] md:h-[14px]" />
-                        <span className="hidden md:inline">{(t as any).wiki || "Wiki"}</span>
-                    </button>
-                </div>
+                {/* [Refactor] Bottom Controls Component */}
+                <BottomControls
+                    choices={choices}
+                    t={t}
+                    onOpenInput={() => setIsInputOpen(true)}
+                    onOpenHistory={() => setShowHistory(true)}
+                    onOpenSaveLoad={() => setShowSaveLoad(true)}
+                    onOpenWiki={() => setShowWiki(true)}
+                />
 
                 {/* Wiki Modal */}
                 <WikiSystem
@@ -5190,25 +5108,9 @@ export default function VisualNovelUI() {
 
                 {/* Top Right Menu (Removed - Merged into Top Resources Row & Profile Click) */}
 
-                {/* Toast Notifications */}
-                <div className="fixed top-24 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
-                    <AnimatePresence>
-                        {toasts.map(toast => (
-                            <motion.div
-                                key={toast.id}
-                                initial={{ opacity: 0, x: 50 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 50 }}
-                                className={`px-6 py-3 rounded-lg shadow-lg backdrop-blur-md border-l-4 text-white font-bold min-w-[200px]
-                                ${toast.type === 'success' ? 'bg-green-900/80 border-green-500' :
-                                        toast.type === 'warning' ? 'bg-red-900/80 border-red-500' :
-                                            'bg-blue-900/80 border-blue-500'}`}
-                            >
-                                {toast.message}
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
+                {/* [Refactor] Toast Notifications Component */}
+                <ToastContainer toasts={toasts} />
+
 
                 {/* [Refactor] Dynamic HUD Injection via UI Registry */}
                 {(() => {
@@ -5231,141 +5133,24 @@ export default function VisualNovelUI() {
                     return null;
                 })()}
 
-                {/* Center: Choices */}
-                {
-                    choices.length > 0 && endingType === 'none' && (
-                        <>
-                            {/* [NEW] Background Dimmer (Layered BELOW UI at z-20) */}
-                            <div className="absolute inset-0 bg-black/40 z-[20] pointer-events-none transition-opacity duration-500" />
+                {/* [Refactor] Choice Overlay Component */}
+                <ChoiceOverlay
+                    choices={choices}
+                    goals={goals}
+                    turnSummary={turnSummary}
+                    costPerTurn={costPerTurn}
+                    isProcessing={isProcessing}
+                    isLogicPending={isLogicPending}
+                    endingType={endingType}
+                    onChoiceSelect={(choice) => {
+                        addChoiceToHistory({ text: choice.content, type: 'input', timestamp: Date.now() });
+                        handleSend(choice.content);
+                    }}
+                    onDirectInput={() => setIsInputOpen(true)}
+                    playSfx={playSfx}
+                    t={t}
+                />
 
-                            {/* Center: Choices (Layered ABOVE UI at z-60) */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[60] p-4">
-                                <div className="flex flex-col gap-3 md:gap-4 w-[85vw] md:w-[min(50vw,800px)] items-center pointer-events-auto">
-                                    {/* [NEW] Turn Summary Display */}
-                                    {/* [Modified] Active Goals Display (Top Priority) */}
-                                    {(() => {
-                                        const activeGoals = (goals || [])
-                                            .filter(g => g.status === 'ACTIVE')
-                                            .sort((a, b) => b.createdTurn - a.createdTurn) // Newest first
-                                            .slice(0, 3);
-
-                                        if (activeGoals.length === 0) return null;
-
-                                        return (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: -10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                className="bg-black/80 border border-yellow-500/50 rounded-2xl p-5 mb-4 backdrop-blur-md shadow-[0_0_15px_rgba(234,179,8,0.2)] 
-                                                w-[85vw] md:w-[min(50vw,1200px)]
-                                                flex flex-col gap-3"
-                                            >
-                                                <h4 className="text-yellow-500 text-sm md:text-base font-bold uppercase tracking-widest flex items-center gap-2 border-b border-yellow-500/30 pb-2">
-                                                    <span>🎯</span> 현재 목표 (Current Objectives)
-                                                </h4>
-                                                <div className="space-y-2">
-                                                    {activeGoals.map(goal => (
-                                                        <div key={goal.id} className="flex items-start gap-3 text-gray-100 text-base md:text-lg font-medium leading-snug">
-                                                            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-yellow-400 shadow-[0_0_5px_#fbbf24] shrink-0" />
-                                                            <span>{goal.description}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </motion.div>
-                                        );
-                                    })()}
-
-                                    {/* [NEW] Turn Summary Display - Displayed below Goals if present */}
-                                    {turnSummary && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: -10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className="w-full bg-black/80 border-l-4 border-yellow-500 rounded-r-lg p-4 mb-2 backdrop-blur-sm shadow-lg max-w-2xl"
-                                        >
-                                            <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-1">Current Situation</h4>
-                                            <p className="text-gray-200 text-sm leading-relaxed">{turnSummary}</p>
-                                        </motion.div>
-                                    )}
-                                    {choices.map((choice, idx) => (
-                                        <motion.button
-                                            key={idx}
-                                            initial={{ opacity: 0, y: 20, skewX: -12 }}
-                                            animate={{ opacity: 1, y: 0, skewX: -12 }}
-                                            whileHover={!isProcessing ? { scale: 1.05, skewX: -12 } : {}}
-                                            transition={{ delay: idx * 0.1 }}
-                                            disabled={isProcessing || isLogicPending}
-                                            /* 
-                                             * [Responsive Logic]
-                                             * Mobile: Scaled down to ~60% size
-                                             * Width: 85vw, Text: 2.5vw, Padding: 1.2vh
-                                             * Desktop: Unchanged
-                                             */
-                                            className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
-                                            w-[85vw] md:w-[min(50vw,1200px)] 
-                                            py-4 px-[5vw] md:py-5 md:px-[min(2vw,48px)] h-auto min-h-[60px]
-                                            text-[max(18px,3.5vw)] md:text-[clamp(20px,1.1vw,32px)] leading-relaxed
-                                            shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
-                                            ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
-                                        `}
-                                            onClick={(e) => {
-                                                if (isProcessing || isLogicPending) return;
-                                                playSfx('ui_confirm');
-                                                console.log("Choice clicked:", choice.content);
-                                                e.stopPropagation();
-
-                                                // [LOGGING] Handled in handleSend
-
-
-                                                // [Adaptive Agent] Track Selected Choice
-                                                addChoiceToHistory({ text: choice.content, type: 'input', timestamp: Date.now() });
-
-                                                handleSend(choice.content);
-                                            }}
-                                            onMouseEnter={() => playSfx('ui_hover')}
-                                        >
-                                            <div className="flex w-full justify-between items-center transform skew-x-12 px-1">
-                                                <span className="text-left whitespace-pre-wrap break-keep mr-4 leading-normal">{choice.content}</span>
-                                                <span className="shrink-0 bg-slate-200/60 text-slate-700 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full border border-slate-300/50">
-                                                    {costPerTurn}🪙
-                                                </span>
-                                            </div>
-                                        </motion.button>
-                                    ))}
-
-                                    {/* Direct Input Option */}
-                                    <motion.button
-                                        initial={{ opacity: 0, y: 20, skewX: -12 }}
-                                        animate={{ opacity: 1, y: 0, skewX: -12 }}
-                                        whileHover={{ scale: 1.05, skewX: -12 }}
-                                        transition={{ delay: choices.length * 0.1 }}
-                                        className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold 
-                                        w-[85vw] md:w-[min(50vw,1200px)] 
-                                        py-4 px-[5vw] md:py-5 md:px-[min(2vw,48px)] h-auto min-h-[60px]
-                                        text-[max(18px,3.5vw)] md:text-[clamp(20px,1.1vw,32px)] leading-relaxed 
-                                        shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
-                                        ${(isProcessing || isLogicPending) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
-                                    `}
-                                        onMouseEnter={() => playSfx('ui_hover')}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (isProcessing || isLogicPending) return;
-                                            playSfx('ui_confirm');
-                                            setIsInputOpen(true);
-                                        }}
-                                    >
-                                        <div className="flex w-full justify-between items-center transform skew-x-12 px-1">
-                                            <span>{t.directInput}</span>
-                                            <span className="shrink-0 bg-slate-200/60 text-slate-700 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full border border-slate-300/50">
-                                                {costPerTurn}🪙
-                                            </span>
-                                        </div>
-                                    </motion.button>
-
-
-                                </div>
-                            </div>
-                        </>
-                    )
-                }
 
                 {/* Fallback for stuck state or Start Screen */}
                 {
@@ -5611,106 +5396,23 @@ export default function VisualNovelUI() {
                     t={t}
                 />
 
-                {/* Input Modal */}
-                <AnimatePresence>
-                    {isInputOpen && (
-                        <div className="fixed inset-0 bg-black/80 z-[2000] flex items-center justify-center pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                className="bg-gray-900 p-6 rounded-xl w-full max-w-lg border border-green-500 shadow-2xl"
-                            >
-                                <h2 className="text-xl font-bold text-green-400 mb-4">{t.yourAction}</h2>
+                {/* [Refactor] Input Modal Component */}
+                <InputModal
+                    isOpen={isInputOpen}
+                    userInput={userInput}
+                    fateUsage={fateUsage}
+                    playerFate={playerStats.fate || 0}
+                    costPerTurn={costPerTurn}
+                    isProcessing={isProcessing}
+                    isLogicPending={isLogicPending}
+                    t={t}
+                    onClose={() => setIsInputOpen(false)}
+                    onSetUserInput={setUserInput}
+                    onSetFateUsage={setFateUsage}
+                    onSubmit={handleUserSubmit}
+                    playSfx={playSfx}
+                />
 
-                                {/* [Fate Intervention UI] */}
-                                <div className="flex items-center gap-4 mb-4 bg-black/40 p-3 rounded-lg border border-yellow-500/30">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-yellow-400 font-bold text-sm">운명 개입 (Fate)</span>
-                                            <span className="text-xs bg-yellow-900/50 text-yellow-200 px-2 py-0.5 rounded-full border border-yellow-500/30">
-                                                보유: {playerStats.fate || 0}
-                                            </span>
-                                            {fateUsage > 0 && (
-                                                <span className="text-xs bg-red-900/50 text-red-200 px-2 py-0.5 rounded-full border border-red-500/30 font-bold animate-pulse">
-                                                    -{fateUsage * fateUsage} 차감
-                                                </span>
-                                            )}
-                                        </div>
-                                        <span className="text-gray-400 text-xs block mt-1">불가능을 가능으로 바꿉니다. (소모값 선택)</span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        {[0, 1, 2, 3, 4, 5].map(val => {
-                                            const cost = val * val;
-                                            const canAfford = (playerStats.fate || 0) >= cost;
-                                            return (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => {
-                                                        playSfx('ui_click');
-                                                        setFateUsage(val);
-                                                    }}
-                                                    onMouseEnter={() => playSfx('ui_hover')}
-                                                    disabled={!canAfford && val !== 0}
-                                                    className={`px-3 h-8 rounded-lg font-bold border transition-all text-xs ${fateUsage === val
-                                                        ? 'bg-yellow-500 text-black border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)] scale-110'
-                                                        : 'bg-gray-800 text-gray-400 border-gray-600 hover:border-yellow-500/50 hover:text-white'
-                                                        } ${!canAfford && val !== 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                    title={val > 0 ? `레벨 ${val} (비용: ${cost} Fate)` : '사용 안 함'}
-                                                >
-                                                    {val === 0 ? '0' : `${val}`}
-                                                </button>
-                                            );
-                                        })}                                            </div>
-                                </div>
-
-                                <div className="bg-red-900/30 border border-red-500/50 rounded p-3 mb-4 text-sm text-red-200">
-                                    <ul className="list-disc list-inside space-y-1">
-                                        <li>오직 주인공의 행동과 대사만 서술할 수 있습니다.</li>
-                                        <li>상황에 맞지 않는 신적 개입은 허용되지 않습니다.</li>
-                                    </ul>
-                                </div>
-
-                                <textarea
-                                    value={userInput}
-                                    onChange={(e) => setUserInput(e.target.value.slice(0, 256))}
-                                    className="w-full h-32 bg-black/50 border border-gray-700 rounded p-4 text-white text-lg mb-4 focus:outline-none focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    placeholder={t.placeholderAction}
-                                    disabled={isProcessing || isLogicPending}
-                                    onKeyDown={(e) => {
-                                        if ((e.key === 'Enter' || e.keyCode === 13) && !e.shiftKey) {
-                                            e.preventDefault();
-                                            if (!isProcessing && !isLogicPending) handleUserSubmit();
-                                        }
-                                    }}
-                                />
-                                <div className="flex justify-end gap-2">
-                                    <button
-                                        onClick={() => { if (!isProcessing && !isLogicPending) setIsInputOpen(false); }}
-                                        className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 disabled:opacity-50"
-                                        disabled={isProcessing || isLogicPending}
-                                    >
-                                        {t.cancel}
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            playSfx('ui_confirm');
-                                            handleUserSubmit();
-                                        }}
-                                        className="px-4 py-2 bg-green-600 rounded hover:bg-green-500 font-bold disabled:opacity-50 flex items-center gap-2"
-                                        disabled={isProcessing || isLogicPending}
-                                    >
-                                        <span>{t.action}</span>
-                                        <span className="bg-black/20 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-1 md:ml-2 border border-white/20">
-                                            {costPerTurn}🪙
-                                        </span>
-                                    </button>
-                                </div>
-                                {/* End of Input Form */}
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
 
                 {/* Status Notification */}
                 <AnimatePresence>
