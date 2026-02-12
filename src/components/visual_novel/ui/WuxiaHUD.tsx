@@ -87,7 +87,7 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
     return (
         <div className="absolute inset-0 z-50 flex justify-between items-start p-4 pointer-events-none font-serif">
             {/* Profile Background Brush */}
-            <div className="absolute -top-20 -left-10 w-[600px] h-[300px] pointer-events-none select-none z-0 opacity-90">
+            <div className="absolute -top-20 -left-10 w-[min(600px,90vw)] h-[min(300px,45vw)] pointer-events-none select-none z-0 opacity-90">
                 <img
                     src="/assets/wuxia/interface/UI_ProfileBG.png"
                     className="w-full h-full object-contain"
@@ -130,7 +130,7 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                 <div className="flex flex-col justify-start pt-2 ml-4">
                     {/* Name & Title */}
                     <div className="flex items-baseline gap-3">
-                        <span className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-stone-200 via-amber-100 to-yellow-700 drop-shadow-md tracking-widest leading-none">
+                        <span className="text-[clamp(18px,5vw,30px)] font-bold text-transparent bg-clip-text bg-gradient-to-b from-stone-200 via-amber-100 to-yellow-700 drop-shadow-md tracking-widest leading-none">
                             {playerName || '무명협객'}
                         </span>
                         <span className="text-sm md:text-base text-zinc-500 font-bold tracking-wide">
@@ -161,7 +161,7 @@ export default function WuxiaHUD({ playerName, playerStats, onOpenProfile, onOpe
                     {/* HP & MP (Qi) */}
                     <div className="flex flex-col gap-1 mt-2">
                         {/* HP (Red/Dark) */}
-                        <div className="w-48 md:w-64 h-2.5 bg-black/60 border border-stone-800 relative">
+                        <div className="w-[min(12rem,40vw)] md:w-64 h-2.5 bg-black/60 border border-stone-800 relative">
                             <div className="absolute inset-0 bg-red-900/20" />
                             <motion.div
                                 className="h-full bg-gradient-to-r from-red-900 via-red-700 to-red-600"

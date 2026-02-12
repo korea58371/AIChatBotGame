@@ -117,7 +117,7 @@ const ChoiceOverlay = React.memo(function ChoiceOverlay({
                             className={`w-full bg-gradient-to-r from-white/50 to-slate-100/70 backdrop-blur-md rounded-2xl border border-white/80 text-slate-700 font-bold 
                             w-[85vw] md:w-[min(50vw,1200px)] 
                             py-4 px-[5vw] md:py-5 md:px-[min(2vw,48px)] h-auto min-h-[60px]
-                            text-[max(18px,3.5vw)] md:text-[clamp(20px,1.1vw,32px)] leading-relaxed
+                            text-[clamp(16px,2vw+8px,28px)] leading-relaxed
                             shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                             ${(isProcessing || isLogicPending || isClickGuarded) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/90 hover:text-slate-900 hover:border-white'}
                         `}
@@ -147,7 +147,7 @@ const ChoiceOverlay = React.memo(function ChoiceOverlay({
                         className={`w-full bg-gradient-to-r from-slate-100/50 to-white/50 backdrop-blur-md rounded-2xl border border-white/60 text-slate-700 font-bold 
                         w-[85vw] md:w-[min(50vw,1200px)] 
                         py-4 px-[5vw] md:py-5 md:px-[min(2vw,48px)] h-auto min-h-[60px]
-                        text-[max(18px,3.5vw)] md:text-[clamp(20px,1.1vw,32px)] leading-relaxed 
+                        text-[clamp(16px,2vw+8px,28px)] leading-relaxed 
                         shadow-[0_0_15px_rgba(71,85,105,0.5)] transition-all duration-300
                         ${(isProcessing || isLogicPending || isClickGuarded) ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white/80 hover:border-white'}
                     `}

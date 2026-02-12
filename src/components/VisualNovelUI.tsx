@@ -254,6 +254,8 @@ export default function VisualNovelUI() {
 
 
     // Core Game Store
+    const autoFullscreenAttempted = useRef(false);
+
     useEffect(() => {
         const handleFullscreenChange = () => {
             setIsFullscreen(!!document.fullscreenElement);
@@ -272,6 +274,15 @@ export default function VisualNovelUI() {
             document.exitFullscreen().then(() => setIsFullscreen(false)).catch(err => console.error(err));
         }
     };
+
+    // [Auto-Fullscreen] Request fullscreen on first user interaction (browser requires user gesture)
+    const tryAutoFullscreen = useCallback(() => {
+        if (autoFullscreenAttempted.current || document.fullscreenElement) return;
+        autoFullscreenAttempted.current = true;
+        document.documentElement.requestFullscreen()
+            .then(() => setIsFullscreen(true))
+            .catch(err => console.warn('[AutoFullscreen] Browser denied:', err.message));
+    }, []);
 
     // [New] Realm Progression Logic
     const processRealmProgression = useCallback((currentStats: any, addToastCallback: (msg: string, type: any) => void) => {
@@ -2689,6 +2700,9 @@ export default function VisualNovelUI() {
     const isEpilogueRef = useRef(false); // [Fix] Track Epilogue State to suppress recurring triggers
 
     const handleScreenClick = (e: React.MouseEvent) => {
+        // [Auto-Fullscreen] Try fullscreen on first user interaction
+        tryAutoFullscreen();
+
         performance.mark('click-start'); // [PERF]
         // [Fix] Allow clicking if we have buffered segments, even if still processing (Streaming Mode)
         // Block only if processing AND queue is empty (Waiting for tokens)

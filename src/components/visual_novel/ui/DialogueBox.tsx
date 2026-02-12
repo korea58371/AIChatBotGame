@@ -40,34 +40,31 @@ const DialogueBox = React.memo(function DialogueBox({ onClick }: DialogueBoxProp
     if (!isValidType) return null;
 
     return (
-        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8 pb-32 md:pb-12 flex justify-center items-end z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent min-h-[40vh] md:h-[min(30vh,600px)]">
-            <div className="w-full max-w-screen-2xl pointer-events-auto relative">
-                {/* Dialogue Control Bar */}
-                <div
-                    className="w-full relative flex flex-col items-center cursor-pointer"
-                    onClick={onClick}
-                >
-                    {/* Name Tag */}
-                    {currentSegmentType === 'dialogue' && (
-                        <div className="absolute -top-[3vh] md:-top-[6vh] w-full text-center px-2">
-                            <span className="text-[max(16px,4.5vw)] md:text-[clamp(20px,1.4vw,47px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
-                                {displayName}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Text Content */}
-                    <div className="text-[max(16px,3.7vw)] md:text-[clamp(18px,1.3vw,39px)] leading-relaxed text-gray-100 min-h-[10vh] whitespace-pre-wrap text-center w-full drop-shadow-sm px-[4vw] md:px-0">
-                        {currentSegmentType === 'narration' ? (
-                            <span className="text-gray-300 italic block">
-                                {formatText(currentSegmentContent || '')}
-                            </span>
-                        ) : (
-                            <span>
-                                {formatText(currentSegmentContent || '')}
-                            </span>
-                        )}
+        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[38vh] md:h-[min(30vh,600px)] flex flex-col justify-end pointer-events-none">
+            <div
+                className="w-full max-w-screen-2xl mx-auto pointer-events-auto cursor-pointer flex flex-col items-center px-4 md:px-8 pb-28 md:pb-30"
+                onClick={onClick}
+            >
+                {/* Name Tag - Fixed position within flex layout, does not shift with text length */}
+                {currentSegmentType === 'dialogue' && (
+                    <div className="w-full text-center mb-2 md:mb-3 shrink-0">
+                        <span className="text-[clamp(16px,2.5vw+8px,36px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                            {displayName}
+                        </span>
                     </div>
+                )}
+
+                {/* Text Content */}
+                <div className="text-[clamp(14px,2vw+6px,30px)] leading-relaxed text-gray-100 whitespace-pre-wrap text-center w-full drop-shadow-sm px-[2vw] md:px-0">
+                    {currentSegmentType === 'narration' ? (
+                        <span className="text-gray-300 italic block">
+                            {formatText(currentSegmentContent || '')}
+                        </span>
+                    ) : (
+                        <span>
+                            {formatText(currentSegmentContent || '')}
+                        </span>
+                    )}
                 </div>
             </div>
         </div>

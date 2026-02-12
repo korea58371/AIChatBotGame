@@ -16,6 +16,22 @@ export function useVNAudio(currentBgm?: string | null) {
         }
     }, [bgmVolume]);
 
+    // [Fix] Pause BGM when tab/window is hidden (also handles mobile screen-off)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (!globalAudioInstance) return;
+            if (document.hidden) {
+                globalAudioInstance.pause();
+            } else {
+                globalAudioInstance.play().catch(() => {/* autoplay policy */ });
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
+
     useEffect(() => {
         // [Logic] SFX-Only Mode (undefined) -> Do nothing to BGM
         if (currentBgm === undefined) return;

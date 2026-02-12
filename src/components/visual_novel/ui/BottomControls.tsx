@@ -37,7 +37,7 @@ const BottomControls = React.memo(function BottomControls({
                 onClick={(e) => { e.stopPropagation(); onOpenHistory(); }}
                 title={t.chatHistory}
             >
-                <History className="w-5 h-5 md:w-[14px] md:h-[14px]" />
+                <History className="w-5 h-5 md:w-4 md:h-4" />
                 <span className="hidden md:inline">{t.chatHistory}</span>
             </button>
             <button
@@ -45,7 +45,7 @@ const BottomControls = React.memo(function BottomControls({
                 onClick={(e) => { e.stopPropagation(); onOpenSaveLoad(); }}
                 title={t.save}
             >
-                <Save className="w-5 h-5 md:w-[14px] md:h-[14px]" />
+                <Save className="w-5 h-5 md:w-4 md:h-4" />
                 <span className="hidden md:inline">{t.save}</span>
             </button>
             <button
@@ -53,7 +53,7 @@ const BottomControls = React.memo(function BottomControls({
                 onClick={(e) => { e.stopPropagation(); onOpenWiki(); }}
                 title={(t as any).wiki || "Wiki"}
             >
-                <Book className="w-5 h-5 md:w-[14px] md:h-[14px]" />
+                <Book className="w-5 h-5 md:w-4 md:h-4" />
                 <span className="hidden md:inline">{(t as any).wiki || "Wiki"}</span>
             </button>
         </div>
