@@ -163,42 +163,7 @@ ${(() => {
 - **현재 위치**: ${state.currentLocation}
   - **설명**: ${locationDesc}${locationSecrets}
 
-**[Active Characters Context] (CRITICAL)**
-*The following characters are currently present in the scene. Use their DEFINED relationships and speech styles.*
-${(state.activeCharacters || []).map((charId: string) => {
-      const charData = state.characterData?.[charId];
-      if (!charData) return `- ${charId}: (No Data)`;
 
-      // Format Relationship Info
-      const relInfo = charData.relationshipInfo || {};
-      const relStatus = relInfo.relation || 'Unknown';
-      const speechStyle = relInfo.speechStyle || 'Unknown';
-      const endingStyle = relInfo.endingStyle || '';
-
-      // Format Memories (Limit to last 3 major memories to save tokens)
-      const memories = (charData.memories || []).slice(-3).map((m: string) => `  * Memory: "${m}"`).join('\n');
-
-      const isUnknown = (relStatus === 'Unknown' || !relStatus) && (!memories || memories.length === 0);
-
-      // [FIRST ENCOUNTER PROTOCOL]
-      let firstEncounterGuide = "";
-      if (isUnknown) {
-        firstEncounterGuide = `
-   - **[⚠️ FIRST ENCOUNTER (초면 / 면식 없음)]**:
-     - 당신은 이 인물(${charData.name})을 **처음 만났습니다**.
-     - **체면과 무시**: 무림의 고수는 자신보다 약해 보이거나 명성이 없는 자에게 관심을 주지 않습니다. (투명 인간 취급)
-     - **절대 금지**:
-       1. 상대의 '이름'을 아는 척 부르기 금지.
-       2. 상대의 '신분/내공'을 꿰뚫어보기 금지. (오직 겉모습만 서술)
-       3. **이유 없는 호의 금지**. (초면에 웃거나 친절하면 사기꾼 취급 받음)`;
-      }
-
-      return `- **${charData.name || charId}**:
-  - **Relationship**: ${relStatus} (CallSign: ${relInfo.callSign || 'None'})
-  - **Speech Style**: ${speechStyle} ${endingStyle ? `(Ends with: ${endingStyle})` : ''}
-  - **Key Memories**:
-${memories || "  (No significant shared memories yet)"}${firstEncounterGuide}`;
-    }).join('\n')}
 
 **[이동 및 여행 규칙 (Travel Pacing)] (CRITICAL)**:
 - **순간이동 금지**: 먼 지역(다른 성/City)으로 이동할 때는 절대 한 턴 만에 도착하지 마십시오.
