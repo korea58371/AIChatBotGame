@@ -8,31 +8,8 @@ import { useVNAudio } from '../hooks/useVNAudio';
 
 import { translations } from '@/data/translations';
 
-const TRAIT_KO_MAP: Record<string, string> = {
-    morality: '도덕성',
-    courage: '용기',
-    energy: '에너지',
-    decision: '의사결정',
-    lifestyle: '생활양식',
-    openness: '수용성',
-    warmth: '대인온도',
-    eloquence: '화술',
-    leadership: '통솔력',
-    humor: '유머',
-    lust: '변태'
-};
 
-const PERSONALITY_TRAITS = [
-    { key: 'morality', label: '도덕성', color: 'text-green-400', bar: 'bg-green-600' },
-    { key: 'courage', label: '용기', color: 'text-red-400', bar: 'bg-red-600' },
-    { key: 'energy', label: '에너지', color: 'text-yellow-400', bar: 'bg-yellow-600' },
-    { key: 'decision', label: '의사결정', color: 'text-blue-400', bar: 'bg-blue-600' },
-    { key: 'lifestyle', label: '생활양식', color: 'text-purple-400', bar: 'bg-purple-600' },
-    { key: 'openness', label: '수용성', color: 'text-indigo-400', bar: 'bg-indigo-600' },
-    { key: 'warmth', label: '대인온도', color: 'text-pink-400', bar: 'bg-pink-600' },
-    { key: 'eloquence', label: '화술', color: 'text-teal-400', bar: 'bg-teal-600' },
-    { key: 'leadership', label: '통솔력', color: 'text-orange-400', bar: 'bg-orange-600' },
-];
+// [Dead Stats Removed] TRAIT_KO_MAP and PERSONALITY_TRAITS removed (STR/AGI/INT/VIT/LUK + Personality 11종 제거)
 
 interface CharacterProfileProps {
     isOpen: boolean;
@@ -73,20 +50,7 @@ export default function CharacterProfile({
     // Access goals from store
     const goals = useGameStore(state => state.goals);
 
-    // [Refactor] Dynamic Trait Mapping using translations.ts (Jan 2026)
-    const PERSONALITY_TRAITS_DYNAMIC = [
-        { key: 'morality', label: t.morality || '도덕성', color: 'text-green-400', bar: 'bg-green-600' },
-        { key: 'courage', label: t.courage || '용기', color: 'text-red-400', bar: 'bg-red-600' },
-        { key: 'energy', label: t.energy || '에너지', color: 'text-yellow-400', bar: 'bg-yellow-600' },
-        { key: 'decision', label: t.decision || '의사결정', color: 'text-blue-400', bar: 'bg-blue-600' },
-        { key: 'lifestyle', label: t.lifestyle || '생활양식', color: 'text-purple-400', bar: 'bg-purple-600' },
-        { key: 'openness', label: t.openness || '수용성', color: 'text-indigo-400', bar: 'bg-indigo-600' },
-        { key: 'warmth', label: t.warmth || '대인온도', color: 'text-pink-400', bar: 'bg-pink-600' },
-        { key: 'eloquence', label: t.eloquence || '화술', color: 'text-cyan-400', bar: 'bg-cyan-600' },
-        { key: 'leadership', label: t.leadership || '통솔력', color: 'text-orange-400', bar: 'bg-orange-600' },
-        { key: 'humor', label: t.humor || '유머', color: 'text-lime-400', bar: 'bg-lime-600' },
-        { key: 'lust', label: t.lust || '변태', color: 'text-rose-400', bar: 'bg-rose-600' }
-    ];
+    // [Dead Stats Removed] PERSONALITY_TRAITS_DYNAMIC removed
 
     if (!isOpen) return null;
 
@@ -156,76 +120,8 @@ export default function CharacterProfile({
                     {/* Tab Content: Basic Info */}
                     {activeTab === 'basic' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                            {/* Left Column: Stats & Personality */}
+                            {/* Left Column: Active Characters */}
                             <div className="space-y-8">
-                                <div className="space-y-8">
-                                    {/* Base Stats Section */}
-                                    <div className="bg-[#252525] p-4 rounded-lg border border-white/5 shadow-lg">
-                                        <h3 className="text-[#D4AF37] font-serif font-bold text-xl mb-4 border-b border-white/10 pb-2">◆ {t.baseStats}</h3>
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-gray-400">{t.str}</span>
-                                                <span className="text-[#eee] font-mono bg-black/30 px-2 py-1 rounded border border-white/5">{playerStats.str || 10}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-gray-400">{t.agi}</span>
-                                                <span className="text-[#eee] font-mono bg-black/30 px-2 py-1 rounded border border-white/5">{playerStats.agi || 10}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-gray-400">{t.int}</span>
-                                                <span className="text-[#eee] font-mono bg-black/30 px-2 py-1 rounded border border-white/5">{playerStats.int || 10}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-gray-400">{t.vit}</span>
-                                                <span className="text-[#eee] font-mono bg-black/30 px-2 py-1 rounded border border-white/5">{playerStats.vit || 10}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-gray-400">{t.luk}</span>
-                                                <span className="text-[#eee] font-mono bg-black/30 px-2 py-1 rounded border border-white/5">{playerStats.luk || 10}</span>
-                                            </div>
-                                            {/* [Wuxia] Neigong Display */}
-                                            <div className="flex justify-between items-center pt-2 mt-2 border-t border-white/10">
-                                                <span className="text-[#D4AF37] font-bold">{t.neigong}</span>
-                                                <span className="text-[#D4AF37] font-mono bg-[#D4AF37]/10 px-2 py-1 rounded border border-[#D4AF37]/20">
-                                                    {playerStats.neigong || 0}{t.years}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Personality Section */}
-                                    <div className="space-y-2">
-                                        {/* @ts-ignore */}
-                                        {PERSONALITY_TRAITS.map((trait) => (
-                                            <div key={trait.key}>
-                                                <div className="flex justify-between mb-1">
-                                                    <span className="text-gray-400 text-xs font-serif tracking-wide">{trait.label}</span>
-                                                    <span className={`text-xs ${trait.color} font-mono`}>
-                                                        {/* @ts-ignore */}
-                                                        {playerStats.personality?.[trait.key] || 0}
-                                                    </span>
-                                                </div>
-                                                <div className="w-full bg-[#111] rounded-full h-1.5 relative border border-[#333]">
-                                                    <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[#444]"></div>
-                                                    <div
-                                                        className={`${trait.bar} h-1.5 rounded-full absolute top-0 bottom-0 transition-all duration-500 opacity-90`}
-                                                        style={{
-                                                            /* @ts-ignore */
-                                                            left: (playerStats.personality?.[trait.key] || 0) < 0 ? `${50 + (playerStats.personality?.[trait.key] || 0) / 2}%` : '50%',
-                                                            /* @ts-ignore */
-                                                            width: `${Math.abs((playerStats.personality?.[trait.key] || 0)) / 2}%`
-                                                        }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Right Column (Basic): Active Chars & Goals */}
-                            <div className="space-y-8">
-                                {/* Active Characters Section */}
                                 <div className="bg-[#252525] p-6 rounded-lg border border-white/5 shadow-lg">
                                     <h3 className="text-xl font-bold font-serif text-[#D4AF37] mb-4 border-b border-white/10 pb-2">
                                         ◆ {t.activeCharactersTitle}
@@ -260,8 +156,10 @@ export default function CharacterProfile({
                                         </div>
                                     )}
                                 </div>
+                            </div>
 
-                                {/* Current Goals Section (Replaces Skills) */}
+                            {/* Right Column: Goals */}
+                            <div className="space-y-8">
                                 <div className="bg-[#252525] p-6 rounded-lg border border-white/5 shadow-lg">
                                     <h3 className="text-xl font-bold font-serif text-[#D4AF37] mb-4 border-b border-white/10 pb-2">◆ {t.currentGoal}</h3>
 
@@ -431,11 +329,14 @@ export default function CharacterProfile({
                                                         <div className="mt-auto pl-2 border-l-2 border-[#D4AF37]/30 pt-2">
                                                             <p className="text-xs text-[#D4AF37] font-bold mb-1">{t.memoriesLabel}</p>
                                                             <ul className="list-disc list-inside space-y-0.5">
-                                                                {charMemories.slice(-3).map((mem: string, i: number) => (
-                                                                    <li key={i} className="text-xs text-gray-400 line-clamp-1" title={mem}>
-                                                                        {mem}
-                                                                    </li>
-                                                                ))}
+                                                                {charMemories.slice(-3).map((mem: any, i: number) => {
+                                                                    const memText = typeof mem === 'string' ? mem : mem?.text || '';
+                                                                    return (
+                                                                        <li key={i} className="text-xs text-gray-400 line-clamp-1" title={memText}>
+                                                                            {memText}
+                                                                        </li>
+                                                                    );
+                                                                })}
                                                                 {charMemories.length > 3 && (
                                                                     <li className="text-xs text-gray-500 italic">... {charMemories.length - 3} {t.andXMore}</li>
                                                                 )}
@@ -451,7 +352,7 @@ export default function CharacterProfile({
                         </div>
                     )}
                 </div>
-            </motion.div>
-        </div>
+            </motion.div >
+        </div >
     );
 }

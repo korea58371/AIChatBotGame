@@ -1,5 +1,7 @@
 // Wuxia Logic Prompts
 // Extracted from src/data/prompts/logic.ts
+import { generateCustomStatsRulesPrompt, generateCustomStatsOutputFormat, generateProgressionContextPrompt } from '@/lib/engine/progression-types';
+import { wuxiaProgression } from '../progression';
 
 export const getStaticLogicPrompt = (rankCriteria: any = null, romanceGuide: any = null, combatGuide: any = null) => {
 
@@ -19,6 +21,8 @@ export const getStaticLogicPrompt = (rankCriteria: any = null, romanceGuide: any
 ** [로맨스 / 호감도 가이드(ROMANCE GUIDE)] **:
 히로인 공략 및 호감도 변화에 대한 상세 규칙입니다.
     ${romanceContext}
+
+${generateCustomStatsRulesPrompt(wuxiaProgression)}
 
 ** 규칙(무협 전용):**
 
@@ -82,7 +86,7 @@ export const getStaticLogicPrompt = (rankCriteria: any = null, romanceGuide: any
 {
     "hpChange": number,
     "mpChange": number,
-    "neigongChange": number, // [신규] 내공(년) 변화 (기본 0)
+${generateCustomStatsOutputFormat(wuxiaProgression)}
     "timeConsumed": number, // [시간 & 생존] 소요 시간 (0: 없음, 1: 한나절/짧은활동, 2: 반나절, 4: 하루종일)
     "fatigueChange": number, // [시간 & 생존] 피로도 변화 (0-100)
     "isSleep": boolean,      // [시간 & 생존] 플레이어가 잠을 자면 True (피로도 리셋)
@@ -152,11 +156,19 @@ export const getDynamicLogicPrompt = (
     worldData: any,
     availableEvents: any[] = []
 ) => {
+    const progressionContext = generateProgressionContextPrompt(
+        wuxiaProgression,
+        prunedStats.playerStats?.customStats || {},
+        prunedStats.playerStats?.playerRank || null,
+        prunedStats.playerStats?.level || 1
+    );
+
     return `
 **현재 게임 상태 (Current Game State):**
 - **게임 내 시간**: ${prunedStats.day || 1}일차, ${prunedStats.time || '아침'}
 - **피로도**: ${prunedStats.fatigue || 0}%
 - **소지금**: ${prunedStats.playerStats?.gold || 0}
+${progressionContext}
 ${JSON.stringify(prunedStats, null, 2)}
 
 **최근 맥락 (Recent Context):**

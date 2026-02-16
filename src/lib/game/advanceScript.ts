@@ -202,13 +202,7 @@ export function advanceScript(deps: AdvanceScriptDeps) {
                             addToast(`${t.fame} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
                         }
                     }
-                    if (normalizedChanges.morality !== undefined) {
-                        const val = Number(normalizedChanges.morality);
-                        if (!isNaN(val)) {
-                            newStats.personality = { ...newStats.personality, morality: Math.min(100, Math.max(-100, (newStats.personality?.morality || 0) + val)) };
-                            addToast(`${t.morality} ${val > 0 ? '+' : ''}${val}`, val > 0 ? 'success' : 'warning');
-                        }
-                    }
+
                     // [Fix] Explicit Neigong Handling (Years)
                     if (normalizedChanges.neigong !== undefined) {
                         const val = Number(normalizedChanges.neigong);
@@ -229,17 +223,12 @@ export function advanceScript(deps: AdvanceScriptDeps) {
 
                     // Generic Fallback
                     Object.keys(normalizedChanges).forEach(key => {
-                        if (['hp', 'mp', 'gold', 'fame', 'morality', 'neigong'].includes(key)) return;
+                        if (['hp', 'mp', 'gold', 'fame', 'neigong'].includes(key)) return;
 
                         const val = Number(normalizedChanges[key]);
                         if (!isNaN(val)) {
                             if (typeof (newStats as any)[key] === 'number') {
                                 (newStats as any)[key] = ((newStats as any)[key] as number) + val;
-                                // @ts-ignore
-                                const label = t[key] || key.toUpperCase();
-                                addToast(`${label} ${val > 0 ? '+' : ''}${val}`, 'info');
-                            } else if (newStats.personality && typeof (newStats.personality as any)[key] === 'number') {
-                                (newStats.personality as any)[key] = ((newStats.personality as any)[key] as number) + val;
                                 // @ts-ignore
                                 const label = t[key] || key.toUpperCase();
                                 addToast(`${label} ${val > 0 ? '+' : ''}${val}`, 'info');

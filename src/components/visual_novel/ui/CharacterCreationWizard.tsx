@@ -222,36 +222,15 @@ function CharacterCreationWizardInner({
             }
 
             if (coreSetting === 'possessed_noble') {
-                newStats.int = (newStats.int || 10) + 20;
-                if (!newStats.personality) {
-                    newStats.personality = {
-                        morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
-                        openness: 0, warmth: 0, eloquence: 0, leadership: 0,
-                        humor: 0, lust: 0
-                    };
-                }
-                newStats.personality.eloquence = (newStats.personality.eloquence || 0) + 20;
                 newStats.gold = (newStats.gold || 0) + 1000;
-                addToast("특전: 지략가 보너스 적용 (지력/화술 +20, 금화 +1000)", "success");
+                addToast("특전: 지략가 보너스 적용 (금화 +1000)", "success");
             }
             else if (coreSetting === 'rejuvenated_master') {
                 newStats.neigong = (newStats.neigong || 0) + 60;
-                ['str', 'agi', 'int', 'vit', 'luk'].forEach(s => {
-                    // @ts-ignore
-                    newStats[s] = (newStats[s] || 10) + 10;
-                });
-                addToast("특전: 환골탈태 보너스 적용 (내공 60년, 전 스탯 +10)", "success");
+                addToast("특전: 환골탈태 보너스 적용 (내공 60년)", "success");
             }
             else if (coreSetting === 'returnee_demon') {
                 newStats.level = 100;
-                if (!newStats.personality) {
-                    newStats.personality = {
-                        morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
-                        openness: 0, warmth: 0, eloquence: 0, leadership: 0,
-                        humor: 0, lust: 0
-                    };
-                }
-                newStats.personality.morality = -50;
                 const demonArt = {
                     id: 'heavenly_demon_art',
                     name: '천마신공(天魔神功)',
@@ -276,34 +255,25 @@ function CharacterCreationWizardInner({
                     addToast("특성: 무능력자 (특별한 보너스 없음, 하드코어 시작)", "info");
                 }
                 else if (coreSetting === 'superhuman') {
-                    ['str', 'agi', 'vit'].forEach(s => {
-                        // @ts-ignore
-                        newStats[s] = (newStats[s] || 10) + 10;
-                    });
                     newStats.level = 5;
-                    addToast("특전: 초인 (신체 능력 +10, 레벨 5)", "success");
+                    addToast("특전: 초인 (레벨 5)", "success");
                 }
                 else if (coreSetting === 'd_rank_hunter') {
-                    ['str', 'agi', 'vit', 'int', 'luk'].forEach(s => {
-                        // @ts-ignore
-                        newStats[s] = (newStats[s] || 10) + 5;
-                    });
                     newStats.gold = (newStats.gold || 0) + 500000;
                     // @ts-ignore
                     if (!(newStats as any).inventory) (newStats as any).inventory = [];
                     // @ts-ignore
                     (newStats as any).inventory.push({ id: 'hunter_license_d', name: 'D급 헌터 자격증', quantity: 1, type: 'item' });
-                    addToast("특전: D급 헌터 (전 스탯 +5, 자격증, 50만원)", "success");
+                    addToast("특전: D급 헌터 (자격증, 50만원)", "success");
                 }
                 else if (coreSetting === 'academy_student') {
-                    newStats.int = (newStats.int || 10) + 15;
                     // @ts-ignore
                     (newStats as any).potential = ((newStats as any).potential || 10) + 10;
                     // @ts-ignore
                     if (!(newStats as any).inventory) (newStats as any).inventory = [];
                     // @ts-ignore
                     (newStats as any).inventory.push({ id: 'blesser_academy_uniform', name: '아카데미 교복', quantity: 1, type: 'item' });
-                    addToast("특전: 아카데미 생도 (지능+15, 잠재력+10, 교복)", "success");
+                    addToast("특전: 아카데미 생도 (잠재력+10, 교복)", "success");
                 }
                 else if (coreSetting === 's_rank_candidate') {
                     newStats.mp = (newStats.mp || 100) + 500;
@@ -314,27 +284,7 @@ function CharacterCreationWizardInner({
                 }
             }
 
-            // [Personality Bonuses]
-            const pLink = newStats.personality || {};
-            const pTone = updatedData['personality_tone'];
-            if (pTone === 'humorous') {
-                pLink.warmth = (pLink.warmth || 0) + 10;
-                pLink.energy = (pLink.energy || 0) + 10;
-                pLink.humor = (pLink.humor || 0) + 20;
-            } else if (pTone === 'serious') {
-                pLink.decision = (pLink.decision || 0) + 10;
-                pLink.lifestyle = (pLink.lifestyle || 0) + 5;
-            } else if (pTone === 'cynical') {
-                pLink.decision = (pLink.decision || 0) + 5;
-                pLink.morality = (pLink.morality || 0) - 5;
-            } else if (pTone === 'timid') {
-                pLink.lifestyle = (pLink.lifestyle || 0) + 10;
-                pLink.courage = (pLink.courage || 0) - 5;
-            } else if (pTone === 'domineering') {
-                pLink.leadership = (pLink.leadership || 0) + 10;
-                pLink.warmth = (pLink.warmth || 0) - 5;
-            }
-            newStats.personality = pLink;
+            // [Dead Stats Removed] Personality bonuses removed
 
             // [Final Goal]
             if (updatedData['final_goal']) {
@@ -383,13 +333,7 @@ function CharacterCreationWizardInner({
                             newStats.active_injuries = [...(newStats.active_injuries || []), ...hidden.statsModifier.active_injuries];
                         }
 
-                        if (hidden.statsModifier.personality) {
-                            Object.keys(hidden.statsModifier.personality).forEach(k => {
-                                const key = k as keyof typeof newStats.personality;
-                                // @ts-ignore
-                                newStats.personality[key] = (newStats.personality[key] || 0) + (hidden.statsModifier.personality[key] || 0);
-                            });
-                        }
+                        // [Dead Stats Removed] Hidden personality modifiers removed
 
                         useGameStore.getState().setPlayerStats(newStats);
                     }

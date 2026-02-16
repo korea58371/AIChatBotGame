@@ -37,6 +37,21 @@ export function normalizeCharacterId(input: string, language: 'ko' | 'en' | 'ja'
     const isValidId = (id: string) => !!ID_TO_NAME_MAP[id];
     const isValidName = (name: string) => !!NAME_TO_ID_MAP[name];
 
+    // [NEW] Fuzzy match helper — strips underscores & lowercases for comparison
+    const fuzzyNormalize = (s: string) => s.replace(/_/g, '').toLowerCase();
+    const fuzzyMatchId = (raw: string): string | null => {
+        const target = fuzzyNormalize(raw);
+        if (!target) return null;
+        // Check against all known English IDs
+        for (const knownId of Object.keys(ID_TO_NAME_MAP)) {
+            if (fuzzyNormalize(knownId) === target) return knownId;
+        }
+        // Check against all known English IDs as prefix match (e.g. "han" matches "HanSeolHee" only if unique)
+        const prefixMatches = Object.keys(ID_TO_NAME_MAP).filter(k => fuzzyNormalize(k).startsWith(target));
+        if (prefixMatches.length === 1) return prefixMatches[0];
+        return null;
+    };
+
     // [New] Suffix Stripping / Normalization Logic
     // We assume the input could be a messy Image Key (e.g. "GoHaNeul_Anger_Lv1")
     // Strategy: Longest Prefix Match by splitting `_`
@@ -71,6 +86,12 @@ export function normalizeCharacterId(input: string, language: 'ko' | 'en' | 'ja'
                     break;
                 }
             }
+        }
+
+        // [NEW] If still not found, try fuzzy match (case-insensitive, underscore-insensitive)
+        if (!isValidId(baseId) && !isValidName(baseId)) {
+            const fuzzyResult = fuzzyMatchId(baseId);
+            if (fuzzyResult) baseId = fuzzyResult;
         }
     }
 

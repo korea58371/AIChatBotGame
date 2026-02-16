@@ -1,4 +1,5 @@
 import { GameRegistry, GameConfig } from '@/lib/registry/GameRegistry';
+import { wuxiaProgression } from './progression';
 // import WuxiaHUD from '@/components/visual_novel/ui/WuxiaHUD';
 import { WUXIA_IDENTITY, WUXIA_BEHAVIOR_RULES, WUXIA_OUTPUT_FORMAT } from './constants';
 import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from './bgm_mapping';
@@ -38,6 +39,9 @@ export const WuxiaConfig: GameConfig = {
 
     // [6] Scalability Extensions
     loadGameData: loadWuxiaData,
+
+    // [8] Universal Progression System
+    progressionConfig: wuxiaProgression,
 
     resolveRegion: (location: string): string | null => {
         if (!location) return null;
@@ -111,28 +115,6 @@ export const WuxiaConfig: GameConfig = {
         return charInfo;
     },
 
-    // [Refactored] Rank Logic
-    getRankTitle: (level: number, language: string = 'ko') => {
-        // Import locally or define locally to avoid circular dependency issues if constants are in PromptManager
-        const LEVEL_TO_REALM_MAP = [
-            { min: 1, max: 9, id: 'intro', title: '입문' },
-            { min: 10, max: 29, id: 'third_rate', title: '삼류' },
-            { min: 30, max: 49, id: 'second_rate', title: '이류' },
-            { min: 50, max: 69, id: 'first_rate', title: '일류' },
-            { min: 70, max: 89, id: 'peak', title: '절정' },
-            { min: 90, max: 109, id: 'transcendent', title: '초절정' },
-            { min: 110, max: 129, id: 'harmony', title: '화경' },
-            { min: 130, max: 159, id: 'mystic', title: '현경' },
-            { min: 160, max: 999, id: 'life_death', title: '생사경' }
-        ];
-
-        const entry = LEVEL_TO_REALM_MAP.find(m => level >= m.min && level <= m.max);
-        // Translation logic is handled in PromptManager currently, but ideally should be here or delegated.
-        // For now, return the localization key (id) or fallback title.
-        // PromptManager will use translations[lang].wuxia.realms[id]
-        if (entry) return entry.id;
-        return 'unknown';
-    },
 
     // [Refactored] Background Localization Logic
     resolveBackgroundName: (key: string, state: any) => {

@@ -24,7 +24,7 @@ export interface PostLogicOutput {
   relationship_updates?: Record<string, number>; // ID: 변경량
   stat_updates?: Record<string, number>; // [NEW] Personality Stat Updates (morality, eloquence, etc.)
   new_memories?: string[];
-  character_memories?: Record<string, string[]>; // [NEW] Character specific memories (Long-term ONLY)
+  // [REMOVED] character_memories moved to AgentMemory agent
   character_relationships?: Record<string, Record<string, string>>; // [NEW] NPC-to-NPC Relationship Updates
   activeCharacters?: string[]; // [NEW] Active characters in scene
   inline_triggers?: { quote: string, tag: string }[]; // [NEW] Quotes to inject tags into
@@ -224,23 +224,10 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - Output: "resolved_injuries": ["Internal Injury"]
 
 
-[Personality Stats Guidelines]
-- Personality Stats (-100 to 100):
-   - morality: -100 (Fiend/No Conscience) <-> 100 (Saint/Paragon)
-   - courage: -100 (Coward) <-> 100 (Heroic)
-   - energy: -100 (Lethargic) <-> 100 (Energetic)
-   - decision: -100 (Indecisive) <-> 100 (Decisive)
-   - lifestyle: -100 (Chaotic) <-> 100 (Disciplined)
-   - openness: -100 (Closed) <-> 100 (Open)
-   - warmth: -100 (Cold) <-> 100 (Warm)
-   - eloquence: -100 (Mute/Blunt) <-> 100 (Orator)
-   - leadership: -100 (Follower) <-> 100 (Leader)
-   - humor: -100 (Serious) <-> 100 (Jester)
-   - lust: -100 (Ascetic) <-> 100 (Hedonist)
 
-- Physical/Mental Stats: hp, mp, gold, str, agi, int, vit, luk, fame.
-
-- **CRITICAL**: Do NOT invent other stats (e.g. "stamina", "karma", "stress"). Use ONLY the keys defined above.
+[Physical/Resource Stats] (VALID KEYS ONLY)
+- hp, mp, gold, fame.
+- **CRITICAL**: Do NOT invent other stats (e.g. "stamina", "karma", "stress", "str", "agi"). Use ONLY the keys defined above.
 
 [Reputation (Fame) Logic]
 - **Concept**: How widely known the player is in Jianghu. 
@@ -255,19 +242,6 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - Private events = 0% Fame (Unless clues are left).
 - **Instruction**: Even if the text does not explicitly say "Fame increased", you MUST update the 'fame' stat if the achievements warrant it.
 
-[Personality Update Guidelines] (Consistency & Inertia)
-- **Principle:** Stats represent a developing character arc.
-- **Diminishing Returns (Saturation):**
-  - High stats (>80) do NOT increase from minor actions. A 'Saint' giving a coin gets +0 Morality.
-  - To reach Extremes (90+), one must make **Sacrifices** or face **Major Risks**.
-- **The "Hypocrisy" Check (Expectation Gap):**
-  - If a character has EXTREME stats (>90), they are held to a higher standard.
-  - Example: A 'Saint' (Morality 95) who gives food but *hesitates* or *complains* -> **Morality -5**.
-    - Why? Because it breaks the image of perfection. A normal person would get +2, but a Saint fails expectations.
-- **Inertia (Gravity):**
-  - It is hard to build (Climb), easy to destroy (Fall).
-  - One major crime can drop Morality 100 -> 50. But one good deed cannot fix Morality -100 -> -50.
-  - **Out-of-Character:** A Saint (100) committing murder -> -60 (Major Corruption). A Villain (-100) saving a cat -> +5 (Rare kindness).
 
 [Relationship Update Guidelines] (Relationship Inertia)
 - **Principle:** Relationships take time to build. Do NOT allow instant massive jumps (e.g., Stranger -> Lover in one turn).
@@ -303,20 +277,22 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - "Please, call me older brother." -> status: "의형제" (Sworn Brother).
 - **Format**:
   "relationship_info_updates": {
-       "soso": { "status": "연인", "speech_style": "반말" },
-       "namgung_se_ah": { "speech_style": "존댓말" }
+       "소소": { "status": "연인", "speech_style": "반말" },
+       "남궁세아": { "speech_style": "존댓말" }
   }
+- **⚠️ CRITICAL**: Character IDs MUST be the Korean name (한글 이름) exactly as they appear in the character data. NEVER use English IDs (e.g. "soso", "han_seol"). Always use "소소", "한설희", "남궁세아", etc.
 
 [NPC-to-NPC Relationship Updates] (PERSISTENT MEMORY)
 - **Goal**: Track how NPCs feel about EACH OTHER (not just the player).
 - **Trigger**: When NPCs interact significantly (Introduction, Fight, Friendship, Betrayal).
 - **Consistnecy**: If A meets B for the first time, record "Acquaintance". If they fight, "Enemy".
-- **Format**: "character_relationships": { "SubjectID": { "TargetID": "Status Description" } }
+- **Format**: "character_relationships": { "SubjectName(한글)": { "TargetName(한글)": "Status Description" } }
+- **⚠️ CRITICAL**: Use KOREAN NAMES as keys. NEVER use English IDs.
 - **Example**:
   "character_relationships": {
-      "han_gaeul": { 
-          "namgung_se_ah": "언니라고 부르며 따름 (Follows as big sister)",
-          "so_so": "경계함 (Wary)"
+      "한설희": { 
+          "남궁세아": "언니라고 부르며 따름 (Follows as big sister)",
+          "소소": "경계함 (Wary)"
       }
   }
 
@@ -385,40 +361,37 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 
 [Output Schema (JSON)]
 {
-  "_analysis": "Step 1: Player HP is low but no critical hits... Step 2: Soso is present...",
+  "_analysis": "Step 1: Player HP is low but no critical hits... Step 2: 소소 is present...",
   "mood_update": "tension",
   "location_update": "Region_Place",
-  "relationship_updates": { "character_id": 5, "another_char": -2 },
-  "stat_updates": { "morality": -2, "eloquence": 1, "hp": -5, "mp": 2, "fame": 10 },
-  "character_memories": { 
-      "soso": ["Player praised my cooking"], 
-      "chilsung": ["Player defeated me"] 
-  },
+  "relationship_updates": { "소소": 5, "한설희": -2 },
+  "stat_updates": { "hp": -5, "mp": 2, "fame": 10 },
   "character_relationships": {
-      "soso": { "chilsung": "불편한 관계 (Uncomfortable)" }
+      "소소": { "칠성": "불편한 관계 (Uncomfortable)" }
   },
   "inline_triggers": [
       { "quote": ${t.인라인_인용_예시}, "tag": "<Stat hp='-5'>" },
-      { "quote": ${t.인라인_태그_예시}, "tag": "<Rel char='NamgungSeAh' val='5'>" }
+      { "quote": ${t.인라인_태그_예시}, "tag": "<Rel char='남궁세아' val='5'>" }
   ],
   "resolved_injuries": ["Broken Arm"],
   "new_injuries": ["Permanent Disability"],
   "new_goals": [{ "type": "MAIN", "description": "Goal description" }],
   "goal_updates": [{ "id": "goal_id", "status": "COMPLETED" }],
-  "activeCharacters": ["soso", "chilsung"], 
+  "activeCharacters": ["소소", "칠성"], 
   "summary_trigger": false,
-  "dead_character_ids": ["bandit_leader"],
-  "factionChange": "Mount Hua Sect"
+  "dead_character_ids": ["산적두목"],
+  "factionChange": "화산파"
 }
 
 [Critically Important]
 - **Internal Analysis (CoT)**: Before generating the JSON, briefly analyze the situation in the "_analysis" field to ensure all constraints (Health, Relationship caps) are met. Use English for analysis.
-- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'character_memories', 'factionChange', 'playerRank') MUST be in KOREAN (한국어). Only JSON keys and logical IDs must remain in English.
+- **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'factionChange', 'playerRank') MUST be in KOREAN (한국어). Only JSON keys must remain in English.
+- **⚠️ CHARACTER IDs**: ALL character identifiers (in 'relationship_updates', 'activeCharacters', 'dead_character_ids', 'character_relationships', inline_triggers char attr) MUST use the character's KOREAN NAME (한글 이름). NEVER use English IDs like "soso" or "han_seol".
 - **Active Characters Rules**:
-  1. List EVERY character ID that is **CURRENTLY PRESENT** at the **END** of the turn.
+  1. List EVERY character name (한글) that is **CURRENTLY PRESENT** at the **END** of the turn.
   2. **Leaving**: If a character explicitly LEAVES, EXITS, or DISAPPEARS, **DO NOT** include them.
   3. **Dead**: If a character is listed in 'dead_character_ids', they **MUST NOT** appear in 'activeCharacters'.
-- **Dead Characters**: List IDs of ANY character who died or was permanently incapacitated/killed in this turn.
+- **Dead Characters**: List names (한글) of ANY character who died or was permanently incapacitated/killed in this turn.
 - 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.
 
 [Relationship Tiers Guide]

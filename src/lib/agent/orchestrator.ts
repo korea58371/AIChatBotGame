@@ -7,6 +7,7 @@ import { AgentPostLogic } from './post-logic';
 import { AgentCasting } from './casting'; // [NEW]
 import { AgentSkills } from './skills'; // [NEW] Renamed from martial-arts
 import { AgentChoices } from './choices'; // [NEW] Parallel Choice Gen
+import { AgentMemory } from './agent-memory'; // [NEW] Memory Agent
 import { generateResponse, generateResponseStream } from '../ai/gemini'; // Moved to ai/gemini
 import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../ai/model-config'; // Moved to ai/model-config
@@ -429,8 +430,8 @@ ${thinkingInstruction}
         const validCharacters = Object.keys(gameState.characterData || {});
         const playerName = gameState.playerName || 'Player';
 
-        // Parallel Execution
-        const [postLogicRes, martialArtsRes, choicesRes, eventRes] = await Promise.all([
+        // Parallel Execution (5 Agents)
+        const [postLogicRes, martialArtsRes, choicesRes, eventRes, memoryRes] = await Promise.all([
             this.measure(AgentPostLogic.analyze(
                 userInput,
                 cleanStoryText,
@@ -541,7 +542,9 @@ ${thinkingInstruction}
                     }
                     return null;
                 }
-            })())
+            })()),
+            // [NEW] AgentMemory (Parallel)
+            this.measure(AgentMemory.analyze(userInput, cleanStoryText, gameState))
         ]);
 
         const postLogicOut = postLogicRes.result;
@@ -549,6 +552,7 @@ ${thinkingInstruction}
         const martialArtsOut = martialArtsRes.result;
         const choicesOut = choicesRes.result;
         const eventOut = eventRes.result || { debug: { status: 'UNKNOWN_ERROR', serverGameId: 'UNKNOWN' } };
+        const memoryOut = memoryRes.result;
 
         const t6 = Date.now();
 
@@ -673,8 +677,10 @@ ${thinkingInstruction}
             usage: {
                 postLogic: this.normalizeUsage(postLogicOut.usageMetadata, postLogicCost),
                 martialArts: this.normalizeUsage(martialArtsOut.usageMetadata, martialCost),
-                choices: this.normalizeUsage(choicesOut.usageMetadata, choiceCost)
-            }
+                choices: this.normalizeUsage(choicesOut.usageMetadata, choiceCost),
+                memory: this.normalizeUsage(memoryOut?.usageMetadata, 0) // [NEW] Memory cost tracked separately
+            },
+            memoryOut, // [NEW] Memory Agent Output
         };
 
 
@@ -725,6 +731,9 @@ ${thinkingInstruction}
             },
             event_debug: { // [NEW] Event Debug Info
                 output: (p2 as any).eventOut
+            },
+            memory_debug: { // [NEW] Memory Agent Debug Info
+                output: (p2 as any).memoryOut
             },
             router: p1.routerOut,
             casting: p1.suggestions, // [NEW] Returns ALL candidates for UI debugging
@@ -834,21 +843,99 @@ ${thinkingInstruction}
 
         // --- PHASE 2: STORY STREAMING ---
 
-        // --- PHASE 2: STORY STREAMING ---
+        // ④ Director (줄거리 설계)
+        const tDirStart = Date.now();
+        let directorOut: any;
+        try {
+            const { AgentDirector } = await import('./agent-director');
+            const { RegionalContext } = await import('./regional-context');
+            const directorCharSummaries = (effectiveGameState.activeCharacters || []).map((charId: string) => {
+                const charData = effectiveGameState.characterData?.[charId];
+                if (!charData) return null;
+                return {
+                    id: charId,
+                    name: charData.name || charId,
+                    rank: charData['강함']?.['등급'] || charData.profile?.['등급'] || 'Unknown',
+                    title: charData.title || charData.role || '',
+                    faction: charData.faction || charData.profile?.['소속'] || '무소속',
+                    relationship: effectiveGameState.playerStats?.relationships?.[charId] ||
+                        effectiveGameState.playerStats?.relationships?.[charData.name] || 0,
+                    tags: charData.system_logic?.tags || [],
+                };
+            }).filter(Boolean);
 
+            const directorState = effectiveGameState.directorState || {
+                foreshadowing: [], activeThreads: [], characterArcs: {},
+                recentLog: [], momentum: { currentFocus: '일상', focusDuration: 0, lastMajorEvent: '', lastMajorEventTurn: 0 }
+            };
+
+            directorOut = await AgentDirector.analyze({
+                preLogic: {
+                    mood: preLogicOut.mood_override || null,
+                    score: preLogicOut.plausibility_score || 5,
+                    combat_analysis: preLogicOut.combat_analysis || null,
+                },
+                characters: directorCharSummaries,
+                directorState,
+                userInput,
+                location: effectiveGameState.currentLocation || '',
+                turnCount: effectiveGameState.turnCount || 0,
+                activeGoals: (effectiveGameState.goals || []).filter((g: any) => g.status === 'ACTIVE').map((g: any) => g.description),
+                lastTurnSummary: gameState.lastTurnSummary || '',
+                regionalContext: RegionalContext.compose(effectiveGameState.currentLocation || ''),
+                recentHistory: effectiveGameState.scenarioMemory?.recentSummary || '',
+                playerProfile: (() => {
+                    const ps = effectiveGameState.playerStats;
+                    if (!ps) return 'Unknown Player';
+                    const parts: string[] = [];
+                    parts.push(`${effectiveGameState.playerName || '???'} | ${ps.gender === 'female' ? '여' : '남'} | ${ps.playerRank || '삼류'} | Lv.${ps.level || 1}`);
+                    if (ps.faction) parts.push(`소속: ${ps.faction}`);
+                    if (ps.personalitySummary) parts.push(`성격: ${ps.personalitySummary}`);
+                    if (ps.core_setting) parts.push(`정체성: ${ps.core_setting}`);
+                    if (ps.final_goal) parts.push(`최종목표: ${ps.final_goal}`);
+                    parts.push(`HP: ${ps.hp}/${ps.maxHp} | 피로: ${ps.fatigue || 0}/100 | 금화: ${ps.gold || 0}`);
+                    if (ps.fame !== undefined) parts.push(`명성: ${ps.fame}`);
+                    if (ps.active_injuries && ps.active_injuries.length > 0) parts.push(`부상: ${ps.active_injuries.join(', ')}`);
+                    if (ps.skills && ps.skills.length > 0) {
+                        const topSkills = ps.skills.slice(0, 3).map((s: any) => `${s.name}(${s.rank})`).join(', ');
+                        parts.push(`주요무공: ${topSkills}`);
+                    }
+                    return parts.join('\n');
+                })(),
+                castingSuggestions: suggestions.map((c) => {
+                    const cd: any = c.data || {};
+                    const rank = cd['강함']?.['등급'] || cd.profile?.['등급'] || 'Unknown';
+                    const faction = cd.faction || cd.profile?.['소속'] || '무소속';
+                    const role = cd.title || cd.role || '';
+                    return `- ${c.name} [${rank}] ${faction}${role ? ' / ' + role : ''} (추천사유: ${c.reasons.slice(0, 2).join(', ')})`;
+                }).join('\n'),
+            });
+        } catch (e) {
+            console.error("[Director] Failed, using fallback:", e);
+            directorOut = {
+                plot_beats: ['유저 행동에 자연스럽게 반응'],
+                emotional_direction: '', tone: '자연스럽게',
+                context_requirements: { combat_characters: [], first_encounter: [], emotional_focus: [] },
+                subtle_hooks: [],
+            };
+        }
+        const tDirEnd = Date.now();
+        console.log(`[Pipeline] ④ Director: ${tDirEnd - tDirStart}ms (beats: ${directorOut.plot_beats?.length || 0})`);
+
+        // ⑤ Context Composer (Director-guided data selection)
         let contextPlayer = PromptManager.getPlayerContext(effectiveGameState, language);
-
-        const contextCharacters = PromptManager.getActiveCharacterProps(effectiveGameState, undefined, language);
+        const contextCharacters = PromptManager.composeCharacterContext(effectiveGameState, directorOut, language);
         const contextRetrieved = retrievedContext || "";
 
+        // Director's narrative guide (replaces old PreLogic narrative_guide)
         const narrativeGuide = `[Narrative Direction]
-${preLogicOut.narrative_guide}
+[Plot Beats]: ${(directorOut.plot_beats || []).join(' → ')}
+[Tone]: ${directorOut.tone || 'natural'}
+[Emotional Direction]: ${directorOut.emotional_direction || ''}
 ${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysis}` : ""}
-${preLogicOut.emotional_context ? `[Emotional Context]: ${preLogicOut.emotional_context}` : ""}
-${preLogicOut.character_suggestion ? `[Character Suggestion]: ${preLogicOut.character_suggestion}` : ""}
-${preLogicOut.goal_guide ? `[Goal Guide]: ${preLogicOut.goal_guide}` : ""}
 ${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_inference}` : ""}
 ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}`;
+
 
         // [Stream] Conditional CoT Logic
         const isFlashModel = modelName.toLowerCase().includes('flash');
@@ -1005,7 +1092,8 @@ ${thinkingInstruction}
         console.log(`[Pipeline] ⑤ PostLogic Phase: ${Date.now() - tP2Start}ms`);
         console.log(`[Pipeline] ====== Turn TOTAL: ${Date.now() - startTime}ms ======`);
 
-        const totalCost = p1Costs.total + p2.costs.total;
+        const directorCost = calculateCost(MODEL_CONFIG.DIRECTOR, directorOut.usageMetadata?.promptTokenCount || 0, directorOut.usageMetadata?.candidatesTokenCount || 0, directorOut.usageMetadata?.cachedContentTokenCount || 0);
+        const totalCost = p1Costs.total + p2.costs.total + directorCost;
 
         // Construct Final Legacy Data Object
         const finalPayload = {
@@ -1033,21 +1121,35 @@ ${thinkingInstruction}
             martial_arts_debug: { _debug_prompt: p2.martialArtsOut._debug_prompt },
             choices_debug: { _debug_prompt: p2.choicesOut._debug_prompt, output: p2.choicesOut.text },
             event_debug: { output: (p2 as any).eventOut },
+            memory_debug: { output: (p2 as any).memoryOut }, // [NEW] Memory Agent Debug
             router: routerOut,
             casting: suggestions,
+            director: directorOut, // [NEW] Director Output for Debug
+            director_debug: {
+                plot_beats: directorOut.plot_beats,
+                tone: directorOut.tone,
+                emotional_direction: directorOut.emotional_direction,
+                context_requirements: directorOut.context_requirements,
+                subtle_hooks: directorOut.subtle_hooks,
+                state_updates: directorOut.state_updates,
+                _debug_prompt: directorOut._debug_prompt,
+            },
             usageMetadata: storyMetadata?.usageMetadata,
             usedModel: usedModel,
             allUsage: {
                 preLogic: p1Usage.preLogic,
+                director: this.normalizeUsage(directorOut.usageMetadata, directorCost), // [NEW]
                 postLogic: p2.usage.postLogic,
                 story: p1Usage.story,
                 martialArts: p2.usage.martialArts,
-                choices: p2.usage.choices
+                choices: p2.usage.choices,
+                memory: p2.usage.memory // [NEW]
             },
             latencies: {
                 retriever: (t3 - t1), // approx
                 preLogic: (t4 - t3),
-                story: (t5 - t4),
+                director: (tDirEnd - tDirStart), // [NEW]
+                story: (t5 - tDirEnd),
                 postLogic: p2.latencies.postLogic,
                 total: Date.now() - startTime
             },
@@ -1063,6 +1165,20 @@ ${thinkingInstruction}
             story_static_prompt: systemPrompt,
             story_dynamic_prompt: finalUserMessage || compositeInput
         };
+
+        // [NEW] Update DirectorState after turn complete
+        try {
+            const { AgentDirector } = await import('./agent-director');
+            const updatedDirectorState = AgentDirector.updateState(
+                effectiveGameState.directorState || { foreshadowing: [], activeThreads: [], characterArcs: {}, recentLog: [], momentum: { currentFocus: '일상', focusDuration: 0, lastMajorEvent: '', lastMajorEventTurn: 0 } },
+                directorOut,
+                effectiveGameState.turnCount || 0
+            );
+            // Pass director state update as part of the final payload
+            (finalPayload as any).directorStateUpdate = updatedDirectorState;
+        } catch (e) {
+            console.error('[Director] State update failed:', e);
+        }
 
         // Yield Final Data
         yield { type: 'data', content: finalPayload };

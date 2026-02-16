@@ -1,6 +1,7 @@
 export const MODEL_CONFIG = {
     STORY: 'gemini-3-flash-preview', // Main Story (Synced with Cache)
     LOGIC: 'gemini-3-flash-preview',       // Game Logic (Fast, JSON)
+    DIRECTOR: 'gemini-3-flash-preview',    // [NEW] Narrative Director (Plot Planning)
     SUMMARY: 'gemini-2.5-flash',      // Summarization (Cheap)
     ROUTER: 'gemini-2.5-flash-lite',       // [NEW] Intent Classification
     PRE_LOGIC: 'gemini-3-flash-preview',     // [NEW] Adjudication & Dice Rolls

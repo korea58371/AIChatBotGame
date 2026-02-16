@@ -13,18 +13,21 @@ const PACING_REGISTRY: Record<string, any> = {
 
 
 export interface PreLogicOutput {
-    narrative_guide: string; // [가이드] 스토리 작가(Story Model)가 따라야 할 서술 지침
-    usageMetadata?: any; // [비용] AI 토큰 사용량 메타데이터
-    _debug_prompt?: string; // [디버깅] 실제 AI에 전송된 프롬프트 내용
-    mood_override?: string; // [분위기 전환] 강제 턴 분위기 변경 (예: Daily -> Combat)
-    plausibility_score?: number; // [개연성 점수] 1~10점 (10: 기적, 1: 불가능)
-    judgment_analysis?: string; // [판정 분석] AI가 내린 판단의 근거 (Brief analysis)
-    combat_analysis?: string; // [NEW] 전투 분석 (승산, 강함 비교)
-    emotional_context?: string; // [NEW] 감정 상태 요약 (숨겨진 감정 포함)
-    character_suggestion?: string; // [NEW] 등장 제안 인물
-    new_characters?: string[]; // [NEW] 새로 등장한 캐릭터 목록 (이름)
-    goal_guide?: string; // [NEW] 목표 달성 가이드
-    location_inference?: string; // [NEW] 위치 추론 (Region Inference)
+    // [판정 결과 — PreLogic 고유]
+    usageMetadata?: any;
+    _debug_prompt?: string;
+    mood_override?: string;          // daily/tension/combat/romance/growth
+    plausibility_score?: number;     // 1-10
+    judgment_analysis?: string;      // "Rank Gap. Tactical Bonus."
+    combat_analysis?: string;        // "Win: 40%. Player < Target."
+    location_inference?: string;     // "Sichuan(Hot)"
+    new_characters?: string[];       // 새로 등장한 캐릭터 이름 목록
+
+    // [Director로 이관됨 — Legacy compat, 무시됨]
+    narrative_guide: string;         // Director.plot_beats로 대체
+    emotional_context?: string;      // Director.emotional_direction으로 대체
+    character_suggestion?: string;   // Director.plot_beats에 포함
+    goal_guide?: string;             // Director.plot_beats에 포함
 }
 
 export class AgentPreLogic {
@@ -174,11 +177,12 @@ The Player controls ONLY their own character's *Body* and *Speech*.
         // [Unified System Prompt]
         // Router 기능(의도 파악) + PreLogic 기능(판정) 통합
         const systemInstruction = `
-You are the [Dungeon Master & Reality Judge] of a text-based Wuxia RPG.
-Your job is to:
+You are the [Adjudicator (판정관)] of a text-based Wuxia RPG.
+You are NOT the storyteller. A separate Director handles narrative planning and tone.
+Your SOLE job is:
 1. **CLASSIFY** the user's intent (Combat, Dialogue, Action, System).
 2. **JUDGE** the feasibility of the action (Score 1-10) based on REALISM and LOGIC.
-3. **GUIDE** the narrator on how to describe the outcome.
+3. **REPORT** the judgment result concisely. Do NOT write narrative or suggest plot direction.
 
 ${this.PLAUSIBILITY_RUBRIC}
 
@@ -200,7 +204,7 @@ STEP 3: **Feasibility Calculation**
 STEP 4: **Final Judgment**
    - Assign Plausibility Score (1-10).
    - Determine Success/Failure.
-   - Draft Narrative Guide.
+   - Output concise judgment keywords.
 
 [Alignment & Faction Logic (Morality System)]
 **Check Player's Morality (if available in Context/Stats)**
@@ -214,11 +218,7 @@ STEP 4: **Final Judgment**
     "plausibility_score": number, // 1-10
     "judgment_analysis": "Keywords only. (e.g. 'Rank Gap', 'Illogical').",
     "combat_analysis": "Keywords. (e.g. 'Win: High', 'Loss: Certain'). Null if safe.",
-    "emotional_context": "Keywords. (e.g. 'A->B: Love', 'B->A: Hate'). Null if neutral.",
-    "character_suggestion": "Name only (from [Casting Suggestions] or [Active Characters]). Null if none.",
-    "new_characters": ["Name"], 
-    "goal_guide": "Keywords. (e.g. 'Goal: Find Sword -> Check Shop'). Null if irrelevant.",
-    "narrative_guide": "Short directives. (e.g. 'Success. Funny tone.').",
+    "narrative_guide": "Judgment result only. (e.g. 'Success, minor injury' or 'Fail, rank gap'). No plot/tone direction.",
     "location_inference": "Keywords. (e.g. 'Sichuan(Hot)'). Null if known."
 }
 
@@ -229,21 +229,9 @@ STEP 4: **Final Judgment**
    - Do NOT switch for: Asking directions, buying items, sparring, trivial arguments, or meeting friends.
 3. **Training**: If user is training, use 'growth'.
 
-[Guide Generation Instructions]
-**CRITICAL: EXTREME BREVITY REQUIRED.** 
-- **NO SENTENCES**. Use Keywords/Fragments ONLY.
-- **Example**: "Provides a humorous first meeting to establish personality" (X) -> "Funny entrance" (O).
-- **Example**: "The enemy is too strong for the player to defeat" (X) -> "Enemy OP. Defeat likely." (O).
-
-1. **Combat Guide**: "Player < Enemy. Loss likely." (Null if safe).
-2. **Emotional Guide**: "A loves B." (Null if neutral).
-3. **Character Suggestion**:
-   - **ONLY suggest characters from [Casting Suggestions] or [Active Characters]. DO NOT invent names.**
-   - **Pacing**: If scene is peaceful, DO NOT suggest new characters unless they are explicitly called.
-   - **Romance**: Null.
-4. **Goal Guide**: "Check Shop." (Null if irrelevant).
-5. **Location Guide**: "Sichuan (Hot)." (Null if known).
-6. **Narrative Guide**: "Success. Funny tone. Twist ending." (Focus on Result/Direction ONLY).
+[IMPORTANT: Scope Boundary]
+- You output JUDGMENT only. Tone, pacing, emotional direction, and character suggestions are handled by the Director.
+- Keep narrative_guide to pure success/failure outcome. No storytelling.
 
 `.trim();
 

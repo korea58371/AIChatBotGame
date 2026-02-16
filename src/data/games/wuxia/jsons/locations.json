@@ -4,6 +4,33 @@
         "하남": {
             "eng_code": "Henan",
             "description": "중원의 중심. 천하의 강호인들이 모이는 교통의 요지.",
+            "adjacent": [
+                {
+                    "region": "섬서",
+                    "travel_days": 3,
+                    "route": "관도 (동관 경유)"
+                },
+                {
+                    "region": "호북",
+                    "travel_days": 4,
+                    "route": "남로 관도"
+                },
+                {
+                    "region": "산동",
+                    "travel_days": 5,
+                    "route": "동방 관도"
+                },
+                {
+                    "region": "안휘",
+                    "travel_days": 5,
+                    "route": "동남 관도"
+                },
+                {
+                    "region": "하북",
+                    "travel_days": 7,
+                    "route": "북방 관도 (황하 도하)"
+                }
+            ],
             "zones": {
                 "무림맹": {
                     "description": "정파 무림의 총본산. 수많은 고수들이 상주하는 거대한 요새.",
@@ -104,6 +131,23 @@
         "섬서": {
             "eng_code": "Shaanxi",
             "description": "험준한 산세와 고도(古都)의 기품이 서린 곳.",
+            "adjacent": [
+                {
+                    "region": "하남",
+                    "travel_days": 3,
+                    "route": "관도 (동관 경유)"
+                },
+                {
+                    "region": "사천",
+                    "travel_days": 10,
+                    "route": "촉도 (험준한 산길)"
+                },
+                {
+                    "region": "청해",
+                    "travel_days": 14,
+                    "route": "서역 상로 (황량한 고원)"
+                }
+            ],
             "zones": {
                 "화산파": {
                     "description": "험준한 화산(Mount Hua) 위에 세워진 검수들의 문파. 매화검수의 본거지.",
@@ -166,6 +210,23 @@
         "호북": {
             "eng_code": "Hubei",
             "description": "무당산과 장강이 흐르는 도가와 물의 고장.",
+            "adjacent": [
+                {
+                    "region": "하남",
+                    "travel_days": 4,
+                    "route": "북로 관도"
+                },
+                {
+                    "region": "강남",
+                    "travel_days": 5,
+                    "route": "장강 수로 (하류)"
+                },
+                {
+                    "region": "사천",
+                    "travel_days": 8,
+                    "route": "장강 수로 (상류) 또는 산길"
+                }
+            ],
             "zones": {
                 "무당파": {
                     "description": "무당산에 위치한 도가 무문의 태두. 태극의 이치를 따르는 곳.",
@@ -238,6 +299,23 @@
         "안휘": {
             "eng_code": "Anhui",
             "description": "수려한 산수와 검가(劍家)의 기품이 서린 지역.",
+            "adjacent": [
+                {
+                    "region": "하남",
+                    "travel_days": 5,
+                    "route": "서북 관도"
+                },
+                {
+                    "region": "강남",
+                    "travel_days": 3,
+                    "route": "수로 (장강 하류)"
+                },
+                {
+                    "region": "산동",
+                    "travel_days": 5,
+                    "route": "북방 관도"
+                }
+            ],
             "zones": {
                 "남궁세가": {
                     "description": "창천검의 주인. 귀족적이고 엄격한 가풍의 명문 세가.",
@@ -293,6 +371,23 @@
         "하북": {
             "eng_code": "Hebei",
             "description": "황실의 위엄과 팽가의 패도가 공존하는 북부의 요충지.",
+            "adjacent": [
+                {
+                    "region": "산동",
+                    "travel_days": 5,
+                    "route": "남방 관도"
+                },
+                {
+                    "region": "하남",
+                    "travel_days": 7,
+                    "route": "남방 관도 (황하 도하)"
+                },
+                {
+                    "region": "요녕",
+                    "travel_days": 10,
+                    "route": "동북 관도 (산해관 경유)"
+                }
+            ],
             "zones": {
                 "하북팽가": {
                     "description": "오호단문도의 패왕. 호탕하고 거칠 것 없는 도객들의 가문.",
@@ -376,6 +471,18 @@
         "요녕": {
             "eng_code": "Liaoning",
             "description": "중원 동북방. 묵직하고 고요한 기운이 감도는 지역.",
+            "adjacent": [
+                {
+                    "region": "하북",
+                    "travel_days": 10,
+                    "route": "서남 관도 (산해관 경유)"
+                },
+                {
+                    "region": "북해",
+                    "travel_days": 20,
+                    "route": "동북 설원길 (극한 환경)"
+                }
+            ],
             "zones": {
                 "모용세가": {
                     "description": "연자오 호수 위에 세워진 신비로운 귀족 가문.",
@@ -429,6 +536,28 @@
         "사천": {
             "eng_code": "Sichuan",
             "description": "천혜의 요새인 분지 지형. 독과 신비의 고장.",
+            "adjacent": [
+                {
+                    "region": "섬서",
+                    "travel_days": 10,
+                    "route": "촉도 (험준한 산길)"
+                },
+                {
+                    "region": "호북",
+                    "travel_days": 8,
+                    "route": "장강 수로 (하류) 또는 산길"
+                },
+                {
+                    "region": "남만",
+                    "travel_days": 12,
+                    "route": "남방 밀림길 (위험)"
+                },
+                {
+                    "region": "청해",
+                    "travel_days": 15,
+                    "route": "서북 고원길 (고산 지대)"
+                }
+            ],
             "zones": {
                 "사천당가": {
                     "description": "독과 암기의 명가. 함부로 발을 들일 수 없는 위험한 가문.",
@@ -506,6 +635,28 @@
         "산동": {
             "eng_code": "Shandong",
             "description": "동쪽 해안과 맞닿은 지역. 공자의 고향이자 태산의 위엄.",
+            "adjacent": [
+                {
+                    "region": "하남",
+                    "travel_days": 5,
+                    "route": "서방 관도"
+                },
+                {
+                    "region": "강남",
+                    "travel_days": 6,
+                    "route": "남방 해안로"
+                },
+                {
+                    "region": "하북",
+                    "travel_days": 5,
+                    "route": "북방 관도"
+                },
+                {
+                    "region": "안휘",
+                    "travel_days": 5,
+                    "route": "남방 관도"
+                }
+            ],
             "zones": {
                 "약왕곡": {
                     "description": "천하의 명의들이 모인 의술의 성지.",
@@ -557,6 +708,23 @@
         "강남": {
             "eng_code": "Jiangnan",
             "description": "장강 이남의 풍요롭고 아름다운 물의 고장.",
+            "adjacent": [
+                {
+                    "region": "호북",
+                    "travel_days": 5,
+                    "route": "장강 수로 (상류)"
+                },
+                {
+                    "region": "안휘",
+                    "travel_days": 3,
+                    "route": "수로 (장강 상류)"
+                },
+                {
+                    "region": "산동",
+                    "travel_days": 6,
+                    "route": "북방 해안로"
+                }
+            ],
             "zones": {
                 "장강수로채": {
                     "description": "장강을 지배하는 수적들의 거대한 수상 요새.",
@@ -624,6 +792,13 @@
         "북해": {
             "eng_code": "NorthSea",
             "description": "일 년 내내 눈보라가 몰아치는 극한의 동토.",
+            "adjacent": [
+                {
+                    "region": "요녕",
+                    "travel_days": 20,
+                    "route": "남방 설원길 (극한 환경)"
+                }
+            ],
             "zones": {
                 "북해빙궁": {
                     "description": "만년설로 뒤덮인 얼음 궁전.",
@@ -676,6 +851,13 @@
         "남만": {
             "eng_code": "SouthernWilderness",
             "description": "울창한 밀림과 야수들이 지배하는 미지의 땅.",
+            "adjacent": [
+                {
+                    "region": "사천",
+                    "travel_days": 12,
+                    "route": "북방 밀림길 (위험)"
+                }
+            ],
             "zones": {
                 "남만야수궁": {
                     "description": "야수들과 교감하는 전사들의 부족 연합.",
@@ -744,6 +926,18 @@
         "청해": {
             "eng_code": "Qinghai",
             "description": "중원 서쪽 끝, 만년설과 전설이 깃든 곤륜산맥의 땅.",
+            "adjacent": [
+                {
+                    "region": "섬서",
+                    "travel_days": 14,
+                    "route": "동방 상로 (황량한 고원)"
+                },
+                {
+                    "region": "사천",
+                    "travel_days": 15,
+                    "route": "동남 고원길 (고산 지대)"
+                }
+            ],
             "zones": {
                 "곤륜파": {
                     "description": "만년설 덮인 곤륜산에 위치한 도가 무학의 원류.",

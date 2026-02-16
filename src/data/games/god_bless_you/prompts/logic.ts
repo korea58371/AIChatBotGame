@@ -1,5 +1,7 @@
 // God Bless You Logic Prompts
 // Extracted from src/data/prompts/logic.ts
+import { generateCustomStatsRulesPrompt, generateCustomStatsOutputFormat, generateProgressionContextPrompt } from '@/lib/engine/progression-types';
+import { gbyProgression } from '../progression';
 
 export const getStaticLogicPrompt = (rankCriteria: any = null, romanceGuide: any = null, combatGuide: any = null) => {
     const rankGuide = rankCriteria || "martial_arts_levels.json 확인";
@@ -21,6 +23,8 @@ ${combatContext}
 **[로맨스/호감도 가이드 (ROMANCE GUIDE)]**:
 현대 로맨스 및 인간관계 상호작용 규칙입니다.
 ${romanceContext}
+
+${generateCustomStatsRulesPrompt(gbyProgression)}
 
 **규칙:**
 
@@ -54,6 +58,7 @@ ${romanceContext}
     "expChange": number,
     "fameChange": number,
     "fateChange": number,
+${generateCustomStatsOutputFormat(gbyProgression)}
     "statChange": { "str": number, "agi": number, "int": number, "vit": number, "luk": number },
     "newLocation": string | null,
     "newItems": [ { "id": string, "name": string, "description": string, "quantity": number } ],
@@ -114,11 +119,19 @@ export const getDynamicLogicPrompt = (
     worldData: any,
     availableEvents: any[] = []
 ) => {
+    const progressionContext = generateProgressionContextPrompt(
+        gbyProgression,
+        prunedStats.playerStats?.customStats || {},
+        prunedStats.playerStats?.playerRank || null,
+        prunedStats.playerStats?.level || 1
+    );
+
     return `
 **현재 게임 상태 (Current Game State):**
 - **게임 내 시간**: ${prunedStats.day || 1}일차, ${prunedStats.time || '아침'}
 - **피로도**: ${prunedStats.fatigue || 0}%
 - **소지금**: ${prunedStats.playerStats?.gold || 0}
+${progressionContext}
 ${JSON.stringify(prunedStats, null, 2)}
 
 **최근 맥락 (Recent Context):**

@@ -1,6 +1,7 @@
 import React from 'react';
 import { GameState } from '../store';
 import { GameData } from '../engine/data-manager';
+import { ProgressionConfig } from '../engine/progression-types';
 
 /**
  * [Game Registry System]
@@ -76,8 +77,10 @@ export interface GameConfig {
     loadGameData: () => Promise<GameData>;
 
     // [7] New Localized Logic (Refactored from PromptManager)
-    getRankTitle: (level: number, language?: string) => string;
     resolveBackgroundName: (key: string, state: any) => string;
+
+    // [8] Universal Progression System (Data-Driven Growth)
+    progressionConfig?: ProgressionConfig;
 }
 
 class GameRegistryImpl {

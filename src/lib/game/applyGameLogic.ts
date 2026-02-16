@@ -6,11 +6,10 @@
 import { useGameStore, Skill } from '@/lib/store';
 import { normalizeCharacterId } from '@/lib/utils/character-id';
 import { findBestMatch, findBestMatchDetail } from '@/lib/utils/name-utils';
-import { LEVEL_TO_REALM_MAP, REALM_ORDER } from '@/data/games/wuxia/constants';
-import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants';
 import { translations } from '@/data/translations';
 import { EventManager } from '@/lib/engine/event-manager';
-import { checkRankProgression } from '@/data/games/wuxia/progression';
+import { GameRegistry } from '@/lib/registry/GameRegistry';
+import { checkUniversalProgression } from '@/lib/engine/progression-types';
 import { serverGenerateCharacterMemorySummary } from '@/app/actions/game';
 import React from 'react';
 
@@ -59,14 +58,13 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
 
     // [Fix] Deep clone nested objects to prevent mutation of INITIAL_STATS
     newStats.relationships = { ...(newStats.relationships || {}) };
-    newStats.personality = {
-        ...(newStats.personality || {
-            morality: 0, courage: 0, energy: 0, decision: 0, lifestyle: 0,
-            openness: 0, warmth: 0, eloquence: 0, leadership: 0,
-            humor: 0, lust: 0
-        })
-    };
     newStats.skills = [...(newStats.skills || [])];
+    // [Universal] Deep clone customStats
+    newStats.customStats = { ...(newStats.customStats || {}) };
+    // [Migration] Copy legacy neigong to customStats if not yet migrated
+    if (newStats.neigong > 0 && !newStats.customStats.neigong) {
+        newStats.customStats.neigong = newStats.neigong;
+    }
     // Initialize stagnation if missing
     if (typeof newStats.growthStagnation !== 'number') newStats.growthStagnation = 0;
 
@@ -87,6 +85,11 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
     if (!newStats.relationships) newStats.relationships = {};
 
     // [New] Generic Stat Updates (PostLogic)
+    // [Universal] Get progression config from GameRegistry
+    const gameConfig = GameRegistry.get(activeGameId);
+    const progressionConfig = gameConfig?.progressionConfig;
+    const customStatIds = new Set(progressionConfig?.stats.map(s => s.id) || []);
+
     if (logicResult.stat_updates) {
         console.log("[applyGameLogic] Processing Generic Stat Updates:", logicResult.stat_updates);
         Object.entries(logicResult.stat_updates).forEach(([key, val]) => {
@@ -95,7 +98,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
 
             const lowerKey = key.toLowerCase();
 
-            // 1. Core Stats
+            // 1. Core Stats (Universal)
             if (lowerKey === 'hp') {
                 newStats.hp = Math.min(Math.max(0, newStats.hp + numVal), newStats.maxHp);
                 handleVisualDamage(numVal, newStats.hp, newStats.maxHp);
@@ -103,7 +106,6 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                 // [Fix] HARD Auto-Death Trigger (Backup if AI misses it)
                 if (newStats.hp <= 0 && useGameStore.getState().endingType === 'none') {
                     console.log("HP <= 0 detected. Queuing DEFERRED BAD ENDING.");
-                    // Do NOT set immediately, as user might still be reading the "You died" description.
                     pendingEndingRef.current = 'bad';
                 }
             }
@@ -113,34 +115,90 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                 newStats.fame = Math.max(0, (newStats.fame || 0) + numVal);
                 addToast(`${t.fame} ${numVal > 0 ? '+' : ''}${numVal}`, numVal > 0 ? 'success' : 'warning');
             }
-            else if (lowerKey === 'neigong') newStats.neigong = Math.max(0, (newStats.neigong || 0) + numVal);
             else if (lowerKey === 'fate') newStats.fate = Math.max(0, (newStats.fate || 0) + numVal);
 
-            // 2. Personality Stats
-            else if (newStats.personality && Object.prototype.hasOwnProperty.call(newStats.personality, lowerKey)) {
-                // @ts-ignore
-                newStats.personality[lowerKey] = Math.min(100, Math.max(-100, (newStats.personality[lowerKey] || 0) + numVal));
-                // Optional: Toast for personality update? Maybe too spammy if handled by tag injection.
+            // 2. [Universal] Genre-Specific Custom Stats (내공, 마나, 오러 등)
+            else if (customStatIds.has(lowerKey)) {
+                const statDef = progressionConfig!.stats.find(s => s.id === lowerKey)!;
+                if (statDef.isFixed) return; // Fixed stats cannot be changed by AI
+                const curr = newStats.customStats[lowerKey] || statDef.defaultValue;
+                const newVal = statDef.max > 0
+                    ? Math.min(curr + numVal, statDef.max)
+                    : curr + numVal;
+                newStats.customStats[lowerKey] = Math.max(statDef.min, newVal);
+                // [Compat] Sync to legacy field if it exists
+                if (lowerKey === 'neigong') newStats.neigong = newStats.customStats[lowerKey];
+                // Toast
+                const template = statDef.toastTemplate || '{displayName} {delta}';
+                const toastMsg = template
+                    .replace('{displayName}', statDef.displayName)
+                    .replace('{delta}', `${numVal > 0 ? '+' : ''}${numVal}`);
+                addToast(toastMsg, numVal > 0 ? 'success' : 'warning');
             }
 
-            // 3. Base Stats
-            else if (['str', 'agi', 'int', 'vit', 'luk'].includes(lowerKey)) {
-                // @ts-ignore
-                newStats[lowerKey] = (newStats[lowerKey] || 10) + numVal;
-            }
+
+            // [Dead Stats Removed] Personality stats and base stats (STR/AGI/INT/VIT/LUK) no longer processed
         });
     }
 
-    // [New] Deterministic Rank Progression (Wuxia Only)
-    // If we are in Wuxia mode, check for rank up based on updated stats (Level + Neigong).
-    if (activeGameId === 'wuxia') {
-        const progression = checkRankProgression(newStats, useGameStore.getState().playerStats.playerRank);
-        if (progression) {
-            console.log(`[Progression] Rank Up Detected: ${progression.newRankId}`);
-            useGameStore.getState().setPlayerStats({ playerRank: progression.newRankId });
-            // [Suppressed] Rank Up Toast
-            // addToast(`[승급] ${progression.title}의 경지에 올랐습니다!`, 'success');
-            // addToast(progression.message, 'info');
+    // [Universal] Handle "customStatsChange" from new Output Format
+    // e.g., { neigongChange: 5, mana_affinityChange: 1 }
+    if (logicResult.customStatsChange && progressionConfig) {
+        console.log("[applyGameLogic] Processing customStatsChange:", logicResult.customStatsChange);
+        Object.entries(logicResult.customStatsChange).forEach(([key, val]) => {
+            const numVal = Number(val);
+            if (isNaN(numVal) || numVal === 0) return;
+
+            // Strip "Change" suffix: "neigongChange" -> "neigong"
+            const statId = key.replace(/Change$/, '');
+            const statDef = progressionConfig!.stats.find(s => s.id === statId);
+            if (!statDef) {
+                console.warn(`[applyGameLogic] Unknown custom stat in customStatsChange: ${statId}`);
+                return;
+            }
+            if (statDef.isFixed) return;
+
+            const curr = newStats.customStats[statId] || statDef.defaultValue;
+            const newVal = statDef.max > 0
+                ? Math.min(curr + numVal, statDef.max)
+                : curr + numVal;
+            newStats.customStats[statId] = Math.max(statDef.min, newVal);
+
+            // Legacy sync
+            if (statId === 'neigong') newStats.neigong = newStats.customStats[statId];
+
+            // Toast
+            const template = statDef.toastTemplate || '{displayName} {delta}';
+            const toastMsg = template
+                .replace('{displayName}', statDef.displayName)
+                .replace('{delta}', `${numVal > 0 ? '+' : ''}${numVal}`);
+            addToast(toastMsg, numVal > 0 ? 'success' : 'warning');
+        });
+    }
+
+    // [Legacy Compat] Handle top-level "neigongChange" field (old prompt format)
+    if (logicResult.neigongChange && logicResult.neigongChange !== 0 && !logicResult.stat_updates && !logicResult.customStatsChange) {
+        const numVal = Number(logicResult.neigongChange);
+        if (!isNaN(numVal) && numVal !== 0) {
+            const curr = newStats.customStats.neigong || newStats.neigong || 0;
+            newStats.customStats.neigong = curr + numVal;
+            newStats.neigong = newStats.customStats.neigong;
+            addToast(`내공 ${numVal > 0 ? '+' : ''}${numVal}년`, numVal > 0 ? 'success' : 'warning');
+        }
+    }
+
+    // [Universal] Deterministic Rank Progression (All Games via ProgressionConfig)
+    if (progressionConfig) {
+        const result = checkUniversalProgression(
+            progressionConfig,
+            newStats.level,
+            newStats.customStats,
+            newStats.playerRank
+        );
+        if (result) {
+            console.log(`[Progression] Rank Up: ${newStats.playerRank} → ${result.newTier.title}`);
+            newStats.playerRank = result.newTier.title;
+            addToast(`[${progressionConfig.tierDisplayName}] ${result.newTier.title}`, 'success');
         }
     }
 
@@ -165,14 +223,8 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
         newStats.fate = Math.max(0, (newStats.fate || 0) + logicResult.fateChange);
     }
 
-    // Base Stats
-    if (logicResult.statChange) {
-        newStats.str = (newStats.str || 10) + (logicResult.statChange.str || 0);
-        newStats.agi = (newStats.agi || 10) + (logicResult.statChange.agi || 0);
-        newStats.int = (newStats.int || 10) + (logicResult.statChange.int || 0);
-        newStats.vit = (newStats.vit || 10) + (logicResult.statChange.vit || 0);
-        newStats.luk = (newStats.luk || 10) + (logicResult.statChange.luk || 0);
-    }
+
+    // [Dead Stats Removed] Base stat changes (STR/AGI/INT/VIT/LUK) no longer processed
 
     // [New] Sleep Logic (Overrides Time Consumed if present)
     if (logicResult.isSleep) {
@@ -243,24 +295,15 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
     //     newStats.fate = (newStats.fate || 0) + logicResult.fateChange;
     // }
 
-    // Personality
-    if (logicResult.personalityChange) {
-        const p = newStats.personality;
-        const c = logicResult.personalityChange;
-        if (c.morality) p.morality = Math.min(100, Math.max(-100, (p.morality || 0) + c.morality));
-        if (c.courage) p.courage = Math.min(100, Math.max(-100, (p.courage || 0) + c.courage));
-        if (c.energy) p.energy = Math.min(100, Math.max(-100, (p.energy || 0) + c.energy));
-        if (c.decision) p.decision = Math.min(100, Math.max(-100, (p.decision || 0) + c.decision));
-        if (c.lifestyle) p.lifestyle = Math.min(100, Math.max(-100, (p.lifestyle || 0) + c.lifestyle));
-        if (c.openness) p.openness = Math.min(100, Math.max(-100, (p.openness || 0) + c.openness));
-        if (c.warmth) p.warmth = Math.min(100, Math.max(-100, (p.warmth || 0) + c.warmth));
-        if (c.eloquence) p.eloquence = Math.min(100, Math.max(-100, (p.eloquence || 0) + c.eloquence));
-        if (c.leadership) p.leadership = Math.min(100, Math.max(-100, (p.leadership || 0) + c.leadership));
-    }
 
+    // [Dead Stats Removed] personalityChange no longer processed
+
+    // [Universal] Legacy neigongChange → customStats migration
     if (logicResult.neigongChange) {
-        newStats.neigong = Math.max(0, (newStats.neigong || 0) + logicResult.neigongChange);
-        addToast(`내공(Internal Energy) ${logicResult.neigongChange > 0 ? '+' : ''}${logicResult.neigongChange}년`, logicResult.neigongChange > 0 ? 'success' : 'warning');
+        const delta = logicResult.neigongChange;
+        newStats.customStats.neigong = Math.max(0, (newStats.customStats.neigong || 0) + delta);
+        newStats.neigong = newStats.customStats.neigong; // [Compat] Sync legacy field
+        addToast(`내공 ${delta > 0 ? '+' : ''}${delta}년`, delta > 0 ? 'success' : 'warning');
     }
 
     // [New] Player Rank & Faction Update
@@ -412,44 +455,26 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
         }
     }
 
-    // [Universal] Level & Rank Progression
+    // [Universal] Level & Rank Progression via martial_arts result
     const maResult = logicResult.martial_arts;
     if (maResult && maResult.level_delta) {
         const delta = maResult.level_delta;
         const oldLevel = newStats.level || 1;
         newStats.level = oldLevel + delta;
-        // [Suppressed] Generic Level Growth Toast
-        // queueToast(`성장 (Growth): +${delta.toFixed(2)} Level`, 'success');
 
-        // Check for Rank Up (Title Change)
-        const gameId = useGameStore.getState().activeGameId || 'wuxia';
-        let newTitle = '';
-        let map = null;
-
-        if (gameId === 'wuxia') map = LEVEL_TO_REALM_MAP;
-        else if (gameId === 'god_bless_you') map = LEVEL_TO_RANK_MAP;
-
-        if (map) {
-            const entry = map.find(m => newStats.level >= m.min && newStats.level <= m.max);
-            if (entry) {
-                if ((entry as any).id) {
-                    // [Localization Fix] Unified Title Resolution
-                    const lang = useGameStore.getState().language || 'ko';
-                    const category = gameId === 'wuxia' ? 'realms' : 'ranks';
-                    // @ts-ignore
-                    const t = translations[lang]?.[gameId]?.[category];
-                    newTitle = (t && t[(entry as any).id]) ? t[(entry as any).id] : (entry as any).title || "Unknown";
-                } else {
-                    newTitle = (entry as any).title || "Unknown";
-                }
+        // [Universal] Use ProgressionConfig for rank check instead of hardcoded maps
+        if (progressionConfig) {
+            const result = checkUniversalProgression(
+                progressionConfig,
+                newStats.level,
+                newStats.customStats,
+                newStats.playerRank
+            );
+            if (result) {
+                newStats.playerRank = result.newTier.title;
+                addToast(`[${progressionConfig.tierDisplayName}] ${result.newTier.title}`, 'success');
+                console.log(`[Progression] Level ${oldLevel.toFixed(2)} -> ${newStats.level.toFixed(2)} | Rank: ${result.newTier.title}`);
             }
-        }
-
-        if (newTitle && newTitle !== newStats.playerRank) {
-            newStats.playerRank = newTitle;
-            // useGameStore.getState().setPlayerRealm(newTitle); // [Removed] Legacy State
-            addToast(`Rank Up! [${newTitle}]`, 'success');
-            console.log(`[Progression] Level ${oldLevel.toFixed(2)} -> ${newStats.level.toFixed(2)} | Rank: ${newTitle}`);
         }
     }
 
@@ -533,7 +558,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
     }
 
     // Final Commit
-    if (Object.keys(logicResult).some(k => k === 'hpChange' || k === 'mpChange' || k === 'goldChange' || k === 'statChange' || k === 'personalityChange' || k === 'relationshipChange') || hasInjuryChanges) {
+    if (Object.keys(logicResult).some(k => k === 'hpChange' || k === 'mpChange' || k === 'goldChange' || k === 'relationshipChange') || hasInjuryChanges) {
         useGameStore.getState().setPlayerStats(newStats);
     }
 
@@ -546,12 +571,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
     if (logicResult.fameChange) addToast(`Fame ${logicResult.fameChange > 0 ? '+' : ''}${logicResult.fameChange}`, logicResult.fameChange > 0 ? 'success' : 'warning');
     if (logicResult.fateChange) addToast(`Fate ${logicResult.fateChange > 0 ? '+' : ''}${logicResult.fateChange}`, logicResult.fateChange > 0 ? 'info' : 'warning');
 
-    // Stat Toasts
-    if (logicResult.statChange) {
-        Object.entries(logicResult.statChange).forEach(([stat, value]: [string, any]) => {
-            if (value !== 0) addToast(`${stat.toUpperCase()} ${value > 0 ? '+' : ''}${value}`, 'info');
-        });
-    }
+
 
     // Inventory
     if (logicResult.newItems && logicResult.newItems.length > 0) {
@@ -569,17 +589,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
         });
     }
 
-    // Personality Toasts (Dynamic)
-    if (logicResult.personalityChange) {
-        Object.entries(logicResult.personalityChange).forEach(([trait, value]: [string, any]) => {
-            if (value !== 0) {
-                // [Fix] Access flattened keys directly
-                const label = (t as any)[trait] || trait.charAt(0).toUpperCase() + trait.slice(1);
-                // [Suppressed] Personality Toast
-                // queueToast(`${label} ${value > 0 ? '+' : ''}${value}`, value > 0 ? 'success' : 'warning');
-            }
-        });
-    }
+
 
     // [New] Player Rank Update (Sync mechanism if Logic returns direct rank)
     if (logicResult.playerRank) {
@@ -795,43 +805,20 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
             });
         }
 
-        // [NEW] Persist Personality Stats
+        // [Dead Stats Removed] Personality processing removed. Core stats only.
         if (postLogic.stat_updates) {
             const currentStats = useGameStore.getState().playerStats;
-            const newPersonality = { ...currentStats.personality };
-            let hasChanges = false;
 
             Object.entries(postLogic.stat_updates).forEach(([key, val]) => {
-                if (key in newPersonality) {
-                    // Clamp between -100 and 100
-                    const newValue = Math.max(-100, Math.min(100, (newPersonality as any)[key] + (val as number)));
-                    (newPersonality as any)[key] = newValue;
-                    hasChanges = true;
-                    if (Math.abs(val as number) >= 1) {
-                        // [Localization] Use flattened keys from translations
-                        const label = (t as any)[key] || key;
-                        // [Suppressed] Personality Toast
-                        // queueToast(`${label} ${(val as number) > 0 ? '+' : ''}${val}`, 'info');
-                    }
-                } else if (['hp', 'mp', 'gold', 'fame', 'neigong'].includes(key)) {
-                    // [Fix] Handle Core Stats in stat_updates
+                if (['hp', 'mp', 'gold', 'fame', 'neigong'].includes(key)) {
                     const currentVal = (currentStats as any)[key] || 0;
                     const newVal = Math.max(0, currentVal + (val as number));
-
-                    // Apply update immediately
                     const updatePayload: any = {};
                     updatePayload[key] = newVal;
-
-                    // Ensure we use the latest state structure
                     const freshStats = useGameStore.getState().playerStats;
                     useGameStore.getState().setPlayerStats({ ...freshStats, ...updatePayload });
                 }
             });
-
-            if (hasChanges) {
-                useGameStore.getState().setPlayerStats({ personality: newPersonality });
-                console.log("Updated Personality:", newPersonality);
-            }
         }
 
         if (postLogic.new_memories && postLogic.new_memories.length > 0) {
@@ -1141,7 +1128,9 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                 addToast(`${targetId}의 기억을 정리하는 중...`, 'info');
 
                 // Fire-and-forget (don't await) to not block UI
-                serverGenerateCharacterMemorySummary(targetId, currentMemories)
+                // Convert (string | TaggedMemory)[] to string[] for summary function
+                const plainMemories = currentMemories.map(m => typeof m === 'string' ? m : m.text);
+                serverGenerateCharacterMemorySummary(targetId, plainMemories)
                     .then((summarized: string[]) => {
                         if (summarized && Array.isArray(summarized) && summarized.length > 0) {
                             console.log(`[Memory Summary] ${targetId}: ${currentMemories.length} -> ${summarized.length}`);

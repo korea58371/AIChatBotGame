@@ -1112,24 +1112,18 @@ ${spawnCandidates || "None"}
 
         let rankTitle = 'Unknown';
 
-        // [Refactored] Use GameRegistry
+        // [Universal] Use progressionConfig.tiers to determine rank title
         const config = GameRegistry.get(gameId);
-        if (config && config.getRankTitle) {
-            const rawRank = config.getRankTitle(level, lang);
-
-            // Translate
-            // @ts-ignore
-            if (translations[lang] && translations[lang][gameId]) {
-                // @ts-ignore
-                const dict = translations[lang][gameId];
-                const category = dict.realms ? 'realms' : 'ranks';
-                // @ts-ignore
-                rankTitle = dict[category]?.[rawRank] || rawRank;
-            } else {
-                rankTitle = rawRank;
+        if (config?.progressionConfig) {
+            const tiers = config.progressionConfig.tiers;
+            // Find highest tier where all conditions are met (level-only lookup for prompt context)
+            let bestTier = tiers[0];
+            for (const tier of tiers) {
+                const levelReq = tier.conditions['level'] ?? 0;
+                if (level >= levelReq) bestTier = tier;
             }
+            rankTitle = bestTier?.title || `Level ${level}`;
         } else {
-            // Fallback
             rankTitle = `Level ${level}`;
         }
 
@@ -1202,7 +1196,198 @@ ${spawnCandidates || "None"}
         return context;
     }
 
+    // ===== [NEW] Context Composer (Director-Guided Character Data Selection) =====
+    /**
+     * Director의 context_requirements를 기반으로 캐릭터별 데이터를 선택 주입합니다.
+     * getActiveCharacterProps()를 대체하여 토큰 효율성을 극대화합니다.
+     */
+    static composeCharacterContext(
+        state: GameState,
+        directorOutput: {
+            context_requirements: {
+                combat_characters: string[];
+                first_encounter: string[];
+                emotional_focus: string[];
+                skill_usage?: Record<string, string[]>;
+            };
+            subtle_hooks: string[];
+        },
+        language: 'ko' | 'en' | null = 'ko'
+    ): string {
+        const charsData = state.characterData || {};
+        const charMap = state.characterMap || {};
+        const { context_requirements, subtle_hooks } = directorOutput;
 
+        const resolveChar = (id: string) => {
+            if (charsData[id]) return charsData[id];
+            const directKey = Object.keys(charsData).find(k => k.toLowerCase() === id.toLowerCase());
+            if (directKey) return charsData[directKey];
+            const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normalizedId = normalize(id);
+            const foundName = Object.keys(charMap).find(key => {
+                const mapVal = charMap[key];
+                return mapVal && normalize(mapVal) === normalizedId;
+            });
+            if (foundName && charsData[foundName]) return charsData[foundName];
+            return null;
+        };
 
+        const activeCharIds = state.activeCharacters || [];
+        const config = GameRegistry.get(state.activeGameId);
+
+        const combatSet = new Set(context_requirements.combat_characters.map(s => s.toLowerCase()));
+        const firstEncounterSet = new Set(context_requirements.first_encounter.map(s => s.toLowerCase()));
+        const emotionalSet = new Set(context_requirements.emotional_focus.map(s => s.toLowerCase()));
+
+        const charInfos = activeCharIds.map(charId => {
+            const char = resolveChar(charId);
+            if (!char) return null;
+
+            const displayName = char.name || char.이름 || charId;
+            const charLower = displayName.toLowerCase();
+            const charIdLower = charId.toLowerCase();
+
+            // ── ALWAYS: Base Identity ──
+            let charInfo = "";
+            if (config && config.formatCharacter) {
+                charInfo = config.formatCharacter(char, 'ACTIVE', state);
+            } else {
+                charInfo = `### [ACTIVE] ${displayName} (${char.role || char.title || 'Unknown'})`;
+                if (char.description) charInfo += `\n- Current State: ${char.description}`;
+            }
+
+            // ── ALWAYS: Relationship + Speech ──
+            const relScore = state.playerStats.relationships?.[charId] ||
+                state.playerStats.relationships?.[char.name] ||
+                (char.이름 ? state.playerStats.relationships?.[char.이름] : 0) || 0;
+            const relInstructions = RelationshipManager.getCharacterInstructions(char.name, relScore);
+            charInfo += `\n- Relation: ${relInstructions.replace(/\n/g, ' ')}`;
+
+            if (char.speech) {
+                if (char.speech.style) charInfo += `\n- Speech Style: ${char.speech.style}`;
+                if (char.speech.ending) charInfo += `\n- Tone Reference: ${char.speech.ending}`;
+                if (char.speech.habits) charInfo += `\n- Speech Habits: ${char.speech.habits}`;
+            } else {
+                const speechInfo = PromptManager.getSpeechStyle(char);
+                if (speechInfo) {
+                    charInfo += `\n- Speech Style: ${speechInfo.style}`;
+                    if (speechInfo.ending !== 'Unknown') charInfo += `\n- Tone Reference: ${speechInfo.ending}`;
+                }
+            }
+
+            // ── CONDITIONAL: Director hints ──
+            const isCombat = combatSet.has(charLower) || combatSet.has(charIdLower);
+            const isFirstEncounter = firstEncounterSet.has(charLower) || firstEncounterSet.has(charIdLower);
+            const isEmotional = emotionalSet.has(charLower) || emotionalSet.has(charIdLower);
+
+            // [COMBAT] Full skill data
+            if (isCombat && char['강함']) {
+                const ma = char['강함'];
+                charInfo += `\n\n[COMBAT/STRENGTH INFO]`;
+                if (ma['등급']) charInfo += `\n- Rank: ${ma['등급']}`;
+                if (ma.description) charInfo += `\n- Style: ${ma.description}`;
+                if (ma.skills) {
+                    charInfo += `\n- Skills:`;
+                    if (typeof ma.skills === 'object' && !Array.isArray(ma.skills)) {
+                        Object.entries(ma.skills).forEach(([key, val]) => {
+                            charInfo += `\n  - ${key}: ${val}`;
+                        });
+                    } else if (Array.isArray(ma.skills)) {
+                        charInfo += ` ${ma.skills.join(', ')}`;
+                    } else {
+                        charInfo += ` ${ma.skills}`;
+                    }
+                }
+            }
+
+            // [FIRST ENCOUNTER] Full appearance
+            if (isFirstEncounter && char['외형']) {
+                const appearance = char['외형'];
+                charInfo += `\n\n[FIRST IMPRESSION - Full Appearance]`;
+                if (typeof appearance === 'string') {
+                    charInfo += `\n${appearance}`;
+                } else {
+                    Object.entries(appearance).forEach(([key, val]) => {
+                        charInfo += `\n- ${key}: ${val}`;
+                    });
+                }
+            }
+
+            // [EMOTIONAL FOCUS] Memories + inner personality
+            if (isEmotional) {
+                if (char.memories && char.memories.length > 0) {
+                    charInfo += `\n\n[IMPORTANT MEMORIES]`;
+                    const sorted = [...char.memories].sort((a: any, b: any) => {
+                        if (typeof a === 'object' && typeof b === 'object') {
+                            return (b.importance || 0) - (a.importance || 0);
+                        }
+                        return 0;
+                    }).slice(0, 5);
+                    sorted.forEach((mem: any) => {
+                        if (typeof mem === 'string') {
+                            charInfo += `\n- ${mem}`;
+                        } else {
+                            charInfo += `\n- [${mem.tag}/${mem.importance}] ${mem.text}`;
+                        }
+                    });
+                }
+                if (char.personality && typeof char.personality === 'object') {
+                    charInfo += `\n- Personality(Full): ${JSON.stringify(char.personality)}`;
+                }
+            } else {
+                if (char.memories && char.memories.length > 0) {
+                    const brief = char.memories.slice(-2).map((m: any) =>
+                        typeof m === 'string' ? m : m.text
+                    ).join(' / ');
+                    charInfo += `\n- Recent Memories: ${brief}`;
+                }
+                if (char.personality) {
+                    if (typeof char.personality === 'string') {
+                        charInfo += `\n- Personality: ${char.personality}`;
+                    } else {
+                        const surface: any = {};
+                        Object.entries(char.personality).forEach(([k, v]) => {
+                            if (!k.includes('내면') && !k.includes('애정') && !k.includes('Inner')) {
+                                surface[k] = v;
+                            }
+                        });
+                        charInfo += `\n- Personality: ${JSON.stringify(surface)}`;
+                    }
+                }
+            }
+
+            // [ALWAYS] Discovered Secrets
+            if (char.discoveredSecrets && char.discoveredSecrets.length > 0) {
+                charInfo += `\n- [Player Knows]: ${char.discoveredSecrets.join(' / ')}`;
+            }
+
+            // [ALWAYS] Peer Relations
+            if (activeCharIds.length > 1) {
+                const peerRels: string[] = [];
+                const relations = { ...(char.relationships || {}), ...(char['인간관계'] || {}) };
+                activeCharIds.forEach(otherId => {
+                    if (otherId === charId) return;
+                    const otherChar = resolveChar(otherId);
+                    if (!otherChar) return;
+                    const otherName = otherChar.name || otherChar.이름 || otherId;
+                    const relDesc = relations[otherName] || relations[otherId];
+                    if (relDesc) peerRels.push(`-> ${otherName}: ${relDesc}`);
+                });
+                if (peerRels.length > 0) {
+                    charInfo += `\n- [Peer Relations]: ${peerRels.join(' / ')}`;
+                }
+            }
+
+            return charInfo;
+        }).filter(Boolean).join('\n\n');
+
+        // [STAGING NOTES] Director's subtle_hooks
+        let stagingNotes = "";
+        if (subtle_hooks.length > 0) {
+            stagingNotes = `\n\n[Staging Notes (follow these atmospheric/behavioral directives)]\n${subtle_hooks.map(h => `- ${h}`).join('\n')}`;
+        }
+
+        return (charInfos || "No characters present.") + stagingNotes;
+    }
 
 }

@@ -187,9 +187,16 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                                         </div>
                                                         {charData.memories && charData.memories.length > 0 ? (
                                                             <ul className="list-disc list-inside text-gray-300 space-y-1 pl-1">
-                                                                {charData.memories.map((mem: string, i: number) => (
-                                                                    <li key={i}>{mem}</li>
-                                                                ))}
+                                                                {charData.memories.map((mem: any, i: number) => {
+                                                                    const text = typeof mem === 'string' ? mem : mem.text;
+                                                                    const tag = typeof mem === 'object' ? mem.tag : null;
+                                                                    return (
+                                                                        <li key={i}>
+                                                                            {tag && <span className="text-green-400/70 mr-1">[{tag}]</span>}
+                                                                            {text}
+                                                                        </li>
+                                                                    );
+                                                                })}
                                                             </ul>
                                                         ) : (
                                                             <div className="text-gray-500 italic">No recorded memories yet.</div>

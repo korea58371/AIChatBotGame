@@ -98,6 +98,9 @@ export interface GameState {
   addTier1Summary: (summary: string) => void;
   compressTier2: (megaSummary: string) => void;
   getScenarioContext: () => string;
+  // [NEW] World Memory (AgentMemory)
+  worldMemory: WorldEvent[];
+  addWorldEvent: (event: WorldEvent) => void;
   // [Compat] Legacy alias for backward compatibility
   scenarioSummary: string; // Computed from scenarioMemory
   setScenarioSummary: (summary: string) => void; // Legacy: adds to tier1
@@ -124,9 +127,8 @@ export interface GameState {
   updateCharacterRelationship: (charId: string, value: number) => void;
   // [NEW] Update NPC-to-NPC relationships
   updateCharacterRelations: (charId: string, relations: Record<string, string>) => void;
-  // [NEW] Add specific memory to a character
-  // [NEW] Add specific memory to a character
-  addCharacterMemory: (charId: string, memory: string) => void;
+  // [NEW] Add specific memory to a character (supports string or TaggedMemory)
+  addCharacterMemory: (charId: string, memory: string | TaggedMemory) => void;
   // [NEW] Update explicit relationship status/speech
   updateCharacterRelationshipInfo: (charId: string, info: Partial<RelationshipInfo>) => void;
   updateCharacterData: (charId: string, data: Partial<GameCharacterData>) => void;
@@ -253,6 +255,11 @@ export interface GameState {
   scenario: ScenarioState | null;
   setScenario: (scenario: ScenarioState | null) => void;
   updateScenario: (updates: Partial<ScenarioState>) => void;
+
+  // [NEW] Director State (Persistent Narrative Management)
+  directorState: DirectorState;
+  updateDirectorState: (updates: Partial<DirectorState>) => void;
+  addDirectorLog: (entry: DirectorLogEntry) => void;
 }
 
 export interface ScenarioState {
@@ -304,14 +311,16 @@ export interface PlayerStats {
   fame: number;
   fate: number;
   playerRank: string;
-  neigong: number; // [Wuxia] Internal Energy (Years)
-  core_setting?: string; // [Wuxia] Initial Identity (e.g. 'returnee_demon')
-  final_goal?: string; // [Wuxia] Character's ultimate objective
+  neigong: number; // @deprecated - Use customStats['neigong']. Kept for save compatibility.
+  core_setting?: string; // Initial Identity (e.g. 'returnee_demon')
+  final_goal?: string; // Character's ultimate objective
   faction: string;
   personalitySummary: string;
-  str: number; agi: number; int: number; vit: number; luk: number;
+  // @deprecated - Dead Stats. Removed from prompts (no story impact). Kept optional for save compat.
+  str?: number; agi?: number; int?: number; vit?: number; luk?: number;
   skills: Skill[]; // [Modified] Now array of Skill objects
-  personality: {
+  // @deprecated - Dead Stats. Personality values never injected into story prompt.
+  personality?: {
     morality: number; courage: number; energy: number; decision: number;
     lifestyle: number; openness: number; warmth: number; eloquence: number;
     leadership: number; humor: number; lust: number;
@@ -323,7 +332,10 @@ export interface PlayerStats {
   narrative_perspective?: string; // [New] '1인칭' or '3인칭'
   gender: 'male' | 'female'; // [New] Player Gender
 
-  // [Wuxia] Martial Arts System
+  // [Universal] Genre-Specific Custom Stats (내공, 마나, 오러 등)
+  customStats: Record<string, number>;
+
+  // Growth Monitoring
   growthStagnation: number; // Turn count without growth
   fameTitleIndex?: number; // [New] Index for FAME_TITLES
 }
@@ -364,6 +376,83 @@ const INITIAL_SCENARIO_MEMORY: ScenarioMemory = {
   lastSummarizedTurn: 0
 };
 
+// [NEW] Tagged Memory System (AgentMemory)
+export interface TaggedMemory {
+  text: string;         // 기억 내용
+  tag: 'bond' | 'conflict' | 'secret' | 'trauma' | 'growth' | 'promise' | 'general';
+  turn: number;         // 발생 턴
+  importance: 1 | 2 | 3; // 1=일상, 2=중요, 3=핵심
+}
+
+// [NEW] World Event Memory
+export interface WorldEvent {
+  text: string;         // 사건 내용
+  turn: number;         // 발생 턴
+  scope: 'local' | 'regional' | 'global';
+}
+
+// ===== [NEW] Director State System =====
+export interface ForeshadowingSeed {
+  id: string;                     // "ice_palace_secret"
+  truth: string;                  // Director만 아는 진실 (Story Model에 절대 비공개)
+  status: 'dormant' | 'planted' | 'growing' | 'revealed';
+  plantedTurn?: number;
+  hints_given: string[];          // 지금까지 준 힌트들
+  reveal_conditions: string;      // "호감도 >= 70 AND turnCount >= 50"
+  priority: 'high' | 'medium' | 'low';
+}
+
+export interface NarrativeThread {
+  id: string;                     // "romance_yeonhwarin"
+  type: 'romance' | 'conflict' | 'quest' | 'growth' | 'mystery';
+  title: string;
+  status: 'active' | 'paused' | 'resolved';
+  startTurn: number;
+  lastProgressTurn: number;
+  summary: string;                // 현재까지 진행 요약
+  relatedCharacters: string[];
+  relatedForeshadowing?: string[];
+}
+
+export interface CharacterArc {
+  currentPhase: string;           // "경계" → "호기심" → "신뢰" → "헌신"
+  nextMilestone: string;          // "호감도 50에서 과거 고백 이벤트"
+  pivotEvents: string[];          // 지금까지의 전환점들
+}
+
+export interface DirectorLogEntry {
+  turn: number;
+  plot_beats: string[];
+  subtle_hooks_used: string[];
+  tone: string;
+}
+
+export interface DirectorState {
+  foreshadowing: ForeshadowingSeed[];
+  activeThreads: NarrativeThread[];
+  characterArcs: Record<string, CharacterArc>;
+  recentLog: DirectorLogEntry[];
+  momentum: {
+    currentFocus: string;          // "수련" | "로맨스" | "분쟁" | "탐험" | "일상"
+    focusDuration: number;
+    lastMajorEvent: string;
+    lastMajorEventTurn: number;
+  };
+}
+
+const INITIAL_DIRECTOR_STATE: DirectorState = {
+  foreshadowing: [],
+  activeThreads: [],
+  characterArcs: {},
+  recentLog: [],
+  momentum: {
+    currentFocus: '일상',
+    focusDuration: 0,
+    lastMajorEvent: '',
+    lastMajorEventTurn: 0
+  }
+};
+
 export interface SaveSlotMetadata {
   id: number;
   gameId: string;
@@ -382,7 +471,7 @@ export interface GameCharacterData {
   id: string;
   name: string;
   relationship?: number;
-  memories?: string[];
+  memories?: (string | TaggedMemory)[];  // [UPDATED] Union type for backward compat
   relationshipInfo?: RelationshipInfo; // [NEW] Explicit Social Contract
   lastActiveTurn?: number; // [NEW] Fatigue System: Last turn character was active (on-stage)
   relationships?: Record<string, string>; // [NEW] NPC-to-NPC Relationships (TargetID -> Description)
@@ -408,18 +497,14 @@ const INITIAL_STATS: PlayerStats = {
   neigong: 0,
   faction: '무소속',
   personalitySummary: "",
-  str: 10, agi: 10, int: 10, vit: 10, luk: 10,
+  // Dead Stats removed - str/agi/int/vit/luk, personality no longer initialized
   skills: [],
-  personality: {
-    morality: 0, courage: 0, energy: 0, decision: 0,
-    lifestyle: 0, openness: 0, warmth: 0, eloquence: 0,
-    leadership: 0, humor: 0, lust: 0
-  },
   relationships: {},
   active_injuries: [],
   fatigue: 0,
   narrative_perspective: '3인칭', // Default
   gender: 'male', // Default Gender
+  customStats: {}, // [Universal] Genre-specific stats populated by ProgressionConfig
   growthStagnation: 0,
   fameTitleIndex: 0
 };
@@ -434,6 +519,18 @@ export const useGameStore = create<GameState>()(
       setScenario: (scenario) => set({ scenario }),
       updateScenario: (updates) => set((state) => ({
         scenario: state.scenario ? { ...state.scenario, ...updates } : null
+      })),
+
+      // [NEW] Director State
+      directorState: INITIAL_DIRECTOR_STATE,
+      updateDirectorState: (updates) => set((state) => ({
+        directorState: { ...state.directorState, ...updates }
+      })),
+      addDirectorLog: (entry) => set((state) => ({
+        directorState: {
+          ...state.directorState,
+          recentLog: [...state.directorState.recentLog.slice(-4), entry] // Keep last 5
+        }
       })),
       storyModel: MODEL_CONFIG.STORY, // Default to Configured Model
       isDataLoaded: false,
@@ -825,6 +922,7 @@ export const useGameStore = create<GameState>()(
                 currentBackground: '', // Will be set by init logic or script
                 currentLocation: data.initialLocation || '', // [Fix] Dynamic Location from Loader
                 scenarioMemory: { ...INITIAL_SCENARIO_MEMORY }, // [Fix] Reset Summary
+                worldMemory: [], // [NEW] Reset World Memory
                 lastTurnSummary: '', // [Fix] Reset Logic Context
                 currentCG: null, // [New] Reset CG
                 currentBgm: null,
@@ -1106,6 +1204,19 @@ export const useGameStore = create<GameState>()(
           lastSummarizedTurn: state.turnCount
         }
       })),
+      // [NEW] World Memory (AgentMemory)
+      worldMemory: [] as WorldEvent[],
+      addWorldEvent: (event: WorldEvent) => set((state) => {
+        const currentWorldMemory = state.worldMemory || [];
+        // Avoid duplicates by text
+        if (currentWorldMemory.some(e => e.text === event.text)) return {};
+        let newWorldMemory = [...currentWorldMemory, event];
+        // Hard limit: 100 world events max
+        if (newWorldMemory.length > 100) {
+          newWorldMemory = newWorldMemory.slice(-100);
+        }
+        return { worldMemory: newWorldMemory };
+      }),
       currentEvent: '',
       setCurrentEvent: (event) => set({ currentEvent: event }),
       currentMood: 'daily',
@@ -1170,8 +1281,13 @@ export const useGameStore = create<GameState>()(
         };
         const currentMemories = currentData.memories || [];
 
-        // Avoid duplicates
-        if (currentMemories.includes(memory)) return {};
+        // Avoid duplicates (compare text for both string and TaggedMemory)
+        const memoryText = typeof memory === 'string' ? memory : memory.text;
+        const isDuplicate = currentMemories.some(m => {
+          const existingText = typeof m === 'string' ? m : m.text;
+          return existingText === memoryText;
+        });
+        if (isDuplicate) return {};
 
         let newMemories = [...currentMemories, memory];
 

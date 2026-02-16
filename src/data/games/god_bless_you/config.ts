@@ -1,5 +1,5 @@
 import { GameRegistry, GameConfig } from '@/lib/registry/GameRegistry';
-// [Removed] UI Components for Server Compatibility
+import { gbyProgression } from './progression';
 
 import { GBY_IDENTITY, GBY_BEHAVIOR_RULES, GBY_OUTPUT_FORMAT, LEVEL_TO_RANK_MAP } from './constants';
 import { GOD_BLESS_YOU_BGM_MAP, GOD_BLESS_YOU_BGM_ALIASES } from './bgm_mapping';
@@ -44,14 +44,10 @@ export const GodBlessYouConfig: GameConfig = {
     resolveRegion: (location: string) => null, // GBY doesn't use rigid region logic
     formatCharacter: formatCharacter,
 
-    // [Refactored] Rank Logic
-    getRankTitle: (level: number, language: string = 'ko') => {
-        const entry = LEVEL_TO_RANK_MAP.find(m => level >= m.min && level <= m.max);
-        if (entry) return entry.id;
-        // Fallback for high levels
-        if (level >= 90) return 'rank_ss';
-        return 'rank_none';
-    },
+    // [8] Universal Progression System
+    progressionConfig: gbyProgression,
+
+
 
     // [Refactored] Background Localization Logic
     resolveBackgroundName: (key: string, state: any) => {

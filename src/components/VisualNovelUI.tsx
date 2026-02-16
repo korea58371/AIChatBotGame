@@ -60,7 +60,7 @@ import TextMessage from './features/TextMessage';
 import PhoneCall from './features/PhoneCall';
 import TVNews from './features/TVNews';
 import SmartphoneApp from './features/SmartphoneApp';
-import { checkRankProgression } from '@/data/games/wuxia/progression';
+
 import { applyGameLogic as applyGameLogicExtracted } from '@/lib/game/applyGameLogic'; // [Refactor] Extracted
 import { advanceScript as advanceScriptExtracted } from '@/lib/game/advanceScript'; // [Refactor] Extracted
 import Article from './features/Article';
@@ -726,8 +726,7 @@ export default function VisualNovelUI() {
         hp: number;
         mp: number;
         relationships: Record<string, number>;
-        personality: Record<string, number>;
-    }>({ hp: 0, mp: 0, relationships: {}, personality: {} });
+    }>({ hp: 0, mp: 0, relationships: {} });
 
 
     // [New] Shared Helper for Visual Damage
@@ -1855,7 +1854,7 @@ export default function VisualNovelUI() {
                                                         // Accumulate
                                                         if (key === 'hp') inlineAccumulatorRef.current.hp += val;
                                                         else if (key === 'mp') inlineAccumulatorRef.current.mp += val;
-                                                        else inlineAccumulatorRef.current.personality[key] = (inlineAccumulatorRef.current.personality[key] || 0) + val;
+                                                        // [Dead Stats Removed] No personality accumulation
 
                                                         // Visual Update
                                                         // [Safety] Ignore 0-value HP updates from inline tags to preventing confusion
@@ -1865,7 +1864,6 @@ export default function VisualNovelUI() {
                                                         applyGameLogic({
                                                             hpChange: key === 'hp' ? val : 0,
                                                             mpChange: key === 'mp' ? val : 0,
-                                                            personalityChange: (key !== 'hp' && key !== 'mp') ? { [key]: val } : {}
                                                         });
                                                     });
                                                 } catch (e) { }
@@ -1949,15 +1947,52 @@ export default function VisualNovelUI() {
                                     post_logic: postLogicOut,
                                     martial_arts: martialArtsOut,
                                     event_debug, // Wrapper
+                                    memory_debug, // [NEW] Memory Agent Wrapper
+                                    director_debug, // [NEW] Director Debug
+                                    directorStateUpdate, // [NEW] Director State Update
                                     usage,
                                     latencies,
                                     costs,
+                                    allUsage, // [NEW] All Model Usage
                                     reply: finalStoryText, // Mapped from 'reply'
                                     thinking: thinkingContent // [New]
                                 } = data;
 
                                 // Extract Event Data specifically
                                 const eventOut = event_debug?.output;
+                                // [NEW] Extract Memory Agent Data
+                                const memoryOut = memory_debug?.output;
+
+                                // [NEW] Apply AgentMemory Results to Store
+                                if (memoryOut) {
+                                    const store = useGameStore.getState();
+                                    // Apply Character Memories (TaggedMemory)
+                                    if (memoryOut.character_memories && typeof memoryOut.character_memories === 'object') {
+                                        Object.entries(memoryOut.character_memories).forEach(([charId, memories]: [string, any]) => {
+                                            if (!Array.isArray(memories)) return;
+                                            memories.forEach((mem: any) => {
+                                                if (mem && typeof mem.text === 'string') {
+                                                    store.addCharacterMemory(charId, mem);
+                                                }
+                                            });
+                                        });
+                                    }
+                                    // Apply World Events
+                                    if (Array.isArray(memoryOut.world_events)) {
+                                        memoryOut.world_events.forEach((event: any) => {
+                                            if (event && typeof event.text === 'string') {
+                                                store.addWorldEvent(event);
+                                            }
+                                        });
+                                    }
+                                }
+
+                                // [NEW] Apply DirectorState Update to Store
+                                if (directorStateUpdate) {
+                                    const store = useGameStore.getState();
+                                    store.updateDirectorState(directorStateUpdate);
+                                    console.log('[Director] State updated:', directorStateUpdate);
+                                }
 
                                 // [Debug] Structured Console Logs (Enhanced Readability)
                                 if (process.env.NODE_ENV === 'development') {
@@ -1996,6 +2031,21 @@ export default function VisualNovelUI() {
                                         console.table(formattedCasting);
                                     } else {
                                         console.log("No characters selected for casting.");
+                                    }
+                                    console.groupEnd();
+
+                                    // 1.7 Director
+                                    console.groupCollapsed(`%c1.7 Director [${latencies?.director || 0}ms]`, logStyle);
+                                    if (director_debug) {
+                                        console.log("%c[Plot Beats]", subLogStyle, director_debug.plot_beats?.join(' → '));
+                                        console.log("%c[Tone]", subLogStyle, director_debug.tone);
+                                        console.log("%c[Emotional Direction]", subLogStyle, director_debug.emotional_direction);
+                                        console.log("%c[Context Requirements]", subLogStyle, director_debug.context_requirements);
+                                        console.log("%c[Subtle Hooks]", subLogStyle, director_debug.subtle_hooks);
+                                        console.log("%c[State Updates]", subLogStyle, director_debug.state_updates);
+                                        console.log("%c[Debug Prompt]", subLogStyle, director_debug._debug_prompt);
+                                    } else {
+                                        console.log("Director: No output (skipped or failed)");
                                     }
                                     console.groupEnd();
 
@@ -2055,12 +2105,25 @@ export default function VisualNovelUI() {
                                     console.log(`%c[Timing Breakdown]`, "font-weight:bold; color: yellow;");
                                     console.log(`- Retriever:  ${latencies?.retriever}ms`);
                                     console.log(`- Pre-Logic:  ${latencies?.preLogic}ms %c(Blocking)`, "color:red");
+                                    console.log(`- Director:   ${latencies?.director}ms`);
                                     console.log(`- Story Gen:  ${latencies?.story}ms`);
                                     console.log(`- Post-Logic: ${latencies?.postLogic}ms`);
                                     console.log(`- Total Turn: ${latencies?.total}ms`);
                                     console.table(latencies);
-                                    console.log("Usage:", usage);
+                                    console.log("Usage (All Models):", allUsage || usage);
                                     console.log("Detailed Costs:", costs);
+                                    console.groupEnd();
+
+                                    // 6. Memory Agent
+                                    console.groupCollapsed(`%c6. Memory Agent`, logStyle);
+                                    if (memoryOut) {
+                                        console.log("%c[Input Prompt]", subLogStyle, memoryOut._debug_prompt || "N/A");
+                                        console.log("%c[Character Memories]", subLogStyle, memoryOut.character_memories);
+                                        console.log("%c[World Events]", subLogStyle, memoryOut.world_events);
+                                        console.log("%c[Usage]", subLogStyle, memoryOut.usageMetadata);
+                                    } else {
+                                        console.log("Memory Agent: No output (skipped or failed)");
+                                    }
                                     console.groupEnd();
 
                                     console.groupEnd(); // End Main Report
@@ -2443,14 +2506,8 @@ export default function VisualNovelUI() {
                                 const inlineMp = inlineDeltas['mp'] || 0;
                                 let finalMpChange = (sourceMp !== 0) ? sourceMp - inlineMp : 0;
 
-                                const plPersonality: Record<string, number> = {};
-                                if (postLogicOut && postLogicOut.stat_updates) {
-                                    Object.entries(postLogicOut.stat_updates).forEach(([k, v]) => {
-                                        const key = k.toLowerCase();
-                                        if (key === 'hp' || key === 'mp') return;
-                                        plPersonality[key] = (v as number) - (inlineDeltas[key] || 0);
-                                    });
-                                }
+
+                                // [Dead Stats Removed] plPersonality computation removed
 
                                 // [Fate System] Update logic - DEPRECATED (Handled Client-Side)
                                 // const fateDelta = preLogicOut?.fate_change || 0;
@@ -2460,7 +2517,7 @@ export default function VisualNovelUI() {
                                     hpChange: finalHpChange,
                                     fate: 0, // [Fate] Handled deterministically before request
                                     mpChange: finalMpChange,
-                                    personalityChange: plPersonality,
+                                    // [Dead Stats Removed] personalityChange removed
                                     // [MOOD PERSISTENCE] Apply PreLogic Override if PostLogic is silent
                                     // Priority: PostLogic (Result) > PreLogic (Intent)
                                     mood: postLogicOut?.mood_update || preLogicOut?.mood_override,
@@ -2486,7 +2543,6 @@ export default function VisualNovelUI() {
                                     character_relationships: postLogicOut?.character_relationships, // [NEW] Pass for processing
                                     post_logic: {
                                         ...(postLogicOut || {}),
-                                        stat_updates: plPersonality
                                     },
                                     martial_arts: martialArtsOut ? {
                                         ...martialArtsOut,
@@ -2506,15 +2562,9 @@ export default function VisualNovelUI() {
                                 const acc = inlineAccumulatorRef.current;
                                 if (deferredLogic.hpChange !== undefined) deferredLogic.hpChange -= acc.hp;
                                 if (deferredLogic.mpChange !== undefined) deferredLogic.mpChange -= acc.mp;
-                                if (deferredLogic.personalityChange) {
-                                    Object.entries(acc.personality).forEach(([k, v]) => {
-                                        if (deferredLogic.personalityChange[k] !== undefined) {
-                                            deferredLogic.personalityChange[k] -= v;
-                                        }
-                                    });
-                                }
+                                // [Dead Stats Removed] personalityChange deduction removed
                                 // Reset Inline Accumulator
-                                inlineAccumulatorRef.current = { hp: 0, mp: 0, relationships: {}, personality: {} };
+                                inlineAccumulatorRef.current = { hp: 0, mp: 0, relationships: {} };
 
                                 // [NEW] Handle NPC-to-NPC Relationships Directly (Bypass applyGameLogic if needed)
                                 if (deferredLogic.character_relationships) {
@@ -2561,7 +2611,15 @@ export default function VisualNovelUI() {
                                     meta: {
                                         hp: useGameStore.getState().playerStats.hp,
                                         pre_logic_score: preLogicOut?.plausibility_score,
-                                        scenario_summary: useGameStore.getState().getScenarioContext()
+                                        scenario_summary: useGameStore.getState().getScenarioContext(),
+                                        director: director_debug ? {
+                                            plot_beats: director_debug.plot_beats,
+                                            tone: director_debug.tone,
+                                            emotional_direction: director_debug.emotional_direction,
+                                            subtle_hooks: director_debug.subtle_hooks,
+                                            latency: latencies?.director,
+                                            cost: allUsage?.director?.cost
+                                        } : undefined
                                     },
                                     story_output: finalStoryText || cleanStoryText
                                 });
