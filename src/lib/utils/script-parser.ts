@@ -574,6 +574,24 @@ function parseInlineContent(text: string, context: Partial<ScriptSegment>): Scri
 
 // Helper to push text segments with context
 function pushTextSegments(segments: ScriptSegment[], text: string, context: Partial<ScriptSegment>) {
+    // [Fix] Special UI types must keep their full content as a SINGLE segment.
+    // splitSentences fragments them into multiple tiny segments, causing the
+    // UI frame to render but with only partial/empty content.
+    const fullBlockTypes: ScriptType[] = ['system_popup', 'tv_news', 'text_message', 'text_reply', 'phone_call', 'article'];
+    if (context.type && fullBlockTypes.includes(context.type as ScriptType)) {
+        const cleanText = text.trim()
+            .replace(/^"([\s\S]*)"$/, '$1')
+            .replace(/^\u201c([\s\S]*)\u201d$/, '$1');
+        if (cleanText) {
+            segments.push({
+                ...context,
+                type: context.type as ScriptType,
+                content: cleanText
+            });
+        }
+        return;
+    }
+
     const lines = text.split('\n');
     for (const line of lines) {
         if (!line.trim()) continue;
@@ -582,7 +600,7 @@ function pushTextSegments(segments: ScriptSegment[], text: string, context: Part
         for (const s of sentences) {
             // Remove wrapping quotes if present (AI sometimes adds them)
             // [Fix] Use [\s\S] to match newlines in multiline sentences
-            const cleanS = s.trim().replace(/^"([\s\S]*)"$/, '$1').replace(/^“([\s\S]*)”$/, '$1');
+            const cleanS = s.trim().replace(/^"([\s\S]*)"$/, '$1').replace(/^\u201c([\s\S]*)\u201d$/, '$1');
             if (cleanS) {
                 segments.push({
                     ...context,
