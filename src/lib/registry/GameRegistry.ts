@@ -81,6 +81,15 @@ export interface GameConfig {
 
     // [8] Universal Progression System (Data-Driven Growth)
     progressionConfig?: ProgressionConfig;
+
+    // [9] Director Guide (Tone & World Rules for Narrative Director)
+    getDirectorGuide?: () => string;
+
+    // [10] Regional Context (Director에게 전달할 지역/세력 정보 — 게임별 동적 생성)
+    getRegionalContext?: (location: string) => string;
+
+    // [11] Post-Logic Location Hint (AI에게 지역명 작성 규칙 전달 — 게임별 포맷)
+    getPostLogicLocationHint?: () => string;
 }
 
 class GameRegistryImpl {

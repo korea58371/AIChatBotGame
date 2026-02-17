@@ -51,6 +51,7 @@ export interface DirectorInput {
     recentHistory?: string;
     playerProfile: string;
     castingSuggestions: string; // [NEW] 캐스팅 추천 캐릭터 요약
+    gameGuide: string; // [NEW] 게임별 톤/세계관/행동규범 (GameConfig에서 동적 주입)
 }
 
 export interface DirectorOutput {
@@ -136,14 +137,9 @@ export class AgentDirector {
     // ===== 시스템 프롬프트 =====
 
     private static buildSystemPrompt(): string {
-        return `You are the [Narrative Director] of a martial arts (Wuxia) RPG.
+        return `You are the [Narrative Director] of a story-driven RPG.
 Your role is to PLAN the story for this turn — NOT to write it.
-
-[World Setting]
-이 세계는 중원 무림이다. 정파(무림맹), 사파(패천맹), 마교(천마신교)가 삼분하고 있다.
-새외세력(북해빙궁, 남만야수궁)과 관부(황실/금의위)가 별도 존재.
-무공 등급: 삼류 → 이류 → 일류 → 절정 → 화경 (최상위).
-플레이어는 성장 중인 강호인이다.
+You will receive the game's [Tone & World Guide] in the user prompt. Follow it strictly.
 
 [Your Responsibilities]
 1. **Plot Planning**: Design 3-5 plot beats for this turn based on the situation.
@@ -160,6 +156,7 @@ Your role is to PLAN the story for this turn — NOT to write it.
 3. **PACING**: Don't force drama every turn. If the mood is peaceful, keep it peaceful.
 4. **BREVITY**: Use keywords and fragments, not full sentences.
 5. **REGIONAL COHERENCE**: Don't reference factions/events from distant regions without reason.
+6. **FACTION BEHAVIOR**: Characters MUST act within their faction's behavioral norms. A righteous sect member does NOT attack innocents unprovoked.
 
 [Context Requirements Guide]
 - combat_characters: Characters who will FIGHT this turn → inject full skill data
@@ -190,7 +187,7 @@ Your role is to PLAN the story for this turn — NOT to write it.
     // ===== 유저 프롬프트 (동적 컨텍스트) =====
 
     private static buildUserPrompt(input: DirectorInput): string {
-        const { preLogic, characters, directorState, userInput, location, turnCount, activeGoals, lastTurnSummary, regionalContext, recentHistory, playerProfile, castingSuggestions } = input;
+        const { preLogic, characters, directorState, userInput, location, turnCount, activeGoals, lastTurnSummary, regionalContext, recentHistory, playerProfile, castingSuggestions, gameGuide } = input;
 
         // 캐릭터 요약
         const charSummary = characters.map(c =>
@@ -217,7 +214,10 @@ Your role is to PLAN the story for this turn — NOT to write it.
         // 모멘텀
         const { momentum } = directorState;
 
-        return `[PreLogic Judgment]
+        return `${gameGuide ? `[Tone & World Guide (MUST FOLLOW)]
+${gameGuide}
+
+` : ''}[PreLogic Judgment]
 Mood: ${preLogic.mood || 'daily'} | Score: ${preLogic.score}/10
 ${preLogic.combat_analysis ? `Combat: ${preLogic.combat_analysis}` : ''}
 

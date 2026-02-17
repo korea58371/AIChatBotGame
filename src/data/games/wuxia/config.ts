@@ -10,6 +10,7 @@ import { backgroundMappings } from './backgroundMappings';
 import { getWuxiaStaticContext } from './prompts/staticContext';
 import { loadWuxiaData } from './loader';
 import wuxiaLocations from './jsons/locations.json';
+import wuxiaFactions from './jsons/factions.json';
 
 export const WuxiaConfig: GameConfig = {
     id: 'wuxia',
@@ -42,6 +43,152 @@ export const WuxiaConfig: GameConfig = {
 
     // [8] Universal Progression System
     progressionConfig: wuxiaProgression,
+
+    // [9] Director Guide — WUXIA_IDENTITY / CORE_RULES에서 Director용 핵심만 압축
+    getDirectorGuide: () => `[세계관]
+이 세계는 중원 무림이다. 정파(무림맹), 사파(패천맹), 마교(천마신교)가 삼분하고 있다.
+새외세력(북해빙궁, 남만야수궁)과 관부(황실/금의위)가 별도 존재.
+무공 등급: 삼류 → 이류 → 일류 → 절정 → 초절정 → 화경 → 현경 → 생사경.
+플레이어는 성장 중인 강호인이다.
+
+[핵심 톤 & 테마]
+- 장르: 정통무협(Orthodox). 진중함(Gravity) + 협(Chivalry) + 성장 + 브로맨스.
+- 문체: 신무협(Neo-Wuxia) — 고풍스럽고 멋스러운 묘사 + 세련됨.
+- 유머: 은혼(Gintama) 스타일 — 진지한 전개 사이에 나사 빠진 개그/쉬어가는 에피소드 삽입.
+
+[줄거리 설계 원칙 (⭐ CRITICAL)]
+1. **전투:일상 = 3:7**. 소소한 행복(수련 후 식사, 술자리, 비무/논검) 중심. 목숨이 오가는 혈투보다 자존심 승부/연애/오해 소동.
+2. **Late Romance Rule**: 여인들은 쉽게 반하지 않는다. 호감도가 쌓이기 전까지 차갑거나 비즈니스적으로 대함. 초반 로맨스 이벤트 설계 금지.
+3. **비례성의 원칙**: 원인과 결과의 크기는 비례해야 한다. 사소한 행동을 거대한 음모로 연결하지 마라. 바늘 도둑은 바늘 도둑일 뿐.
+4. **동료는 또 다른 주인공**: 동료들의 성장과 서사도 비중 있게 다룬다. 위기 시 전우애, 평소에는 티키타카.
+5. **강자의 위엄**: 상위 경지 고수가 등장하면 압도적인 위엄과 주변의 경외를 묘사하여 성장 동기 부여.
+6. **소재의 경량화**: 멸문지화, 전쟁 같은 무거운 주제 대신 비무대련, 축제, 라이벌 의식 같은 청춘 드라마 위주.
+7. **기연 금지**: 길가다 S급 비급 줍기 같은 기적은 발생하지 않는다.
+
+[팩션 행동규범 (⭐ CRITICAL)]
+- **정파(명문세가)**: 체면과 명예를 목숨처럼 여긴다. 하수에게 이유 없이 시비를 걸지 않으며, 양아치처럼 굴지 않는다(점잖은 오만함). 무고한 사람 공격 금지.
+- **사파**: 이익 추구, 비열함 허용. 하지만 나름의 규율(강자존) 존재.
+- **마교**: 교리와 교주에 대한 광신. 독자적인 가치관.
+- **초면 프로토콜**: 명시적 관계가 없으면 NPC는 주인공을 잡상인 취급. 초면에 웃거나 친절한 사람은 사기꾼뿐.
+
+[성장 & 전투 규칙]
+- 경지 차이 2단계 이상이면 하수가 이길 수 없다. 동급이라도 방심하면 즉사.
+- 하루아침에 내공이 쌓이지 않는다. 내공 성장은 폐관수련/기연이 필요.
+- 시련은 플레이어가 감당 가능한 수준이어야 한다. 너무 쉬운 승리도, 불가능한 벽도 지양.`,
+
+    // [10] Regional Context — Director에게 전달할 지역/세력 정보 (기존 regional-context.ts에서 이전)
+    getRegionalContext: (location: string): string => {
+        const regions = (wuxiaLocations as any).regions;
+        if (!regions || !location) {
+            return `[Regional Landscape]\n위치 불명: "${location}"\n세계관: 정파/사파/마교가 삼분하는 무림 세계`;
+        }
+
+        // 1. Zone/Region 해석
+        let regionName: string | null = null;
+        let zoneName: string | null = null;
+
+        // Zone 이름으로 역매칭
+        for (const [rKey, rVal] of Object.entries(regions) as [string, any][]) {
+            if (!rVal.zones) continue;
+            for (const zKey of Object.keys(rVal.zones)) {
+                if (location.includes(zKey)) { regionName = rKey; zoneName = zKey; break; }
+            }
+            if (regionName) break;
+        }
+        // Region 이름 직접 매칭
+        if (!regionName) {
+            for (const rKey of Object.keys(regions)) {
+                if (location.includes(rKey)) { regionName = rKey; break; }
+            }
+        }
+        // eng_code 매칭
+        if (!regionName) {
+            for (const [rKey, rVal] of Object.entries(regions) as [string, any][]) {
+                if (rVal.eng_code && location.toLowerCase().includes(rVal.eng_code.toLowerCase())) {
+                    regionName = rKey; break;
+                }
+            }
+        }
+
+        if (!regionName) {
+            return `[Regional Landscape]\n위치 불명: "${location}"\n세계관: 정파/사파/마교가 삼분하는 무림 세계`;
+        }
+
+        const currentRegion = regions[regionName];
+        const lines: string[] = [];
+        lines.push(`[Regional Landscape]`);
+        lines.push(`세계관: 정파(무림맹) / 사파(패천맹) / 마교(천마신교)가 삼분하는 무림. 새외세력(북해빙궁, 남만야수궁)과 관부(황실/금의위)가 별도 존재.`);
+        lines.push(``);
+        lines.push(`[현재 지역: ${regionName}]`);
+        lines.push(`설명: ${currentRegion.description}`);
+
+        // Zone별 세력 요약
+        if (currentRegion.zones) {
+            const zoneEntries: string[] = [];
+            for (const [zKey, zVal] of Object.entries(currentRegion.zones) as [string, any][]) {
+                const meta = zVal.metadata;
+                if (meta?.faction) {
+                    const marker = zKey === zoneName ? '★' : '';
+                    zoneEntries.push(`  ${marker}${zKey}: ${meta.faction} (${meta.ruler_title || '수장'}: ${meta.owner || '불명'})`);
+                }
+            }
+            if (zoneEntries.length > 0) {
+                lines.push(`세력 구도:`);
+                lines.push(...zoneEntries);
+            }
+        }
+
+        // Zone 세력 상세 (factions data)
+        if (zoneName) {
+            const zoneData = currentRegion.zones?.[zoneName];
+            const factionName = zoneData?.metadata?.faction;
+            if (factionName && wuxiaFactions) {
+                const factions = (wuxiaFactions as any).문파 || [];
+                const faction = factions.find((f: any) => f.이름 === factionName);
+                if (faction) {
+                    lines.push(``);
+                    lines.push(`[현재 Zone 세력: ${faction.이름}]`);
+                    lines.push(`구분: ${faction.구분} | ${faction.성향 || ''}`);
+                    lines.push(`설명: ${faction.설명}`);
+                    if (faction.주요무공) lines.push(`무공: ${faction.주요무공}`);
+                    if (faction.주요인물) {
+                        const people = Object.entries(faction.주요인물).map(([name, role]) => `${name}(${role})`).join(', ');
+                        lines.push(`주요인물: ${people}`);
+                    }
+                    if (faction.전투스타일) lines.push(`전투스타일: ${faction.전투스타일}`);
+                    if (faction.relations && faction.relations.length > 0) {
+                        const relStr = faction.relations.map((r: any) => `${r.대상}(${r.관계}: ${r.설명})`).join(', ');
+                        lines.push(`외교: ${relStr}`);
+                    }
+                }
+            }
+        }
+
+        // 인접 Region
+        const adjacent = currentRegion.adjacent;
+        if (adjacent && adjacent.length > 0) {
+            lines.push(``);
+            lines.push(`[인접 지역]`);
+            for (const adj of adjacent) {
+                const adjRegion = regions[adj.region];
+                if (!adjRegion) continue;
+                const mainFactions: string[] = [];
+                if (adjRegion.zones) {
+                    for (const [, zVal] of Object.entries(adjRegion.zones) as [string, any][]) {
+                        if ((zVal as any).metadata?.faction) mainFactions.push((zVal as any).metadata.faction);
+                    }
+                }
+                const factionStr = mainFactions.length > 0 ? mainFactions.join(', ') : '특별 세력 없음';
+                lines.push(`  ${adj.region} (${adj.travel_days}일, ${adj.route}): ${factionStr}`);
+            }
+        }
+
+        return lines.join('\n');
+    },
+
+    // [11] Post-Logic Location Hint
+    getPostLogicLocationHint: () =>
+        'Use standard Wuxia region names: 중원, 사천, 하북, 산동, 북해, 남만, 서역, 등.',
 
     resolveRegion: (location: string): string | null => {
         if (!location) return null;

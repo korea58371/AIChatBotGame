@@ -2612,6 +2612,14 @@ export default function VisualNovelUI() {
                                         hp: useGameStore.getState().playerStats.hp,
                                         pre_logic_score: preLogicOut?.plausibility_score,
                                         scenario_summary: useGameStore.getState().getScenarioContext(),
+                                        // [NEW] Casting Log — 캐스팅된 캐릭터 리스트 (경량 요약)
+                                        casting: data.casting ? data.casting.map((c: any) => ({
+                                            id: c.id,
+                                            name: c.name,
+                                            activeScore: c.activeScore,
+                                            bgScore: c.bgScore,
+                                            reasons: Array.isArray(c.activeReasons) ? c.activeReasons.join(', ') : (Array.isArray(c.reasons) ? c.reasons.join(', ') : '')
+                                        })) : [],
                                         director: director_debug ? {
                                             plot_beats: director_debug.plot_beats,
                                             tone: director_debug.tone,

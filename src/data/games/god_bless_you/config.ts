@@ -47,7 +47,65 @@ export const GodBlessYouConfig: GameConfig = {
     // [8] Universal Progression System
     progressionConfig: gbyProgression,
 
+    // [9] Director Guide — GBY_IDENTITY / CORE_RULES / STORY_PHASE에서 Director용 핵심 압축
+    getDirectorGuide: () => `[세계관]
+현대 한국(서울). 헌터와 블레서가 존재하는 어반 판타지. 몬스터/던전이 있지만 사회 시스템이 잘 갖춰져 일반인도 안전.
+헌터/블레서는 연예인/스포츠 스타 같은 존재. 블레서(여성 헌터)는 동경의 대상.
+랭크: 일반인 → F → E → D → C → B → A → S → SS.
+플레이어는 숨은 능력(힘숨찐)을 가진 성장형 주인공.
 
+[핵심 톤 & 테마]
+- 장르: 현대 어반 판타지 러브코미디 + 일상물. #힘숨찐 #개그 #러브코메디
+- 어조: 위트 있고 장난스러운 톤. 몬스터보다 '쪽팔림'이 더 무서운 주인공의 좌충우돌 일상.
+- 코미디: 슬랩스틱(허당미) + 츳코미(태클 걸기) + 주인공 흑역사. 과장과 코미디 필수.
+- 로맨스: 현대적 하렘(SNS 신경전, 귀여운 질투) + 갭 모에(사회적 지위 vs 사적 모습).
+
+[줄거리 설계 원칙 (⭐ CRITICAL)]
+1. **비극 금지**: 죽음, 불구, 절망적 상황 전개 시스템적 차단. 갈등은 "오해"나 "가벼운 말다툼" 수준.
+2. **소소한 행복**: 거창한 목표보다 오늘 저녁 메뉴, 주말 데이트, 새로 산 게임기 같은 일상의 즐거움.
+3. **위기 금지**: 갑작스런 몬스터 습격, 납치, 살해 협박 같은 느와르적 전개 금지. 단, 개그성 위기(넘어짐, 쪽팔림)는 환영.
+4. **비살상 전투**: Hostile Faction 아닌 상대와의 전투는 전부 '대련/해프닝'. 기절/무장해제/항복으로 종료.
+5. **실패의 희극화**: 실패는 비극이 아니라 웃음. 멋지게 착지하려다 미끄러지는 허당미.
+6. **따뜻한 인간관계**: 상호 존중. 초기 호감도 0~10(팬 수준). 현실적 디테일(요리, 청소, 계절감).
+
+[Phase별 캐릭터 해금 (⭐ CRITICAL)]
+- Phase 0 (일반인, Fame<10): 한가을(여동생), 은하율(소꿉친구), 정한수(친구). 몬스터 위협 없음.
+- Phase 1 (Hidden F, Fame<1000): 동네 주민, 편의점 알바생. 심각한 빌런/전쟁급 위기 잠금.
+- Phase 2 (D~B, Fame>=1000): 소소한 사건 해결, 중소 길드 협업.
+- ⚠️ S급 블레서(천서윤, 성시아, 한여름 등)는 Phase 3 전까지 뉴스/TV로만 등장. 직접 만남 금지.
+- ⚠️ 이아라(아이돌)는 주인공이 유명해지기 전까지 팬미팅/방송으로만 등장.
+
+[로맨스 규칙]
+- 초기에는 사무적/비즈니스적 관계. 호감도가 쌓여야 설렘/스킨십 진행.
+- 이능력 로맨스: 능력을 활용한 독특한 애정 표현(따뜻한 포옹, 공중 산책 등).
+- 플러팅과 철벽의 핑퐁. 일상의 소중함(던전 후 밥, 퇴근길 데이트).`,
+
+    // [10] Regional Context — Director에게 전달할 GBY 지역/세력 정보
+    getRegionalContext: (location: string): string => {
+        const lines: string[] = [];
+        lines.push(`[Regional Landscape]`);
+        lines.push(`세계관: 현대 한국(서울). 헌터와 블레서가 존재하는 어반 판타지.`);
+        lines.push(`주요 세력: 한국헌터협회(KHA), 대형 길드(별빛/아테나/레드문 등), 축복교단, 이면세계 세력`);
+        lines.push(``);
+        lines.push(`현재 위치: ${location || '서울'}`);
+        lines.push(``);
+        lines.push(`[주요 지역]`);
+        lines.push(`  서울: 본거지. 강남(상류층/길드 본부), 종로(전통/시장), 홍대(엔터/문화), 잠실(헌터 센터)`);
+        lines.push(`  인천: 에스더 헌터/항만. 송도(신도시/첨단).`);
+        lines.push(`  던전: 등급별(E~SS급). 도심 근처 포탈 또는 외곽에 고정.`);
+        lines.push(`  네오아카디아: 이면세계(알 수 없는 차원). 판타지적 경관.`);
+        lines.push(``);
+        lines.push(`[세력 구도]`);
+        lines.push(`  한국헌터협회(KHA): 헌터 관리/던전 배정. 관료적.`);
+        lines.push(`  대형 길드들: 헌팅 독점. 스폰서/후원/연예화.`);
+        lines.push(`  축복교단: 블레서를 신격화하는 종교 세력. 의심스러운 의도.`);
+        lines.push(`  이면세계: 몬스터/미지의 존재. 간헐적으로 포탈 발생.`);
+        return lines.join('\n');
+    },
+
+    // [11] Post-Logic Location Hint
+    getPostLogicLocationHint: () =>
+        'Use Korean city/district names: 서울_강남, 서울_종로, 인천_송도, 던전_E급, 네오아카디아_중앙, 등.',
 
     // [Refactored] Background Localization Logic
     resolveBackgroundName: (key: string, state: any) => {

@@ -61,17 +61,20 @@ export async function loadGodBlessYouData(): Promise<GameData> {
             mainSource
         );
 
-        // [New] Apply Flattening to World Data if it has hierarchy
-        // This ensures GBY supports region/zone structure if added later.
-        // [New] Apply Flattening to World Data if it has hierarchy
-        // This ensures GBY supports region/zone structure if added later.
+        // [Fix] Apply Flattening: Use locations.json regions (from lore) if world.json lacks regions
+        // This ensures casting (resolveLocationHierarchy) and prompt-manager (metadata injection) work correctly.
         const wm = (worldModule as any).default || worldModule;
         if (wm) {
-            // Check if it looks hierarchical (has regions?) 
-            // If GBY world.json adds 'regions', we flatten it.
-            if (wm.regions) {
-                const flat = flattenMapData(wm.regions);
-                wm.locations = { ...flat, ...(wm.locations || {}) };
+            // Priority 1: world.json has its own regions
+            // Priority 2: lore.locations.regions (from jsons/index.ts → locations.json)
+            const loreLocations = loreModule?.GodBlessYouLore?.locations;
+            const regionsSource = wm.regions || loreLocations?.regions;
+
+            if (regionsSource) {
+                wm.regions = regionsSource; // ② Inject into world.regions (for casting)
+                const flat = flattenMapData(regionsSource);
+                wm.locations = { ...flat, ...(wm.locations || {}) }; // ③ Flatten into world.locations (for prompt-manager)
+                console.log(`[GBYLoader] Regions injected into world: ${Object.keys(regionsSource).length} regions, ${Object.keys(flat).length} flat locations`);
             }
         }
 

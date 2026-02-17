@@ -2,21 +2,19 @@ import { MODEL_CONFIG } from '../ai/model-config';
 import { PromptManager } from '../engine/prompt-manager';
 import { RelationshipManager } from '../engine/relationship-manager';
 import { EventManager } from '../engine/event-manager';
-import { CharacterData } from '../../data/games/wuxia/jsons/characters';
-import locations from '../../data/games/wuxia/jsons/locations.json';
 
 // Helper: Resolve Location to Hierarchy [Region, Zone, Spot]
-// [Modified] Strict Region-First Logic for composite strings (e.g., "Henan Cave")
-export function resolveLocationHierarchy(locName: string): string[] {
+// [Modified] Game-agnostic: receives regions data as parameter
+export function resolveLocationHierarchy(locName: string, regions?: Record<string, any>): string[] {
     if (!locName) return [];
+    if (!regions || Object.keys(regions).length === 0) return [locName];
 
-    // 0. Tokenize (Split by space, _, >)
     // 0. Tokenize (Split by space, _, >)
     const tokens = locName.split(/[\s_>]+/).filter(Boolean);
     if (tokens.length === 0) return [locName];
 
     // 1. ANCHOR: Find explicit Region first
-    const regionKeys = Object.keys(locations.regions);
+    const regionKeys = Object.keys(regions);
     let matchedRegionKey: string | null = null;
 
     // [Fix] Normalized English Code Check (e.g. "North Sea" -> "NorthSea" -> Match "북해")
@@ -31,28 +29,23 @@ export function resolveLocationHierarchy(locName: string): string[] {
         }
 
         // 2. Check English Code (Substring match on normalized input)
-        const regionData = locations.regions[rKey as keyof typeof locations.regions] as any;
-        if (regionData.eng_code) {
+        const regionData = regions[rKey] as any;
+        if (regionData?.eng_code) {
             const normEng = regionData.eng_code.toLowerCase().replace(/\s/g, '');
             if (normalizedLocName.includes(normEng)) {
                 matchedRegionKey = rKey;
-                // Don't break yet, prioritize Korean key if multiple match? 
-                // Actually English match is strong evidence if Korean is absent.
-                // We continue to see if there's a specific Korean token match (higher fidelity?), 
-                // but "North Sea" vs "북해" are exclusive usually.
                 break;
             }
         }
     }
 
     // 2. Strict Check: If no Region found, fail (return raw)
-    // We do NOT want to infer region from a Spot match because spot names like "Mountain" or "Cave" are not unique.
     if (!matchedRegionKey) {
         return [locName];
     }
 
     // 3. Search within the matched Region
-    const regionVal = locations.regions[matchedRegionKey as keyof typeof locations.regions];
+    const regionVal = regions[matchedRegionKey];
     if ((regionVal as any).zones) {
         const zones = (regionVal as any).zones;
 
@@ -91,7 +84,7 @@ export function resolveLocationHierarchy(locName: string): string[] {
 export interface CastingCandidate {
     id: string;
     name: string;
-    data: CharacterData;
+    data: any;
     score: number;
     reasons: string[];
     isHomeGround?: boolean;
@@ -168,6 +161,10 @@ export class AgentCasting {
         const allCharacters = gameState.gameData?.characters || gameState.characterData || {};
         const mainCharacterIds = new Set(Object.keys(allCharacters)); // For now treat all loaded as potential candidates
 
+        // [FIX] Extract regions ONCE outside loop (performance optimization)
+        const worldData = gameState.gameData?.world || {};
+        const gameRegions: Record<string, any> = worldData.regions || {};
+
         for (const [id, char] of Object.entries(allCharacters)) {
             const cAny = char as any;
 
@@ -231,15 +228,9 @@ export class AgentCasting {
             const region = finalCharLoc;
             const affiliationStr = cAny.profile?.소속 || "";
 
-            // Resolve Hierarchies
-            // We do this inside loop, but ideally we'd cache player hierarchy once. 
-            // Optim: Let's assume resolveLocationHierarchy is fast enough (JSON is small).
-
-            // Note: In a real optimize scenario, resolve player hierarchy outside loop.
-            // But 'fullLocation' is available here.
-
-            const playerHierarchy = resolveLocationHierarchy(fullLocation.replace(/_/g, " "));
-            const charHierarchy = resolveLocationHierarchy(finalCharLoc);
+            // Resolve Hierarchies (Game-agnostic: use regions from gameState)
+            const playerHierarchy = resolveLocationHierarchy(fullLocation.replace(/_/g, " "), gameRegions);
+            const charHierarchy = resolveLocationHierarchy(finalCharLoc, gameRegions);
 
             let locScore = 0;
 
@@ -380,9 +371,9 @@ export class AgentCasting {
             }
 
             // 7.7. [NEW] Enemy Global Penalty (60% Efficiency)
-            // User Request: "Enemy correction 60% of normal"
-            // We apply this before Rank Penalty to lower their overall aggression unless highly relevant.
-            const isEnemy = cAny.system_logic?.is_enemy || tags.includes('마교') || tags.includes('사파') || tags.includes('악당') || tags.includes('빌런');
+            // [FIX] Game-agnostic enemy detection: system_logic flag OR universal villain tags
+            const ENEMY_TAGS = ['마교', '사파', '악당', '빌런', '네오아카디아', '이면세계', '적대'];
+            const isEnemy = cAny.system_logic?.is_enemy || ENEMY_TAGS.some(t => tags.includes(t));
 
             if (isEnemy) {
                 actScore *= 0.6;

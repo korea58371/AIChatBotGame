@@ -109,22 +109,21 @@ export async function loadWuxiaData(): Promise<GameData> {
             charactersModule = {};
         }
 
-        // [데이터 강화] Locations.json을 worldModule.locations로 평탄화 (Flatten)
+        // [데이터 강화] Locations.json을 worldModule에 주입
+        // (1) world.regions: casting의 resolveLocationHierarchy용 (계층 원본)
+        // (2) world.locations: prompt-manager의 flat lookup용 (평탄화)
         if (loreModule?.WuxiaLore?.locations) {
             const { flattenMapData } = await import('@/lib/utils/loader-utils');
 
-            // Flatten the hierarchical locations structure
-            // We specifically look at 'regions' inside the locations JSON based on file structure
             const rawLocations = loreModule.WuxiaLore.locations as any;
             let flatLocations = {};
 
             if (rawLocations.regions) {
+                worldModule.regions = rawLocations.regions; // ① Inject regions (for casting)
                 flatLocations = flattenMapData(rawLocations.regions);
             }
-            // If there are other top-level keys like '관외_지역', process them too if needed
-            // For now, consistent with previous logic which focused on regions.
 
-            // Merge into worldModule
+            // Merge into worldModule.locations
             worldModule.locations = { ...flatLocations, ...worldModule.locations };
         }
 

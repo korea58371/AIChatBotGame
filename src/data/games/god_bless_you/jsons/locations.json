@@ -4,6 +4,20 @@
         "서울": {
             "eng_code": "Seoul",
             "description": "대한민국의 수도. 헌터와 일반인이 공존하는 거대 도시.",
+            "adjacent": [
+                {
+                    "region": "부산",
+                    "access_method": "KTX (2.5시간)"
+                },
+                {
+                    "region": "제주",
+                    "access_method": "항공편 (1시간)"
+                },
+                {
+                    "region": "던전",
+                    "access_method": "서울 내 게이트 (광화문 균열 등)"
+                }
+            ],
             "zones": {
                 "관리국": {
                     "description": "대한민국 블레서 관리 및 감독 기구.",
@@ -154,6 +168,20 @@
         "부산": {
             "eng_code": "Busan",
             "description": "대한민국 제2의 도시이자 최대의 항구 도시. 해상 몬스터의 위협이 잦은 곳.",
+            "adjacent": [
+                {
+                    "region": "서울",
+                    "access_method": "KTX (2.5시간)"
+                },
+                {
+                    "region": "제주",
+                    "access_method": "항공편 또는 여객선"
+                },
+                {
+                    "region": "일본",
+                    "access_method": "부관페리 (후쿠오카행)"
+                }
+            ],
             "zones": {
                 "해운대": {
                     "description": "아름다운 해변과 마천루가 어우러진 휴양지.",
@@ -176,6 +204,20 @@
         "제주": {
             "eng_code": "Jeju",
             "description": "아름다운 자연경관을 자랑하는 섬. 대형 게이트 발생지이기도 하다.",
+            "adjacent": [
+                {
+                    "region": "서울",
+                    "access_method": "항공편 (1시간)"
+                },
+                {
+                    "region": "부산",
+                    "access_method": "항공편 또는 여객선"
+                },
+                {
+                    "region": "던전",
+                    "access_method": "한라산 게이트"
+                }
+            ],
             "zones": {
                 "한라산": {
                     "description": "섬 중앙에 솟은 거대한 화산. 고등급 몬스터가 출몰한다.",
@@ -198,6 +240,20 @@
         "일본": {
             "eng_code": "Japan",
             "description": "가깝고도 먼 이웃 나라. 검술과 음양술이 발달했다.",
+            "adjacent": [
+                {
+                    "region": "서울",
+                    "access_method": "항공편 (2시간)"
+                },
+                {
+                    "region": "부산",
+                    "access_method": "부관페리"
+                },
+                {
+                    "region": "중국",
+                    "access_method": "항공편"
+                }
+            ],
             "zones": {
                 "도쿄": {
                     "description": "일본의 수도. 네온사인과 전통이 공존하는 메가시티.",
@@ -221,6 +277,16 @@
         "중국": {
             "eng_code": "China",
             "description": "거대한 대륙. 무림의 유산과 현대 기술이 융합된 독자적인 헌터 문화를 가졌다.",
+            "adjacent": [
+                {
+                    "region": "서울",
+                    "access_method": "항공편 (2시간)"
+                },
+                {
+                    "region": "일본",
+                    "access_method": "항공편"
+                }
+            ],
             "zones": {
                 "베이징": {
                     "description": "중국의 수도. 거대한 자금성과 현대적인 빌딩 숲.",
@@ -243,6 +309,16 @@
         "미국": {
             "eng_code": "USA",
             "description": "세계 최강의 헌터 보유국. 헌터 협회 본부가 위치해 있다.",
+            "adjacent": [
+                {
+                    "region": "유럽",
+                    "access_method": "대서양 항공편"
+                },
+                {
+                    "region": "서울",
+                    "access_method": "태평양 항공편 (14시간)"
+                }
+            ],
             "zones": {
                 "뉴욕": {
                     "description": "세계의 수도. 마천루 숲 사이로 히어로들이 활공하는 도시.",
@@ -266,6 +342,16 @@
         "유럽": {
             "eng_code": "Europe",
             "description": "유서 깊은 역사와 마법의 본고장.",
+            "adjacent": [
+                {
+                    "region": "미국",
+                    "access_method": "대서양 항공편"
+                },
+                {
+                    "region": "서울",
+                    "access_method": "항공편 (12시간)"
+                }
+            ],
             "zones": {
                 "런던": {
                     "description": "영국의 수도. 마법사 협회 '시계탑'이 위치한 곳.",
@@ -312,6 +398,20 @@
         "던전": {
             "eng_code": "Dungeon",
             "description": "이세계와 연결된 균열. 몬스터가 출몰하는 위험 지대.",
+            "adjacent": [
+                {
+                    "region": "서울",
+                    "access_method": "게이트 진입"
+                },
+                {
+                    "region": "제주",
+                    "access_method": "한라산 게이트"
+                },
+                {
+                    "region": "이면세계",
+                    "access_method": "심층 균열 (고등급 전용)"
+                }
+            ],
             "zones": {
                 "필드": {
                     "description": "자연 환경이 변형된 개방형 던전.",
@@ -366,6 +466,16 @@
         "이면세계": {
             "eng_code": "Otherworld",
             "description": "현실과 겹쳐져 있는 그림자 세계. 뱀파이어와 마족들의 영토.",
+            "adjacent": [
+                {
+                    "region": "던전",
+                    "access_method": "심층 균열"
+                },
+                {
+                    "region": "네오_아카디아",
+                    "access_method": "비밀 통로 (암흑 세력 연결)"
+                }
+            ],
             "zones": {
                 "붉은_성": {
                     "description": "핏빛 달이 비추는 뱀파이어 퀸의 거성.",
@@ -380,6 +490,16 @@
         "네오_아카디아": {
             "eng_code": "Neo Arcadia",
             "description": "반정부 테러 조직 '네오 아카디아'의 비밀 기지.",
+            "adjacent": [
+                {
+                    "region": "이면세계",
+                    "access_method": "비밀 통로"
+                },
+                {
+                    "region": "서울",
+                    "access_method": "은신 루트 (위장 거점 경유)"
+                }
+            ],
             "zones": {
                 "본부": {
                     "description": "어딘가에 은폐된 그들의 요새.",

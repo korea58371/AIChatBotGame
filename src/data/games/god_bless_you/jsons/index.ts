@@ -7,12 +7,16 @@ import modern_skills from './modern_skills.json';
 import modern_terminology from './modern_terminology.json';
 import modern_weapons from './modern_weapons.json';
 import modern_world_geography from './modern_world_geography.json';
+import locations from './locations.json';
 
-// GBY doesn't have split files for characters/factions like Wuxia yet, 
-// so we don't need complex re-exports for now. 
-// Just exporting the modern data modules.
+// GBY Lore Module
+// locations is included to enable shared engine features:
+// - pre-logic/post-logic/choices: minimap context (lore.locations.regions)
+// - casting: resolveLocationHierarchy (lore.locations.regions)
+// - prompt-manager: location metadata injection (owner/faction)
 
 export const GodBlessYouLore = {
+    locations,
     modern_combat,
     modern_elixirs,
     modern_factions,

@@ -848,7 +848,8 @@ ${thinkingInstruction}
         let directorOut: any;
         try {
             const { AgentDirector } = await import('./agent-director');
-            const { RegionalContext } = await import('./regional-context');
+            const { GameRegistry } = await import('@/lib/registry/GameRegistry');
+            const currentGameConfig = GameRegistry.get(gameState.gameId || 'wuxia');
             const directorCharSummaries = (effectiveGameState.activeCharacters || []).map((charId: string) => {
                 const charData = effectiveGameState.characterData?.[charId];
                 if (!charData) return null;
@@ -882,7 +883,7 @@ ${thinkingInstruction}
                 turnCount: effectiveGameState.turnCount || 0,
                 activeGoals: (effectiveGameState.goals || []).filter((g: any) => g.status === 'ACTIVE').map((g: any) => g.description),
                 lastTurnSummary: gameState.lastTurnSummary || '',
-                regionalContext: RegionalContext.compose(effectiveGameState.currentLocation || ''),
+                regionalContext: currentGameConfig?.getRegionalContext?.(effectiveGameState.currentLocation || '') || '',
                 recentHistory: effectiveGameState.scenarioMemory?.recentSummary || '',
                 playerProfile: (() => {
                     const ps = effectiveGameState.playerStats;
@@ -909,6 +910,7 @@ ${thinkingInstruction}
                     const role = cd.title || cd.role || '';
                     return `- ${c.name} [${rank}] ${faction}${role ? ' / ' + role : ''} (추천사유: ${c.reasons.slice(0, 2).join(', ')})`;
                 }).join('\n'),
+                gameGuide: currentGameConfig?.getDirectorGuide?.() || '',
             });
         } catch (e) {
             console.error("[Director] Failed, using fallback:", e);
