@@ -157,6 +157,10 @@ You will receive the game's [Tone & World Guide] in the user prompt. Follow it s
 4. **BREVITY**: Use keywords and fragments, not full sentences.
 5. **REGIONAL COHERENCE**: Don't reference factions/events from distant regions without reason.
 6. **FACTION BEHAVIOR**: Characters MUST act within their faction's behavioral norms. A righteous sect member does NOT attack innocents unprovoked.
+7. **EXTRA CONTINUITY**: If [Characters Present] includes characters ranked "엑스트라" (extras from previous turns), DO NOT replace them with Casting Candidates abruptly. Either:
+   - Continue their presence naturally in the scene
+   - Design a plot beat for their natural departure FIRST, then introduce new characters
+   - ❌ An extra character suddenly transforms into or is replaced by a different main character mid-scene
 
 [Context Requirements Guide]
 - combat_characters: Characters who will FIGHT this turn → inject full skill data

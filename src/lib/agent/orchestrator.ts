@@ -852,7 +852,18 @@ ${thinkingInstruction}
             const currentGameConfig = GameRegistry.get(gameState.gameId || 'wuxia');
             const directorCharSummaries = (effectiveGameState.activeCharacters || []).map((charId: string) => {
                 const charData = effectiveGameState.characterData?.[charId];
-                if (!charData) return null;
+                if (!charData) {
+                    // [Fix] Include extras so Director knows they exist and won't replace them
+                    return {
+                        id: charId,
+                        name: charId,
+                        rank: '엑스트라',
+                        title: '(이전 턴 등장 인물)',
+                        faction: '무소속',
+                        relationship: 0,
+                        tags: ['extra', 'continuity'],
+                    };
+                }
                 return {
                     id: charId,
                     name: charData.name || charId,
@@ -863,7 +874,7 @@ ${thinkingInstruction}
                         effectiveGameState.playerStats?.relationships?.[charData.name] || 0,
                     tags: charData.system_logic?.tags || [],
                 };
-            }).filter(Boolean);
+            });
 
             const directorState = effectiveGameState.directorState || {
                 foreshadowing: [], activeThreads: [], characterArcs: {},

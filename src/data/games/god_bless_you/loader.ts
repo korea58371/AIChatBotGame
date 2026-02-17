@@ -61,23 +61,6 @@ export async function loadGodBlessYouData(): Promise<GameData> {
             mainSource
         );
 
-        // [Fix] Apply Flattening: Use locations.json regions (from lore) if world.json lacks regions
-        // This ensures casting (resolveLocationHierarchy) and prompt-manager (metadata injection) work correctly.
-        const wm = (worldModule as any).default || worldModule;
-        if (wm) {
-            // Priority 1: world.json has its own regions
-            // Priority 2: lore.locations.regions (from jsons/index.ts → locations.json)
-            const loreLocations = loreModule?.GodBlessYouLore?.locations;
-            const regionsSource = wm.regions || loreLocations?.regions;
-
-            if (regionsSource) {
-                wm.regions = regionsSource; // ② Inject into world.regions (for casting)
-                const flat = flattenMapData(regionsSource);
-                wm.locations = { ...flat, ...(wm.locations || {}) }; // ③ Flatten into world.locations (for prompt-manager)
-                console.log(`[GBYLoader] Regions injected into world: ${Object.keys(regionsSource).length} regions, ${Object.keys(flat).length} flat locations`);
-            }
-        }
-
         // bgListModule loaded above via action
 
         console.log('- Importing events.ts...');
@@ -123,6 +106,23 @@ export async function loadGodBlessYouData(): Promise<GameData> {
             loreModule = await import('./jsons/index');
         } catch (e) {
             console.error("[GBYLoader] Failed GBY lore", e);
+        }
+
+        // [Fix] Apply Flattening: MUST run AFTER loreModule is loaded above
+        // Injects locations.json regions into world for casting & prompt-manager
+        const wm = (worldModule as any).default || worldModule;
+        if (wm) {
+            const loreLocations = loreModule?.GodBlessYouLore?.locations;
+            const regionsSource = wm.regions || loreLocations?.regions;
+
+            if (regionsSource) {
+                wm.regions = regionsSource;
+                const flat = flattenMapData(regionsSource);
+                wm.locations = { ...flat, ...(wm.locations || {}) };
+                console.log(`[GBYLoader] Regions injected: ${Object.keys(regionsSource).length} regions, ${Object.keys(flat).length} flat locations`);
+            } else {
+                console.warn(`[GBYLoader] No regions found in world.json or lore.locations`);
+            }
         }
 
     } catch (e) {
