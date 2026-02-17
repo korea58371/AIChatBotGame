@@ -295,7 +295,7 @@ export class PromptManager {
 - **우선순위**: [User Input] > 이전 맥락 연속성 > [Narrative Direction]. 유저의 행동 의도를 존중하되, 세계관 룰은 지키십시오.
 
 **[서술 분량 규칙 (⭐ CRITICAL)]**:
-- **목표 분량**: 한글 기준 **약 5,000자** (약 10,000 바이트). 짧은 서술은 몰입을 깨뜨립니다.
+- **목표 분량**: 한글 기준 **약 4,000자** (약 8,000 바이트). 짧은 서술은 몰입을 깨뜨립니다.
 - **퇴고 의무**: 초안 작성 후, 인물의 성격·기억·관계와 일치하는지 검토하고 보완하십시오.
 - **분량 달성 방법**: 아래 [에피소드 미니 아크 구조], [서술-대화 밀도 가이드], [문장 구조 다양성] 프로토콜을 따르십시오. 의미 없는 수식으로 분량을 늘리지 마시오.
 `;
@@ -754,20 +754,14 @@ ${spawnCandidates || "None"}
         // Load directly from the state (Loaded by DataManager)
         let extraNamesStr = "None";
 
-        if (state.extraMap && Object.keys(state.extraMap).length > 0) {
-            const extraNames = Object.keys(state.extraMap).sort(); // [FIX] Sort keys
+        if (state.availableExtraImages && state.availableExtraImages.length > 0) {
+            const extraNames = [...state.availableExtraImages].sort();
             extraNamesStr = extraNames.join(', ');
-            // console.log(`[PromptManager] Found Extra Map Keys: ${extraNames.length}`);
-        } else {
-            // Fallback
-            console.warn("[PromptManager] state.extraMap is missing. Falling back to simple file list.");
         }
 
         const extraImages = extraNamesStr !== "None" && extraNamesStr.length > 0
-            ? extraNamesStr // Prioritize Map Keys (Reference/Interface)
-            : (state.availableExtraImages && state.availableExtraImages.length > 0
-                ? [...state.availableExtraImages].sort().join(', ') // Fallback to raw filenames
-                : "None");
+            ? extraNamesStr
+            : "None";
 
         return extraImages;
     }
@@ -875,11 +869,9 @@ ${spawnCandidates || "None"}
     }
 
     static getActiveCharacterProps(state: GameState, activeIdsOverride?: string[], language: 'ko' | 'en' | null = 'ko'): string {
-        const charsData = state.characterData || {};
         // [FIX] Smart ID Resolution
-        // Logic Model might return English IDs (e.g. 'hwayeong'), but Store uses Korean Keys (e.g. '화영').
-        // We use characterMap to bridge this gap.
-        const charMap = state.characterMap || {};
+        // Character data uses Korean keys directly (e.g. '화영').
+        const charsData = state.characterData || {};
 
         const resolveChar = (id: string) => {
             // [FIX] Alias Mapping for Known Hallucinations/Titles
@@ -901,21 +893,9 @@ ${spawnCandidates || "None"}
             const directKey = Object.keys(charsData).find(k => k.toLowerCase() === id.toLowerCase());
             if (directKey) return charsData[directKey];
 
-            // 3. Map Resolution (English ID -> Korean Key)
-            // Map: { "화영": "HwaYeong", ... }
-            // Input: "hwayeong", "wang_noya"
-            const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+            // 3. [FIX] Robust Fallback: Scan character values for ID match
+            const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
             const normalizedId = normalize(id);
-
-            const foundName = Object.keys(charMap).find(key => {
-                const mapVal = charMap[key];
-                return mapVal && normalize(mapVal) === normalizedId;
-            });
-
-            if (foundName && charsData[foundName]) return charsData[foundName];
-
-            // 4. [FIX] Robust Fallback: Scan character values for ID match
-            // This handles cases where characterMap is outdated but character data has correct ID.
             const valueMatch = Object.values(charsData).find((c: any) => c.id && normalize(c.id) === normalizedId);
             if (valueMatch) return valueMatch;
 
@@ -1272,20 +1252,17 @@ ${spawnCandidates || "None"}
         language: 'ko' | 'en' | null = 'ko'
     ): string {
         const charsData = state.characterData || {};
-        const charMap = state.characterMap || {};
         const { context_requirements, subtle_hooks } = directorOutput;
 
         const resolveChar = (id: string) => {
             if (charsData[id]) return charsData[id];
             const directKey = Object.keys(charsData).find(k => k.toLowerCase() === id.toLowerCase());
             if (directKey) return charsData[directKey];
-            const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+            // Fallback: scan character values for ID match
+            const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
             const normalizedId = normalize(id);
-            const foundName = Object.keys(charMap).find(key => {
-                const mapVal = charMap[key];
-                return mapVal && normalize(mapVal) === normalizedId;
-            });
-            if (foundName && charsData[foundName]) return charsData[foundName];
+            const valueMatch = Object.values(charsData).find((c: any) => c.id && normalize(c.id) === normalizedId);
+            if (valueMatch) return valueMatch;
             return null;
         };
 

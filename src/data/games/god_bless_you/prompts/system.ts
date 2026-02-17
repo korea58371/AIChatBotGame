@@ -154,7 +154,7 @@ ${identityContext}
 {{CHARACTER_INFO}}
 
 [Available Extra Images]:
-${(state.extraMap ? Object.keys(state.extraMap) : (state.availableExtraImages || [])).map((img: string) => img.replace(/\.(png|jpg|jpeg)$/i, '')).join(', ')}
+${(state.availableExtraImages || []).map((img: string) => img.replace(/\.(png|jpg|jpeg)$/i, '')).join(', ')}
 
 ${directInputConstraints}
 

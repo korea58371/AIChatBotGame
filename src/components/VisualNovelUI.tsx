@@ -18,7 +18,7 @@ import { fetchAgentTurnStream } from '@/lib/network/stream-client'; // [Stream] 
 import { normalizeWuxiaInjury } from '@/lib/utils/injury-cleaner'; // [New] Injury Sanitization
 import { parseScript, ScriptSegment } from '@/lib/utils/script-parser';
 import { findBestMatch, findBestMatchDetail, normalizeName } from '@/lib/utils/name-utils'; // [NEW] Fuzzy Match Helper
-import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json'; // Import Wuxia Ranks
+import martialArtsLevels from '@/data/games/wuxia/jsons/levels.json'; // Import Wuxia Ranks
 import { FAME_TITLES, FATIGUE_LEVELS, LEVEL_TO_REALM_MAP, REALM_ORDER, WUXIA_IM_SEONG_JUN_SCENARIO, WUXIA_NAM_GANG_HYEOK_SCENARIO } from '@/data/games/wuxia/constants'; // [New] UI Constants
 import { LEVEL_TO_RANK_MAP } from '@/data/games/god_bless_you/constants'; // [New] UI Constants
 import wikiData from '@/data/games/wuxia/wiki_data.json'; // [NEW] Wiki Data Import
@@ -236,9 +236,14 @@ export default function VisualNovelUI() {
     const currentCG = useGameStore(state => state.currentCG); // [New] Subscribe to CG state
 
     // [Optimized] Subscribe to Segment Meta only (exclude content to prevent re-render on streaming)
-    // We cast it to ScriptSegment to satisfy TS, but 'content' will be missing or empty.
+    // EXCEPTION: Special UI types (tv_news, time_skip, system_popup, article, etc.) need content
+    // because they render it directly via props, unlike dialogue/narration which use Typewriter.
     const currentSegment = useGameStore(useShallow(state => {
         if (!state.currentSegment) return null;
+        const specialTypes = ['tv_news', 'time_skip', 'system_popup', 'article', 'text_message', 'text_reply', 'phone_call'];
+        if (specialTypes.includes(state.currentSegment.type)) {
+            return state.currentSegment as ScriptSegment; // Include content for special types
+        }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { content, ...rest } = state.currentSegment;
         return rest as ScriptSegment;
@@ -663,10 +668,10 @@ export default function VisualNovelUI() {
         if (!currentSegment?.character) return;
         const charName = currentSegment.character;
 
-        // 1. Skip if Main Character (handled by characterMap) or already assigned override
+        // 1. Skip if Main Character (has characterData entry) or already assigned override
         // Note: access Store directly to get latest state without dependency lag
         const state = useGameStore.getState();
-        if (state.characterMap && state.characterMap[charName]) return;
+        if (state.characterData && state.characterData[charName]) return;
         if (state.extraOverrides && state.extraOverrides[charName]) return;
 
         // [New] Skip if this is the Hidden Protagonist
@@ -1892,6 +1897,17 @@ export default function VisualNovelUI() {
                                         // Content (Dialogue/Narration/Choice)
                                         if (allSegments[currentIndex]) {
                                             const seg = allSegments[currentIndex];
+                                            const isLastSeg = currentIndex === allSegments.length - 1;
+
+                                            // [Fix] Defer incomplete special segments during streaming
+                                            // tv_news and time_skip segments at the END of the stream
+                                            // may have incomplete content (metadata arrived, content not yet).
+                                            // Treat them like idempotent segments: don't display until finalized.
+                                            if (isLastSeg && (seg.type === 'tv_news' || seg.type === 'time_skip') && !seg.content) {
+                                                break;
+                                            }
+
+
                                             currentSegmentRef.current = seg;
                                             queueMicrotask(() => setCurrentSegment(seg));
                                             // [Fix] Ensure Typewriter receives the update
@@ -2476,6 +2492,7 @@ export default function VisualNovelUI() {
                                     setScriptQueue(finalQueue);
 
 
+
                                     // [Debug] Final Verify
                                     if (finalQueue.length > 0) {
 
@@ -2934,8 +2951,8 @@ export default function VisualNovelUI() {
 
                 // Set character expression if the first segment is dialogue
                 if (first.type === 'dialogue' && first.character) {
-                    const charMap = useGameStore.getState().characterMap || {};
-                    const isMainCharacter = !!charMap[first.character];
+                    const charsData = useGameStore.getState().characterData || {};
+                    const isMainCharacter = !!charsData[first.character];
 
                     // [New] Override check for first segment
                     // Prevent override if it is a Main Character (AI descriptions in parens shouldn't hijack the image)
@@ -2946,7 +2963,7 @@ export default function VisualNovelUI() {
                     const charName = first.character === playerName ? '주인공' : first.character;
                     const emotion = first.expression || 'Default';
                     const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
-                    const extraMap = useGameStore.getState().extraMap;
+                    const availExtras = useGameStore.getState().availableExtraImages || [];
 
                     let imagePath = '';
                     const combinedKey = `${charName}_${emotion}`;
@@ -2958,16 +2975,16 @@ export default function VisualNovelUI() {
                     const isHiddenProtagonistMatch = isHiddenProtagonist(first.character, playerName, state.protagonistImageOverride);
 
                     if (first.characterImageKey && !isMainCharacter && !isHiddenProtagonistMatch) {
-                        if (extraMap && extraMap[first.characterImageKey]) {
-                            imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[first.characterImageKey]}`;
+                        if (availExtras.includes(first.characterImageKey)) {
+                            imagePath = `/assets/${gameId}/ExtraCharacters/${first.characterImageKey}.png`;
                         } else {
                             imagePath = getCharacterImage(first.characterImageKey, emotion);
                         }
                     }
-                    else if ((useGameStore.getState().availableExtraImages || []).includes(combinedKey) && !isHiddenProtagonist) {
+                    else if (availExtras.includes(combinedKey) && !isHiddenProtagonist) {
                         imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
-                    } else if (extraMap && extraMap[charName] && !isHiddenProtagonist) {
-                        imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
+                    } else if (availExtras.includes(charName) && !isHiddenProtagonist) {
+                        imagePath = `/assets/${gameId}/ExtraCharacters/${charName}.png`;
                     } else {
                         // [Fix] Protagonist Override Handling
                         // If this IS the protagonist, and we have an override, use the override key for lookup

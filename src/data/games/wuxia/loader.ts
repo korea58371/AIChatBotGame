@@ -5,7 +5,7 @@ import assetsManifest from '../../assets.json'; // [Fix] Static Import to ensure
 export async function loadWuxiaData(): Promise<GameData> {
     console.log(`[WuxiaLoader] Loading Wuxia data...`);
 
-    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, bgMappingsModule: any, systemPromptModule: any, wikiDataModule: any, charMapModule: any, extraMapModule: any, cgMapModule: any, constantsModule: any, loreModule: any;
+    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, bgMappingsModule: any, systemPromptModule: any, wikiDataModule: any, cgMapModule: any, constantsModule: any, loreModule: any;
     let characterImageList: string[] = [];
     let extraCharacterList: string[] = [];
 
@@ -27,13 +27,8 @@ export async function loadWuxiaData(): Promise<GameData> {
     }
 
     try {
-        try {
-            worldModule = await import('./world.json');
-            if ((worldModule as any).default) worldModule = (worldModule as any).default;
-        } catch (e) {
-            console.warn('[WuxiaLoader] world.json not found, using empty default.');
-            worldModule = { locations: {}, items: {} };
-        }
+        // world.json removed — locations.json provides all region data
+        worldModule = { locations: {}, items: {} };
 
         // [REFACTOR] Legacy characters.json import REMOVED
         // charactersModule is now derived solely from Lore Data below.
@@ -51,18 +46,7 @@ export async function loadWuxiaData(): Promise<GameData> {
         // Lore (Wuxia Only)
         try { loreModule = await import('./jsons'); } catch (e) { console.error("[WuxiaLoader] Failed lore", e); }
 
-        // Maps
-        try {
-            // @ts-ignore
-            const charMap = await import('./character_map.json');
-            charMapModule = charMap.default || charMap;
-        } catch (e) { console.error("[WuxiaLoader] Failed charMap", e); }
-
-        try {
-            // @ts-ignore
-            const extraMap = await import('./extra_map.json');
-            extraMapModule = extraMap.default || extraMap;
-        } catch (e) { console.error("[WuxiaLoader] Failed extraMap", e); }
+        // Maps (character_map & extra_map removed — legacy, no longer used)
 
         try {
             // @ts-ignore
@@ -151,8 +135,8 @@ export async function loadWuxiaData(): Promise<GameData> {
             return func(val);
         },
         wikiData: wikiDataModule || {},
-        characterMap: charMapModule || {},
-        extraMap: extraMapModule || {},
+        // characterMap removed
+        // extraMap removed
         cgMap: cgMapModule || {},
         constants: constantsModule || {},
         lore: loreModule?.WuxiaLore || {},

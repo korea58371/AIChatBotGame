@@ -1,12 +1,12 @@
-import modern_combat from './modern_combat.json';
-import modern_elixirs from './modern_elixirs.json';
-import modern_factions from './modern_factions.json';
-import modern_levels from './modern_levels.json';
-import modern_romance_guide from './modern_romance_guide.json';
-import modern_skills from './modern_skills.json';
-import modern_terminology from './modern_terminology.json';
-import modern_weapons from './modern_weapons.json';
-import modern_world_geography from './modern_world_geography.json';
+import combat from './combat.json';
+import elixirs from './elixirs.json';
+import factions from './factions.json';
+import levels from './levels.json';
+import romance_guide from './romance_guide.json';
+import skills from './skills.json';
+import terminology from './terminology.json';
+import weapons from './weapons.json';
+import world_geography from './world_geography.json';
 import locations from './locations.json';
 
 // GBY Lore Module
@@ -17,13 +17,13 @@ import locations from './locations.json';
 
 export const GodBlessYouLore = {
     locations,
-    modern_combat,
-    modern_elixirs,
-    modern_factions,
-    modern_levels,
-    modern_romance_guide,
-    modern_skills,
-    modern_terminology,
-    modern_weapons,
-    modern_world_geography
+    combat,       // was: modern_combat
+    elixirs,      // was: modern_elixirs
+    factions,     // was: modern_factions
+    levels,       // was: modern_levels
+    romance_guide,// was: modern_romance_guide
+    skills,       // was: modern_skills
+    terminology,  // was: modern_terminology
+    weapons,      // was: modern_weapons
+    world_geography // was: modern_world_geography
 };

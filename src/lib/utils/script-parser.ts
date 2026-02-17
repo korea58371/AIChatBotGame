@@ -417,12 +417,27 @@ export function parseScript(text: string): ScriptSegment[] {
                 }
             }
 
+
             const inlineSegments = parseInlineContent(msgContent, {
                 type: 'tv_news',
                 character: anchor,
                 expression: background
             });
-            segments.push(...inlineSegments);
+
+            if (inlineSegments.length > 0) {
+                segments.push(...inlineSegments);
+            } else {
+                // [Fix] Fallback: always push a segment even if content is empty
+                // During streaming, content might arrive after the tag metadata.
+                // Without this, a contentless {type:'tv_news'} segment never gets created,
+                // but onToken's streaming loop may still set it as currentSegment.
+                segments.push({
+                    type: 'tv_news' as any,
+                    character: anchor,
+                    expression: background,
+                    content: msgContent || content || '...'
+                });
+            }
 
         } else if (tagName === '기사') {
             // <기사>Title_Source: Content
@@ -459,7 +474,11 @@ export function parseScript(text: string): ScriptSegment[] {
 
             // [Fix] Handle multi-line content (though usually short)
             const lines = content.split('\n');
-            const skipText = lines[0].trim(); // Primary text
+            let skipText = lines[0].trim(); // Primary text
+            // [Fix] Strip closing tag if present
+            skipText = skipText.replace(/<\/시간경과>/gi, '').trim();
+
+            console.log(`[Parser:시간경과] rawContent="${content.substring(0, 50)}", skipText="${skipText}"`);
 
             segments.push({
                 type: 'time_skip',
@@ -579,9 +598,16 @@ function pushTextSegments(segments: ScriptSegment[], text: string, context: Part
     // UI frame to render but with only partial/empty content.
     const fullBlockTypes: ScriptType[] = ['system_popup', 'tv_news', 'text_message', 'text_reply', 'phone_call', 'article'];
     if (context.type && fullBlockTypes.includes(context.type as ScriptType)) {
-        const cleanText = text.trim()
-            .replace(/^"([\s\S]*)"$/, '$1')
-            .replace(/^\u201c([\s\S]*)\u201d$/, '$1');
+        let cleanText = text.trim();
+        // Strip wrapping quotes (handles multiple layers: """text""" → text)
+        let prev = '';
+        while (cleanText !== prev) {
+            prev = cleanText;
+            cleanText = cleanText
+                .replace(/^"([\s\S]*)"$/, '$1')
+                .replace(/^\u201c([\s\S]*)\u201d$/, '$1')
+                .trim();
+        }
         if (cleanText) {
             segments.push({
                 ...context,

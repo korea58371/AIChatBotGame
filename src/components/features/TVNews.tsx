@@ -91,7 +91,7 @@ export default function TVNews({ anchor, background, content }: TVNewsProps) {
                                 {anchor}
                             </h2>
                             <p className="text-2xl font-bold leading-relaxed whitespace-pre-wrap drop-shadow-lg">
-                                "{content}"
+                                {content || '...'}
                             </p>
                         </div>
                         {/* Scrolling Ticker */}

@@ -38,8 +38,8 @@ const compressState = (state: GameState): Partial<GameState> => {
     delete (compressed as any).getSystemPromptTemplate;
     delete (compressed as any).getRankInfo;
     delete (compressed as any).backgroundMappings;
-    delete (compressed as any).characterMap;
-    delete (compressed as any).extraMap;
+    // characterMap removed
+    // extraMap removed
 
     // Strip snapshots from history to prevent recursive state explosion
     // Snapshots contain full state copies, causing exponential size growth
@@ -172,8 +172,8 @@ export function useSaveLoad({ showSaveLoad, setShowSaveLoad, t, resetGame, addTo
                     availableExtraImages: staticData.extraCharacterList || [],
                     characterCreationQuestions: staticData.characterCreationQuestions,
                     backgroundMappings: staticData.backgroundMappings,
-                    characterMap: staticData.characterMap,
-                    extraMap: staticData.extraMap,
+                    // characterMap removed
+                    // extraMap removed
                     getSystemPromptTemplate: staticData.getSystemPromptTemplate,
                     getRankInfo: staticData.getRankInfo,
                     isDataLoaded: true,

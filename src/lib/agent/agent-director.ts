@@ -164,6 +164,10 @@ You will receive the game's [Tone & World Guide] in the user prompt. Follow it s
    - Continue their presence naturally in the scene
    - Design a plot beat for their natural departure FIRST, then introduce new characters
    - ❌ An extra character suddenly transforms into or is replaced by a different main character mid-scene
+8. **LOCATION-AWARE CASTING**: Characters should appear where it is NATURAL for them to be. Check the current [Location] and ask: "Would this person realistically be here?"
+   - ✅ Sister at home, coworker at the office, shopkeeper at the market
+   - ❌ The same friend "coincidentally" appears at every unrelated location the player visits
+   - Use [Recent Decisions] to check if a character has been appearing too frequently across UNRELATED locations. Repeated encounters are fine if the setting justifies it.
 
 [Context Requirements Guide]
 - combat_characters: Characters who will FIGHT this turn → inject full skill data
@@ -202,10 +206,11 @@ You will receive the game's [Tone & World Guide] in the user prompt. Follow it s
             `- ${c.name} (${c.title}) [${c.rank}] ${c.faction} | 호감도: ${c.relationship} | tags: ${c.tags.join(',')}`
         ).join('\n');
 
-        // Director 이력 (최근 3턴)
-        const recentLog = directorState.recentLog.slice(-3).map(log =>
-            `  Turn ${log.turn}: [${log.tone}] ${log.plot_beats.join(' → ')}`
-        ).join('\n');
+        // Director 이력 (최근 7턴 — 패턴 반복 방지)
+        const recentLog = directorState.recentLog.slice(-7).map(log => {
+            const chars = log.mentioned_characters?.length ? ` (캐릭터: ${log.mentioned_characters.join(', ')})` : '';
+            return `  Turn ${log.turn}: [${log.tone}] ${log.plot_beats.join(' → ')}${chars}`;
+        }).join('\n');
 
         // 떡밥 상태
         const foreshadowingStatus = directorState.foreshadowing
@@ -304,14 +309,22 @@ You may incorporate Casting Candidates into plot_beats if they fit the situation
     ): DirectorState {
         const newState = { ...currentState };
 
-        // 1. Director Log 추가 (최근 5개 유지)
+        // 1. Director Log 추가 (최근 7턴 유지 — 캐릭터 반복 방지)
+        // context_requirements에서 언급된 캐릭터 추출
+        const cr = directorOutput.context_requirements;
+        const mentionedChars = Array.from(new Set([
+            ...(cr?.combat_characters || []),
+            ...(cr?.first_encounter || []),
+            ...(cr?.emotional_focus || []),
+        ]));
         const logEntry: DirectorLogEntry = {
             turn: turnCount,
             plot_beats: directorOutput.plot_beats,
             subtle_hooks_used: directorOutput.subtle_hooks,
             tone: directorOutput.tone,
+            mentioned_characters: mentionedChars,
         };
-        newState.recentLog = [...currentState.recentLog.slice(-4), logEntry];
+        newState.recentLog = [...currentState.recentLog.slice(-6), logEntry];
 
         // 2. 모멘텀 업데이트
         if (directorOutput.state_updates?.momentum_focus) {

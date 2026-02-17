@@ -22,7 +22,7 @@ async function hydrateGameState(gameState: any) {
             // Core Logic/Lore Hydration
             if (data.lore) gameState.lore = data.lore;
             if (data.backgroundMappings) gameState.backgroundMappings = data.backgroundMappings;
-            if (data.extraMap) gameState.extraMap = data.extraMap;
+            // extraMap removed - using availableExtraImages from manifest
             if (data.constants) gameState.constants = data.constants;
 
             // Prompt Hydration (Server Functions)

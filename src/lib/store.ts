@@ -188,8 +188,8 @@ export interface GameState {
   events?: any[]; // Dynamic events list
   initialScenario?: string;
   wikiData?: any; // [NEW] Added wikiData
-  characterMap?: Record<string, string>;
-  extraMap?: Record<string, string>;
+  // characterMap removed - main character detection uses characterData directly
+  // extraMap removed - using availableExtraImages from manifest directly
   constants?: {
     FAMOUS_CHARACTERS: string;
     CORE_RULES: string;
@@ -425,6 +425,7 @@ export interface DirectorLogEntry {
   plot_beats: string[];
   subtle_hooks_used: string[];
   tone: string;
+  mentioned_characters?: string[]; // 이번 턴에 등장/언급된 캐릭터
 }
 
 export interface DirectorState {
@@ -785,8 +786,8 @@ export const useGameStore = create<GameState>()(
         set({
           events: undefined,
           lore: undefined,
-          characterMap: undefined,
-          extraMap: undefined,
+          // characterMap removed
+          // extraMap removed
           cgMap: undefined
         });
         try {
@@ -886,8 +887,8 @@ export const useGameStore = create<GameState>()(
                 events: data.events, // Load events
                 initialScenario: data.scenario,
                 wikiData: data.wikiData,
-                characterMap: data.characterMap, // Added
-                extraMap: data.extraMap, // Added
+                // characterMap removed
+                // extraMap removed
                 cgMap: data.cgMap, // Added
                 constants: data.constants, // Added
                 characterCreationQuestions: data.characterCreationQuestions, // Added
@@ -943,8 +944,8 @@ export const useGameStore = create<GameState>()(
               events: data.events, // Load events
               initialScenario: data.scenario,
               wikiData: data.wikiData,
-              characterMap: data.characterMap, // Added
-              extraMap: data.extraMap, // Added
+              // characterMap removed
+              // extraMap removed
               cgMap: data.cgMap, // Added
               constants: data.constants, // Added
               characterCreationQuestions: data.characterCreationQuestions, // Added
@@ -1703,9 +1704,9 @@ export const useGameStore = create<GameState>()(
             // Actually, we can't easily restore functions from DataManager object to Store root if they aren't part of initial state shape managed by store creator?
             // The store creator defines methods. 
             // DataManager returns: { lore, ... }
-            // We should ensure 'events' and 'characterMap' are also restored if they are used.
-            characterMap: staticData.characterMap || {},
-            extraMap: staticData.extraMap || {},
+            // characterMap removed - using characterData for main character detection
+            //
+            // extraMap removed
             constants: staticData.constants || {}, // If used
 
             isDataLoaded: true, // Mark data as loaded

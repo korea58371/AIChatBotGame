@@ -13,7 +13,6 @@ import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../ai/model-config'; // Moved to ai/model-config
 import { PromptManager } from '../engine/prompt-manager'; // Moved to engine/prompt-manager
 import { EventManager } from '../engine/event-manager'; // Moved to engine/event-manager
-import { AgentScenario } from './scenario-agent'; // [NEW]
 
 
 export class AgentOrchestrator {
@@ -168,57 +167,6 @@ export class AgentOrchestrator {
             }
         }
 
-        // 5. [NEW] AI Scenario Director
-        try {
-            // A. Update Existing Scenario
-            if (effectiveGameState.scenario && effectiveGameState.scenario.active) {
-                console.log(`[Orchestrator] Updating Scenario: ${effectiveGameState.scenario.title}`);
-                const updateResult = await AgentScenario.update(
-                    apiKey,
-                    effectiveGameState.scenario,
-                    userInput,
-                    lastTurnSummary
-                );
-
-                if (updateResult.status === 'COMPLETED' || updateResult.status === 'FAILED' || updateResult.status === 'IGNORED') {
-                    console.log(`[Orchestrator] Scenario Ended: ${updateResult.status}`);
-                    effectiveGameState.scenario = null; // Clear
-                    // Optional: Add log entry about completion
-                } else {
-                    // Update State
-                    effectiveGameState.scenario.stage = updateResult.stage;
-                    effectiveGameState.scenario.variables = updateResult.variables;
-                    effectiveGameState.scenario.currentNote = updateResult.directorsNote;
-                }
-            }
-            // B. Generate New Scenario (If Idle)
-            else {
-                // Trigger Condition: Calm/Daily mood + Random Chance (e.g. 20%)
-                const isIdle = !effectiveGameState.activeEvent && (effectiveGameState.currentMood === 'daily' || effectiveGameState.currentMood === 'calm');
-                const randomTrigger = Math.random() < 0.2; // 20% chance
-
-                if (isIdle && randomTrigger) {
-                    console.log(`[Orchestrator] Attempting to generate new scenario...`);
-                    const newScenario = await AgentScenario.generate(
-                        apiKey,
-                        effectiveGameState,
-                        {
-                            location: effectiveGameState.currentLocation,
-                            activeCharacters: activeCharacterNames,
-                            playerStats: effectiveGameState.playerStats
-                        }
-                    );
-
-                    if (newScenario) {
-                        console.log(`[Orchestrator] New Scenario Started: ${newScenario.title}`);
-                        effectiveGameState.scenario = newScenario;
-                        // Inject initial note if available (or wait for next turn update)
-                    }
-                }
-            }
-        } catch (e) {
-            console.error(`[Orchestrator] Scenario Error:`, e);
-        }
 
         // 6. Story Generation
 
@@ -799,6 +747,7 @@ ${thinkingInstruction}
         const tCastEnd = Date.now();
         console.log(`[Pipeline] ① Casting: ${tCastEnd - tCastStart}ms (active: ${castingResult.active.length}, bg: ${castingResult.background.length})`);
         const { active, background } = castingResult;
+        yield { type: 'progress', stage: 'casting', duration: tCastEnd - tCastStart, input: { lastTurnSummary: (lastTurnSummary || '').substring(0, 100), userInput: userInput.substring(0, 100) }, output: { active: active.map((c: any) => c.name), background: background.map((c: any) => c.name) } };
         const suggestions = [...active, ...background];
 
         // 3. Retriever
@@ -806,6 +755,7 @@ ${thinkingInstruction}
         let retrievedContext = await AgentRetriever.retrieveContext(userInput, gameState, active, background);
         const t3 = Date.now();
         console.log(`[Pipeline] ② Retriever: ${t3 - tRetStart}ms`);
+        yield { type: 'progress', stage: 'retriever', duration: t3 - tRetStart, input: { userInput: userInput.substring(0, 100), activeChars: active.map((c: any) => c.name) }, output: { contextLength: (retrievedContext || '').length } };
 
         // 4. Pre-Logic
         const tPreStart = Date.now();
@@ -813,6 +763,7 @@ ${thinkingInstruction}
         const t4 = Date.now();
         console.log(`[Pipeline] ③ PreLogic: ${t4 - tPreStart}ms`);
         console.log(`[Pipeline] --- Phase 1 Total: ${t4 - startTime}ms ---`);
+        yield { type: 'progress', stage: 'preLogic', duration: t4 - tPreStart, input: { userInput: userInput.substring(0, 100) }, output: { mood: preLogicOut.mood_override || null, score: preLogicOut.plausibility_score, combat: preLogicOut.combat_analysis ? 'yes' : 'no', newChars: preLogicOut.new_characters || [], location: preLogicOut.location_inference || null } };
 
         // Router Fake Output
         const routerOut = {
@@ -849,7 +800,7 @@ ${thinkingInstruction}
         try {
             const { AgentDirector } = await import('./agent-director');
             const { GameRegistry } = await import('@/lib/registry/GameRegistry');
-            const currentGameConfig = GameRegistry.get(gameState.gameId || 'wuxia');
+            const currentGameConfig = GameRegistry.get(gameState.activeGameId || gameState.gameId || 'wuxia');
             const directorCharSummaries = (effectiveGameState.activeCharacters || []).map((charId: string) => {
                 const charData = effectiveGameState.characterData?.[charId];
                 if (!charData) {
@@ -935,6 +886,7 @@ ${thinkingInstruction}
         }
         const tDirEnd = Date.now();
         console.log(`[Pipeline] ④ Director: ${tDirEnd - tDirStart}ms (beats: ${directorOut.plot_beats?.length || 0})`);
+        yield { type: 'progress', stage: 'director', duration: tDirEnd - tDirStart, input: { mood: preLogicOut.mood_override, activeChars: (effectiveGameState.activeCharacters || []).length }, output: { beats: directorOut.plot_beats || [], tone: directorOut.tone || '', hooks: (directorOut.subtle_hooks || []).length } };
 
         // ⑤ Context Composer (Director-guided data selection)
         let contextPlayer = PromptManager.getPlayerContext(effectiveGameState, language);
@@ -1034,7 +986,8 @@ ${thinkingInstruction}
         }
 
         const t5 = Date.now();
-        console.log(`[Pipeline] ④ Story Total: ${t5 - tStoryStart}ms`);
+        console.log(`[Pipeline] ⑤ Story Total: ${t5 - tStoryStart}ms`);
+        yield { type: 'progress', stage: 'story', duration: t5 - tStoryStart, input: { compositeLength: compositeInput.length, historyLength: cleanHistory.length, model: modelName }, output: { rawLength: fullRawText.length } };
 
         // --- PHASE 3: POST-LOGIC & CLEANUP (Hidden) ---
 
@@ -1103,8 +1056,10 @@ ${thinkingInstruction}
         // Perform Phase 2
         const tP2Start = Date.now();
         const p2 = await this.executeLogicPhase(apiKey, effectiveGameState, history, userInput, cleanStoryText, language);
-        console.log(`[Pipeline] ⑤ PostLogic Phase: ${Date.now() - tP2Start}ms`);
-        console.log(`[Pipeline] ====== Turn TOTAL: ${Date.now() - startTime}ms ======`);
+        const tP2End = Date.now();
+        console.log(`[Pipeline] ⑥ PostLogic Phase: ${tP2End - tP2Start}ms`);
+        console.log(`[Pipeline] ====== Turn TOTAL: ${tP2End - startTime}ms ======`);
+        yield { type: 'progress', stage: 'postLogic', duration: tP2End - tP2Start, input: { storyLength: cleanStoryText.length }, output: { choices: p2.choicesOut?.text ? 'yes' : 'no', skills: p2.martialArtsOut?.new_skills?.length || 0, levelDelta: p2.martialArtsOut?.level_delta || 0 } };
 
         const directorCost = calculateCost(MODEL_CONFIG.DIRECTOR, directorOut.usageMetadata?.promptTokenCount || 0, directorOut.usageMetadata?.candidatesTokenCount || 0, directorOut.usageMetadata?.cachedContentTokenCount || 0);
         const totalCost = p1Costs.total + p2.costs.total + directorCost;

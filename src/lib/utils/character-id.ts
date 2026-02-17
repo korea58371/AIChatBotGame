@@ -1,136 +1,66 @@
-import wuxiaMap from '@/data/games/wuxia/character_map.json';
-import gbyMap from '@/data/games/god_bless_you/character_map.json';
-
-// Merge all character maps for global normalization
-const NAME_TO_ID_MAP: Record<string, string> = {
-    ...wuxiaMap,
-    ...gbyMap
-};
-
-// Memoize the reverse map (English ID -> Korean Name)
-const ID_TO_NAME_MAP: Record<string, string> = Object.entries(NAME_TO_ID_MAP).reduce((acc, [koreanName, englishId]) => {
-    // Check for collisions or self-mapping
-    if (!acc[englishId]) {
-        acc[englishId] = koreanName;
-    }
-    return acc;
-}, {} as Record<string, string>);
+import { useGameStore } from '@/lib/store';
 
 /**
- * Normalizes a character ID based on the current language setting.
- * - 'ko': Returns Korean Name (e.g. "ChoRyeon" -> "초련")
- * - 'en': Returns English ID (e.g. "초련" -> "ChoRyeon")
+ * Normalizes a character ID by stripping image suffixes.
  * 
- * [Improved Logic]
- * 1. Checks exact match.
- * 2. If exact match fail, tries to strip known image suffixes (e.g. "GoHaNeul_Anger_Lv1" -> "GoHaNeul").
- * 3. Returns normalized ID/Name based on language.
+ * 한글화 이후 단순화:
+ * - character_map.json 의존성 제거
+ * - 영문↔한글 변환 불필요 (모두 한글)
+ * - 핵심 기능: suffix stripping (e.g. "철수_기쁨1" → "철수")
  * 
- * @param input The character ID or Name (e.g. "ChoRyeon" or "초련" or "GoHaNeul_Anger_Lv1")
- * @param language Language setting ('ko' | 'en' | 'ja'). Defaults to 'ko' if omitted.
+ * @param input 캐릭터 ID 또는 이름 (e.g. "초련" 또는 "초련_기쁨1")
+ * @param language Language setting ('ko' | 'en' | 'ja'). Defaults to 'ko'.
  * @returns The normalized ID string
  */
 export function normalizeCharacterId(input: string, language: 'ko' | 'en' | 'ja' = 'ko'): string {
     if (!input) return input;
 
-    // Helper to check valid ID/Name in our maps
-    const isValidId = (id: string) => !!ID_TO_NAME_MAP[id];
-    const isValidName = (name: string) => !!NAME_TO_ID_MAP[name];
+    // Get known character names from runtime characterData
+    const charsData = useGameStore.getState().characterData || {};
+    const isValidName = (name: string) => !!charsData[name];
 
-    // [NEW] Fuzzy match helper — strips underscores & lowercases for comparison
-    const fuzzyNormalize = (s: string) => s.replace(/_/g, '').toLowerCase();
-    const fuzzyMatchId = (raw: string): string | null => {
-        const target = fuzzyNormalize(raw);
-        if (!target) return null;
-        // Check against all known English IDs
-        for (const knownId of Object.keys(ID_TO_NAME_MAP)) {
-            if (fuzzyNormalize(knownId) === target) return knownId;
-        }
-        // Check against all known English IDs as prefix match (e.g. "han" matches "HanSeolHee" only if unique)
-        const prefixMatches = Object.keys(ID_TO_NAME_MAP).filter(k => fuzzyNormalize(k).startsWith(target));
-        if (prefixMatches.length === 1) return prefixMatches[0];
-        return null;
-    };
+    // 0. Quick Check: Is the input ITSELF valid?
+    if (isValidName(input)) return input;
 
     // [New] Suffix Stripping / Normalization Logic
-    // We assume the input could be a messy Image Key (e.g. "GoHaNeul_Anger_Lv1")
-    // Strategy: Longest Prefix Match by splitting `_`
-
+    // AI may output IDs with emotion suffixes (e.g. "철수_기쁨1", "GoHaNeul_Anger_Lv1")
+    // Strategy: Strip known suffixes, then longest prefix match
     let baseId = input;
 
-    // 0. Quick Check: Is the input ITSELF strictly valid?
-    if (isValidId(input) || isValidName(input)) {
-        baseId = input;
-    } else {
-        // [Enhanced] Generic Suffix Stripping for AI Extras (Unknown IDs)
-        // Matches patterns like "_Joy_Lv1", "_Anger", "_Default"
-        // Regex: Underscore + (Word) + Optional(_Lv1~9) at end of string
-        // [CRITICAL] This regex prevents "Duplicated Characters" in the Database.
-        // AI often outputs IDs like "CheolSu_Happy_Lv1" for image expression.
-        // If we don't strip this suffix, "CheolSu_Happy_Lv1" becomes a NEW character, distinct from "CheolSu".
-        // This logic ensures "CheolSu_Happy_Lv1" -> "CheolSu", keeping the character data unified.
-        // -- 2026.01.14 Logic Update --
-        const suffixRegex = /_([a-zA-Z]+)(_Lv\d+)?$/;
+    // [Enhanced] Generic Suffix Stripping for AI Extras (Unknown IDs)
+    // Matches patterns like "_기쁨1", "_Joy_Lv1", "_Anger", "_Default"
+    // Regex: Underscore + (Word/한글) + Optional(_Lv1~9) at end of string
+    // [CRITICAL] This regex prevents "Duplicated Characters" in the Database.
+    // AI often outputs IDs like "철수_기쁨1" for image expression.
+    // If we don't strip this suffix, it becomes a NEW character, distinct from "철수".
+    const suffixRegex = /_([a-zA-Z가-힣]+\d?)(_Lv\d+)?$/;
 
-        if (suffixRegex.test(input)) {
-            const stripped = input.replace(suffixRegex, '');
-            // If the stripped version is valid (or just cleaner), use it.
-            baseId = stripped;
-        } else if (input.includes('_')) {
-            // Fallback: Legacy split logic (Longest Prefix Match)
-            const parts = input.split('_');
-            for (let i = parts.length; i > 0; i--) {
-                const candidate = parts.slice(0, i).join('_');
-                if (isValidId(candidate) || isValidName(candidate)) {
-                    baseId = candidate;
-                    break;
-                }
-            }
-        }
-
-        // [NEW] If still not found, try fuzzy match (case-insensitive, underscore-insensitive)
-        if (!isValidId(baseId) && !isValidName(baseId)) {
-            const fuzzyResult = fuzzyMatchId(baseId);
-            if (fuzzyResult) baseId = fuzzyResult;
+    if (suffixRegex.test(input)) {
+        const stripped = input.replace(suffixRegex, '');
+        if (isValidName(stripped)) return stripped;
+        baseId = stripped;
+    } else if (input.includes('_')) {
+        // Fallback: Legacy split logic (Longest Prefix Match)
+        const parts = input.split('_');
+        for (let i = parts.length; i > 0; i--) {
+            const candidate = parts.slice(0, i).join('_');
+            if (isValidName(candidate)) return candidate;
         }
     }
 
-    // Now normalize `baseId` to the target language
-
-    // 1. Korean Mode ('ko') -> Prefer Korean Name
-    if (language === 'ko') {
-        // If baseId is English ID, return Korean Name
-        if (ID_TO_NAME_MAP[baseId]) return ID_TO_NAME_MAP[baseId];
-        // If baseId is Korean Name, return as is
-        if (NAME_TO_ID_MAP[baseId]) return baseId;
-
-        return baseId; // Fallback
-    }
-
-    // 2. English/Japanese Mode ('en' | 'ja') -> Prefer English ID
-    if (language === 'en' || language === 'ja') {
-        // If baseId is Korean Name, return English ID
-        if (NAME_TO_ID_MAP[baseId]) return NAME_TO_ID_MAP[baseId];
-        // If baseId is English ID, return as is
-        if (ID_TO_NAME_MAP[baseId]) return baseId;
-
-        return baseId; // Fallback
+    // Case-insensitive fallback
+    if (!isValidName(baseId)) {
+        const matchedKey = Object.keys(charsData).find(k => k.toLowerCase() === baseId.toLowerCase());
+        if (matchedKey) return matchedKey;
     }
 
     return baseId;
 }
 
 /**
- * Returns the Canonical English ID regardless of language.
- * Useful for asset lookups or strict logic that requires English keys.
- * Handles suffix stripping as well.
+ * Returns the canonical character name.
+ * 한글화 이후: 한글 이름을 그대로 반환 (영문 변환 불필요)
  */
 export function getCanonicalEnglishId(input: string): string {
-    // 1. Normalize first to handle suffixes
-    const normalized = normalizeCharacterId(input, 'en');
-
-    // 2. Ensure it's English (normalizeCharacterId('en') does this, but double check)
-    if (NAME_TO_ID_MAP[normalized]) return NAME_TO_ID_MAP[normalized];
-
-    return normalized;
+    return normalizeCharacterId(input, 'ko');
 }

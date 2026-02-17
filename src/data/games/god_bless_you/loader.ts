@@ -24,13 +24,8 @@ export async function loadGodBlessYouData(): Promise<GameData> {
     }
 
     try {
-        try {
-            console.log('- Importing world.json...');
-            worldModule = await import('./world.json');
-        } catch (e) {
-            console.warn('[GBYLoader] world.json not found, using empty default.');
-            worldModule = { default: { locations: {}, items: {} } };
-        }
+        // world.json removed — locations.json provides all region data
+        worldModule = { default: { locations: {}, items: {} } };
 
         console.log('- Importing characters/characters_main.json & supporting...');
         const charsMain = await import('./jsons/characters/characters_main.json');
@@ -80,13 +75,9 @@ export async function loadGodBlessYouData(): Promise<GameData> {
         constantsModule = await import('./constants');
 
         // Maps
-        // @ts-ignore
-        const charMap = await import('./character_map.json');
-        charMapModule = charMap.default || charMap;
+        // character_map.json removed - main character detection uses characterData directly
 
-        // @ts-ignore
-        const extraMap = await import('./extra_map.json');
-        extraMapModule = extraMap.default || extraMap;
+        // extra_map.json removed - using availableExtraImages from manifest directly
 
         // Wiki Data (Optional, specific to God Bless You)
         try {
@@ -149,8 +140,8 @@ export async function loadGodBlessYouData(): Promise<GameData> {
             return func(val);
         },
         wikiData: wikiDataModule || {},
-        characterMap: charMapModule || {},
-        extraMap: extraMapModule || {},
+        // characterMap removed
+        // extraMap removed
         constants: constantsModule || {},
         lore: loreModule?.GodBlessYouLore || {}
     };

@@ -1,5 +1,5 @@
 import { WUXIA_FIRST_TURN_EXAMPLE_1ST, WUXIA_FIRST_TURN_EXAMPLE_3RD, WUXIA_SYSTEM_GUIDE } from '../constants';
-import martialArtsLevels from '../jsons/martial_arts_levels.json';
+import martialArtsLevels from '../jsons/levels.json';
 
 const realmHierarchy = martialArtsLevels as Record<string, any>;
 

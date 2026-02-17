@@ -47,6 +47,17 @@ export async function fetchAgentTurnStream(
 
                     if (json.type === 'text') {
                         callbacks.onToken(json.content);
+                    } else if (json.type === 'progress') {
+                        // [Pipeline Progress] Real-time stage completion logging
+                        const stageEmoji: Record<string, string> = { casting: '🎭', retriever: '📚', preLogic: '🧠', director: '🎬', story: '📝', postLogic: '⚙️' };
+                        const emoji = stageEmoji[json.stage] || '▶';
+                        console.log(
+                            `%c[Pipeline] ${emoji} ${json.stage} %c${json.duration}ms`,
+                            'color: #4FC3F7; font-weight: bold',
+                            'color: #FFD54F; font-weight: bold'
+                        );
+                        if (json.input) console.log(`  ↳ input:`, json.input);
+                        if (json.output) console.log(`  ↳ output:`, json.output);
                     } else if (json.type === 'data') {
                         console.log("[StreamClient] Received DATA payload (Length: " + JSON.stringify(json.content).length + ")");
                         callbacks.onComplete(json.content);

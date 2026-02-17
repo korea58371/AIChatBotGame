@@ -702,29 +702,21 @@ export class LoreConverter {
         let output = "## [2. KNOWLEDGE BASE (LORE)]\n\n";
 
         // 1. [Power System & Realms] (Physics) - HIGH PRIORITY
-        if (lore.martial_arts_levels) {
-            output += LoreConverter.convertMartialArtsLevels(lore.martial_arts_levels) + "\n\n";
-        } else if (lore.modern_levels) {
-            output += LoreConverter.convertMartialArtsLevels(lore.modern_levels) + "\n\n";
+        if (lore.levels) {
+            output += LoreConverter.convertMartialArtsLevels(lore.levels) + "\n\n";
         }
 
         // 2. [Special Martial Arts & Terminology] (Dictionary)
-        if (lore.martial_arts_skills) {
-            output += LoreConverter.convertSkills(lore.martial_arts_skills) + "\n\n";
-        } else if (lore.modern_skills) {
-            output += LoreConverter.convertSkills(lore.modern_skills) + "\n\n";
+        if (lore.skills) {
+            output += LoreConverter.convertSkills(lore.skills) + "\n\n";
         }
 
-        if (lore.wuxia_terminology) {
-            output += LoreConverter.convertTerminology(lore.wuxia_terminology) + "\n\n";
-        } else if (lore.modern_terminology) {
-            output += LoreConverter.convertTerminology(lore.modern_terminology) + "\n\n";
+        if (lore.terminology) {
+            output += LoreConverter.convertTerminology(lore.terminology) + "\n\n";
         }
 
         if (lore.weapons) {
             output += LoreConverter.convertWeapons(lore.weapons) + "\n\n";
-        } else if (lore.modern_weapons) {
-            output += LoreConverter.convertWeapons(lore.modern_weapons) + "\n\n";
         }
 
 
@@ -737,11 +729,11 @@ export class LoreConverter {
             output += LoreConverter.convertModernGeography(lore.modern_geography) + "\n\n";
         }
 
-        // 4. [Great Factions] (Social Structure)
+        // 4. [Factions] (Social Structure)
         if (lore.factionsDetail) {
             output += LoreConverter.convertFactions(lore.factionsDetail) + "\n\n";
-        } else if (lore.modern_factions) {
-            output += LoreConverter.convertModernFactions(lore.modern_factions) + "\n\n";
+        } else if (lore.factions) {
+            output += LoreConverter.convertModernFactions(lore.factions) + "\n\n";
         }
 
         // 4. [Characters & Scenario] (Result)
@@ -759,20 +751,14 @@ export class LoreConverter {
 
         if (lore.romance_guide) {
             output += LoreConverter.convertRomance(lore.romance_guide) + "\n\n";
-        } else if (lore.modern_romance_guide) {
-            output += LoreConverter.convertRomance(lore.modern_romance_guide) + "\n\n";
         }
 
-        if (lore.combat_guide) {
-            output += LoreConverter.convertCombat(lore.combat_guide) + "\n\n";
-        } else if (lore.modern_combat) {
-            output += LoreConverter.convertCombat(lore.modern_combat) + "\n\n";
+        if (lore.combat_guide || lore.combat) {
+            output += LoreConverter.convertCombat(lore.combat_guide || lore.combat) + "\n\n";
         }
 
         if (lore.elixirs) {
             output += LoreConverter.convertElixirs(lore.elixirs) + "\n\n";
-        } else if (lore.modern_elixirs) {
-            output += LoreConverter.convertElixirs(lore.modern_elixirs) + "\n\n";
         }
 
         return output;

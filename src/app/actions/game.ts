@@ -82,7 +82,7 @@ export async function serverAgentTurnPhase1(
         delete state.availableCharacterImages;
         delete state.availableExtraImages;
         delete state.backgroundMappings;
-        delete state.extraMap;
+        // extraMap removed
         delete state.lore;
         delete state.constants;
 
@@ -128,7 +128,7 @@ async function hydrateGameState(gameState: any) {
 
             if (data.lore) gameState.lore = data.lore;
             if (data.backgroundMappings) gameState.backgroundMappings = data.backgroundMappings;
-            if (data.extraMap) gameState.extraMap = data.extraMap;
+            // extraMap removed - using availableExtraImages from manifest
             // [Fix] Hydrate constants
             if (data.constants) gameState.constants = data.constants;
 

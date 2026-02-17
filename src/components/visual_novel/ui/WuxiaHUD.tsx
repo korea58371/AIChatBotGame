@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Scroll, Maximize, Minimize } from 'lucide-react';
 import { useGameStore } from '@/lib/store';
 import { useVNAudio } from '@/components/visual_novel/hooks/useVNAudio';
-import martialArtsLevels from '@/data/games/wuxia/jsons/martial_arts_levels.json';
+import martialArtsLevels from '@/data/games/wuxia/jsons/levels.json';
 import { FAME_TITLES, FATIGUE_LEVELS, REALM_ORDER, LEVEL_TO_REALM_MAP } from '@/data/games/wuxia/constants';
 
 import { translations } from '@/data/translations';

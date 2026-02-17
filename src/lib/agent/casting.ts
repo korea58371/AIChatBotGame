@@ -220,57 +220,71 @@ export class AgentCasting {
             }
 
             // 3. Location/Region Logic (Hierarchical)
-            const regionStr = cAny.profile?.거주지 || cAny.profile?.소속 || cAny.활동지역 || "";
-            // Also check 'activity_region' for backward compatibility
-            const finalCharLoc = regionStr || cAny.activity_region || "";
+            // [MODIFIED] Support array-based 활동지역 (multiple locations per character)
+            const rawActivityRegion = cAny.활동지역;
+            const activityRegions: string[] = Array.isArray(rawActivityRegion)
+                ? rawActivityRegion
+                : (rawActivityRegion ? [rawActivityRegion] : []);
+            // Fallback: profile fields or backward-compat field
+            if (activityRegions.length === 0) {
+                const fallback = cAny.profile?.거주지 || cAny.profile?.소속 || cAny.activity_region || "";
+                if (fallback) activityRegions.push(fallback);
+            }
 
-            // Restore missing variables
-            const region = finalCharLoc;
             const affiliationStr = cAny.profile?.소속 || "";
 
-            // Resolve Hierarchies (Game-agnostic: use regions from gameState)
+            // Resolve Player Hierarchy ONCE
             const playerHierarchy = resolveLocationHierarchy(fullLocation.replace(/_/g, " "), gameRegions);
-            const charHierarchy = resolveLocationHierarchy(finalCharLoc, gameRegions);
-
-            let locScore = 0;
-
-            if (charHierarchy.length > 0 && playerHierarchy.length > 0) {
-                // Check Region Match
-                if (charHierarchy[0] === playerHierarchy[0]) {
-                    locScore += 20;
-
-                    // Check Zone Match (Only if Region matched)
-                    if (charHierarchy[1] && playerHierarchy[1] && charHierarchy[1] === playerHierarchy[1]) {
-                        locScore += 20;
-
-                        // Check Spot Match (Only if Zone matched)
-                        if (charHierarchy[2] && playerHierarchy[2] && charHierarchy[2] === playerHierarchy[2]) {
-                            locScore += 20;
-                            actReasons.push(`🎯 Spot Match (${charHierarchy[2]}) (+60)`);
-                        } else {
-                            actReasons.push(`🏙️ Zone Match (${charHierarchy[1]}) (+40)`);
-                        }
-                    } else {
-                        actReasons.push(`🌍 Region Match (${charHierarchy[0]}) (+20)`);
-                    }
-                }
-            }
-
-            // Normalize for fallback comparison if no hierarchy match found (e.g. wildcards)
             const locNorm = fullLocation.replace(/_/g, " ");
 
-            if (locScore === 0) {
-                // Determine if char is wildcard
-                if (finalCharLoc === 'Korea' || finalCharLoc === '무림' || finalCharLoc === 'Everywhere') {
-                    locScore += 0.2;
-                    actReasons.push("Broad/Wildcard Region (+0.2)");
-                } else if (locNorm && finalCharLoc && locNorm.includes(finalCharLoc)) {
-                    // Fallback string match if hierarchy failed (e.g. "Henan Market" vs "Henan")
-                    // If hierarchy didn't catch it (maybe custom string), give base bonus
-                    locScore += 20;
-                    actReasons.push(`Region Match [String] (${finalCharLoc}) (+20)`);
+            // Iterate all activity regions and pick the BEST score
+            let locScore = 0;
+            let bestLocReason = "";
+            let bestCharLoc = activityRegions[0] || "";
+
+            for (const charLoc of activityRegions) {
+                const charHierarchy = resolveLocationHierarchy(charLoc, gameRegions);
+                let thisScore = 0;
+                let thisReason = "";
+
+                if (charHierarchy.length > 0 && playerHierarchy.length > 0) {
+                    if (charHierarchy[0] === playerHierarchy[0]) {
+                        thisScore += 20;
+                        if (charHierarchy[1] && playerHierarchy[1] && charHierarchy[1] === playerHierarchy[1]) {
+                            thisScore += 20;
+                            if (charHierarchy[2] && playerHierarchy[2] && charHierarchy[2] === playerHierarchy[2]) {
+                                thisScore += 20;
+                                thisReason = `🎯 Spot Match (${charHierarchy[2]}) (+60)`;
+                            } else {
+                                thisReason = `🏙️ Zone Match (${charHierarchy[1]}) (+40)`;
+                            }
+                        } else {
+                            thisReason = `🌍 Region Match (${charHierarchy[0]}) (+20)`;
+                        }
+                    }
+                }
+
+                // Wildcard/string fallback for this entry
+                if (thisScore === 0) {
+                    if (charLoc === 'Korea' || charLoc === '무림' || charLoc === 'Everywhere') {
+                        thisScore = 0.2;
+                        thisReason = "Broad/Wildcard Region (+0.2)";
+                    } else if (locNorm && charLoc && locNorm.includes(charLoc)) {
+                        thisScore = 20;
+                        thisReason = `Region Match [String] (${charLoc}) (+20)`;
+                    }
+                }
+
+                if (thisScore > locScore) {
+                    locScore = thisScore;
+                    bestLocReason = thisReason;
+                    bestCharLoc = charLoc;
                 }
             }
+            if (bestLocReason) actReasons.push(bestLocReason);
+
+            // For backward compat: 'region' used by Fatigue isHome check
+            const region = bestCharLoc;
 
             actScore += locScore;
 
@@ -343,8 +357,8 @@ export class AgentCasting {
                 // 1. User explicitly mentioned them (Strong Narrative Demand)
                 // 2. We are at their "Home" (e.g. Store Clerk at Store)
                 const isUserDemand = userInput.includes(kName) || userInput.includes(id);
-                // "isHomeGround" is not fully calculated here yet, but we have 'region' and 'locNorm'
-                const isHome = locNorm && region && locNorm.includes(region);
+                // \"isHomeGround\": any of the character's activity regions matches current location
+                const isHome = locScore >= 20; // Zone match or better = home ground
 
                 if (!isUserDemand) {
                     if (turnsSinceExit <= 1) {

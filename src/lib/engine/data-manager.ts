@@ -14,8 +14,8 @@ export interface GameData {
     getSystemPromptTemplate: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
     getRankInfo: (input: string | number) => any;
     wikiData?: any;
-    characterMap?: Record<string, string>;
-    extraMap?: Record<string, string>;
+    // characterMap removed - main character detection uses characterData directly
+    // extraMap removed - using availableExtraImages from manifest directly
     cgMap?: Record<string, string>; // [New]
     constants?: {
         FAMOUS_CHARACTERS: string;

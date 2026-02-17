@@ -1089,8 +1089,10 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                         return Object.keys(map).find(key => map[key] === val && dataKeys.includes(key));
                     };
 
-                    const mappedKey = findKeyForValue(store.characterMap, potentialAssetId)
-                        || findKeyForValue(store.extraMap, potentialAssetId);
+                    // Try characterData direct lookup first (Korean names), then availableExtraImages
+                    const charDataMatch = dataKeys.find(k => k === potentialAssetId || k.toLowerCase() === potentialAssetId.toLowerCase());
+                    const extraMatch = !charDataMatch ? (store.availableExtraImages || []).find((img: string) => img === potentialAssetId || img.toLowerCase() === potentialAssetId.toLowerCase()) : null;
+                    const mappedKey = charDataMatch || extraMatch;
 
                     if (mappedKey) {
                         match = mappedKey;

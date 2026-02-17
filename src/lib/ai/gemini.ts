@@ -497,7 +497,7 @@ export async function generateGameLogic(
             // [NEW] Static Prompt for Context Caching
             // [NEW] Static Prompt for Context Caching
             // [OPTIMIZATION] Convert JSON to YAML-like text using LoreConverter to save tokens & match Story Model format
-            const rankCriteria = gameState.lore?.martial_arts_levels ? LoreConverter.convertMartialArtsLevels(gameState.lore.martial_arts_levels) : null;
+            const rankCriteria = gameState.lore?.levels ? LoreConverter.convertMartialArtsLevels(gameState.lore.levels) : null;
             const romanceGuide = gameState.lore?.romance_guide ? LoreConverter.convertRomance(gameState.lore.romance_guide) : null;
             const combatGuide = gameState.lore?.combat_guide ? LoreConverter.convertCombat(gameState.lore.combat_guide) : null;
 
@@ -533,8 +533,8 @@ export async function generateGameLogic(
                 textMessageHistory, // [OPTIMIZATION] Exclude SMS History
                 constants, // [OPTIMIZATION] Exclude Static Constants
                 events: _ignoredEvents, // [OPTIMIZATION] Exclude Raw Events List (Passed filtered)
-                characterMap,
-                extraMap,
+                // characterMap removed (no longer needed)
+                // extraMap removed (no longer needed)
                 characterCreationQuestions,
                 backgroundMappings, // [OPTIMIZATION] Exclude Background Mappings
                 ...prunedStats

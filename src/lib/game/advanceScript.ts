@@ -9,6 +9,7 @@ import { isHiddenProtagonist } from '@/lib/utils/character-utils';
 import { resolveBackground } from '@/lib/engine/background-manager';
 import { findBestMatch, findBestMatchDetail } from '@/lib/utils/name-utils';
 import { normalizeCharacterId } from '@/lib/utils/character-id';
+import { parseScript } from '@/lib/utils/script-parser';
 import React from 'react';
 
 // Dependency injection interface
@@ -443,6 +444,34 @@ export function advanceScript(deps: AdvanceScriptDeps) {
 
     // Handle Normal Segment (Dialogue/Narration)
     _timings['before_setQueue'] = performance.now() - _t0;
+    if (nextSegment.type === 'tv_news' || nextSegment.type === 'time_skip') {
+
+        // [Fix] Content Recovery: If content is missing (undefined/empty), re-parse from chatHistory
+        // This handles the race condition where streaming sets a queue with incomplete segments
+        // that is not properly replaced by onComplete's final queue.
+        if (!nextSegment.content) {
+            console.warn(`[advanceScript] ${nextSegment.type} content recovery triggered`);
+            const history = useGameStore.getState().chatHistory;
+            const lastModelMsg = history?.slice().reverse().find((m: any) => m.role === 'model' && m.text && m.text.length > 10);
+            if (lastModelMsg?.text) {
+                const reparsed = parseScript(lastModelMsg.text);
+                const matchingSeg = reparsed.find(s =>
+                    s.type === nextSegment.type &&
+                    s.character === nextSegment.character &&
+                    s.content
+                );
+                if (matchingSeg) {
+                    nextSegment.content = matchingSeg.content;
+
+                } else {
+
+                    nextSegment.content = '...';
+                }
+            } else {
+                nextSegment.content = '...';
+            }
+        }
+    }
     setScriptQueue(currentQueue.slice(1));
     _timings['after_setQueue'] = performance.now() - _t0;
     setCurrentSegment(nextSegment);
@@ -453,8 +482,8 @@ export function advanceScript(deps: AdvanceScriptDeps) {
 
     if (nextSegment.type === 'dialogue') {
         // [New] Dynamic Override for Extra Characters
-        const charMap = useGameStore.getState().characterMap || {};
-        const isMainCharacter = !!charMap[nextSegment.character || ''];
+        const charsData = useGameStore.getState().characterData || {};
+        const isMainCharacter = !!charsData[nextSegment.character || ''];
 
         // Prevent override if it is a Main Character
         if (nextSegment.characterImageKey && nextSegment.character && !isMainCharacter) {
@@ -488,11 +517,11 @@ export function advanceScript(deps: AdvanceScriptDeps) {
                 const overrideKey = state.extraOverrides?.[playerName] || state.extraOverrides?.['주인공'];
 
                 if (overrideKey) {
-                    const extraMap = state.extraMap;
+                    const availExtras = state.availableExtraImages || [];
                     let finalImage = '';
 
-                    if (extraMap && extraMap[overrideKey]) {
-                        finalImage = extraMap[overrideKey];
+                    if (availExtras.includes(overrideKey)) {
+                        finalImage = `${overrideKey}.png`;
                     } else {
                         finalImage = `${overrideKey}.png`;
                     }
@@ -509,13 +538,13 @@ export function advanceScript(deps: AdvanceScriptDeps) {
 
             const combinedKey = `${charName}_${emotion}`;
             const gameId = useGameStore.getState().activeGameId || 'god_bless_you';
-            const extraMap = useGameStore.getState().extraMap; // Get extraMap from store
+            const availExtras = useGameStore.getState().availableExtraImages || [];
 
             // [Fix] Explicit Key Lookup (Priority)
             // Only use characterImageKey if NOT a Main Character
             if (nextSegment.characterImageKey && !isMainCharacter) {
-                if (extraMap && extraMap[nextSegment.characterImageKey]) {
-                    imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[nextSegment.characterImageKey]}`;
+                if (availExtras.includes(nextSegment.characterImageKey)) {
+                    imagePath = `/assets/${gameId}/ExtraCharacters/${nextSegment.characterImageKey}.png`;
                 } else {
                     // Fallback for direct matches?
                     imagePath = getCharacterImage(nextSegment.characterImageKey, emotion);
@@ -525,9 +554,9 @@ export function advanceScript(deps: AdvanceScriptDeps) {
             else if (availableExtraImages && availableExtraImages.includes(combinedKey)) {
                 // Check direct file match (name_emotion)
                 imagePath = `/assets/${gameId}/ExtraCharacters/${combinedKey}.png`;
-            } else if (extraMap && extraMap[charName]) {
-                // Check exact name match in extraMap (e.g. "점소이(비굴한)" -> "점소이_비굴한.png")
-                imagePath = `/assets/${gameId}/ExtraCharacters/${extraMap[charName]}`;
+            } else if (availExtras.includes(charName)) {
+                // Check exact name match in available extras
+                imagePath = `/assets/${gameId}/ExtraCharacters/${charName}.png`;
             } else {
                 // Clean up emotion input (remove parens if any, though system prompt forbids them)
                 // The mapper expects clean distinct Korean words.

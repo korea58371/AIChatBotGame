@@ -1,5 +1,6 @@
 import { GameRegistry, GameConfig } from '@/lib/registry/GameRegistry';
 import { gbyProgression } from './progression';
+import gbyFactions from './jsons/factions.json';
 
 import { GBY_IDENTITY, GBY_BEHAVIOR_RULES, GBY_OUTPUT_FORMAT, LEVEL_TO_RANK_MAP } from './constants';
 import { GOD_BLESS_YOU_BGM_MAP, GOD_BLESS_YOU_BGM_ALIASES } from './bgm_mapping';
@@ -86,26 +87,46 @@ export const GodBlessYouConfig: GameConfig = {
         bad: '한가을이 오빠의 숨겨진 S급 각성 잠재력을 눈치챈다',
     }),
 
-    // [10] Regional Context — Director에게 전달할 GBY 지역/세력 정보
+    // [10] Regional Context — Director에게 전달할 GBY 지역/세력 정보 (factions.json 기반 동적 생성)
     getRegionalContext: (location: string): string => {
         const lines: string[] = [];
         lines.push(`[Regional Landscape]`);
         lines.push(`세계관: 현대 한국(서울). 헌터와 블레서가 존재하는 어반 판타지.`);
-        lines.push(`주요 세력: 한국헌터협회(KHA), 대형 길드(별빛/아테나/레드문 등), 축복교단, 이면세계 세력`);
-        lines.push(``);
         lines.push(`현재 위치: ${location || '서울'}`);
         lines.push(``);
-        lines.push(`[주요 지역]`);
-        lines.push(`  서울: 본거지. 강남(상류층/길드 본부), 종로(전통/시장), 홍대(엔터/문화), 잠실(헌터 센터)`);
-        lines.push(`  인천: 에스더 헌터/항만. 송도(신도시/첨단).`);
-        lines.push(`  던전: 등급별(E~SS급). 도심 근처 포탈 또는 외곽에 고정.`);
-        lines.push(`  네오아카디아: 이면세계(알 수 없는 차원). 판타지적 경관.`);
-        lines.push(``);
-        lines.push(`[세력 구도]`);
-        lines.push(`  한국헌터협회(KHA): 헌터 관리/던전 배정. 관료적.`);
-        lines.push(`  대형 길드들: 헌팅 독점. 스폰서/후원/연예화.`);
-        lines.push(`  축복교단: 블레서를 신격화하는 종교 세력. 의심스러운 의도.`);
-        lines.push(`  이면세계: 몬스터/미지의 존재. 간헐적으로 포탈 발생.`);
+
+        // factions.json에서 사회 계층 추출
+        const fData = gbyFactions as any;
+        if (fData.사회_계층) {
+            lines.push(`[사회 계층]`);
+            for (const [name, info] of Object.entries(fData.사회_계층) as [string, any][]) {
+                const desc = typeof info === 'string' ? info : info.설명 || '';
+                lines.push(`  ${name}: ${desc}`);
+            }
+            lines.push(``);
+        }
+
+        // factions.json에서 조직 추출
+        if (fData.조직) {
+            lines.push(`[세력 구도]`);
+            for (const [name, info] of Object.entries(fData.조직) as [string, any][]) {
+                const desc = typeof info === 'string' ? info : info.설명 || '';
+                const rel = info.relations;
+                let relStr = '';
+                if (rel && Array.isArray(rel)) {
+                    relStr = ' | ' + rel.map((r: any) => `${r.대상}(${r.관계})`).join(', ');
+                }
+                lines.push(`  ${name}: ${desc}${relStr}`);
+            }
+            lines.push(``);
+        }
+
+        // 빌런 범주
+        if (fData.빌런) {
+            const desc = typeof fData.빌런 === 'string' ? fData.빌런 : fData.빌런.설명 || '';
+            lines.push(`[빌런]: ${desc}`);
+        }
+
         return lines.join('\n');
     },
 
