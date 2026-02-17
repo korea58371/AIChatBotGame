@@ -983,7 +983,7 @@ ${contextRetrieved}
 [Player Action]
 ${userInput}
 
-나레이션 가이드와 기존 설정 및 규칙을 참고하여 8000자 분량의 내용을 작성하세요.
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 한글 기준 약 5,000자 분량의 내용을 작성하세요.
 
 ${thinkingInstruction}
 `;

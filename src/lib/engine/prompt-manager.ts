@@ -2,6 +2,7 @@ import { getMoodPrompts, MoodType } from '../../data/prompts/moods';
 import { GameRegistry } from '@/lib/registry/GameRegistry';
 import { RelationshipManager } from './relationship-manager';
 import { GameState } from '../store';
+import { findBestMatchDetail } from '@/lib/utils/name-utils';
 import { translations } from '../../data/translations';
 
 
@@ -377,12 +378,8 @@ ${sn.description ? `- Context: ${sn.description}` : ''}
             }
         }
 
-        prompt = `
-${moodGuideline}
-${goalsContext}
-
-${prompt}
-            `;
+        // Mood/Goals를 prompt 뒤에 자연스럽게 append (역할/캐릭터/규칙 → 상황 순서 유지)
+        prompt += `\n${moodGuideline}\n${goalsContext}`;
 
 
         // [CAUSAL INTEGRITY PROTOCOL (ANTI-HALLUCINATION)] (⭐⭐⭐ CRITICAL)
@@ -1260,17 +1257,37 @@ ${spawnCandidates || "None"}
         const activeCharIds = state.activeCharacters || [];
         const config = GameRegistry.get(state.activeGameId);
 
-        const combatSet = new Set(context_requirements.combat_characters.map(s => s.toLowerCase()));
-        const firstEncounterSet = new Set(context_requirements.first_encounter.map(s => s.toLowerCase()));
-        const emotionalSet = new Set(context_requirements.emotional_focus.map(s => s.toLowerCase()));
+        const combatKeys = context_requirements.combat_characters.map(s => s.toLowerCase());
+        const firstEncounterKeys = context_requirements.first_encounter.map(s => s.toLowerCase());
+        const emotionalKeys = context_requirements.emotional_focus.map(s => s.toLowerCase());
+
+        // 3단계 퍼지 매칭: 정확→포함→유사도
+        const matchesAny = (keys: string[], name: string, id: string): boolean => {
+            if (keys.length === 0) return false;
+            const nameLower = name.toLowerCase();
+            const idLower = id.toLowerCase();
+            for (const key of keys) {
+                // 1단계: 정확 일치
+                if (key === nameLower || key === idLower) return true;
+                // 2단계: 포함 일치 (Director가 부연을 붙인 경우)
+                if (key.includes(nameLower) || nameLower.includes(key)) return true;
+                if (key.includes(idLower) || idLower.includes(key)) return true;
+            }
+            // 3단계: Dice Coefficient 유사도 (≥ 0.6)
+            const result = findBestMatchDetail(name, keys);
+            if (result && result.rating >= 0.6) return true;
+            if (name !== id) {
+                const result2 = findBestMatchDetail(id, keys);
+                if (result2 && result2.rating >= 0.6) return true;
+            }
+            return false;
+        };
 
         const charInfos = activeCharIds.map(charId => {
             const char = resolveChar(charId);
             if (!char) return null;
 
             const displayName = char.name || char.이름 || charId;
-            const charLower = displayName.toLowerCase();
-            const charIdLower = charId.toLowerCase();
 
             // ── ALWAYS: Base Identity ──
             let charInfo = "";
@@ -1300,10 +1317,10 @@ ${spawnCandidates || "None"}
                 }
             }
 
-            // ── CONDITIONAL: Director hints ──
-            const isCombat = combatSet.has(charLower) || combatSet.has(charIdLower);
-            const isFirstEncounter = firstEncounterSet.has(charLower) || firstEncounterSet.has(charIdLower);
-            const isEmotional = emotionalSet.has(charLower) || emotionalSet.has(charIdLower);
+            // ── CONDITIONAL: Director hints (3단계 퍼지 매칭) ──
+            const isCombat = matchesAny(combatKeys, displayName, charId);
+            const isFirstEncounter = matchesAny(firstEncounterKeys, displayName, charId);
+            const isEmotional = matchesAny(emotionalKeys, displayName, charId);
 
             // [COMBAT] Full skill data
             if (isCombat && char['강함']) {
@@ -1386,21 +1403,16 @@ ${spawnCandidates || "None"}
                 charInfo += `\n- [Player Knows]: ${char.discoveredSecrets.join(' / ')}`;
             }
 
-            // [ALWAYS] Peer Relations
-            if (activeCharIds.length > 1) {
-                const peerRels: string[] = [];
-                const relations = { ...(char.relationships || {}), ...(char['인간관계'] || {}) };
-                activeCharIds.forEach(otherId => {
-                    if (otherId === charId) return;
-                    const otherChar = resolveChar(otherId);
-                    if (!otherChar) return;
-                    const otherName = otherChar.name || otherChar.이름 || otherId;
-                    const relDesc = relations[otherName] || relations[otherId];
-                    if (relDesc) peerRels.push(`-> ${otherName}: ${relDesc}`);
-                });
-                if (peerRels.length > 0) {
-                    charInfo += `\n- [Peer Relations]: ${peerRels.join(' / ')}`;
-                }
+            // [ALWAYS] Peer Relations — 인간관계 전체 출력
+            const relations = { ...(char.relationships || {}), ...(char['인간관계'] || {}) };
+            const relKeys = Object.keys(relations);
+            if (relKeys.length > 0) {
+                // emotional_focus 인물은 전체, 그 외는 최대 5명
+                const maxRels = isEmotional ? relKeys.length : Math.min(relKeys.length, 5);
+                const relEntries = relKeys.slice(0, maxRels).map(
+                    key => `${key}: ${relations[key]}`
+                );
+                charInfo += `\n- [Key Relations]: ${relEntries.join(' / ')}`;
             }
 
             return charInfo;

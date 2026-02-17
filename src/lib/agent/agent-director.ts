@@ -177,11 +177,12 @@ You will receive the game's [Tone & World Guide] in the user prompt. Follow it s
     "emotional_direction": "CharA: emotion / CharB: emotion",
     "tone": "tension → relief",
     "context_requirements": {
-        "combat_characters": ["charId"],
-        "first_encounter": ["charId"],
-        "emotional_focus": ["charId"],
-        "skill_usage": { "charId": ["skillName"] }
+        "combat_characters": ["한글이름"],
+        "first_encounter": ["한글이름"],
+        "emotional_focus": ["한글이름"],
+        "skill_usage": { "한글이름": ["skillName"] }
     },
+⚠️ context_requirements의 캐릭터 키는 반드시 **한글 이름** (예: "도예린", "왕노야")을 사용하십시오. 영문 ID나 부연 설명을 붙이지 마십시오.
     "subtle_hooks": ["Hook as behavior/atmosphere directive"],
     "state_updates": {
         "momentum_focus": "일상|수련|로맨스|분쟁|탐험",
@@ -264,7 +265,13 @@ Design this turn's plot. Be concise.
 ⚠️ YOU MUST follow the [Tone & World Guide] above — it defines the game's genre, world, and rules. Do NOT invent content from other genres.
 ${turnCount <= 1 ? '⚠️ This is the FIRST TURN. Introduce the world gently per the game guide. Do not assume any prior story context.' : ''}
 Respect the mood, pacing, and regional context.
-You may incorporate Casting Candidates into plot_beats if they fit the situation naturally.`;
+You may incorporate Casting Candidates into plot_beats if they fit the situation naturally.
+
+⚠️ [캐릭터 식별자 규칙 (CRITICAL)]
+- context_requirements, plot_beats, subtle_hooks 등 **모든 출력에서 캐릭터를 지칭할 때 반드시 한글 이름**을 사용하십시오.
+- [Characters Present]와 [Casting Candidates]에 표시된 한글 이름을 그대로 사용하십시오.
+- ❌ 금지: 영문 ID, 괄호 부연("왕노야(사부)"), 축약("세아"), 별명
+- ✅ 정확한 예: "연화린", "남궁세아", "왕노야", "도예린"`;
     }
 
     // ===== Fallback =====
