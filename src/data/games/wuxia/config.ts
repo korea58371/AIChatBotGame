@@ -76,6 +76,12 @@ export const WuxiaConfig: GameConfig = {
 - 하루아침에 내공이 쌓이지 않는다. 내공 성장은 폐관수련/기연이 필요.
 - 시련은 플레이어가 감당 가능한 수준이어야 한다. 너무 쉬운 승리도, 불가능한 벽도 지양.`,
 
+    // [12] Director Examples — Wuxia 전용 NO SPOILERS 예시
+    getDirectorExamples: () => ({
+        good: '왕노야가 주인공의 검을 유심히 관찰한다',
+        bad: '왕노야가 검이 마교 비급과 관련됨을 알아차린다',
+    }),
+
     // [10] Regional Context — Director에게 전달할 지역/세력 정보 (기존 regional-context.ts에서 이전)
     getRegionalContext: (location: string): string => {
         const regions = (wuxiaLocations as any).regions;

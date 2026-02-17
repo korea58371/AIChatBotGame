@@ -90,6 +90,9 @@ export interface GameConfig {
 
     // [11] Post-Logic Location Hint (AI에게 지역명 작성 규칙 전달 — 게임별 포맷)
     getPostLogicLocationHint?: () => string;
+
+    // [12] Director Examples (게임별 Director 예시 문구 — NO SPOILERS 등)
+    getDirectorExamples?: () => { good: string; bad: string };
 }
 
 class GameRegistryImpl {

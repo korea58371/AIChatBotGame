@@ -80,6 +80,12 @@ export const GodBlessYouConfig: GameConfig = {
 - 이능력 로맨스: 능력을 활용한 독특한 애정 표현(따뜻한 포옹, 공중 산책 등).
 - 플러팅과 철벽의 핑퐁. 일상의 소중함(던전 후 밥, 퇴근길 데이트).`,
 
+    // [12] Director Examples — GBY 전용 NO SPOILERS 예시
+    getDirectorExamples: () => ({
+        good: '한가을이 오빠의 반지하 냉장고를 열며 한숨을 쉰다',
+        bad: '한가을이 오빠의 숨겨진 S급 각성 잠재력을 눈치챈다',
+    }),
+
     // [10] Regional Context — Director에게 전달할 GBY 지역/세력 정보
     getRegionalContext: (location: string): string => {
         const lines: string[] = [];

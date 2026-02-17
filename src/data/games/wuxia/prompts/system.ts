@@ -129,13 +129,8 @@ ${perspectiveRule}
 - **제약 사항**: ${phaseDescription}
 - **규칙**: 현재 주인공의 단계에 맞지 않는 상위 경지의 인물들은 주로 소문이나 전설, 또는 먼발치에서 관찰하는 형태로만 등장해야 합니다. 단, **[Narrative Direction]의 지시나 [Casting Suggestions]에 포함된 인물**이라면 자연스럽게 등장시킬 수 있습니다.
 
-**[Narrative Direction Authority & Character Spawning]**:
-- **CRITICAL**: You must STRICTLY follow the [Narrative Direction] provided by the Pre-Logic module.
-- **SUGGESTION TYPES (인물 등장 유형)**:
-  * **[Type: Arrival]**: Spawn the character IMMEDIATELY. "Suddenly, [Name] enters..."
-  * **[Type: Foreshadowing]**: Do NOT spawn the character yet. Describe **HINTS** of their presence.
-    -> E.g., "You see the green emblem of the Tang Clan...", "A rumor about [Name] reaches your ears..."
-- **PRIORITY RULE**: If [User Input] contradicts [Narrative Direction], **IGNORE** user input and **FOLLOW** direction.
+
+
 
 **[주인공 핵심 정체성 (Identity Context)]**
 ${(() => {

@@ -52,6 +52,7 @@ export interface DirectorInput {
     playerProfile: string;
     castingSuggestions: string; // [NEW] 캐스팅 추천 캐릭터 요약
     gameGuide: string; // [NEW] 게임별 톤/세계관/행동규범 (GameConfig에서 동적 주입)
+    directorExamples?: { good: string; bad: string };
 }
 
 export interface DirectorOutput {
@@ -102,7 +103,7 @@ export class AgentDirector {
             model: MODEL_CONFIG.DIRECTOR,
             safetySettings,
             generationConfig: { responseMimeType: "application/json" },
-            systemInstruction: this.buildSystemPrompt()
+            systemInstruction: this.buildSystemPrompt(input.directorExamples)
         });
 
         const userPrompt = this.buildUserPrompt(input);
@@ -136,7 +137,9 @@ export class AgentDirector {
 
     // ===== 시스템 프롬프트 =====
 
-    private static buildSystemPrompt(): string {
+    private static buildSystemPrompt(examples?: { good: string; bad: string }): string {
+        const goodEx = examples?.good || 'NPC가 주인공의 능력을 유심히 관찰한다';
+        const badEx = examples?.bad || 'NPC가 주인공의 능력이 특별한 것임을 알아차린다';
         return `You are the [Narrative Director] of a story-driven RPG.
 Your role is to PLAN the story for this turn — NOT to write it.
 You will receive the game's [Tone & World Guide] in the user prompt. Follow it strictly.
@@ -150,8 +153,8 @@ You will receive the game's [Tone & World Guide] in the user prompt. Follow it s
 
 [ABSOLUTE RULES]
 1. **NO SPOILERS**: Never reveal the "truth" behind foreshadowing in your output.
-   - ✅ "왕노야가 주인공의 검을 유심히 관찰한다"
-   - ❌ "왕노야가 검이 마교 비급과 관련됨을 알아차린다"
+   - ✅ "${goodEx}"
+   - ❌ "${badEx}"
 2. **RESPECT PRELOGIC**: If plausibility_score is low (1-3), the action MUST fail.
 3. **PACING**: Don't force drama every turn. If the mood is peaceful, keep it peaceful.
 4. **BREVITY**: Use keywords and fragments, not full sentences.
@@ -257,7 +260,10 @@ Foreshadowing Seeds:
 ${foreshadowingStatus || '  None'}
 
 [INSTRUCTION]
-Design this turn's plot. Be concise. Respect the mood, pacing, and regional context.
+Design this turn's plot. Be concise.
+⚠️ YOU MUST follow the [Tone & World Guide] above — it defines the game's genre, world, and rules. Do NOT invent content from other genres.
+${turnCount <= 1 ? '⚠️ This is the FIRST TURN. Introduce the world gently per the game guide. Do not assume any prior story context.' : ''}
+Respect the mood, pacing, and regional context.
 You may incorporate Casting Candidates into plot_beats if they fit the situation naturally.`;
     }
 

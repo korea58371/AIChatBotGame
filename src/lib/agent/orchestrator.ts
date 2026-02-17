@@ -922,6 +922,7 @@ ${thinkingInstruction}
                     return `- ${c.name} [${rank}] ${faction}${role ? ' / ' + role : ''} (추천사유: ${c.reasons.slice(0, 2).join(', ')})`;
                 }).join('\n'),
                 gameGuide: currentGameConfig?.getDirectorGuide?.() || '',
+                directorExamples: currentGameConfig?.getDirectorExamples?.(),
             });
         } catch (e) {
             console.error("[Director] Failed, using fallback:", e);
