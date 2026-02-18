@@ -184,7 +184,7 @@ export interface GameState {
   // Loaded Game Logic Functions (Not persisted, reloaded on init)
   getSystemPromptTemplate?: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
   getRankInfo?: (input: string | number) => any;
-  backgroundMappings?: Record<string, string>;
+
   events?: any[]; // Dynamic events list
   initialScenario?: string;
   wikiData?: any; // [NEW] Added wikiData
@@ -312,7 +312,7 @@ export interface PlayerStats {
   fate: number;
   playerRank: string;
   neigong: number; // @deprecated - Use customStats['neigong']. Kept for save compatibility.
-  core_setting?: string; // Initial Identity (e.g. 'returnee_demon')
+  core_setting?: string | string[]; // Initial Identity: string (legacy) or string[] (new multi-select)
   final_goal?: string; // Character's ultimate objective
   faction: string;
   personalitySummary: string;
@@ -382,6 +382,10 @@ export interface TaggedMemory {
   tag: 'bond' | 'conflict' | 'secret' | 'trauma' | 'growth' | 'promise' | 'general';
   turn: number;         // 발생 턴
   importance: 1 | 2 | 3; // 1=일상, 2=중요, 3=핵심
+  subject?: string;     // 기억의 대상 (누구에 대한 기억인지, e.g. "주인공", "소소")
+  location?: string;    // 기억 발생 장소 (currentLocation)
+  keywords?: string[];  // SNS 스타일 태그 (식사, 데이트, 영화 등)
+  expireAfterTurn?: number | null; // null/undefined = 영구, 숫자 = 해당 턴 이후 소멸
 }
 
 // [NEW] World Event Memory
@@ -725,7 +729,7 @@ export const useGameStore = create<GameState>()(
               availableBackgrounds: staticData.backgroundList || [],
               availableCharacterImages: staticData.characterImageList || [],
               availableExtraImages: staticData.extraCharacterList || [],
-              backgroundMappings: staticData.backgroundMappings || {},
+
               // functions...
             });
           } catch (e) { console.warn("[Store] Static data rehydrate failed on loadFromSlot", e); }
@@ -883,7 +887,7 @@ export const useGameStore = create<GameState>()(
                 availableBackgrounds: data.backgroundList,
                 availableCharacterImages: data.characterImageList || [],
                 availableExtraImages: data.extraCharacterList || [],
-                backgroundMappings: config?.assets.backgroundMap || data.backgroundMappings, // Re-added config logic
+
                 events: data.events, // Load events
                 initialScenario: data.scenario,
                 wikiData: data.wikiData,
@@ -940,7 +944,7 @@ export const useGameStore = create<GameState>()(
               availableBackgrounds: data.backgroundList,
               availableCharacterImages: data.characterImageList || [],
               availableExtraImages: data.extraCharacterList || [],
-              backgroundMappings: config?.assets.backgroundMap || data.backgroundMappings, // Update mappings
+
               events: data.events, // Load events
               initialScenario: data.scenario,
               wikiData: data.wikiData,
@@ -1699,7 +1703,7 @@ export const useGameStore = create<GameState>()(
             availableBackgrounds: staticData.backgroundList || [],
             availableCharacterImages: staticData.characterImageList || [],
             availableExtraImages: staticData.extraCharacterList || [],
-            backgroundMappings: staticData.backgroundMappings || {},
+
             getSystemPromptTemplate: staticData.getSystemPromptTemplate, // Restore functions if needed (though store has them usually?) 
             // Actually, we can't easily restore functions from DataManager object to Store root if they aren't part of initial state shape managed by store creator?
             // The store creator defines methods. 
@@ -1786,7 +1790,7 @@ export const useGameStore = create<GameState>()(
           availableBackgrounds,
           availableCharacterImages,
           availableExtraImages,
-          backgroundMappings,
+
           // isDataLoaded, // [Moved to ephemeral section below]
 
           // Ephemeral execution state (no need to persist, should reset on reload)

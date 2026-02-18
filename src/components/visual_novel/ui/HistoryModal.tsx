@@ -122,7 +122,9 @@ const HistoryModal: React.FC<HistoryModalProps> = ({
                                     let segments = parseScript(msg.text || "");
 
                                     // Filter future segments logic specific to the Active (Last) Message
-                                    if (idx === arr.length - 1 && msg.role === 'model') {
+                                    // [Fix] Skip trimming during streaming (no snapshot = onComplete hasn't fired yet)
+                                    const isStreaming = idx === arr.length - 1 && msg.role === 'model' && !(msg as any).snapshot;
+                                    if (idx === arr.length - 1 && msg.role === 'model' && !isStreaming) {
                                         const queue = useGameStore.getState().scriptQueue;
 
                                         // 1. Calculate visible text length in queue

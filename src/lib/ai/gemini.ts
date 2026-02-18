@@ -536,7 +536,6 @@ export async function generateGameLogic(
                 // characterMap removed (no longer needed)
                 // extraMap removed (no longer needed)
                 characterCreationQuestions,
-                backgroundMappings, // [OPTIMIZATION] Exclude Background Mappings
                 ...prunedStats
             } = gameState;
 

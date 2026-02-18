@@ -10,7 +10,7 @@ export interface GameData {
     backgroundList: any;
     events: GameEvent[];
     scenario: string;
-    backgroundMappings: Record<string, string>;
+
     getSystemPromptTemplate: (state: any, language: 'ko' | 'en' | 'ja' | null) => string;
     getRankInfo: (input: string | number) => any;
     wikiData?: any;
@@ -52,7 +52,7 @@ export class DataManager {
                 // Return empty/safe structure to prevent crash
                 return {
                     world: {}, characters: {}, characterImageList: [], extraCharacterList: [],
-                    backgroundList: [], events: [], scenario: '', backgroundMappings: {},
+                    backgroundList: [], events: [], scenario: '',
                     getSystemPromptTemplate: () => '', getRankInfo: () => null
                 } as any;
             }

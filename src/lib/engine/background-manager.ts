@@ -1,137 +1,110 @@
 import stringSimilarity from 'string-similarity';
 import { useGameStore } from '@/lib/store';
-import { backgroundMappings as wuxiaBackgroundMap } from '@/data/games/wuxia/backgroundMappings';
 
 /**
  * AI가 생성한 배경 태그를 assets 폴더의 가장 유사한 파일명으로 해석합니다.
- * 전략:
- * 1. 직접 매핑 (한국어 / 별칭 -> 파일명)
- * 2. 퍼지 매핑 (유사한 별칭 -> 파일명)
- * 3. 퍼지 파일명 (유사한 키워드 -> 실제 파일명)
- * 4. 폴백 (Default_Fallback.png)
+ * [Refactored] backgroundMappings 의존 제거 — availableBackgrounds(파일 리스트) 직접 매칭
  * 
- * @param tag AI가 생성한 태그, 예: "<배경>City_Street"
- * @returns 해결된 절대 경로, 예: "/assets/backgrounds/City_Street.jpg"
+ * ⚠️ assets.json 매니페스트는 확장자 없이 저장 (예: "강남_번화가")
+ *    실제 파일은 "강남_번화가.jpg" → 반환 시 .jpg 붙여야 함
+ * 
+ * 전략:
+ * 1. 정확한 파일명 매칭
+ * 2. 계층적 스코어링 (Suffix/Overlap 기반 최적 매칭)
+ * 3. 퍼지 매칭 (string-similarity 폴백)
+ * 4. 폴백 (Default_Fallback.jpg)
  */
-// [Refactor] Hierarchical Scoring Systems (User Request: Region > Zone > Spot priority)
+
+/** Helper: 매니페스트 이름 → 완전한 URL 경로 */
+function buildBgUrl(basePath: string, manifestName: string): string {
+    // manifestName = "강남_번화가" (확장자 없음)
+    // 이미 확장자가 있으면 그대로, 없으면 .jpg 추가
+    const filename = /\.(jpg|jpeg|png|webp|gif)$/i.test(manifestName)
+        ? manifestName
+        : `${manifestName}.jpg`;
+    return `${basePath}/${filename}`;
+}
+
 export function resolveBackground(tag: string): string {
     const state = useGameStore.getState();
-    const backgroundMappings = state.backgroundMappings || {};
-    const backgroundFiles = state.availableBackgrounds || [];
+    const backgroundFiles: string[] = state.availableBackgrounds || [];
     const activeGameId = state.activeGameId || 'god_bless_you';
-
     const basePath = `/assets/${activeGameId}/backgrounds`;
 
-    // 1. Clean Input
+    // 0. Passthrough (already resolved paths or URLs)
     if (tag.startsWith('/assets/') || tag.startsWith('http')) return tag;
-    const query = tag.replace(/<배경>|<\/배경>/g, '').replace(/['"]/g, '').trim();
+
+    // 1. Clean Input
+    const query = tag
+        .replace(/<배경>|<\/배경>/g, '')
+        .replace(/['"]/g, '')
+        .replace(/\s*>\s*/g, '_')   // "서울 > 아카데미 > 강의실" → "서울_아카데미_강의실"
+        .replace(/\s+/g, '_')       // Spaces to underscores
+        .trim()
+        .normalize('NFC');          // [Fix] NFC normalization for Korean
     if (!query) return `${basePath}/Default_Fallback.jpg`;
 
-    // --- Strategy 1: Direct Match (Highest Priority) ---
-    // [Debug] Streaming Trace
-    if (tag.includes('남만')) {
-        console.log(`[BackgroundManager] Resolving: "${tag}" -> Query: "${query}"`);
+    if (backgroundFiles.length === 0) {
+        console.warn(`[BackgroundManager] ⚠️ availableBackgrounds is EMPTY! Falling back to direct path for "${query}".`);
+        return `${basePath}/${query}.jpg`;
     }
 
-    if (backgroundMappings[query]) {
-        console.log(`[BackgroundManager] Direct Match: "${query}" -> "${backgroundMappings[query]}"`);
-        return `${basePath}/${backgroundMappings[query]}`;
+    // Manifest stores extensionless names → normalize for comparison
+    const filesNFC = backgroundFiles.map(f => f.normalize('NFC'));
+
+    // --- Strategy 1: Exact Match ---
+    const exactIdx = filesNFC.findIndex(f => f === query);
+    if (exactIdx >= 0) {
+        return buildBgUrl(basePath, backgroundFiles[exactIdx]);
     }
 
-    // --- Strategy 2: Hierarchical Scoring (Score-based Resolution) ---
-    // Goal: Resolve "Region_Zone_Spot" -> Find best existing key "Zone_Spot" or "Spot" or "AltRegion_Spot"
-    // Heuristic:
-    // - Exact Spot Name Match: High Score
-    // - Zone Match: Medium Score
-    // - Region Match: Low Score
+    // --- Strategy 2: Hierarchical Scoring (Suffix + Overlap) ---
+    const queryParts = query.split('_').filter(Boolean);
 
-    // Decompose Query: "안휘_시장" -> ["안휘", "시장"]
-    const queryParts = query.split('_');
-    const mappingKeys = Object.keys(backgroundMappings);
-
-    let bestKey = '';
+    let bestFile = '';
     let maxScore = 0;
 
-    // We scan ALL mapping keys to find the best match
-    for (const key of mappingKeys) {
+    for (let i = 0; i < filesNFC.length; i++) {
+        const fileParts = filesNFC[i].split('_').filter(Boolean);
         let score = 0;
-        const keyParts = key.split('_'); // e.g., "중원_시장" -> ["중원", "시장"]
 
-        // Scoring Rules
-        // 1. Suffix Match (The "Spot" is usually the last part)
-        // If Query ends with '시장' and Key ends with '시장' -> +50 points
-        if (keyParts.length > 0 && queryParts.length > 0) {
-            const lastPartQuery = queryParts[queryParts.length - 1];
-            const lastPartKey = keyParts[keyParts.length - 1];
-            if (lastPartQuery === lastPartKey) {
+        // Rule 1: Suffix Match
+        if (queryParts.length > 0 && fileParts.length > 0) {
+            const lastQuery = queryParts[queryParts.length - 1];
+            const lastFile = fileParts[fileParts.length - 1];
+
+            if (lastQuery === lastFile) {
+                score += 50;
+            } else if (lastQuery.replace(/\s/g, '') === lastFile.replace(/\s/g, '')) {
                 score += 50;
             }
         }
 
-        // 2. Component Overlap (How many words match?)
-        // "안휘_시장" vs "중원_시장" -> Overlap "시장" (1 part)
-        let matchCount = 0;
+        // Rule 2: Component Overlap
         for (const qp of queryParts) {
-            if (keyParts.includes(qp)) {
-                matchCount++;
-                score += 10; // Base score for any word match
+            if (fileParts.includes(qp)) {
+                score += 10;
             }
         }
-
-        // 3. Length Penalty (Prefer closer matches)
-        // "시장" (less junk) > "중원_시장" (some junk) if query is just "시장"
-        // But if query is "안휘_시장", and we have "중원_시장" (score 60) vs "시장" (score 50)?
-        // We want specifically broadly matching files?
-        // Actually, "안휘_시장" vs "중원_시장":
-        // "시장" matches (+50). "안휘" != "중원". Total 60.
-        // "안휘_시장" vs "공용_시장": Total 60.
-        // Tie-breaking?
-
-
-        // [Improvement] Space-Insensitive Check
-        // If "냉동 감옥" (with space) matches "냉동감옥" (no space), give massive bonus to override mismatch.
-        if (keyParts.length > 0 && queryParts.length > 0) {
-            const lastPartQueryNormal = queryParts[queryParts.length - 1].replace(/\s/g, '');
-            const lastPartKeyNormal = keyParts[keyParts.length - 1].replace(/\s/g, '');
-
-            if (lastPartQueryNormal === lastPartKeyNormal) {
-                score += 50; // Same weight as exact match
-            }
-        }
-
 
         if (score > maxScore) {
             maxScore = score;
-            bestKey = key;
+            bestFile = backgroundFiles[i];
         }
     }
 
-    if (bestKey && maxScore >= 40) {
-        // Tie-breaker or Logic verification
-        console.log(`[BackgroundManager] Scoring Match: "${query}" -> "${bestKey}" (Score: ${maxScore})`);
-        return `${basePath}/${backgroundMappings[bestKey]}`;
+    if (bestFile && maxScore >= 40) {
+        console.log(`[BackgroundManager] Score Match: "${query}" → "${bestFile}.jpg" (Score: ${maxScore})`);
+        return buildBgUrl(basePath, bestFile);
     }
 
-
-    // --- Strategy 3: Category / Prefix Fallback (Legacy) ---
-    const parts = query.split('_');
-    if (parts.length > 1) {
-        const category = parts[0];
-        const categoryFiles = backgroundFiles.filter(f => f.toLowerCase().startsWith(category.toLowerCase() + '_'));
-        if (categoryFiles.length > 0) {
-            // Find best string match within category
-            const subMatch = stringSimilarity.findBestMatch(query, categoryFiles);
-            if (subMatch.bestMatch.rating > 0.4) {
-                return `${basePath}/${subMatch.bestMatch.target}`;
-            }
-        }
-    }
-
-    // --- Strategy 4: Fuzzy File Match ---
+    // --- Strategy 3: Fuzzy File Match ---
     if (backgroundFiles.length > 0) {
-        const fileMatches = stringSimilarity.findBestMatch(query, backgroundFiles);
-        if (fileMatches.bestMatch.rating > 0.6) {
-            return `${basePath}/${fileMatches.bestMatch.target}`;
+        const fileMatches = stringSimilarity.findBestMatch(query, filesNFC);
+        if (fileMatches.bestMatch.rating > 0.5) {
+            const matchedFile = backgroundFiles[fileMatches.bestMatchIndex];
+            console.log(`[BackgroundManager] Fuzzy Match: "${query}" → "${matchedFile}.jpg" (Rating: ${fileMatches.bestMatch.rating.toFixed(2)})`);
+            return buildBgUrl(basePath, matchedFile);
         }
     }
 

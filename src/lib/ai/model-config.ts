@@ -1,11 +1,11 @@
 export const MODEL_CONFIG = {
     STORY: 'gemini-3-flash-preview', // Main Story (Synced with Cache)
-    LOGIC: 'gemini-3-flash-preview',       // Game Logic (Fast, JSON)
-    DIRECTOR: 'gemini-3-flash-preview',    // [NEW] Narrative Director (Plot Planning)
+    LOGIC: 'gemini-2.5-flash',       // Game Logic (Fast, JSON) — Phase2 parallel, safe to downgrade
+    DIRECTOR: 'gemini-3-flash-preview',    // Narrative Director — Quality-critical (plot/tone planning)
     SUMMARY: 'gemini-2.5-flash',      // Summarization (Cheap)
-    ROUTER: 'gemini-2.5-flash-lite',       // [NEW] Intent Classification
-    PRE_LOGIC: 'gemini-3-flash-preview',     // [NEW] Adjudication & Dice Rolls
-    CHOICES: 'gemini-2.5-flash-lite'   // [NEW] Choice Generation (Parallel)
+    ROUTER: 'gemini-2.5-flash-lite',       // Intent Classification
+    PRE_LOGIC: 'gemini-3-flash-preview',     // Adjudication & Dice Rolls — Quality-critical (location/mood)
+    CHOICES: 'gemini-2.5-flash'   // Choice Generation (Parallel)
 };
 
 export const KRW_PER_USD = 1450; // Exchange Rate

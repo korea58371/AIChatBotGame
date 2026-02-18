@@ -10,6 +10,7 @@ export async function fetchAgentTurnStream(
         onToken: (text: string) => void;
         onComplete: (data: any) => void;
         onError: (err: any) => void;
+        onProgress?: (stage: string, duration: number) => void;
     }
 ) {
     try {
@@ -58,6 +59,8 @@ export async function fetchAgentTurnStream(
                         );
                         if (json.input) console.log(`  ↳ input:`, json.input);
                         if (json.output) console.log(`  ↳ output:`, json.output);
+                        // [NEW] Forward to UI
+                        callbacks.onProgress?.(json.stage, json.duration);
                     } else if (json.type === 'data') {
                         console.log("[StreamClient] Received DATA payload (Length: " + JSON.stringify(json.content).length + ")");
                         callbacks.onComplete(json.content);

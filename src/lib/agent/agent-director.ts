@@ -13,6 +13,7 @@
 
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { MODEL_CONFIG } from '../ai/model-config';
+import { withRetry } from '../ai/retry';
 import { DirectorState, DirectorLogEntry } from '../store';
 
 const safetySettings = [
@@ -111,7 +112,10 @@ export class AgentDirector {
         const userPrompt = this.buildUserPrompt(input);
 
         try {
-            const result = await model.generateContent(userPrompt);
+            const result = await withRetry(
+                (signal) => model.generateContent(userPrompt, { signal }),
+                { maxRetries: 2, timeoutMs: 30_000, label: 'Director' }
+            );
             const responseText = result.response.text();
             const jsonText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
             const data = JSON.parse(jsonText);
@@ -275,6 +279,12 @@ Design this turn's plot. Be concise.
 ${turnCount <= 1 ? '⚠️ This is the FIRST TURN. Introduce the world gently per the game guide. Do not assume any prior story context.' : ''}
 Respect the mood, pacing, and regional context.
 You may incorporate Casting Candidates into plot_beats if they fit the situation naturally.
+
+⚠️ [캐릭터 등퇴장 패턴 규칙 (CRITICAL)]
+- **목적 기반 등장**: 캐릭터가 등장할 때는 반드시 **용건/목적**이 있어야 합니다. 그 목적이 해결되거나 실패할 때까지 함께 행동하는 것이 자연스럽습니다.
+- **"등장 → 리액션 → 즉시 퇴장" 패턴 금지**: 의미 있는 캐릭터가 등장해서 "헐!" 하고 놀란 뒤 바로 떠나는 전개는 비현실적입니다.
+- **엑스트라 예외**: 행인, 점원, 택시기사 등 일회성 역할은 짧은 등퇴장이 허용됩니다.
+- **자연스러운 퇴장**: 퇴장 시에도 이유가 있어야 합니다 (약속, 전화, 업무 등).
 
 ⚠️ [캐릭터 식별자 규칙 (CRITICAL)]
 - context_requirements, plot_beats, subtle_hooks 등 **모든 출력에서 캐릭터를 지칭할 때 반드시 한글 이름**을 사용하십시오.

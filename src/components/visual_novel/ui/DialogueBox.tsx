@@ -48,14 +48,14 @@ const DialogueBox = React.memo(function DialogueBox({ onClick }: DialogueBoxProp
                 {/* Name Tag - Fixed position within flex layout, does not shift with text length */}
                 {currentSegmentType === 'dialogue' && (
                     <div className="w-full text-center mb-2 md:mb-3 shrink-0">
-                        <span className="text-[clamp(16px,2.5vw+8px,36px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
+                        <span className="text-[clamp(20px,3vw+10px,36px)] font-bold text-yellow-500 tracking-wide drop-shadow-md">
                             {displayName}
                         </span>
                     </div>
                 )}
 
                 {/* Text Content */}
-                <div className="text-[clamp(14px,2vw+6px,30px)] leading-relaxed text-gray-100 whitespace-pre-wrap text-center w-full drop-shadow-sm px-[2vw] md:px-0">
+                <div className="text-[clamp(21px,3vw+9px,30px)] leading-relaxed text-gray-100 whitespace-pre-wrap text-center w-full drop-shadow-sm px-[2vw] md:px-0">
                     {currentSegmentType === 'narration' ? (
                         <span className="text-gray-300 italic block">
                             {formatText(currentSegmentContent || '')}

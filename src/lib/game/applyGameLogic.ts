@@ -120,6 +120,15 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                 addToast(`${t.fame} ${numVal > 0 ? '+' : ''}${numVal}`, numVal > 0 ? 'success' : 'warning');
             }
             else if (lowerKey === 'fate') newStats.fate = Math.max(0, (newStats.fate || 0) + numVal);
+            // [Fix] Level & EXP — PostLogic stat_updates에서 성장 수치 반영
+            else if (lowerKey === 'level') {
+                const oldLevel = newStats.level || 1;
+                newStats.level = Math.max(1, oldLevel + numVal);
+                console.log(`[applyGameLogic] Level: ${oldLevel} → ${newStats.level} (delta: ${numVal})`);
+            }
+            else if (lowerKey === 'exp') {
+                newStats.exp = (newStats.exp || 0) + numVal;
+            }
 
             // 2. [Universal] Genre-Specific Custom Stats (내공, 마나, 오러 등)
             else if (customStatIds.has(lowerKey)) {
@@ -659,10 +668,14 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                 const oldMemories = existingData.memories || [];
                 const newMemories = updateData.memories;
 
-                // Deduplicate and Append
+                // Deduplicate and Append (TaggedMemory 호환)
                 const mergedMemories = [...oldMemories];
-                newMemories.forEach((m: string) => {
-                    if (!mergedMemories.includes(m)) {
+                const getMemText = (m: any) => typeof m === 'string' ? m : (m?.text || '');
+                newMemories.forEach((m: any) => {
+                    const newText = getMemText(m);
+                    if (!newText) return;
+                    const isDup = mergedMemories.some((existing: any) => getMemText(existing) === newText);
+                    if (!isDup) {
                         mergedMemories.push(m);
                     }
                 });
@@ -978,6 +991,40 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                     }
                 }
             });
+        }
+    }
+
+    // [NEW] Memory Decay — 만료된 기억 제거
+    {
+        const store = useGameStore.getState();
+        const currentTurn = store.turnCount;
+        const charData = store.characterData;
+        let totalExpired = 0;
+
+        Object.entries(charData).forEach(([charId, char]) => {
+            const memories = (char as any).memories;
+            if (!Array.isArray(memories) || memories.length === 0) return;
+
+            const before = memories.length;
+            const filtered = memories.filter((m: any) => {
+                // string 타입 기억은 소멸 대상 아님 (레거시 호환)
+                if (typeof m === 'string') return true;
+                // expireAfterTurn이 없거나 null이면 영구 보존
+                if (m.expireAfterTurn == null) return true;
+                // 만료 여부 체크
+                return currentTurn <= m.expireAfterTurn;
+            });
+
+            if (filtered.length < before) {
+                const expired = before - filtered.length;
+                totalExpired += expired;
+                useGameStore.getState().updateCharacterData(charId, { memories: filtered });
+                console.log(`[Memory Decay] ${charId}: ${expired} memories expired (${before} → ${filtered.length})`);
+            }
+        });
+
+        if (totalExpired > 0) {
+            console.log(`[Memory Decay] Total: ${totalExpired} memories expired this turn.`);
         }
     }
 

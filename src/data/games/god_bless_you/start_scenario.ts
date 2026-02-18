@@ -51,15 +51,35 @@ export const CHARACTER_CREATION_QUESTIONS = [
     },
     {
         id: 'core_setting',
+        type: 'grouped',
         question: "6문) [핵심 설정] 당신의 영혼에 새겨진 근원은 무엇인가?",
-        options: [
-            { value: 'incompetent', label: "무능력자 일반인 (평범 그 자체, Cost: 0)" },
-            { value: 'superhuman', label: "초인적인 전투능력을 가진 일반인 (신체 능력 특화, Cost: 100 Fate)", cost: 100, costType: 'fate' },
-            { value: 'd_rank_hunter', label: "D급 헌터 (밸런스형, 라이센스 보유, Cost: 50 Fate)", cost: 50, costType: 'fate' },
-            { value: 'academy_student', label: "블레서 아카데미의 학생 (잠재력/지능 특화, Cost: 100 Fate)", cost: 100, costType: 'fate' },
-            { value: 's_rank_candidate', label: "S급 능력을 이제 막 각성한 예비 블레서 (먼치킨/마력 특화, Cost: 300 Fate)", cost: 300, costType: 'fate' },
-            { value: 'cheonma_reborn', label: "천마환생: 전생의 기억(천마)을 되찾은 일반인 (마도계열 최고수, Cost: 300 Fate)", cost: 300, costType: 'fate' },
-            { value: 'dalma_reborn', label: "달마환생: 전생의 기억(달마)을 되찾은 일반인 (정종계열 최고수, Cost: 300 Fate)", cost: 300, costType: 'fate' }
+        description: "",
+        groups: [
+            {
+                id: 'abilities',
+                title: '◈ 복수 선택 가능한 능력',
+                selectionMode: 'multi' as const,
+                options: [
+                    { value: 'strong_body', label: "강인한 육체: 일반인을 상회하는 육체. 삼대 700치는 괴력", cost: 30, costType: 'fate' },
+                    { value: 'attractive', label: "매력적인 외모: 블레서만큼은 아니지만, 누구에게나 호감을 살만한 외모", cost: 30, costType: 'fate' },
+                    { value: 'academy_student', label: "아카데미 학생: 높은 마나적응력을 지닌 당신은, 블레서 아카데미에 재학중이다", cost: 50, costType: 'fate' },
+                    { value: 'skilled_hunter', label: "숙련된 헌터: 당신은 D급 헌터 자격증을 지닌 숙련된 헌터다", cost: 40, costType: 'fate' },
+                    { value: 'rich_start', label: "저축왕: 초기 자금 1천만원으로 스타트", cost: 50, costType: 'fate' },
+                ]
+            },
+            {
+                id: 'heritage',
+                title: '◈ 특전 전승 (하나만 선택 가능)',
+                selectionMode: 'single' as const,
+                options: [
+                    { value: 's_rank_rookie', label: "S급 루키: S급 능력을 각성한 기대주. 어딜가나 주목받는다.", cost: 150, costType: 'fate' },
+                    { value: 'cheonma_reborn', label: "천마환생: 과거 무림을 지배했던 절대자 천마의 환생. 마도 계열의 패도적인 무공의 절대고수. 얼마전 기억을 되찾았다.", cost: 150, costType: 'fate' },
+                    { value: 'dalma_reborn', label: "달마환생: 과거 소림 정종무공의 대가로써, 천마와 맞써던 절대고수. 얼마전 기억을 되찾았다.", cost: 150, costType: 'fate' },
+                    { value: 'sambong_reborn', label: "삼봉환생: 검의 절대자로 천마, 달마와 함께 무림 역사상 절대고수로 기억되던 검의 고수. 얼마전 기억을 되찾았다.", cost: 150, costType: 'fate' },
+                    { value: 'returnee', label: "귀환자: 당신은 이세계에서 세상을 구한 채, 기억만 가지고 능력은 잃고 현대로 복귀한 용사이다.", cost: 150, costType: 'fate' },
+                    { value: 'regressor_hunter', label: "회귀한 헌터: 10년후 이계종에 의해 멸망한 세계선에서 회귀한 당신. 오직 개인의 노력으로 S급 헌터에 도달했다. 이번에는 반드시 멸망을 막아낼 것이다.", cost: 150, costType: 'fate' },
+                ]
+            }
         ]
     }
 ];

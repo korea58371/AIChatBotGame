@@ -36,7 +36,7 @@ function CharacterCreationWizardInner({
 }: CharacterCreationWizardProps) {
     // [Perf] Local state — changes here only re-render THIS component, not the parent
     const [creationStep, setCreationStep] = useState(0);
-    const [creationData, setCreationData] = useState<Record<string, string>>({});
+    const [creationData, setCreationData] = useState<Record<string, string | string[]>>({});
 
     const creationQuestions = useGameStore(state => state.characterCreationQuestions);
     const isDataLoaded = !!creationQuestions && creationQuestions.length > 0;
@@ -135,6 +135,41 @@ function CharacterCreationWizardInner({
     const questionIndex = creationStep - 1;
     const currentQuestion = isNameStep ? null : creationQuestions[questionIndex];
 
+    // [Helper] Toggle value in multi-select array
+    const toggleMultiSelect = (qId: string, value: string) => {
+        const current = (creationData[qId] as string[] | undefined) || [];
+        const newArr = current.includes(value)
+            ? current.filter(v => v !== value)
+            : [...current, value];
+        setCreationData({ ...creationData, [qId]: newArr });
+    };
+
+    // [Helper] Set value for single-select within grouped question
+    const setSingleSelect = (qId: string, groupId: string, value: string) => {
+        const current = (creationData[qId] as string[] | undefined) || [];
+        // Find the question to get the group's options for removal
+        const question = creationQuestions.find((q: any) => q.id === qId);
+        const group = question?.groups?.find((g: any) => g.id === groupId);
+        const groupValues = new Set((group?.options || []).map((o: any) => o.value));
+        // Remove any existing selection from this group, then add new one
+        const filtered = current.filter(v => !groupValues.has(v));
+        // If clicking the same value, deselect it
+        if (current.includes(value)) {
+            setCreationData({ ...creationData, [qId]: filtered });
+        } else {
+            setCreationData({ ...creationData, [qId]: [...filtered, value] });
+        }
+    };
+
+    // [Helper] Confirm grouped question and proceed
+    const confirmGroupedQuestion = () => {
+        if (questionIndex < creationQuestions.length - 1) {
+            setCreationStep(prev => prev + 1);
+        } else {
+            finalizeCreation(creationData);
+        }
+    };
+
     const handleOptionSelect = (qId: string, value: string) => {
         const updatedData = { ...creationData, [qId]: value };
         setCreationData(updatedData);
@@ -142,94 +177,125 @@ function CharacterCreationWizardInner({
         if (questionIndex < creationQuestions.length - 1) {
             setCreationStep(prev => prev + 1);
         } else {
-            // Finished — Construct Prompt
-            let profileText = "사용자 캐릭터 프로필:\n";
-            Object.entries(updatedData).forEach(([key, val]) => {
-                const q = creationQuestions.find(q => q.id === key);
-                const opt = q?.options.find((o: any) => o.value === val);
-                profileText += `- ${q?.id}: ${opt?.label || val}\n`;
-            });
+            finalizeCreation(updatedData);
+        }
+    };
 
-            // [Default Name Logic]
-            let finalName = playerName;
-            if (activeGameId === 'wuxia') {
-                if (!finalName || finalName.trim() === '' || finalName === '주인공') {
-                    finalName = '무명';
-                    useGameStore.getState().setPlayerName(finalName);
+    const finalizeCreation = (updatedData: Record<string, string | string[]>) => {
+        // Construct Prompt
+        let profileText = "사용자 캐릭터 프로필:\n";
+        Object.entries(updatedData).forEach(([key, val]) => {
+            const q = creationQuestions.find((q: any) => q.id === key);
+            if (Array.isArray(val)) {
+                // Grouped question — resolve labels from all groups
+                const allOpts = (q?.groups || []).flatMap((g: any) => g.options || []);
+                const labels = val.map((v: string) => {
+                    const opt = allOpts.find((o: any) => o.value === v);
+                    return opt?.label || v;
+                });
+                if (labels.length > 0) {
+                    profileText += `- ${q?.id}: ${labels.join(', ')}\n`;
+                } else {
+                    profileText += `- ${q?.id}: 없음 (평범한 일반인)\n`;
                 }
+            } else {
+                const opt = q?.options?.find((o: any) => o.value === val);
+                profileText += `- ${q?.id}: ${opt?.label || val}\n`;
             }
+        });
 
-            // [GOD MODE CHECK]
-            if (finalName === '김현준갓모드') {
-                finalName = '김현준';
+        // [Default Name Logic]
+        let finalName = playerName;
+        if (activeGameId === 'wuxia') {
+            if (!finalName || finalName.trim() === '' || finalName === '주인공') {
+                finalName = '무명';
                 useGameStore.getState().setPlayerName(finalName);
-                useGameStore.getState().setGodMode(true);
-                addToast("😇 God Mode Activated", "success");
             }
+        }
 
-            profileText += `이름: ${finalName || playerName || '성현우'}\n`;
+        // [GOD MODE CHECK]
+        if (finalName === '김현준갓모드') {
+            finalName = '김현준';
+            useGameStore.getState().setPlayerName(finalName);
+            useGameStore.getState().setGodMode(true);
+            addToast("😇 God Mode Activated", "success");
+        }
 
-            let prompt = `
-                                    [SYSTEM: Game Start Protocol]
-                                    The player has created a new character with the following profile:
-                                    ${profileText}
+        profileText += `이름: ${finalName || playerName || '성현우'}\n`;
 
-                                    Instructions:
-                                    1. Ignore any previous static Start Scenario.
-                                    2. Start the story immediately from the Prologue or Chapter 1.
-                                    3. Reflect the chosen Identity, Goal, Specialty, and Personality in the narrative.
-                                    4. STRICTLY RESPECT the chosen 'Narrative Perspective' (e.g., if '1인칭', use '나'/'내' (I/My) exclusively. Do NOT use '당신' (You)).
-                                    5. Output the first scene now.
-                                    `;
+        let prompt = `
+                                [SYSTEM: Game Start Protocol]
+                                The player has created a new character with the following profile:
+                                ${profileText}
 
-            // [Protagonist Image Selection]
-            const gender = useGameStore.getState().playerStats.gender || 'male';
-            const finalImage = selectProtagonistImage(finalName, gender, updatedData);
-            if (finalImage) {
-                console.log(`[CharacterCreation] Setting Protagonist Image: ${finalImage}`);
-                useGameStore.getState().setHiddenOverrides({ protagonistImage: finalImage });
-            }
+                                Instructions:
+                                1. Ignore any previous static Start Scenario.
+                                2. Start the story immediately from the Prologue or Chapter 1.
+                                3. Reflect the chosen Identity, Goal, Specialty, and Personality in the narrative.
+                                4. STRICTLY RESPECT the chosen 'Narrative Perspective' (e.g., if '1인칭', use '나'/'내' (I/My) exclusively. Do NOT use '당신' (You)).
+                                5. Output the first scene now.
+                                `;
 
-            const newStats = {
-                ...useGameStore.getState().playerStats,
-                skills: [] as Skill[],
-                neigong: 0,
-                gold: 0,
-            };
+        // [Protagonist Image Selection]
+        const gender = useGameStore.getState().playerStats.gender || 'male';
+        const finalImage = selectProtagonistImage(finalName, gender, updatedData as any);
+        if (finalImage) {
+            console.log(`[CharacterCreation] Setting Protagonist Image: ${finalImage}`);
+            useGameStore.getState().setHiddenOverrides({ protagonistImage: finalImage });
+        }
 
-            // [Cost Deduction Logic]
-            let totalFateCost = 0;
-            creationQuestions.forEach(q => {
-                const selectedVal = updatedData[q.id];
-                if (selectedVal) {
-                    const opt = q.options.find((o: any) => o.value === selectedVal);
-                    if (opt && opt.cost && opt.costType === 'fate') {
+        const newStats = {
+            ...useGameStore.getState().playerStats,
+            skills: [] as Skill[],
+            neigong: 0,
+            gold: 0,
+        };
+
+        // [Cost Deduction Logic] — supports both string and string[] values
+        let totalFateCost = 0;
+        creationQuestions.forEach((q: any) => {
+            const selectedVal = updatedData[q.id];
+            if (!selectedVal) return;
+
+            if (q.type === 'grouped' && Array.isArray(selectedVal)) {
+                // Grouped question: sum costs from all selected options across all groups
+                const allOpts = (q.groups || []).flatMap((g: any) => g.options || []);
+                selectedVal.forEach((v: string) => {
+                    const opt = allOpts.find((o: any) => o.value === v);
+                    if (opt?.cost && opt.costType === 'fate') {
                         totalFateCost += opt.cost;
                     }
+                });
+            } else if (typeof selectedVal === 'string') {
+                const opt = q.options?.find((o: any) => o.value === selectedVal);
+                if (opt?.cost && opt.costType === 'fate') {
+                    totalFateCost += opt.cost;
                 }
-            });
-
-            if (totalFateCost > 0) {
-                newStats.fate = (newStats.fate || 0) - totalFateCost;
-                console.log(`[Creation] Deducted ${totalFateCost} Fate Points. Remaining: ${newStats.fate}`);
-                addToast(`${totalFateCost} 운명 포인트가 소모되었습니다. (잔여: ${newStats.fate})`, 'info');
             }
+        });
 
-            // [보너스 적용] 핵심 설정
-            const coreSetting = updatedData['core_setting'];
-            if (coreSetting) {
-                newStats.core_setting = coreSetting;
-            }
+        if (totalFateCost > 0) {
+            newStats.fate = (newStats.fate || 0) - totalFateCost;
+            console.log(`[Creation] Deducted ${totalFateCost} Fate Points. Remaining: ${newStats.fate}`);
+            addToast(`${totalFateCost} 운명 포인트가 소모되었습니다. (잔여: ${newStats.fate})`, 'info');
+        }
 
-            if (coreSetting === 'possessed_noble') {
+        // [보너스 적용] 핵심 설정 (core_setting)
+        const coreSettingRaw = updatedData['core_setting'];
+        const coreSettings: string[] = Array.isArray(coreSettingRaw) ? coreSettingRaw : (coreSettingRaw ? [coreSettingRaw] : []);
+        newStats.core_setting = coreSettings.length > 0 ? coreSettings : undefined;
+
+        // [Wuxia Legacy Bonuses]
+        if (activeGameId === 'wuxia') {
+            if (coreSettings.includes('possessed_noble')) {
                 newStats.gold = (newStats.gold || 0) + 1000;
                 addToast("특전: 지략가 보너스 적용 (금화 +1000)", "success");
             }
-            else if (coreSetting === 'rejuvenated_master') {
+            if (coreSettings.includes('rejuvenated_master')) {
                 newStats.neigong = (newStats.neigong || 0) + 60;
                 addToast("특전: 환골탈태 보너스 적용 (내공 60년)", "success");
             }
-            else if (coreSetting === 'returnee_demon') {
+            if (coreSettings.includes('returnee_demon')) {
                 newStats.level = 100;
                 const demonArt = {
                     id: 'heavenly_demon_art',
@@ -244,104 +310,146 @@ function CharacterCreationWizardInner({
                 newStats.skills = [...(newStats.skills || []), demonArt];
                 addToast("특전: 천마 재림 적용 (천마신공, 레벨 100)", "success");
             }
-            else if (coreSetting === 'dimensional_merchant') {
+            if (coreSettings.includes('dimensional_merchant')) {
                 newStats.gold = (newStats.gold || 0) + 500000;
                 addToast("특전: 거상 보너스 적용 (초기 자금 50만냥)", "success");
             }
-
-            // [GBY Bonuses]
-            if (activeGameId === 'god_bless_you') {
-                if (coreSetting === 'incompetent') {
-                    addToast("특성: 무능력자 (특별한 보너스 없음, 하드코어 시작)", "info");
-                }
-                else if (coreSetting === 'superhuman') {
-                    newStats.level = 5;
-                    addToast("특전: 초인 (레벨 5)", "success");
-                }
-                else if (coreSetting === 'd_rank_hunter') {
-                    newStats.gold = (newStats.gold || 0) + 500000;
-                    // @ts-ignore
-                    if (!(newStats as any).inventory) (newStats as any).inventory = [];
-                    // @ts-ignore
-                    (newStats as any).inventory.push({ id: 'hunter_license_d', name: 'D급 헌터 자격증', quantity: 1, type: 'item' });
-                    addToast("특전: D급 헌터 (자격증, 50만원)", "success");
-                }
-                else if (coreSetting === 'academy_student') {
-                    // @ts-ignore
-                    (newStats as any).potential = ((newStats as any).potential || 10) + 10;
-                    // @ts-ignore
-                    if (!(newStats as any).inventory) (newStats as any).inventory = [];
-                    // @ts-ignore
-                    (newStats as any).inventory.push({ id: 'blesser_academy_uniform', name: '아카데미 교복', quantity: 1, type: 'item' });
-                    addToast("특전: 아카데미 생도 (잠재력+10, 교복)", "success");
-                }
-                else if (coreSetting === 's_rank_candidate') {
-                    newStats.mp = (newStats.mp || 100) + 500;
-                    // @ts-ignore
-                    (newStats as any).potential = ((newStats as any).potential || 10) + 30;
-                    newStats.level = 20;
-                    addToast("특전: S급 유망주 (마력 +500, 잠재력 +30, 레벨 20)", "success");
-                }
-            }
-
-            // [Dead Stats Removed] Personality bonuses removed
-
-            // [Final Goal]
-            if (updatedData['final_goal']) {
-                newStats.final_goal = updatedData['final_goal'];
-            }
-
-            if (updatedData['narrative_perspective']) {
-                newStats.narrative_perspective = updatedData['narrative_perspective'];
-            }
-
-            // Commit to Store
-            useGameStore.getState().setPlayerStats(newStats);
-            console.log("[Start] Applied Initial Stats:", newStats);
-
-            // [Hidden Settings Logic]
-            if (activeGameId === 'wuxia') {
-                const hidden = getHiddenSettings(finalName);
-                if (hidden && hidden.found) {
-                    console.log("Applying Hidden Settings:", hidden);
-
-                    useGameStore.getState().setHiddenOverrides({
-                        persona: hidden.personaOverride,
-                        scenario: hidden.scenarioOverride,
-                        disabledEvents: hidden.disabledEvents,
-                        protagonistImage: hidden.imageOverride
-                    });
-
-                    prompt += `\n${hidden.narrative}\n`;
-
-                    if (hidden.scenarioOverride === 'WUXIA_IM_SEONG_JUN_SCENARIO') {
-                        prompt += `\n[SCENARIO KEY OVERRIDE]\n${WUXIA_IM_SEONG_JUN_SCENARIO}\n`;
-                    } else if (hidden.scenarioOverride === 'WUXIA_NAM_GANG_HYEOK_SCENARIO') {
-                        prompt += `\n[SCENARIO KEY OVERRIDE]\n${WUXIA_NAM_GANG_HYEOK_SCENARIO}\n`;
-                    }
-
-                    addToast(`히든 설정 발동: ${hidden.statsModifier?.faction || 'Unknown'}`, 'success');
-
-                    if (hidden.statsModifier) {
-                        const currentSkills = newStats.skills || [];
-                        const newSkills = hidden.statsModifier.skills || [];
-
-                        newStats.faction = hidden.statsModifier.faction || newStats.faction;
-                        newStats.skills = [...currentSkills, ...newSkills];
-
-                        if (hidden.statsModifier.active_injuries) {
-                            newStats.active_injuries = [...(newStats.active_injuries || []), ...hidden.statsModifier.active_injuries];
-                        }
-
-                        // [Dead Stats Removed] Hidden personality modifiers removed
-
-                        useGameStore.getState().setPlayerStats(newStats);
-                    }
-                }
-            }
-
-            handleSend(prompt, false, true);
         }
+
+        // [GBY Bonuses] — Each ability independently applies bonuses
+        if (activeGameId === 'god_bless_you') {
+            if (coreSettings.length === 0) {
+                addToast("특성: 평범한 일반인 (특별한 보너스 없음, 하드코어 시작)", "info");
+            }
+            // Abilities (multi-select)
+            if (coreSettings.includes('strong_body')) {
+                newStats.level = Math.max(newStats.level || 0, 5);
+                addToast("능력: 강인한 육체 (레벨 5)", "success");
+            }
+            if (coreSettings.includes('attractive')) {
+                addToast("능력: 매력적인 외모", "success");
+            }
+            if (coreSettings.includes('academy_student')) {
+                // @ts-ignore
+                (newStats as any).potential = ((newStats as any).potential || 10) + 10;
+                addToast("능력: 아카데미 학생 (잠재력+10)", "success");
+            }
+            if (coreSettings.includes('skilled_hunter')) {
+                newStats.gold = (newStats.gold || 0) + 500000;
+                addToast("능력: 숙련된 헌터 (D급 자격증, 50만원)", "success");
+            }
+            if (coreSettings.includes('rich_start')) {
+                newStats.gold = (newStats.gold || 0) + 10000000;
+                addToast("능력: 저축왕 (초기 자금 1천만원)", "success");
+            }
+            // Heritage (single-select)
+            if (coreSettings.includes('s_rank_rookie')) {
+                newStats.mp = (newStats.mp || 100) + 500;
+                // @ts-ignore
+                (newStats as any).potential = ((newStats as any).potential || 10) + 30;
+                newStats.level = Math.max(newStats.level || 0, 20);
+                addToast("특전: S급 루키 (마력 +500, 잠재력 +30, 레벨 20)", "success");
+            }
+            if (coreSettings.includes('cheonma_reborn')) {
+                newStats.level = Math.max(newStats.level || 0, 50);
+                const cheonmaArt = {
+                    id: 'cheonma_divine_art', name: '천마신공(天魔神功)',
+                    rank: '절대지경', type: '마도신공',
+                    description: '천마의 절대무공. 패도적인 파괴력을 자랑하는 마도의 극의.',
+                    proficiency: 10, effects: ['절대적인 파괴력', '마기 운용'], createdTurn: 0
+                };
+                newStats.skills = [...(newStats.skills || []), cheonmaArt];
+                addToast("특전: 천마환생 (천마신공, 레벨 50)", "success");
+            }
+            if (coreSettings.includes('dalma_reborn')) {
+                newStats.level = Math.max(newStats.level || 0, 50);
+                const dalmaArt = {
+                    id: 'dalma_divine_art', name: '달마신공(達磨神功)',
+                    rank: '절대지경', type: '정종신공',
+                    description: '달마대사의 정종무공. 강인한 방어와 내공을 자랑한다.',
+                    proficiency: 10, effects: ['철벽 방어', '정기 운용'], createdTurn: 0
+                };
+                newStats.skills = [...(newStats.skills || []), dalmaArt];
+                addToast("특전: 달마환생 (달마신공, 레벨 50)", "success");
+            }
+            if (coreSettings.includes('sambong_reborn')) {
+                newStats.level = Math.max(newStats.level || 0, 50);
+                const sambongArt = {
+                    id: 'sambong_sword_art', name: '삼봉검법(三峰劍法)',
+                    rank: '절대지경', type: '검술신공',
+                    description: '삼봉의 절대검술. 만물을 베어내는 검의 극의.',
+                    proficiency: 10, effects: ['만물절단', '검기 운용'], createdTurn: 0
+                };
+                newStats.skills = [...(newStats.skills || []), sambongArt];
+                addToast("특전: 삼봉환생 (삼봉검법, 레벨 50)", "success");
+            }
+            if (coreSettings.includes('returnee')) {
+                newStats.level = Math.max(newStats.level || 0, 10);
+                addToast("특전: 귀환자 (이세계 경험, 레벨 10)", "success");
+            }
+            if (coreSettings.includes('regressor_hunter')) {
+                newStats.level = Math.max(newStats.level || 0, 30);
+                addToast("특전: 회귀한 헌터 (미래 지식, 레벨 30)", "success");
+            }
+        }
+
+        // [Dead Stats Removed] Personality bonuses removed
+
+        // [Final Goal]
+        if (updatedData['final_goal']) {
+            newStats.final_goal = updatedData['final_goal'] as string;
+        }
+
+        if (updatedData['narrative_perspective']) {
+            newStats.narrative_perspective = updatedData['narrative_perspective'] as string;
+        }
+
+        // Commit to Store
+        useGameStore.getState().setPlayerStats(newStats);
+        console.log("[Start] Applied Initial Stats:", newStats);
+
+        // [Hidden Settings Logic]
+        if (activeGameId === 'wuxia') {
+            const hidden = getHiddenSettings(finalName);
+            if (hidden && hidden.found) {
+                console.log("Applying Hidden Settings:", hidden);
+
+                useGameStore.getState().setHiddenOverrides({
+                    persona: hidden.personaOverride,
+                    scenario: hidden.scenarioOverride,
+                    disabledEvents: hidden.disabledEvents,
+                    protagonistImage: hidden.imageOverride
+                });
+
+                prompt += `\n${hidden.narrative}\n`;
+
+                if (hidden.scenarioOverride === 'WUXIA_IM_SEONG_JUN_SCENARIO') {
+                    prompt += `\n[SCENARIO KEY OVERRIDE]\n${WUXIA_IM_SEONG_JUN_SCENARIO}\n`;
+                } else if (hidden.scenarioOverride === 'WUXIA_NAM_GANG_HYEOK_SCENARIO') {
+                    prompt += `\n[SCENARIO KEY OVERRIDE]\n${WUXIA_NAM_GANG_HYEOK_SCENARIO}\n`;
+                }
+
+                addToast(`히든 설정 발동: ${hidden.statsModifier?.faction || 'Unknown'}`, 'success');
+
+                if (hidden.statsModifier) {
+                    const currentSkills = newStats.skills || [];
+                    const newSkills = hidden.statsModifier.skills || [];
+
+                    newStats.faction = hidden.statsModifier.faction || newStats.faction;
+                    newStats.skills = [...currentSkills, ...newSkills];
+
+                    if (hidden.statsModifier.active_injuries) {
+                        newStats.active_injuries = [...(newStats.active_injuries || []), ...hidden.statsModifier.active_injuries];
+                    }
+
+                    // [Dead Stats Removed] Hidden personality modifiers removed
+
+                    useGameStore.getState().setPlayerStats(newStats);
+                }
+            }
+        }
+
+        handleSend(prompt, false, true);
     };
 
     const bgGradient = activeGameId === 'god_bless_you'
@@ -481,52 +589,173 @@ function CharacterCreationWizardInner({
                                 <span className="text-[#D4AF37]/50 text-sm mr-2 align-middle">◆</span>
                                 {currentQuestion?.question}
                             </h2>
+                            {currentQuestion?.description && (
+                                <p className="text-[#888] text-sm mt-1 px-4">{currentQuestion.description}</p>
+                            )}
 
-                            <div className="grid grid-cols-1 w-full gap-3 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-                                {currentQuestion?.options.map((opt: any) => {
-                                    if (opt.condition) {
-                                        const { key, value } = opt.condition;
-                                        if (creationData[key] !== value) return null;
-                                    }
+                            {/* Show current Fate balance for grouped (cost) questions */}
+                            {currentQuestion?.type === 'grouped' && (
+                                <div className="flex items-center gap-2 mt-2 px-4">
+                                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-900/50 text-purple-300 border border-purple-700/50">
+                                        🔮 보유 운명 포인트: {playerStats.fate || 0}
+                                    </span>
+                                </div>
+                            )}
 
-                                    const isAffordable = !opt.cost || (opt.costType === 'fate' ? (playerStats.fate || 0) >= opt.cost : true);
+                            {/* Grouped Question (multi + single select) */}
+                            {currentQuestion?.type === 'grouped' ? (
+                                <div className="w-full mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 space-y-6 max-h-[60vh] overflow-y-auto pr-1">
+                                    {currentQuestion.groups.map((group: any) => {
+                                        const selectedArr = (creationData[currentQuestion.id] as string[] | undefined) || [];
+                                        return (
+                                            <div key={group.id}>
+                                                <h3 className="text-sm font-bold text-[#D4AF37]/80 mb-3 flex items-center gap-2">
+                                                    {group.title}
+                                                    {group.selectionMode === 'multi' && (
+                                                        <span className="text-xs text-[#666] font-normal">(여러 개 선택 가능)</span>
+                                                    )}
+                                                </h3>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {group.options.map((opt: any) => {
+                                                        const isSelected = selectedArr.includes(opt.value);
+                                                        const isAffordable = !opt.cost || (opt.costType === 'fate' ? (playerStats.fate || 0) >= opt.cost : true);
 
-                                    return (
-                                        <button
-                                            key={opt.value}
-                                            disabled={!isAffordable}
-                                            onClick={() => {
-                                                if (!isAffordable) return;
-                                                playSfx('ui_click');
-                                                currentQuestion && handleOptionSelect(currentQuestion.id, opt.value);
-                                            }}
-                                            className={`group relative px-6 py-4 border rounded-lg text-left transition-all shadow-md overflow-hidden flex justify-between items-center
-                                                ${isAffordable
-                                                    ? 'bg-[#252525] hover:bg-[#2a2a2a] border-[#333] hover:border-[#D4AF37]/50 active:scale-[0.99] cursor-pointer'
-                                                    : 'bg-[#1a1a1a] border-[#333] opacity-60 cursor-not-allowed grayscale'
-                                                }
-                                            `}
-                                        >
-                                            <div className="flex items-center">
-                                                <div className={`absolute inset-y-0 left-0 w-1 transition-colors ${isAffordable ? 'bg-[#333] group-hover:bg-[#D4AF37]' : 'bg-red-900'}`} />
-                                                <span className={`font-bold mr-3 font-serif transition-colors ${isAffordable ? 'text-[#666] group-hover:text-[#D4AF37]' : 'text-stone-600'}`}>◈</span>
-                                                <span className={`font-medium transition-colors ${isAffordable ? 'text-gray-300 group-hover:text-[#eee]' : 'text-gray-500'}`}>
-                                                    {opt.label}
-                                                </span>
-                                            </div>
+                                                        return (
+                                                            <button
+                                                                key={opt.value}
+                                                                disabled={!isAffordable}
+                                                                onClick={() => {
+                                                                    if (!isAffordable) return;
+                                                                    playSfx('ui_click');
+                                                                    if (group.selectionMode === 'multi') {
+                                                                        toggleMultiSelect(currentQuestion.id, opt.value);
+                                                                    } else {
+                                                                        setSingleSelect(currentQuestion.id, group.id, opt.value);
+                                                                    }
+                                                                }}
+                                                                className={`group relative px-5 py-3 border rounded-lg text-left transition-all shadow-md overflow-hidden flex justify-between items-center
+                                                                    ${!isAffordable
+                                                                        ? 'bg-[#1a1a1a] border-[#333] opacity-60 cursor-not-allowed grayscale'
+                                                                        : isSelected
+                                                                            ? 'bg-[#D4AF37]/10 border-[#D4AF37]/60 shadow-[0_0_10px_rgba(212,175,55,0.15)]'
+                                                                            : 'bg-[#252525] hover:bg-[#2a2a2a] border-[#333] hover:border-[#D4AF37]/30 cursor-pointer'
+                                                                    }
+                                                                `}
+                                                            >
+                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                    {/* Checkbox / Radio indicator */}
+                                                                    <div className={`w-5 h-5 flex-shrink-0 rounded-${group.selectionMode === 'multi' ? 'md' : 'full'} border-2 flex items-center justify-center transition-all
+                                                                        ${isSelected
+                                                                            ? 'border-[#D4AF37] bg-[#D4AF37]'
+                                                                            : 'border-[#555] bg-transparent'
+                                                                        }`}
+                                                                    >
+                                                                        {isSelected && (
+                                                                            <span className="text-black text-xs font-bold">✓</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        {(() => {
+                                                                            const colonIdx = opt.label.indexOf(':');
+                                                                            if (colonIdx > 0) {
+                                                                                const name = opt.label.substring(0, colonIdx).trim();
+                                                                                const desc = opt.label.substring(colonIdx + 1).trim();
+                                                                                return (
+                                                                                    <>
+                                                                                        <span className={`font-bold text-sm transition-colors ${isSelected ? 'text-[#D4AF37]' : isAffordable ? 'text-gray-200 group-hover:text-white' : 'text-gray-500'}`}>
+                                                                                            {name}
+                                                                                        </span>
+                                                                                        <span className={`text-xs mt-0.5 transition-colors leading-relaxed ${isSelected ? 'text-gray-300' : isAffordable ? 'text-gray-500 group-hover:text-gray-400' : 'text-gray-600'}`}>
+                                                                                            {desc}
+                                                                                        </span>
+                                                                                    </>
+                                                                                );
+                                                                            }
+                                                                            return (
+                                                                                <span className={`font-medium text-sm transition-colors ${isSelected ? 'text-[#eee]' : isAffordable ? 'text-gray-400 group-hover:text-gray-200' : 'text-gray-600'}`}>
+                                                                                    {opt.label}
+                                                                                </span>
+                                                                            );
+                                                                        })()}
+                                                                    </div>
+                                                                </div>
 
-                                            {opt.cost && (
-                                                <div className={`text-xs font-bold px-2 py-1 rounded border ${isAffordable
-                                                    ? 'bg-purple-900/40 text-purple-300 border-purple-700/50'
-                                                    : 'bg-red-900/20 text-red-500 border-red-800/30'
-                                                    }`}>
-                                                    🔮 {opt.cost} Fate
+                                                                {opt.cost && (
+                                                                    <div className={`text-xs font-bold px-2 py-1 rounded border flex-shrink-0 ml-2 ${isAffordable
+                                                                        ? 'bg-purple-900/40 text-purple-300 border-purple-700/50'
+                                                                        : 'bg-red-900/20 text-red-500 border-red-800/30'
+                                                                        }`}>
+                                                                        🔮 {opt.cost}
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Confirm Button */}
+                                    <button
+                                        onClick={() => {
+                                            playSfx('ui_confirm');
+                                            confirmGroupedQuestion();
+                                        }}
+                                        className="w-full mt-2 px-6 py-3.5 bg-[#D4AF37] hover:bg-[#b5952f] rounded-lg font-bold text-[#1e1e1e] text-base shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:scale-[1.01] active:scale-[0.99] transition-all font-serif flex items-center justify-center gap-2"
+                                    >
+                                        <span>확정</span>
+                                        <span className="text-sm">→</span>
+                                    </button>
+                                </div>
+                            ) : (
+                                /* Standard Single-Select Question */
+                                <div className="grid grid-cols-1 w-full gap-3 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+                                    {currentQuestion?.options?.map((opt: any) => {
+                                        if (opt.condition) {
+                                            const { key, value } = opt.condition;
+                                            if (creationData[key] !== value) return null;
+                                        }
+
+                                        const isAffordable = !opt.cost || (opt.costType === 'fate' ? (playerStats.fate || 0) >= opt.cost : true);
+
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                disabled={!isAffordable}
+                                                onClick={() => {
+                                                    if (!isAffordable) return;
+                                                    playSfx('ui_click');
+                                                    currentQuestion && handleOptionSelect(currentQuestion.id, opt.value);
+                                                }}
+                                                className={`group relative px-6 py-4 border rounded-lg text-left transition-all shadow-md overflow-hidden flex justify-between items-center
+                                                    ${isAffordable
+                                                        ? 'bg-[#252525] hover:bg-[#2a2a2a] border-[#333] hover:border-[#D4AF37]/50 active:scale-[0.99] cursor-pointer'
+                                                        : 'bg-[#1a1a1a] border-[#333] opacity-60 cursor-not-allowed grayscale'
+                                                    }
+                                                `}
+                                            >
+                                                <div className="flex items-center">
+                                                    <div className={`absolute inset-y-0 left-0 w-1 transition-colors ${isAffordable ? 'bg-[#333] group-hover:bg-[#D4AF37]' : 'bg-red-900'}`} />
+                                                    <span className={`font-bold mr-3 font-serif transition-colors ${isAffordable ? 'text-[#666] group-hover:text-[#D4AF37]' : 'text-stone-600'}`}>◈</span>
+                                                    <span className={`font-medium transition-colors ${isAffordable ? 'text-gray-300 group-hover:text-[#eee]' : 'text-gray-500'}`}>
+                                                        {opt.label}
+                                                    </span>
+                                                </div>
+
+                                                {opt.cost && (
+                                                    <div className={`text-xs font-bold px-2 py-1 rounded border ${isAffordable
+                                                        ? 'bg-purple-900/40 text-purple-300 border-purple-700/50'
+                                                        : 'bg-red-900/20 text-red-500 border-red-800/30'
+                                                        }`}>
+                                                        🔮 {opt.cost} Fate
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </>
                     )}
 

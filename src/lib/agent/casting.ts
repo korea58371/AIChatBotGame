@@ -519,78 +519,11 @@ export class AgentCasting {
             reasons: c.activeReasons // or bgReasons
         }));
 
-        let finalActive = nomineeActive.slice(0, 6); // Default Fallback
-        let finalBackground = nomineeBg.slice(0, 12); // Default Fallback
-
-        // 2. AI Decision (If API Key available)
-        // [NOTE] apiKey is not directly in GameState in some versions.
-        // We need to check if 'gameState.apiKey' is available or if we can get it from somewhere.
-        // For now, let's assume AgentOrchestrator passes it or injected into gameState.
-        // [NOTE] apiKey is passed as Argument now.
-        // const apiKey = gameState.apiKey || gameState.secrets?.apiKey; // [REMOVED]
-
-        if (apiKey) {
-            // console.log(`[Casting] Requesting AI Decision for ${nomineeActive.length} Active / ${nomineeBg.length} BG candidates...`);
-
-            try {
-                // Dynamic Import to avoid cycle if necessary, or just use imported
-                const { generateCastingDecision } = await import('../ai/gemini');
-
-                const decision = await generateCastingDecision(
-                    apiKey,
-                    {
-                        location: fullLocation,
-                        summary: summary,
-                        userInput: userInput,
-                        activeCharacters: gameState.activeCharacters || []
-                    },
-                    nomineeActive.map(c => ({ id: c.id, name: c.name, score: c.activeScore, reasons: c.activeReasons })),
-                    nomineeBg.map(c => ({ id: c.id, name: c.name, score: c.bgScore, reasons: c.bgReasons }))
-                );
-
-                if (decision && decision.active && Array.isArray(decision.active)) {
-                    const aiActiveMap = new Map<string, number>();
-                    const aiScenarioMap = new Map<string, string>(); // [NEW] Store scenarios
-
-                    decision.active.forEach((item: any, idx: number) => {
-                        // Handle both string (Legacy) and object (New) formats
-                        if (typeof item === 'string') {
-                            aiActiveMap.set(item, idx);
-                        } else if (typeof item === 'object' && item.id) {
-                            aiActiveMap.set(item.id, idx);
-                            if (item.scenario) aiScenarioMap.set(item.id, item.scenario);
-                        }
-                    });
-
-                    const aiChosenActive = allCandidates.filter(c => aiActiveMap.has(c.id));
-                    aiChosenActive.sort((a, b) => (aiActiveMap.get(a.id) || 0) - (aiActiveMap.get(b.id) || 0));
-
-                    if (aiChosenActive.length > 0) {
-                        finalActive = aiChosenActive;
-                        // Attach scenarios to the source candidate objects temporarily
-                        // (We will map them in the final step)
-                        finalActive.forEach(c => {
-                            (c as any).aiScenario = aiScenarioMap.get(c.id);
-                        });
-                    }
-
-                    // Background Map (Keep original string array format for now, or update if needed)
-                    if (decision.background && Array.isArray(decision.background)) {
-                        const aiBgMap = new Map();
-                        decision.background.forEach((id: string, idx: number) => aiBgMap.set(id, idx));
-
-                        const aiChosenBg = allCandidates.filter(c => aiBgMap.has(c.id));
-                        aiChosenBg.sort((a, b) => (aiBgMap.get(a.id) || 0) - (aiBgMap.get(b.id) || 0));
-
-                        if (aiChosenBg.length > 0) {
-                            finalBackground = aiChosenBg;
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn("[Casting] AI Decision Failed, using Heuristic Fallback", e);
-            }
-        }
+        // [OPTIMIZED] Pure score-based selection — AI call removed (14s → ~0s)
+        // Rationale: Score system already reflects location/relationship/context/rank precisely,
+        // and Director model makes the final character appearance decision anyway.
+        const finalActive = nomineeActive.slice(0, 6);
+        const finalBackground = nomineeBg.slice(0, 12);
 
         // Final Polish (Ensure limit)
         // Heuristic fallback logic is already set in finalActive init

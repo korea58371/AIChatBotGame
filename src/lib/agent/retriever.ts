@@ -57,7 +57,9 @@ export class AgentRetriever {
                 const memories = dynamicChar?.memories || charData.memories || [];
 
                 if (memories && memories.length > 0) {
-                    const recentMemories = memories.slice(0, 3);
+                    const recentMemories = memories.slice(0, 3).map((m: any) =>
+                        typeof m === 'string' ? m : (m.text || '')
+                    );
                     context += `  Memories: ${recentMemories.join(" / ")}\n`;
                 }
             });
@@ -140,7 +142,10 @@ export class AgentRetriever {
                     // 기억(Memories)은 항상 중요하므로 추가
                     const memName = name || koreanName;
                     if (c.memories && c.memories.length > 0 && memName) {
-                        context += `[Memories with ${memName}]\n- ${c.memories.join('\n- ')}\n`;
+                        const memTexts = c.memories.map((m: any) =>
+                            typeof m === 'string' ? m : (m.text || '')
+                        );
+                        context += `[Memories with ${memName}]\n- ${memTexts.join('\n- ')}\n`;
                     }
                 }
             }

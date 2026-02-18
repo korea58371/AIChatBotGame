@@ -21,7 +21,7 @@ async function hydrateGameState(gameState: any) {
 
             // Core Logic/Lore Hydration
             if (data.lore) gameState.lore = data.lore;
-            if (data.backgroundMappings) gameState.backgroundMappings = data.backgroundMappings;
+
             // extraMap removed - using availableExtraImages from manifest
             if (data.constants) gameState.constants = data.constants;
 
@@ -86,18 +86,18 @@ export async function POST(req: NextRequest) {
                 const encoder = new TextEncoder();
                 let closed = false;
 
-                // [Safety] Server-side timeout: 3 minutes for entire pipeline
+                // [Safety] Server-side timeout: 5 minutes for entire pipeline (increased from 3min for gemini-3 latency)
                 const serverTimeout = setTimeout(() => {
                     if (!closed) {
-                        console.error("[API] Server Pipeline Timeout (3 minutes)");
-                        const errorPayload = JSON.stringify({ type: 'error', content: 'Server Pipeline Timeout (3 minutes). Gemini API may be unresponsive.' }) + '\n';
+                        console.error("[API] Server Pipeline Timeout (5 minutes)");
+                        const errorPayload = JSON.stringify({ type: 'error', content: 'Server Pipeline Timeout (5 minutes). Gemini API may be unresponsive.' }) + '\n';
                         try {
                             controller.enqueue(encoder.encode(errorPayload));
                             controller.close();
                         } catch { /* already closed */ }
                         closed = true;
                     }
-                }, 180000);
+                }, 300000);
 
                 try {
                     const generator = AgentOrchestrator.executeTurnStream(

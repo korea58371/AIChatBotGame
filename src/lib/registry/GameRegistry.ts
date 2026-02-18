@@ -65,7 +65,6 @@ export interface GameConfig {
     assets: {
         bgmMap: Record<string, string[]>;
         bgmAliases: Record<string, string>;
-        backgroundMap: Record<string, string>;
     };
 
     // [5] Mood Prompts (Factory)

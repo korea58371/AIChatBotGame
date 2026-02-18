@@ -5,7 +5,7 @@ import assetsManifest from '../../assets.json'; // [Fix] Static Import to ensure
 export async function loadWuxiaData(): Promise<GameData> {
     console.log(`[WuxiaLoader] Loading Wuxia data...`);
 
-    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, bgMappingsModule: any, systemPromptModule: any, wikiDataModule: any, cgMapModule: any, constantsModule: any, loreModule: any;
+    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, systemPromptModule: any, wikiDataModule: any, cgMapModule: any, constantsModule: any, loreModule: any;
     let characterImageList: string[] = [];
     let extraCharacterList: string[] = [];
 
@@ -36,7 +36,7 @@ export async function loadWuxiaData(): Promise<GameData> {
 
         try { eventsModule = await import('./events'); } catch (e) { console.error("[WuxiaLoader] Failed events", e); }
         try { scenarioModule = await import('./start_scenario'); } catch (e) { console.error("[WuxiaLoader] Failed scenario", e); }
-        try { bgMappingsModule = await import('./backgroundMappings'); } catch (e) { console.error("[WuxiaLoader] Failed bgMappings", e); }
+
         try { systemPromptModule = await import('./prompts/system'); } catch (e) { console.error("[WuxiaLoader] Failed system prompt", e); }
 
 
@@ -125,7 +125,7 @@ export async function loadWuxiaData(): Promise<GameData> {
         events: (eventsModule as any)?.GAME_EVENTS || [],
         scenario: (scenarioModule as any)?.START_SCENARIO_TEXT || '',
         characterCreationQuestions: (scenarioModule as any)?.CHARACTER_CREATION_QUESTIONS || [],
-        backgroundMappings: (bgMappingsModule as any)?.backgroundMappings || {},
+
         getSystemPromptTemplate: (systemPromptModule as any)?.getSystemPromptTemplate || (() => ''),
         getRankInfo: (input: string | number) => {
             const func = (systemPromptModule as any)?.getRankInfo;

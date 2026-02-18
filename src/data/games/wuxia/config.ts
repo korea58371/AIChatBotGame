@@ -6,7 +6,7 @@ import { WUXIA_BGM_MAP, WUXIA_BGM_ALIASES } from './bgm_mapping';
 import { getSystemPromptTemplate, getRankInfo } from './prompts/system';
 import { MOOD_PROMPTS } from './prompts/moods';
 import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from './prompts/logic';
-import { backgroundMappings } from './backgroundMappings';
+
 import { getWuxiaStaticContext } from './prompts/staticContext';
 import { loadWuxiaData } from './loader';
 import wuxiaLocations from './jsons/locations.json';
@@ -33,7 +33,6 @@ export const WuxiaConfig: GameConfig = {
     assets: {
         bgmMap: WUXIA_BGM_MAP,
         bgmAliases: WUXIA_BGM_ALIASES,
-        backgroundMap: backgroundMappings
     },
 
     getMoodPrompts: () => MOOD_PROMPTS,

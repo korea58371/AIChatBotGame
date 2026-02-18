@@ -19,34 +19,22 @@ export class AgentChoices {
     static async generate(
         userInput: string,
         storyText: string,
-        gameState: any, // Basic state for context (playerName, basic stats if needed)
-        language: 'ko' | 'en' | null = 'ko'
+        gameState: any,
+        language: 'ko' | 'en' | null = 'ko',
+        directorOut?: any // [NEW] Director output for context-aware choices
     ): Promise<ChoiceOutput> {
         const apiKey = this.apiKey;
         if (!apiKey) return { text: "" };
 
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // [1] Location Context Extraction (Mirrors PreLogic)
+        // [1] Location Context Extraction (Using shared location-utils)
         let locationContext = "";
         const currentLocation = gameState.currentLocation || "Unknown";
         const locationsData = gameState.lore?.locations;
         if (locationsData && locationsData.regions && currentLocation) {
-            let currentRegionName = "Unknown";
-            let visibleSpots = [];
-            // Search logic
-            for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
-                if (rData.zones && rData.zones[currentLocation]) {
-                    currentRegionName = rName;
-                    visibleSpots = rData.zones[currentLocation].spots || [];
-                    break;
-                }
-                if (rName === currentLocation) {
-                    currentRegionName = rName;
-                    visibleSpots = Object.keys(rData.zones || {});
-                }
-            }
-            locationContext = `Region: ${currentRegionName}\nSpot: ${currentLocation}\nvisible_spots: ${visibleSpots.join(', ')}`;
+            const { getStoryLocationContext } = await import('./location-utils');
+            locationContext = getStoryLocationContext(currentLocation, locationsData.regions);
         } else {
             locationContext = `Location: ${currentLocation} (Details Unknown)`;
         }
@@ -151,6 +139,22 @@ ${skillList}
 [World Rules / Guidelines]
 ${worldRules}
 
+${(() => {
+                // [NEW] Director Context — plot direction for aligned choices
+                const parts: string[] = [];
+                if (directorOut) {
+                    if (directorOut.plot_beats?.length) parts.push(`[Director Plot Direction]\n${directorOut.plot_beats.join(' → ')}`);
+                    if (directorOut.tone) parts.push(`Tone: ${directorOut.tone}`);
+                    if (directorOut.emotional_direction) parts.push(`Emotional Direction: ${directorOut.emotional_direction}`);
+                }
+                // [NEW] Active Goals
+                const goals = (gameState.goals || []).filter((g: any) => g.status === 'ACTIVE');
+                if (goals.length > 0) {
+                    parts.push(`[Active Goals]\n${goals.map((g: any) => `- ${g.description}`).join('\n')}`);
+                }
+                return parts.join('\n');
+            })()}
+
 [Previous Action]
 ${userInput}
 
@@ -165,8 +169,10 @@ Generate 3 distinct choices based on the **IMMEDIATE END STATE** of the [Current
 - **Do NOT just think about what happened.** (e.g., If the text says "I wondered why", do NOT offer "Wonder why".)
 - **OFFER THE NEXT ACTION.** (e.g., "Ask him about it", "Look around for clues", "Stand up and leave".)
 - Choices must drive the plot *forward* from the current moment.
+- **If Director Plot Direction exists, at least 1 choice MUST align with that direction.**
+- **If Active Goals exist, at least 1 choice SHOULD relate to progressing a goal.**
 
-- Choice 1: Active/Aggressive/Bold (Align with [Final Goal]).
+- Choice 1: Active/Aggressive/Bold (Align with [Director Plot Direction] or [Active Goals]).
 - Choice 2: Cautious/Observant/Pragmatic.
 - Choice 3: Creative/Social/Humorous (Reflecting the specific [Personality]).
 
@@ -181,8 +187,8 @@ Generate 3 distinct choices based on the **IMMEDIATE END STATE** of the [Current
 - Does the choice describe *someone else's* action? -> REJECT.
 - Is it the Player's action? -> ACCEPT.
 - Is the target character present in [Active Characters]? -> If NO, REJECT.
-- **[ANTI-REPETITION]**: Does the choice repeat an action/thought ALREADY completed in the [Current Story Segment]? -> REJECT. (e.g. If narrative says "I asked myself...", do not offer "Ask myself..." as a choice.)
-- **[FORWARD-LOOKING]**: Does the choice move the plot forward? -> PREFER. (e.g. Instead of "Think about X", use "Decide to do X" or "Investigate X".)
+- **[ANTI-REPETITION]**: Does the choice repeat an action/thought ALREADY completed in the [Current Story Segment]? -> REJECT.
+- **[FORWARD-LOOKING]**: Does the choice move the plot forward? -> PREFER.
 - **[Clear Intent]**: The choice must imply a clear *next step*, not just a thought loop.
 `;
         try {

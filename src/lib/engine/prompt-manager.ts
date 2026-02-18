@@ -5,6 +5,70 @@ import { GameState } from '../store';
 import { findBestMatchDetail } from '@/lib/utils/name-utils';
 import { translations } from '../../data/translations';
 
+/**
+ * 기억 필터링 유틸리티 — 중요도/최근성/키워드 기반으로 관련 기억을 추출
+ * @param memories - 전체 기억 배열 (string | TaggedMemory 혼합)
+ * @param opts.maxCount - 최대 반환 개수
+ * @param opts.currentTurn - 현재 턴 (최근성 판별용)
+ * @param opts.recentWindow - "최근" 기준 턴 수 (기본 5)
+ * @param opts.keywords - 관련성 매칭용 키워드 (Director plot_beats 등)
+ */
+function filterMemories(
+    memories: any[],
+    opts: { maxCount: number; currentTurn: number; recentWindow?: number; keywords?: string[] }
+): any[] {
+    if (!memories || memories.length === 0) return [];
+    const { maxCount, currentTurn, recentWindow = 5, keywords = [] } = opts;
+    const lowerKeywords = keywords.map(k => k.toLowerCase());
+
+    // 점수 계산: 중요도 + 최근성 + 키워드 매칭
+    const scored = memories.map((m: any) => {
+        const isString = typeof m === 'string';
+        let score = 0;
+
+        // 중요도
+        if (!isString && m.importance) score += m.importance * 10;
+
+        // 최근성 보너스
+        if (!isString && m.turn != null) {
+            const age = currentTurn - m.turn;
+            if (age <= recentWindow) score += 15; // 최근 윈도우 내
+            else if (age <= recentWindow * 3) score += 5; // 중기
+        }
+
+        // 영구 기억 보너스
+        if (!isString && m.expireAfterTurn === null) score += 5;
+
+        // 키워드 매칭 보너스
+        if (lowerKeywords.length > 0 && !isString) {
+            const memKeywords = (m.keywords || []).map((k: string) => k.toLowerCase());
+            const memText = (m.text || '').toLowerCase();
+            const memSubject = (m.subject || '').toLowerCase();
+            const memTag = (m.tag || '').toLowerCase();
+            for (const kw of lowerKeywords) {
+                if (memKeywords.includes(kw)) { score += 20; break; }
+                if (memText.includes(kw) || memSubject.includes(kw) || memTag.includes(kw)) { score += 10; break; }
+            }
+        }
+
+        return { mem: m, score };
+    });
+
+    // 점수 내림차순 정렬 후 상위 N개
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, maxCount).map(s => s.mem);
+}
+
+/** 기억을 한 줄 텍스트로 포맷 */
+function formatMemoryLine(m: any): string {
+    if (typeof m === 'string') return m;
+    const parts: string[] = [];
+    if (m.tag && m.tag !== 'general') parts.push(`[${m.tag}]`);
+    parts.push(m.text || '');
+    if (m.subject) parts.push(`(→${m.subject})`);
+    return parts.join(' ');
+}
+
 
 // 캐릭터 등장 조건 (어디서, 언제, 어떤 조건으로 등장할 수 있는지)
 interface SpawnRules {
@@ -636,7 +700,9 @@ ${sn.description ? `- Context: ${sn.description}` : ''}
 
             // Pass existing Memories for consolidation
             if (c.memories && c.memories.length > 0) {
-                info += `\n  - Current Memories: ${JSON.stringify(c.memories)}`;
+                const filtered = filterMemories(c.memories, { maxCount: 5, currentTurn: state.turnCount || 0 });
+                const memLines = filtered.map(formatMemoryLine);
+                info += `\n  - Key Memories (${filtered.length}/${c.memories.length}): ${memLines.join(' / ')}`;
             }
 
             // [LOGIC_FIX] Pass Martial Arts Info for Power Scaling
@@ -782,38 +848,7 @@ ${spawnCandidates || "None"}
     }
 
     static getAvailableBackgrounds(state: GameState): string {
-        // [Universal] Support for Key-based Mappings (Wuxia & GBY)
-        if (state.backgroundMappings && Object.keys(state.backgroundMappings).length > 0) {
-            let keys = Object.keys(state.backgroundMappings).sort();
-
-            // [Refactoring Phase]
-            // Delegate Localization logic to GameRegistry
-            const config = GameRegistry.get(state.activeGameId);
-            if (config && config.resolveBackgroundName) {
-                keys = keys.map(key => config.resolveBackgroundName(key, state));
-            }
-
-            // Group by Prefix (e.g. "객잔_")
-            const groups: Record<string, string[]> = {};
-
-            keys.forEach(key => {
-                const parts = key.split('_');
-                const prefix = parts[0];
-                const detail = parts.slice(1).join('_'); // Rest
-
-                if (!groups[prefix]) groups[prefix] = [];
-                if (detail) groups[prefix].push(detail);
-                else groups[prefix].push('[기본]'); // No detail
-            });
-
-            const sortedPrefixes = Object.keys(groups).sort();
-
-            return sortedPrefixes.map(prefix => {
-                const details = groups[prefix].sort().join(', ');
-                return `- [${prefix}] ${details}`;
-            }).join('\n');
-        }
-
+        // [Refactored] Uses availableBackgrounds file list directly — no backgroundMappings dependency
         const relevantBackgrounds = state.availableBackgrounds || [];
 
         // Group by Category to save tokens and improve AI understanding
@@ -837,26 +872,23 @@ ${spawnCandidates || "None"}
         });
 
         // Refine the list to group variants
-        // [FIX] Sort Categories
         const sortedCategories = Object.keys(groupedBgs).sort();
 
         return sortedCategories.map((cat) => {
             const entries = groupedBgs[cat];
             const groups: Record<string, string[]> = {};
 
-            // Sort entries to ensure deterministic sub-groups
             entries.sort().forEach(e => {
                 const [prefix, ...rest] = e.split('_');
                 if (!groups[prefix]) groups[prefix] = [];
                 if (rest.length > 0) groups[prefix].push(rest.join('_'));
-                else groups[prefix].push(''); // Root item
+                else groups[prefix].push('');
             });
 
-            // [FIX] Sort Group Keys
             const sortedPrefixes = Object.keys(groups).sort();
 
             const finalEntries = sortedPrefixes.map((prefix) => {
-                const variants = groups[prefix].sort(); // [FIX] Sort Variants
+                const variants = groups[prefix].sort();
                 const vars = variants.filter(v => v !== '').join(', ');
                 if (vars) {
                     return `${prefix}(${vars})`;
@@ -937,9 +969,11 @@ ${spawnCandidates || "None"}
             // Replaced by standardized helper below
             // if (char.relationshipInfo) { ... }
 
-            // 3. Memories (Dynamic)
+            // 3. Memories (Dynamic) — 최근 10개 필터링
             if (char.memories && char.memories.length > 0) {
-                charInfo += `\n- Recent Memories: ${char.memories.join(' / ')}`;
+                const filtered = filterMemories(char.memories, { maxCount: 10, currentTurn: state.turnCount || 0 });
+                const memTexts = filtered.map(formatMemoryLine);
+                charInfo += `\n- Recent Memories: ${memTexts.join(' / ')}`;
             }
 
             // 4. Discovered Secrets (Dynamic - Player Knows)
@@ -1167,6 +1201,13 @@ ${spawnCandidates || "None"}
         let context = `### [PLAYER] ${state.playerName || 'Player'}\n`;
         context += `강함: ${rankTitle}\n`;
 
+        // [Identity / Core Setting] — supports string[] (new) or string (legacy)
+        const coreSettingRaw = stats.core_setting;
+        if (coreSettingRaw) {
+            const coreSettingDisplay = Array.isArray(coreSettingRaw) ? coreSettingRaw.join(', ') : coreSettingRaw;
+            context += `정체성: ${coreSettingDisplay}\n`;
+        }
+
         // 1. Stats Summary & Reputation
         if (stats) {
             // Use destructuring to exclude relationships and redundant/derived stats
@@ -1248,11 +1289,18 @@ ${spawnCandidates || "None"}
                 skill_usage?: Record<string, string[]>;
             };
             subtle_hooks: string[];
+            plot_beats?: string[];
         },
         language: 'ko' | 'en' | null = 'ko'
     ): string {
         const charsData = state.characterData || {};
         const { context_requirements, subtle_hooks } = directorOutput;
+
+        // [NEW] Director plot_beats에서 키워드 추출 (기억 검색용)
+        const directorKeywords: string[] = (directorOutput.plot_beats || []).join(' ')
+            .split(/[\s,→·/()\[\]]+/)
+            .filter((w: string) => w.length >= 2)
+            .slice(0, 10);
 
         const resolveChar = (id: string) => {
             if (charsData[id]) return charsData[id];
@@ -1371,17 +1419,18 @@ ${spawnCandidates || "None"}
             if (isEmotional) {
                 if (char.memories && char.memories.length > 0) {
                     charInfo += `\n\n[IMPORTANT MEMORIES]`;
-                    const sorted = [...char.memories].sort((a: any, b: any) => {
-                        if (typeof a === 'object' && typeof b === 'object') {
-                            return (b.importance || 0) - (a.importance || 0);
-                        }
-                        return 0;
-                    }).slice(0, 5);
-                    sorted.forEach((mem: any) => {
+                    const filtered = filterMemories(char.memories, {
+                        maxCount: 20,
+                        currentTurn: state.turnCount || 0,
+                        recentWindow: 10,
+                        keywords: directorKeywords,
+                    });
+                    filtered.forEach((mem: any) => {
                         if (typeof mem === 'string') {
                             charInfo += `\n- ${mem}`;
                         } else {
                             charInfo += `\n- [${mem.tag}/${mem.importance}] ${mem.text}`;
+                            if (mem.subject) charInfo += ` (→${mem.subject})`;
                         }
                     });
                 }
@@ -1390,9 +1439,12 @@ ${spawnCandidates || "None"}
                 }
             } else {
                 if (char.memories && char.memories.length > 0) {
-                    const brief = char.memories.slice(-2).map((m: any) =>
-                        typeof m === 'string' ? m : m.text
-                    ).join(' / ');
+                    const filtered = filterMemories(char.memories, {
+                        maxCount: 5,
+                        currentTurn: state.turnCount || 0,
+                        keywords: directorKeywords,
+                    });
+                    const brief = filtered.map(formatMemoryLine).join(' / ');
                     charInfo += `\n- Recent Memories: ${brief}`;
                 }
                 if (char.personality) {

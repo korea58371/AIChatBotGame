@@ -208,6 +208,7 @@ export default function VisualNovelUI() {
         handlePaymentResult();
     }, []);
     const activeSegmentIndexRef = useRef(0);
+    const lastHistoryUpdateRef = useRef<number>(0); // [Fix] Throttle for streaming history sync
 
 
 
@@ -583,7 +584,11 @@ export default function VisualNovelUI() {
 
     const [isTyping, setIsTyping] = useState(false); // [Fix] Missing State
     const [isLogicPending, setIsLogicPending] = useState(false); // [Logic Lock] Track background logic
+    const [showTimeoutRetry, setShowTimeoutRetry] = useState(false); // [New] Timeout Retry Modal
+    const lastSendInputRef = useRef<string>(''); // [New] Cache last input for retry
+    const [pipelineStages, setPipelineStages] = useState<{ stage: string; duration: number }[]>([]); // [New] Pipeline Diagnostics
     const [activeDebugTab, setActiveDebugTab] = useState<'logic' | 'context' | 'state' | 'characters' | 'transcript'>('transcript'); // [New] Debug Tab State
+    const [selectedDebugChar, setSelectedDebugChar] = useState<any>(null); // [New] Debug Character Detail Popup
     const [showHistory_OLD, setShowHistory_OLD] = useState(false); // Placeholder to ensure clean delete if lines shift, but strictly 291-311 should be targeted.
     // [New] BGM State (Moved to Store)
     // const [currentBgm, setCurrentBgm] = useState<string | null>(null);
@@ -1073,18 +1078,11 @@ export default function VisualNovelUI() {
         if (!bg) return `/assets/${gameId}/backgrounds/Home_Entrance.jpg`; // Default fallback
         if (bg.startsWith('http') || bg.startsWith('/')) return bg; // Return absolute paths directly
 
-        // [New] Resolve Mapping first
-        let filename = bg;
-        if (state.backgroundMappings && state.backgroundMappings[bg]) {
-            filename = state.backgroundMappings[bg];
-            // console.log(`[UI] Mapped "${bg}" -> "${filename}"`);
+        // [Refactored] Direct filename resolution — no backgroundMappings dependency
+        if (bg.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+            return `/assets/${gameId}/backgrounds/${bg}`;
         }
-
-        // [Fix] Avoid Double Extension
-        if (filename.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
-            return `/assets/${gameId}/backgrounds/${filename}`;
-        }
-        return `/assets/${gameId}/backgrounds/${encodeURIComponent(filename)}.jpg`; // Fallback for legacy simple names
+        return `/assets/${gameId}/backgrounds/${encodeURIComponent(bg)}.jpg`;
     };
 
     const getCharUrl = (charExpression: string) => {
@@ -1264,6 +1262,7 @@ export default function VisualNovelUI() {
     const handleSend = async (text: string, isDirectInput: boolean = false, isHidden: boolean = false) => {
         if (!text.trim()) return;
 
+        lastSendInputRef.current = text; // [Retry] Cache input for timeout retry
         setIsProcessing(true);
         const startTime = Date.now();
         console.log(`handleSend: "${text}", coins: ${userCoins}, session: ${!!session}, isDirectInput: ${isDirectInput}`);
@@ -1549,7 +1548,7 @@ export default function VisualNovelUI() {
             // [OPTIMIZATION] Prune state for Story Model too (just in case)
             const rawStateForStory = useGameStore.getState();
             const {
-                lore, events, wikiData, backgroundMappings,
+                lore, events, wikiData,
                 scriptQueue, displayHistory, chatHistory,
                 characterCreationQuestions, constants,
                 ...prunedStateForStory
@@ -1596,6 +1595,7 @@ export default function VisualNovelUI() {
             streamStarted = false;
             setCharacterExpression('');
             setFateUsage(0);
+            setPipelineStages([]); // [New] Reset pipeline diagnostics
             const p1Start = Date.now();
 
             // [Safety] Race with Timeout
@@ -1749,6 +1749,13 @@ export default function VisualNovelUI() {
                                 // [Removed] Aggressive Thinking Leak Scrubbing
                                 // This logic was causing valid narrative text (appearing before the first tag) to be deleted.
                                 // We now rely on the 'Thinking' tag removal above (lines 1849-1855).
+
+                                // [Fix] Sync streaming text to chatHistory for HistoryModal visibility (Throttled 500ms)
+                                const now = Date.now();
+                                if (now - lastHistoryUpdateRef.current > 500) {
+                                    useGameStore.getState().updateLastMessage(visText);
+                                    lastHistoryUpdateRef.current = now;
+                                }
 
                                 const allSegments = parseScript(visText);
 
@@ -1907,8 +1914,15 @@ export default function VisualNovelUI() {
                                                     }
                                                 } catch (e) { console.error('[Inline] Injury parse error:', e); }
                                             } else if (seg.commandType === 'set_time') {
-                                                // Handle Time
-                                                useGameStore.getState().setTime(seg.content);
+                                                // Handle Time — [FIX] Parse Day + Clean Time (was passing raw "11일차 08:00")
+                                                const rawTime = seg.content;
+                                                const dayMatch = rawTime.match(/(\d+)(일차|Day)/i);
+                                                if (dayMatch) {
+                                                    const newDay = parseInt(dayMatch[1], 10);
+                                                    if (!isNaN(newDay)) useGameStore.getState().setDay(newDay);
+                                                }
+                                                const cleanTime = rawTime.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
+                                                if (cleanTime) useGameStore.getState().setTime(cleanTime);
                                             }
                                         }
 
@@ -2425,7 +2439,15 @@ export default function VisualNovelUI() {
                                             } else if (seg.type === 'command') {
                                                 // Identify command type and execute if necessary (Time, etc)
                                                 if (seg.commandType === 'set_time') {
-                                                    useGameStore.getState().setTime(seg.content);
+                                                    // [FIX] Parse Day + Clean Time
+                                                    const rawTime = seg.content;
+                                                    const dayMatch = rawTime.match(/(\d+)(일차|Day)/i);
+                                                    if (dayMatch) {
+                                                        const newDay = parseInt(dayMatch[1], 10);
+                                                        if (!isNaN(newDay)) useGameStore.getState().setDay(newDay);
+                                                    }
+                                                    const cleanTime = rawTime.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
+                                                    if (cleanTime) useGameStore.getState().setTime(cleanTime);
                                                 }
                                             }
                                             // Advance past this segment since we just executed it
@@ -2476,7 +2498,15 @@ export default function VisualNovelUI() {
                                             } else if (seg.type === 'command') {
                                                 // Identify command type and execute if necessary (Time, etc)
                                                 if (seg.commandType === 'set_time') {
-                                                    useGameStore.getState().setTime(seg.content);
+                                                    // [FIX] Parse Day + Clean Time
+                                                    const rawTime = seg.content;
+                                                    const dayMatch = rawTime.match(/(\d+)(일차|Day)/i);
+                                                    if (dayMatch) {
+                                                        const newDay = parseInt(dayMatch[1], 10);
+                                                        if (!isNaN(newDay)) useGameStore.getState().setDay(newDay);
+                                                    }
+                                                    const cleanTime = rawTime.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
+                                                    if (cleanTime) useGameStore.getState().setTime(cleanTime);
                                                 }
                                             }
                                             // Advance past this segment since we just executed it
@@ -2695,9 +2725,18 @@ export default function VisualNovelUI() {
                             },
                             onError: (err) => {
                                 console.error("[Stream] Error:", err);
-                                addToast("Error: " + err.message, "error");
+                                const isTimeout = err.message?.includes('Timeout') || err.message?.includes('Timed Out') || err.message?.includes('unresponsive');
+                                if (isTimeout && !streamStarted) {
+                                    // [Timeout] Show retry modal instead of toast — no tokens consumed
+                                    setShowTimeoutRetry(true);
+                                } else {
+                                    addToast("Error: " + err.message, "error");
+                                }
                                 setIsProcessing(false);
                                 setIsLogicPending(false);
+                            },
+                            onProgress: (stage, duration) => {
+                                setPipelineStages(prev => [...prev, { stage, duration }]);
                             }
                         }
                     ), timeoutRace]);
@@ -2718,7 +2757,12 @@ export default function VisualNovelUI() {
                 console.warn("[VisualNovelUI] Timeout ignored because stream is active.");
                 return;
             }
-            addToast(t.errorGenerating, 'warning');
+            const isTimeout = error.message?.includes('Timeout') || error.message?.includes('Timed Out') || error.message?.includes('unresponsive');
+            if (isTimeout) {
+                setShowTimeoutRetry(true);
+            } else {
+                addToast(t.errorGenerating, 'warning');
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -3348,6 +3392,72 @@ export default function VisualNovelUI() {
                     onClose={() => setIsPhoneOpen(false)}
                 />
 
+                {/* [NEW] Timeout Retry Modal */}
+                <AnimatePresence>
+                    {showTimeoutRetry && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-md p-4"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.9, y: 20 }}
+                                className="bg-gradient-to-b from-gray-800 to-gray-900 border border-red-500/30 w-full max-w-sm p-6 rounded-2xl shadow-[0_8px_32px_rgba(220,38,38,0.2)] flex flex-col items-center gap-5"
+                            >
+                                {/* Icon */}
+                                <div className="w-16 h-16 rounded-full bg-red-500/15 flex items-center justify-center">
+                                    <RotateCcw className="w-8 h-8 text-red-400" />
+                                </div>
+
+                                {/* Title */}
+                                <h3 className="text-lg font-bold text-white text-center">
+                                    응답 시간 초과
+                                </h3>
+
+                                {/* Description */}
+                                <p className="text-sm text-gray-300 text-center leading-relaxed">
+                                    AI 서버가 제한 시간 내에 응답하지 못했습니다.<br />
+                                    네트워크 상태를 확인 후 다시 시도해 주세요.
+                                </p>
+
+                                {/* No Token Consumed Notice */}
+                                <div className="w-full px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                    <p className="text-xs text-emerald-300 text-center flex items-center justify-center gap-1.5">
+                                        <span>✅</span>
+                                        전송 실패로 인한 토큰 소비는 발생하지 않았습니다.
+                                    </p>
+                                </div>
+
+                                {/* Retry Button */}
+                                <button
+                                    onClick={() => {
+                                        setShowTimeoutRetry(false);
+                                        if (lastSendInputRef.current) {
+                                            handleSend(lastSendInputRef.current, true);
+                                        }
+                                    }}
+                                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                    재전송
+                                </button>
+
+                                {/* Dismiss */}
+                                <button
+                                    onClick={() => setShowTimeoutRetry(false)}
+                                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                                >
+                                    닫기
+                                </button>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Settings Modal (Replaces Reset Confirm) */}
                 <AnimatePresence>
                     {showResetConfirm && (
@@ -3604,8 +3714,8 @@ export default function VisualNovelUI() {
                                                 // [Fix] Choices are present, so don't show Error Screen
                                                 // The choices overlay (line 3512) will handle the rendering.
                                                 null
-                                            ) : (!isDataLoaded || pendingEndingRef.current || isEpilogueRef.current) ? (
-                                                // [Fix] Data not loaded OR Waiting for Deferred Ending OR Epilogue -> Show nothing
+                                            ) : (!isDataLoaded || pendingEndingRef.current || isEpilogueRef.current || showTimeoutRetry) ? (
+                                                // [Fix] Data not loaded OR Waiting for Deferred Ending OR Epilogue OR Timeout Retry Modal -> Show nothing
                                                 null
                                             ) : (
                                                 <div className="bg-black/90 p-8 rounded-xl border border-yellow-600/50 text-center shadow-[0_0_30px_rgba(202,138,4,0.2)] backdrop-blur-md relative overflow-hidden pointer-events-auto">
@@ -3672,6 +3782,56 @@ export default function VisualNovelUI() {
                                                 </p>
                                             </div>
                                         </div>
+
+                                        {/* Pipeline Diagnostic Stages */}
+                                        {pipelineStages.length > 0 && (
+                                            <div className="bg-[#1a1a1a] p-3 rounded-lg border border-[#333] w-full z-10 mt-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-[10px] font-mono text-[#666] tracking-widest uppercase">Pipeline</span>
+                                                    <span className="text-[10px] font-mono text-[#D4AF37]">
+                                                        {pipelineStages.reduce((s, p) => s + p.duration, 0).toLocaleString()}ms
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(() => {
+                                                        const stageInfo: Record<string, { emoji: string; label: string }> = {
+                                                            casting: { emoji: '🎭', label: 'Cast' },
+                                                            retriever: { emoji: '📚', label: 'Ctx' },
+                                                            preLogic: { emoji: '🧠', label: 'Pre' },
+                                                            director: { emoji: '🎬', label: 'Dir' },
+                                                            story: { emoji: '📝', label: 'Story' },
+                                                            postLogic: { emoji: '⚙️', label: 'Post' },
+                                                        };
+                                                        const allStages = ['casting', 'retriever', 'preLogic', 'director', 'story', 'postLogic'];
+                                                        const completed = new Set(pipelineStages.map(p => p.stage));
+                                                        return allStages.map(s => {
+                                                            const info = stageInfo[s] || { emoji: '▶', label: s };
+                                                            const found = pipelineStages.find(p => p.stage === s);
+                                                            const isActive = !found && (
+                                                                completed.size === 0 ||
+                                                                allStages.indexOf(s) === completed.size
+                                                            );
+                                                            const isSlow = found && found.duration > 15000;
+                                                            return (
+                                                                <div key={s} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono transition-all ${found
+                                                                    ? isSlow
+                                                                        ? 'bg-red-500/20 border border-red-500/30 text-red-300'
+                                                                        : 'bg-emerald-500/15 border border-emerald-500/20 text-emerald-300'
+                                                                    : isActive
+                                                                        ? 'bg-blue-500/15 border border-blue-500/30 text-blue-300 animate-pulse'
+                                                                        : 'bg-[#222] border border-[#333] text-[#555]'
+                                                                    }`}>
+                                                                    <span>{info.emoji}</span>
+                                                                    <span>{info.label}</span>
+                                                                    {found && <span className={isSlow ? 'text-red-400 font-bold' : 'text-emerald-400'}>{(found.duration / 1000).toFixed(1)}s</span>}
+                                                                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
+                                                                </div>
+                                                            );
+                                                        });
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Dynamic Tips */}
                                         <div className="bg-[#252525] p-5 rounded-lg border border-[#333] w-full text-center z-10 shadow-inner mt-2">
@@ -4143,7 +4303,10 @@ export default function VisualNovelUI() {
                                                                 const relScore = playerStats.relationships?.[char.id] || 0;
                                                                 return (
                                                                     <div key={char.id} className="group relative">
-                                                                        <div className="bg-gray-800/50 p-2 rounded border border-gray-700 hover:border-purple-500 cursor-help transition-all">
+                                                                        <div
+                                                                            onClick={() => setSelectedDebugChar(char)}
+                                                                            className="bg-gray-800/50 p-2 rounded border border-gray-700 hover:border-purple-500 cursor-pointer transition-all hover:bg-gray-700/50"
+                                                                        >
                                                                             <div className="flex justify-between items-center">
                                                                                 <span className="font-bold text-gray-200 text-sm">{char.name}</span>
                                                                                 <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${relScore > 0 ? 'bg-pink-900/50 text-pink-300' : 'bg-gray-700 text-gray-400'}`}>
@@ -4152,14 +4315,6 @@ export default function VisualNovelUI() {
                                                                             </div>
                                                                             <div className="text-[10px] text-gray-500 truncate mt-1">{char.id}</div>
                                                                         </div>
-
-                                                                        {/* Tooltip / Detail View on Hover/Click? Let's just expand details in the right panel if selected? 
-                                                                        For simplicity, let's list ALL details in a masonry or just show ALL in the right panel.
-                                                                        Actually, let's make this list selectable? 
-                                                                        Wait, I can't easily add selection state without another useState.
-                                                                        Let's just render the FULL list in a rich view on the right, 
-                                                                        or just use a simple map across the whole area.
-                                                                    */}
                                                                     </div>
                                                                 )
                                                             })}
@@ -4185,7 +4340,11 @@ export default function VisualNovelUI() {
                                                                 const rel = playerStats.relationships?.[char.id] || 0;
                                                                 const memories = char.memories || [];
                                                                 return (
-                                                                    <div key={char.id} className="bg-gray-900/80 border border-gray-700 rounded-lg p-4 hover:border-purple-500/50 transition-colors">
+                                                                    <div
+                                                                        key={char.id}
+                                                                        onClick={() => setSelectedDebugChar(char)}
+                                                                        className="bg-gray-900/80 border border-gray-700 rounded-lg p-4 hover:border-purple-500/50 cursor-pointer transition-colors hover:bg-gray-800/80"
+                                                                    >
                                                                         <div className="flex justify-between items-start mb-3 border-b border-gray-800 pb-2">
                                                                             <div>
                                                                                 <h4 className="font-bold text-purple-300">{char.name}</h4>
@@ -4211,26 +4370,148 @@ export default function VisualNovelUI() {
                                                                             </div>
 
                                                                             <div>
-                                                                                <div className="flex justify-between items-center mb-1">
-                                                                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Memories ({memories.length})</div>
-                                                                                </div>
-                                                                                {memories.length > 0 ? (
-                                                                                    <ul className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/30 rounded p-2 text-xs text-gray-300">
-                                                                                        {memories.map((m: string, i: number) => (
-                                                                                            <li key={i} className="flex gap-2">
-                                                                                                <span className="text-purple-500/50">•</span>
-                                                                                                <span>{m}</span>
-                                                                                            </li>
-                                                                                        ))}
-                                                                                    </ul>
-                                                                                ) : (
-                                                                                    <div className="text-xs text-gray-600 italic p-2 bg-black/20 rounded">No memories yet.</div>
-                                                                                )}
+                                                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Memories ({memories.length})</div>
+                                                                                <div className="text-xs text-gray-500 italic">Click to view details</div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                 );
                                                             })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* [New] Character Detail Popup */}
+                                        {selectedDebugChar && (
+                                            <div
+                                                className="fixed inset-0 bg-black/70 z-[300] flex items-center justify-center p-4"
+                                                onClick={() => setSelectedDebugChar(null)}
+                                            >
+                                                <div
+                                                    className="bg-gray-900 border border-purple-500 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl shadow-purple-500/20"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    {/* Header */}
+                                                    <div className="p-4 border-b border-gray-700 flex justify-between items-start bg-gray-800/50 rounded-t-xl">
+                                                        <div>
+                                                            <h3 className="text-xl font-bold text-purple-300">{selectedDebugChar.name}</h3>
+                                                            <span className="text-xs text-gray-500 font-mono">ID: {selectedDebugChar.id}</span>
+                                                            {selectedDebugChar.title && <div className="text-sm text-gray-400 mt-1">{selectedDebugChar.title}</div>}
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-right">
+                                                                <div className="text-xs text-gray-400">Relationship</div>
+                                                                <div className={`text-2xl font-bold ${(playerStats.relationships?.[selectedDebugChar.id] || 0) >= 50 ? 'text-pink-400' : (playerStats.relationships?.[selectedDebugChar.id] || 0) >= 20 ? 'text-pink-200' : 'text-gray-300'}`}>
+                                                                    {playerStats.relationships?.[selectedDebugChar.id] || 0}
+                                                                </div>
+                                                            </div>
+                                                            <button onClick={() => setSelectedDebugChar(null)} className="text-gray-400 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center rounded hover:bg-white/10">&times;</button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Body */}
+                                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                                                        {/* Tags */}
+                                                        {selectedDebugChar.tags?.length > 0 && (
+                                                            <div>
+                                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tags</div>
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {selectedDebugChar.tags.map((tag: string) => (
+                                                                        <span key={tag} className="px-2 py-1 bg-purple-900/30 border border-purple-500/30 rounded text-xs text-purple-300">{tag}</span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Personality */}
+                                                        {selectedDebugChar.personality && (
+                                                            <div>
+                                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Personality</div>
+                                                                <div className="bg-black/30 rounded p-3 text-xs text-gray-300 whitespace-pre-wrap">
+                                                                    {typeof selectedDebugChar.personality === 'string' ? selectedDebugChar.personality : JSON.stringify(selectedDebugChar.personality, null, 2)}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Appearance */}
+                                                        {(selectedDebugChar.appearance || selectedDebugChar['외형']) && (
+                                                            <div>
+                                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Appearance</div>
+                                                                <div className="bg-black/30 rounded p-3 text-xs text-gray-300">
+                                                                    {typeof (selectedDebugChar.appearance || selectedDebugChar['외형']) === 'string'
+                                                                        ? (selectedDebugChar.appearance || selectedDebugChar['외형'])
+                                                                        : JSON.stringify(selectedDebugChar.appearance || selectedDebugChar['외형'], null, 2)}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Secret */}
+                                                        {selectedDebugChar.secret && (
+                                                            <div>
+                                                                <div className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2">🔒 Secret</div>
+                                                                <div className="bg-red-900/20 border border-red-500/30 rounded p-3 text-xs text-red-300">
+                                                                    {typeof selectedDebugChar.secret === 'string' ? selectedDebugChar.secret : JSON.stringify(selectedDebugChar.secret, null, 2)}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Memories — Full List */}
+                                                        <div>
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                                                    Memories ({(selectedDebugChar.memories || []).length})
+                                                                </div>
+                                                                {(selectedDebugChar.memories || []).length > 0 && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            navigator.clipboard.writeText(JSON.stringify(selectedDebugChar.memories, null, 2));
+                                                                            addToast("Memories JSON copied", "success");
+                                                                        }}
+                                                                        className="px-2 py-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white border border-purple-600/50 rounded text-[10px] font-bold transition-colors"
+                                                                    >
+                                                                        📋 Copy JSON
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {(selectedDebugChar.memories || []).length > 0 ? (
+                                                                <ul className="space-y-2 bg-black/30 rounded p-3">
+                                                                    {(selectedDebugChar.memories || []).map((m: any, i: number) => {
+                                                                        const memText = typeof m === 'string' ? m : m?.text || '';
+                                                                        const memTag = typeof m === 'object' ? m?.tag : null;
+                                                                        const memTurn = typeof m === 'object' ? m?.turn : null;
+                                                                        const memImportance = typeof m === 'object' ? m?.importance : null;
+                                                                        return (
+                                                                            <li key={i} className="flex gap-2 text-xs border-b border-gray-800 pb-2 last:border-0 last:pb-0">
+                                                                                <span className="text-purple-500 mt-0.5 shrink-0">•</span>
+                                                                                <div className="flex-1">
+                                                                                    <div className="text-gray-200">{memText}</div>
+                                                                                    {(memTag || memTurn !== null) && (
+                                                                                        <div className="flex gap-2 mt-1">
+                                                                                            {memTag && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 rounded text-[10px]">{memTag}</span>}
+                                                                                            {memTurn !== null && <span className="px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded text-[10px]">Turn {memTurn}</span>}
+                                                                                            {memImportance && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 rounded text-[10px]">★{memImportance}</span>}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </li>
+                                                                        );
+                                                                    })}
+                                                                </ul>
+                                                            ) : (
+                                                                <div className="text-xs text-gray-600 italic p-3 bg-black/20 rounded">No memories yet.</div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Raw JSON */}
+                                                        <details className="group">
+                                                            <summary className="text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-300 transition-colors">
+                                                                Raw JSON ▸
+                                                            </summary>
+                                                            <pre className="mt-2 bg-black/50 rounded p-3 text-[10px] text-green-400 overflow-auto max-h-60 custom-scrollbar">
+                                                                {JSON.stringify(selectedDebugChar, null, 2)}
+                                                            </pre>
+                                                        </details>
                                                     </div>
                                                 </div>
                                             </div>

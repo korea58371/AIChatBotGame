@@ -4,7 +4,7 @@ import gbyFactions from './jsons/factions.json';
 
 import { GBY_IDENTITY, GBY_BEHAVIOR_RULES, GBY_OUTPUT_FORMAT, LEVEL_TO_RANK_MAP } from './constants';
 import { GOD_BLESS_YOU_BGM_MAP, GOD_BLESS_YOU_BGM_ALIASES } from './bgm_mapping';
-import { backgroundMappings } from './backgroundMappings';
+
 import { getSystemPromptTemplate, getRankInfo } from './prompts/system';
 import { MOOD_PROMPTS } from './prompts/moods';
 import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from './prompts/logic';
@@ -26,8 +26,11 @@ export const GodBlessYouConfig: GameConfig = {
     getStaticLogicPrompt: (id, rank, rom, com) => getStaticLogicPrompt(rank, rom, com),
     getDynamicLogicPrompt: getDynamicLogicPrompt,
     getRankInfo: (input: string | number) => {
-        const fame = typeof input === 'number' ? input : 0;
-        return getRankInfo(fame);
+        // [Fix] playerRank(string) 또는 fame(number)를 동적으로 전달
+        if (typeof input === 'string') {
+            return getRankInfo(0, input); // playerRank 직접 전달
+        }
+        return getRankInfo(input); // fame 기반 fallback
     },
 
     // [Refactor] UI moved to god_bless_you/ui.ts
@@ -35,7 +38,6 @@ export const GodBlessYouConfig: GameConfig = {
     assets: {
         bgmMap: GOD_BLESS_YOU_BGM_MAP,
         bgmAliases: GOD_BLESS_YOU_BGM_ALIASES,
-        backgroundMap: backgroundMappings
     },
 
     getMoodPrompts: () => MOOD_PROMPTS,

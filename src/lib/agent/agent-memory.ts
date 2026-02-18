@@ -27,6 +27,43 @@ export interface AgentMemoryOutput {
 }
 
 /**
+ * [NEW] 기억 소멸(Decay) 규칙 계산
+ * 태그와 중요도에 따라 기억의 만료 턴을 결정합니다.
+ *
+ * | 카테고리 | 조건                                          | 수명    |
+ * |----------|-----------------------------------------------|---------|
+ * | 영구     | secret, trauma, growth (importance ≥ 2)       | ∞ (null)|
+ * | 장기     | bond, conflict, promise (importance ≥ 2)      | 50턴    |
+ * | 중기     | importance = 1, tag ≠ general                 | 20턴    |
+ * | 단기     | general                                       | 10턴    |
+ */
+function computeExpiry(
+    tag: string,
+    importance: number,
+    currentTurn: number
+): number | null {
+    // 영구: 핵심 기억은 절대 소멸하지 않음
+    const PERMANENT_TAGS = ['secret', 'trauma', 'growth'];
+    if (PERMANENT_TAGS.includes(tag) && importance >= 2) {
+        return null; // 영구 보존
+    }
+
+    // 장기: 관계/갈등/약속 (중요도 2 이상)
+    const LONG_TERM_TAGS = ['bond', 'conflict', 'promise'];
+    if (LONG_TERM_TAGS.includes(tag) && importance >= 2) {
+        return currentTurn + 50;
+    }
+
+    // 중기: 일반이 아닌 태그의 낮은 중요도
+    if (tag !== 'general' && importance >= 1) {
+        return currentTurn + 20;
+    }
+
+    // 단기: general 태그
+    return currentTurn + 10;
+}
+
+/**
  * AgentMemory: 스토리 텍스트를 분석하여 캐릭터별 태그 기억 + 세계 사건을 생성하는 독립 에이전트.
  * PostLogic의 character_memories를 대체하며, Phase 2 파이프라인에서 병렬 실행됩니다.
  */
@@ -69,7 +106,7 @@ ${turnCount}
 {
   "character_memories": {
     "소소": [
-      { "text": "기억 내용 (한국어)", "tag": "bond", "importance": 2 }
+      { "text": "기억 내용 (한국어)", "tag": "bond", "importance": 2, "subject": "주인공", "keywords": ["식사", "야시장"] }
     ]
   },
   "world_events": [
@@ -77,17 +114,23 @@ ${turnCount}
   ]
 }
 
+[필드 설명]
+- subject: 이 기억이 **누구에 대한 것인지** (예: "주인공", "소소", "남궁세아"). 반드시 한글 이름.
+- keywords: SNS 해시태그처럼 기억의 핵심 키워드 1~3개 (예: ["식사", "데이트"], ["전투", "부상"], ["비밀", "고백"])
+
 [규칙]
 1. 기억은 무조건 **한국어**로 작성하세요.
 2. ⚠️ 캐릭터 키는 반드시 **한글 이름** (예: "소소", "한설희", "남궁세아")을 사용하세요. 영문 ID(예: "soso", "han_seol")는 절대 사용 금지.
 3. 이번 턴에 기억할 내용이 없으면 빈 객체를 반환하세요: { "character_memories": {}, "world_events": [] }
 4. 플레이어(주인공)의 기억도 "주인공" 키로 기록 가능합니다.
 5. 한 캐릭터당 최대 2개의 기억만 기록하세요. 가장 중요한 것만.
-6. world_events는 개인 차원이 아닌 세계/지역 차원의 사건만 기록하세요. scope는:
+6. subject는 반드시 기입하세요. 기억이 특정 인물과의 상호작용이면 그 인물, 자기 자신에 대한 것이면 "자신".
+7. keywords는 1~3개의 짧은 단어로. 문장이 아닌 **명사/동사** 위주.
+8. world_events는 개인 차원이 아닌 세계/지역 차원의 사건만 기록하세요. scope는:
    - local: 현재 장소/마을 수준
    - regional: 지역/세력 수준
    - global: 세계/대륙 수준
-7. JSON만 출력하세요. 다른 텍스트는 포함하지 마세요.`;
+9. JSON만 출력하세요. 다른 텍스트는 포함하지 마세요.`;
     }
 
     /**
@@ -150,6 +193,9 @@ ${storyText.slice(0, 4000)}
             }
 
             // Validate & Normalize
+            const currentLocation = gameState.currentLocation || '';
+            const VALID_TAGS = ['bond', 'conflict', 'secret', 'trauma', 'growth', 'promise', 'general'] as const;
+
             const characterMemories: Record<string, TaggedMemory[]> = {};
             if (parsed.character_memories && typeof parsed.character_memories === 'object') {
                 Object.entries(parsed.character_memories).forEach(([charId, memories]: [string, any]) => {
@@ -157,12 +203,29 @@ ${storyText.slice(0, 4000)}
                     characterMemories[charId] = memories
                         .filter((m: any) => m && typeof m.text === 'string' && m.text.trim())
                         .slice(0, 2) // Max 2 per character
-                        .map((m: any) => ({
-                            text: m.text.trim(),
-                            tag: ['bond', 'conflict', 'secret', 'trauma', 'growth', 'promise', 'general'].includes(m.tag) ? m.tag : 'general',
-                            turn: turnCount,
-                            importance: [1, 2, 3].includes(m.importance) ? m.importance : 1,
-                        } as TaggedMemory));
+                        .map((m: any) => {
+                            const tag = VALID_TAGS.includes(m.tag) ? m.tag : 'general';
+                            const importance: 1 | 2 | 3 = [1, 2, 3].includes(m.importance) ? m.importance : 1;
+
+                            // [NEW] 소멸 규칙 계산
+                            const expireAfterTurn = computeExpiry(tag, importance, turnCount);
+
+                            // [NEW] keywords 정규화 (문자열 배열, 최대 3개)
+                            const keywords = Array.isArray(m.keywords)
+                                ? m.keywords.filter((k: any) => typeof k === 'string' && k.trim()).slice(0, 3).map((k: string) => k.trim())
+                                : undefined;
+
+                            return {
+                                text: m.text.trim(),
+                                tag,
+                                turn: turnCount,
+                                importance,
+                                subject: typeof m.subject === 'string' && m.subject.trim() ? m.subject.trim() : undefined,
+                                location: currentLocation || undefined,
+                                keywords: keywords && keywords.length > 0 ? keywords : undefined,
+                                expireAfterTurn,
+                            } as TaggedMemory;
+                        });
                 });
             }
 

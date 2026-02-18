@@ -37,7 +37,7 @@ const compressState = (state: GameState): Partial<GameState> => {
     // Remove functions and mappings
     delete (compressed as any).getSystemPromptTemplate;
     delete (compressed as any).getRankInfo;
-    delete (compressed as any).backgroundMappings;
+
     // characterMap removed
     // extraMap removed
 
@@ -171,7 +171,7 @@ export function useSaveLoad({ showSaveLoad, setShowSaveLoad, t, resetGame, addTo
                     availableCharacterImages: staticData.characterImageList || [],
                     availableExtraImages: staticData.extraCharacterList || [],
                     characterCreationQuestions: staticData.characterCreationQuestions,
-                    backgroundMappings: staticData.backgroundMappings,
+
                     // characterMap removed
                     // extraMap removed
                     getSystemPromptTemplate: staticData.getSystemPromptTemplate,

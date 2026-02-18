@@ -4,7 +4,7 @@ import { GameData } from '@/lib/engine/data-manager';
 export async function loadGodBlessYouData(): Promise<GameData> {
     console.log(`[GBYLoader] Loading God Bless You data...`);
 
-    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, bgMappingsModule: any, systemPromptModule: any, wikiDataModule: any, charMapModule: any, extraMapModule: any, constantsModule: any, loreModule: any;
+    let worldModule: any, charactersModule: any, bgListModule: any, eventsModule: any, scenarioModule: any, systemPromptModule: any, wikiDataModule: any, charMapModule: any, extraMapModule: any, constantsModule: any, loreModule: any;
     let characterImageList: string[] = [];
     let extraCharacterList: string[] = [];
 
@@ -64,8 +64,7 @@ export async function loadGodBlessYouData(): Promise<GameData> {
         console.log('- Importing start_scenario.ts...');
         scenarioModule = await import('./start_scenario');
 
-        console.log('- Importing backgroundMappings.ts...');
-        bgMappingsModule = await import('./backgroundMappings');
+
 
         console.log('- Importing prompts/system.ts...');
         systemPromptModule = await import('./prompts/system');
@@ -130,7 +129,7 @@ export async function loadGodBlessYouData(): Promise<GameData> {
         events: (eventsModule as any)?.GAME_EVENTS || [],
         scenario: (scenarioModule as any)?.START_SCENARIO_TEXT || '',
         characterCreationQuestions: (scenarioModule as any)?.CHARACTER_CREATION_QUESTIONS || [],
-        backgroundMappings: (bgMappingsModule as any)?.backgroundMappings || {},
+
         getSystemPromptTemplate: (systemPromptModule as any)?.getSystemPromptTemplate || (() => ''),
         getRankInfo: (input: string | number) => {
             const func = (systemPromptModule as any)?.getRankInfo;

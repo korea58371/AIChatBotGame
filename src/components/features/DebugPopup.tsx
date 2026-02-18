@@ -178,7 +178,8 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                         {activeCharacters.length > 0 ? (
                                             activeCharacters.map((charId: string) => {
                                                 const allCharData = useGameStore.getState().characterData;
-                                                const charData = allCharData[charId] || {};
+                                                const currentTurn = useGameStore.getState().turnCount;
+                                                const charData = allCharData[charId] || {} as any;
                                                 return (
                                                     <div key={charId} className="bg-green-900/20 border border-green-500/30 p-3 rounded text-xs">
                                                         <div className="flex justify-between mb-1">
@@ -186,14 +187,34 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                                             <span className="text-green-500/70">{charData.memories?.length || 0} memories</span>
                                                         </div>
                                                         {charData.memories && charData.memories.length > 0 ? (
-                                                            <ul className="list-disc list-inside text-gray-300 space-y-1 pl-1">
+                                                            <ul className="space-y-2 pl-1">
                                                                 {charData.memories.map((mem: any, i: number) => {
-                                                                    const text = typeof mem === 'string' ? mem : mem.text;
-                                                                    const tag = typeof mem === 'object' ? mem.tag : null;
+                                                                    const isString = typeof mem === 'string';
+                                                                    const text = isString ? mem : mem.text;
+                                                                    const tag = !isString ? mem.tag : null;
+                                                                    const importance = !isString ? mem.importance : null;
+                                                                    const subject = !isString ? mem.subject : null;
+                                                                    const turn = !isString ? mem.turn : null;
+                                                                    const keywords = !isString ? mem.keywords : null;
+                                                                    const expiry = !isString ? mem.expireAfterTurn : null;
+                                                                    const isNewThisTurn = turn === currentTurn;
                                                                     return (
-                                                                        <li key={i}>
-                                                                            {tag && <span className="text-green-400/70 mr-1">[{tag}]</span>}
-                                                                            {text}
+                                                                        <li key={i} className={`border-l-2 pl-2 py-1 ${isNewThisTurn ? 'border-green-400 bg-green-500/10' : 'border-gray-700'}`}>
+                                                                            <div className="flex items-start gap-1">
+                                                                                {isNewThisTurn && <span className="px-1 py-0.5 bg-green-500 text-black rounded text-[9px] font-bold shrink-0">NEW</span>}
+                                                                                <span className="text-gray-200">{text}</span>
+                                                                            </div>
+                                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                                {tag && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 rounded text-[10px]">{tag}</span>}
+                                                                                {importance && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 rounded text-[10px]">{'★'.repeat(importance)}</span>}
+                                                                                {subject && <span className="px-1.5 py-0.5 bg-purple-900/40 text-purple-300 rounded text-[10px]">→{subject}</span>}
+                                                                                {turn != null && <span className="px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded text-[10px]">T{turn}</span>}
+                                                                                {expiry != null && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 rounded text-[10px]">⏳T{expiry}</span>}
+                                                                                {expiry == null && !isString && <span className="px-1.5 py-0.5 bg-emerald-900/40 text-emerald-300 rounded text-[10px]">∞催久</span>}
+                                                                                {keywords && keywords.map((kw: string, ki: number) => (
+                                                                                    <span key={ki} className="px-1.5 py-0.5 bg-cyan-900/40 text-cyan-300 rounded text-[10px]">#{kw}</span>
+                                                                                ))}
+                                                                            </div>
                                                                         </li>
                                                                     );
                                                                 })}
@@ -219,23 +240,53 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                         {Object.keys(useGameStore.getState().characterData || {}).length === 0 ? (
                                             <div className="text-gray-600 text-sm italic">No character data available.</div>
                                         ) : (
-                                            Object.entries(useGameStore.getState().characterData || {}).map(([charId, data]: [string, any]) => (
-                                                <div key={charId} className="bg-gray-900 p-3 rounded text-xs">
-                                                    <div className="flex justify-between mb-1">
-                                                        <strong className="text-blue-300 text-sm">{data.name || charId}</strong>
-                                                        <span className="text-gray-500">{data.memories?.length || 0} memories</span>
+                                            Object.entries(useGameStore.getState().characterData || {}).map(([charId, data]: [string, any]) => {
+                                                const currentTurn = useGameStore.getState().turnCount;
+                                                return (
+                                                    <div key={charId} className="bg-gray-900 p-3 rounded text-xs">
+                                                        <div className="flex justify-between mb-1">
+                                                            <strong className="text-blue-300 text-sm">{data.name || charId}</strong>
+                                                            <span className="text-gray-500">{data.memories?.length || 0} memories</span>
+                                                        </div>
+                                                        {data.memories && data.memories.length > 0 ? (
+                                                            <ul className="space-y-2 pl-1">
+                                                                {data.memories.map((mem: any, i: number) => {
+                                                                    const isString = typeof mem === 'string';
+                                                                    const text = isString ? mem : mem.text;
+                                                                    const tag = !isString ? mem.tag : null;
+                                                                    const importance = !isString ? mem.importance : null;
+                                                                    const subject = !isString ? mem.subject : null;
+                                                                    const turn = !isString ? mem.turn : null;
+                                                                    const keywords = !isString ? mem.keywords : null;
+                                                                    const expiry = !isString ? mem.expireAfterTurn : null;
+                                                                    const isNewThisTurn = turn === currentTurn;
+                                                                    return (
+                                                                        <li key={i} className={`border-l-2 pl-2 py-1 ${isNewThisTurn ? 'border-blue-400 bg-blue-500/10' : 'border-gray-700'}`}>
+                                                                            <div className="flex items-start gap-1">
+                                                                                {isNewThisTurn && <span className="px-1 py-0.5 bg-blue-500 text-white rounded text-[9px] font-bold shrink-0">NEW</span>}
+                                                                                <span className="text-gray-300">{text}</span>
+                                                                            </div>
+                                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                                {tag && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 rounded text-[10px]">{tag}</span>}
+                                                                                {importance && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 rounded text-[10px]">{'★'.repeat(importance)}</span>}
+                                                                                {subject && <span className="px-1.5 py-0.5 bg-purple-900/40 text-purple-300 rounded text-[10px]">→{subject}</span>}
+                                                                                {turn != null && <span className="px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded text-[10px]">T{turn}</span>}
+                                                                                {expiry != null && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 rounded text-[10px]">⏳T{expiry}</span>}
+                                                                                {expiry == null && !isString && <span className="px-1.5 py-0.5 bg-emerald-900/40 text-emerald-300 rounded text-[10px]">∞催久</span>}
+                                                                                {keywords && keywords.map((kw: string, ki: number) => (
+                                                                                    <span key={ki} className="px-1.5 py-0.5 bg-cyan-900/40 text-cyan-300 rounded text-[10px]">#{kw}</span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </li>
+                                                                    );
+                                                                })}
+                                                            </ul>
+                                                        ) : (
+                                                            <div className="text-gray-600 italic">No recorded memories yet.</div>
+                                                        )}
                                                     </div>
-                                                    {data.memories && data.memories.length > 0 ? (
-                                                        <ul className="list-disc list-inside text-gray-400 space-y-1 pl-1">
-                                                            {data.memories.map((mem: string, i: number) => (
-                                                                <li key={i}>{mem}</li>
-                                                            ))}
-                                                        </ul>
-                                                    ) : (
-                                                        <div className="text-gray-600 italic">No recorded memories yet.</div>
-                                                    )}
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                         )}
                                     </div>
                                 </details>

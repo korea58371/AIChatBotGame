@@ -372,7 +372,8 @@ ${thinkingInstruction}
         history: Message[],
         userInput: string,
         cleanStoryText: string,
-        language: 'ko' | 'en' | null = 'ko'
+        language: 'ko' | 'en' | null = 'ko',
+        directorOut?: any // [NEW] Director output for Choices context
     ) {
         console.log(`[Orchestrator] Phase 2: Logic Execution Start... ActiveGameId: ${gameState.activeGameId}`);
         const startTime = Date.now();
@@ -404,7 +405,8 @@ ${thinkingInstruction}
                 userInput,
                 cleanStoryText,
                 gameState,
-                language
+                language,
+                directorOut // [NEW] Pass Director output for context-aware choices
             )),
             // [NEW] Parallel Event System (Deterministic)
             this.measure((async () => {
@@ -843,7 +845,7 @@ ${thinkingInstruction}
                     mood: preLogicOut.mood_override || null,
                     score: preLogicOut.plausibility_score || 5,
                     combat_analysis: preLogicOut.combat_analysis || null,
-                    narrative_guide: preLogicOut.narrative_guide || null, // [FIX] PreLogic 성공/실패 판정을 Director에게도 전달
+                    narrative_guide: preLogicOut.narrative_guide || null,
                     location_inference: preLogicOut.location_inference || null,
                 },
                 characters: directorCharSummaries,
@@ -862,7 +864,7 @@ ${thinkingInstruction}
                     parts.push(`${effectiveGameState.playerName || '???'} | ${ps.gender === 'female' ? '여' : '남'} | ${ps.playerRank || '삼류'} | Lv.${ps.level || 1}`);
                     if (ps.faction) parts.push(`소속: ${ps.faction}`);
                     if (ps.personalitySummary) parts.push(`성격: ${ps.personalitySummary}`);
-                    if (ps.core_setting) parts.push(`정체성: ${ps.core_setting}`);
+                    if (ps.core_setting) parts.push(`정체성: ${Array.isArray(ps.core_setting) ? ps.core_setting.join(', ') : ps.core_setting}`);
                     if (ps.final_goal) parts.push(`최종목표: ${ps.final_goal}`);
                     parts.push(`HP: ${ps.hp}/${ps.maxHp} | 피로: ${ps.fatigue || 0}/100 | 금화: ${ps.gold || 0}`);
                     if (ps.fame !== undefined) parts.push(`명성: ${ps.fame}`);
@@ -1074,7 +1076,7 @@ ${thinkingInstruction}
 
         // Perform Phase 2
         const tP2Start = Date.now();
-        const p2 = await this.executeLogicPhase(apiKey, effectiveGameState, history, userInput, cleanStoryText, language);
+        const p2 = await this.executeLogicPhase(apiKey, effectiveGameState, history, userInput, cleanStoryText, language, directorOut);
         const tP2End = Date.now();
         console.log(`[Pipeline] ⑥ PostLogic Phase: ${tP2End - tP2Start}ms`);
         console.log(`[Pipeline] ====== Turn TOTAL: ${tP2End - startTime}ms ======`);
