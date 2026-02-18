@@ -39,6 +39,8 @@ export interface DirectorInput {
         mood: string | null;
         score: number;
         combat_analysis: string | null;
+        narrative_guide?: string | null; // [NEW] PreLogic 성공/실패 판정 + 행동 가이드
+        location_inference?: string | null;
     };
     characters: DirectorCharSummary[];
     directorState: DirectorState;
@@ -233,6 +235,8 @@ ${gameGuide}
 ` : ''}[PreLogic Judgment]
 Mood: ${preLogic.mood || 'daily'} | Score: ${preLogic.score}/10
 ${preLogic.combat_analysis ? `Combat: ${preLogic.combat_analysis}` : ''}
+${preLogic.narrative_guide ? `Action Result: ${preLogic.narrative_guide}` : ''}
+${preLogic.location_inference ? `Location: ${preLogic.location_inference}` : ''}
 
 [Player Profile]
 ${playerProfile}

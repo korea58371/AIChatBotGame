@@ -8,6 +8,7 @@ import { AgentCasting } from './casting'; // [NEW]
 import { AgentSkills } from './skills'; // [NEW] Renamed from martial-arts
 import { AgentChoices } from './choices'; // [NEW] Parallel Choice Gen
 import { AgentMemory } from './agent-memory'; // [NEW] Memory Agent
+import { getDirectorLocationContext, getStoryLocationContext } from './location-utils'; // [NEW] Location hierarchy helpers
 import { generateResponse, generateResponseStream } from '../ai/gemini'; // Moved to ai/gemini
 import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../ai/model-config'; // Moved to ai/model-config
@@ -305,7 +306,8 @@ ${thinkingInstruction}
             .replace(/<\/나레이션>/gi, '')
             .replace(/\[나레이션[^\]]*\]/gi, '')
             .replace(/<Skill[^>]*>/gi, '') // [NEW] Strip Skill XML tags
-            .replace(/\[Skill[^\]]*\]/gi, ''); // [NEW] Strip Skill Bracket tags
+            .replace(/\[Skill[^\]]*\]/gi, '') // [NEW] Strip Skill Bracket tags
+            .replace(/<선택지[^>]*>.*?(\n|$)/g, ''); // [FIX] Strip choices leaked by Story Model (choices come from AgentChoices only)
 
         // [Guard] Empty Story Validation
         if (!cleanStoryText || !cleanStoryText.trim()) {
@@ -832,11 +834,17 @@ ${thinkingInstruction}
                 recentLog: [], momentum: { currentFocus: '일상', focusDuration: 0, lastMajorEvent: '', lastMajorEventTurn: 0 }
             };
 
+            // [NEW] Generate location map context for Director (Zone list + Adjacent)
+            const locRegions = effectiveGameState.lore?.locations?.regions || {};
+            const locationMapContext = getDirectorLocationContext(effectiveGameState.currentLocation || '', locRegions);
+
             directorOut = await AgentDirector.analyze({
                 preLogic: {
                     mood: preLogicOut.mood_override || null,
                     score: preLogicOut.plausibility_score || 5,
                     combat_analysis: preLogicOut.combat_analysis || null,
+                    narrative_guide: preLogicOut.narrative_guide || null, // [FIX] PreLogic 성공/실패 판정을 Director에게도 전달
+                    location_inference: preLogicOut.location_inference || null,
                 },
                 characters: directorCharSummaries,
                 directorState,
@@ -845,7 +853,7 @@ ${thinkingInstruction}
                 turnCount: effectiveGameState.turnCount || 0,
                 activeGoals: (effectiveGameState.goals || []).filter((g: any) => g.status === 'ACTIVE').map((g: any) => g.description),
                 lastTurnSummary: gameState.lastTurnSummary || '',
-                regionalContext: currentGameConfig?.getRegionalContext?.(effectiveGameState.currentLocation || '') || '',
+                regionalContext: (currentGameConfig?.getRegionalContext?.(effectiveGameState.currentLocation || '') || '') + '\n\n' + locationMapContext,
                 recentHistory: effectiveGameState.scenarioMemory?.recentSummary || '',
                 playerProfile: (() => {
                     const ps = effectiveGameState.playerStats;
@@ -924,8 +932,18 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
 
 그 후, <Output> 태그 안에 본문을 작성하세요.`;
 
+        // [NEW] Story Model: Add current zone spots + director's target zone spots
+        const directorTargetZone = (directorOut.plot_beats || []).join(' ').match(/(?:이동|移動|→|->)\s*([가-힣A-Za-z_]+)/)?.[1] || null;
+        const storyLocationContext = getStoryLocationContext(
+            effectiveGameState.currentLocation || '',
+            effectiveGameState.lore?.locations?.regions || {},
+            directorTargetZone
+        );
+
         const compositeInput = `
 ${narrativeGuide}
+
+${storyLocationContext}
 
 [Context data]
 ${contextPlayer}
@@ -977,7 +995,8 @@ ${thinkingInstruction}
                     .replace(/<Stat[^>]*>/gi, '') // Add other critical tags if needed
                     .replace(/\[Stat[^\]]*\]/gi, '')
                     .replace(/<Rel[^>]*>/gi, '')
-                    .replace(/\[Rel[^\]]*\]/gi, '');
+                    .replace(/\[Rel[^\]]*\]/gi, '')
+                    .replace(/<선택지[^>]*>.*?(\n|$)/g, ''); // [FIX] Strip choices leaked by Story Model
 
                 yield { type: 'text', content: cleanChunk };
             } else {

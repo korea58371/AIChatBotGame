@@ -158,12 +158,13 @@ export class AgentCasting {
         // [MODIFIED] Use GameState provided characters instead of hardcoded Wuxia imports
         // This supports God Bless You and other games dynamically.
         // [Fix] Server Actions hydrate 'characterData', not 'gameData'.
-        const allCharacters = gameState.gameData?.characters || gameState.characterData || {};
+        const allCharacters = gameState.characterData || {};
         const mainCharacterIds = new Set(Object.keys(allCharacters)); // For now treat all loaded as potential candidates
 
         // [FIX] Extract regions ONCE outside loop (performance optimization)
-        const worldData = gameState.gameData?.world || {};
-        const gameRegions: Record<string, any> = worldData.regions || {};
+        // [FIX] Use gameState.worldData (hydrated by route.ts) — gameState.gameData does NOT exist
+        const worldData = gameState.worldData || {};
+        const gameRegions: Record<string, any> = worldData.regions || gameState.lore?.locations?.regions || {};
 
         for (const [id, char] of Object.entries(allCharacters)) {
             const cAny = char as any;
@@ -196,8 +197,8 @@ export class AgentCasting {
             // If early game, boost Main Heroines to ensure they appear to guide the story.
             // [Fix] Uses injected 'is_main' flag from Loader
             if (cAny.is_main) {
-                baseScore = Math.max(baseScore, 4.0);
-                baseReasons.push(`Base(Main) (4.0)`);
+                baseScore = Math.max(baseScore, 2.0);
+                baseReasons.push(`Base(Main) (2.0)`);
                 // Early Game Bonus (+2.0) removed by user request ("15 points is enough")
             } else {
                 baseReasons.push(`Base (0.5)`);

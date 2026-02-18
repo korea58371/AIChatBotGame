@@ -57,7 +57,9 @@ export const CHARACTER_CREATION_QUESTIONS = [
             { value: 'superhuman', label: "초인적인 전투능력을 가진 일반인 (신체 능력 특화, Cost: 100 Fate)", cost: 100, costType: 'fate' },
             { value: 'd_rank_hunter', label: "D급 헌터 (밸런스형, 라이센스 보유, Cost: 50 Fate)", cost: 50, costType: 'fate' },
             { value: 'academy_student', label: "블레서 아카데미의 학생 (잠재력/지능 특화, Cost: 100 Fate)", cost: 100, costType: 'fate' },
-            { value: 's_rank_candidate', label: "S급 능력을 이제 막 각성한 예비 블레서 (먼치킨/마력 특화, Cost: 300 Fate)", cost: 300, costType: 'fate' }
+            { value: 's_rank_candidate', label: "S급 능력을 이제 막 각성한 예비 블레서 (먼치킨/마력 특화, Cost: 300 Fate)", cost: 300, costType: 'fate' },
+            { value: 'cheonma_reborn', label: "천마환생: 전생의 기억(천마)을 되찾은 일반인 (마도계열 최고수, Cost: 300 Fate)", cost: 300, costType: 'fate' },
+            { value: 'dalma_reborn', label: "달마환생: 전생의 기억(달마)을 되찾은 일반인 (정종계열 최고수, Cost: 300 Fate)", cost: 300, costType: 'fate' }
         ]
     }
 ];

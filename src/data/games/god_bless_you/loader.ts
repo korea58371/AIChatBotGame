@@ -143,6 +143,7 @@ export async function loadGodBlessYouData(): Promise<GameData> {
         // characterMap removed
         // extraMap removed
         constants: constantsModule || {},
-        lore: loreModule?.GodBlessYouLore || {}
+        lore: loreModule?.GodBlessYouLore || {},
+        initialLocation: "주거지" // [FIX] GBY starts at residential area — ensures casting location scoring works from Turn 1
     };
 }

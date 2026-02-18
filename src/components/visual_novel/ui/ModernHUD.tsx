@@ -63,7 +63,7 @@ export default function ModernHUD({ playerName, playerStats, onOpenPhone, onOpen
                     </div>
                     {/* Level Badge */}
                     <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full border border-blue-400 shadow-md">
-                        Lv.{currentLevel}
+                        Lv.{Math.floor(currentLevel)}
                     </div>
                 </div>
 

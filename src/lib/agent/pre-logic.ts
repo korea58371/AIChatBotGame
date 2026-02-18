@@ -277,46 +277,17 @@ CRITICAL OVERRIDE: The user "${gameState.playerName}" has ABSOLUTE AUTHORITY.
 
         // ... (Context Building Logic - reused) ...
         // 3. [미니맵 컨텍스트 주입]
-        // 현재 위치 상세 정보(Region/Zone/Spots)를 매핑하여 공간적 인지 능력 부여
+        // 현재 위치 상세 정보(Region/Zone)를 매핑하여 공간적 인지 능력 부여
+        // [REFACTORED] spots 목록은 스토리 모델에게만 전달 — PreLogic은 Zone 수준 설명만 필요
         let locationContext = "";
         const currentLocation = gameState.currentLocation || "Unknown";
         const locationsData = gameState.lore?.locations;
 
         if (locationsData && locationsData.regions && currentLocation) {
-            let currentRegionName = "Unknown";
-            let currentZoneName = "Unknown";
-            let visibleSpots = [];
-
-            // 위치 데이터 검색 (3-Tier: Region > Zone > Spot)
-            for (const [rName, rData] of Object.entries(locationsData.regions) as [string, any][]) {
-                if (rData.zones) {
-                    // 현재 위치가 Zone 이름과 일치하는 경우
-                    if (rData.zones[currentLocation]) {
-                        currentRegionName = rName;
-                        currentZoneName = currentLocation;
-                        visibleSpots = rData.zones[currentLocation].spots || [];
-                        break;
-                    }
-                }
-                // 현재 위치가 Region 이름과 일치하는 경우
-                if (rName === currentLocation) {
-                    currentRegionName = rName;
-                    visibleSpots = Object.keys(rData.zones || {});
-                }
-            }
-
-            if (currentRegionName !== "Unknown") {
-                locationContext = `
-[Location Context: ${currentRegionName} / ${currentZoneName}]
-- Visible Spots: ${visibleSpots.join(', ')}
-- Description: ${locationsData.regions[currentRegionName]?.description || ""}
-`;
-            } else {
-                // [Fallback] Explicitly mark as Unknown to trigger Inference
-                locationContext = `[Location Context: Unknown Region] Current Spot: "${currentLocation}". (PreLogic MUST Infer Region based on context).`;
-            }
+            const { getPreLogicLocationContext } = await import('./location-utils');
+            locationContext = getPreLogicLocationContext(currentLocation, locationsData.regions);
         } else {
-            locationContext = `[Location Context: Missing] Current Spot: "${currentLocation}". (PreLogic MUST Infer Region based on context).`;
+            locationContext = `[Location Context: Missing] Current: "${currentLocation}". (PreLogic MUST Infer Region based on context).`;
         }
 
         // 5. [내러티브 시스템 가이드 주입]

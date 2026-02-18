@@ -25,7 +25,11 @@ export interface ApplyGameLogicDeps {
 }
 
 export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
-    const { addToast, t, setLastLogicResult, setChoices, handleVisualDamage, pendingEndingRef, isEpilogueRef } = deps;
+    const { addToast: _rawToast, t, setLastLogicResult, setChoices, handleVisualDamage, pendingEndingRef, isEpilogueRef } = deps;
+    // [Immersion] Only HP changes, new skills, and injuries are shown to the player.
+    // All other notifications are console-only to preserve game immersion.
+    const addToast = (msg: string, type: string) => { console.log(`[Toast Suppressed] ${msg}`); };
+    const essentialToast = _rawToast;
     const activeGameId = useGameStore.getState().activeGameId || 'wuxia';
     const addItem = useGameStore.getState().addItem;
     const removeItem = useGameStore.getState().removeItem;
@@ -283,9 +287,12 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
         }
     }
 
-    if (logicResult.goldChange) {
-        newStats.gold = Math.max(0, (newStats.gold || 0) + logicResult.goldChange);
-    }
+    // [Fix] REMOVED: Duplicate goldChange application
+    // Gold is already applied at line 210 via logicResult.goldChange.
+    // This second application was causing gold duplication (e.g., 500k → 1M).
+    // if (logicResult.goldChange) {
+    //     newStats.gold = Math.max(0, (newStats.gold || 0) + logicResult.goldChange);
+    // }
     // [Fix] REMOVED Redundant Fame & Fate Logic Update
     // Similar to HP/MP, these are now handled via tags or were duplicated above.
     // if (logicResult.fameChange) {
@@ -324,7 +331,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
             // Check duplicate by ID
             if (!newStats.skills.find(s => s.id === skill.id)) {
                 newStats.skills.push(skill);
-                addToast(`신규 스킬 획득: ${skill.name}`, 'success');
+                essentialToast(`신규 스킬 획득: ${skill.name}`, 'success');
             }
         });
     }
@@ -379,7 +386,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
             addList.forEach((injury: string) => {
                 if (!currentInjuries.includes(injury)) {
                     currentInjuries.push(injury);
-                    addToast(`부상 발생(Injury): ${injury}`, 'warning');
+                    essentialToast(`부상 발생(Injury): ${injury}`, 'warning');
                     changed = true;
                 }
             });
@@ -432,7 +439,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
             currentInjuries = currentInjuries.filter(inj => !toRemove.has(inj));
 
             if (currentInjuries.length !== initialLen) {
-                addToast("부상 회복!", 'success');
+                essentialToast("부상 회복!", 'success');
                 changed = true;
             }
         }
@@ -565,7 +572,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
 
 
     // Toasts
-    if (logicResult.hpChange) addToast(`${t.hp} ${logicResult.hpChange > 0 ? '+' : ''}${logicResult.hpChange}`, logicResult.hpChange > 0 ? 'success' : 'warning');
+    if (logicResult.hpChange) essentialToast(`${t.hp} ${logicResult.hpChange > 0 ? '+' : ''}${logicResult.hpChange}`, logicResult.hpChange > 0 ? 'success' : 'warning');
     if (logicResult.mpChange) addToast(`${t.mp} ${logicResult.mpChange > 0 ? '+' : ''}${logicResult.mpChange}`, 'info');
     if (logicResult.goldChange) addToast(`${t.gold} ${logicResult.goldChange > 0 ? '+' : ''}${logicResult.goldChange}`, 'success');
     if (logicResult.fameChange) addToast(`Fame ${logicResult.fameChange > 0 ? '+' : ''}${logicResult.fameChange}`, logicResult.fameChange > 0 ? 'success' : 'warning');
@@ -713,104 +720,26 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
             // TODO: Implement actual relationship update in store if needed
         }
 
-        // [NEW] Faction Update (PostLogic)
-        if (postLogic.factionChange) {
-            const currentFaction = useGameStore.getState().playerStats.faction;
-            if (currentFaction !== postLogic.factionChange) {
-                newStats.faction = postLogic.factionChange;
-                useGameStore.getState().setPlayerStats(newStats);
-                addToast(`소속 변경: ${postLogic.factionChange}`, 'success');
-                console.log(`[PostLogic] Faction updated: ${postLogic.factionChange}`);
-            }
-        }
+        // [Fix] REMOVED: Duplicate Faction/Rank processing from post_logic
+        // These are already handled via logicResult.factionChange/playerRank (lines 310-317)
+        // Processing them again here from post_logic caused duplicate toast alerts.
 
-        // [NEW] Rank Update (PostLogic)
-        if (postLogic.playerRank) {
-            const currentRank = useGameStore.getState().playerStats.playerRank;
-            if (currentRank !== postLogic.playerRank) {
-                newStats.playerRank = postLogic.playerRank;
-                useGameStore.getState().setPlayerStats(newStats);
-                addToast(`Rank Up: ${postLogic.playerRank}`, 'success');
-                console.log(`[PostLogic] Rank updated: ${postLogic.playerRank}`);
-            }
-        }
-
-        // [NEW] Injury Management (Healing & Mutation)
-        if (postLogic.resolved_injuries || postLogic.new_injuries) {
-            useGameStore.setState(state => {
-                const currentInjuries = state.playerStats.active_injuries || [];
-                let updatedInjuries = [...currentInjuries];
-
-                // 1. Resolve (Remove) Injuries
-                if (postLogic.resolved_injuries && postLogic.resolved_injuries.length > 0) {
-                    postLogic.resolved_injuries.forEach((resolved: string) => {
-                        // [Fix] Fuzzy Match Logic (Dice Coefficient)
-                        // We attempt to find the BEST match in the current injury list.
-                        // If match score > 0.5, we accept it as the target.
-
-                        let targetToRemove: string | null = null;
-                        const candidates = updatedInjuries;
-
-                        // 1. Exact or Simple Inclusion Match (Legacy)
-                        const exact = candidates.find(c => c === resolved);
-                        if (exact) targetToRemove = exact;
-                        else {
-                            // 2. Fuzzy Match
-                            const bestMatch = findBestMatchDetail(resolved, candidates);
-                            if (bestMatch && bestMatch.rating >= 0.5) { // 0.5 Threshold (Lenient)
-                                console.log(`[Injury] Fuzzy Resolved: "${resolved}" -> "${bestMatch.target}" (Score: ${bestMatch.rating.toFixed(2)})`);
-                                targetToRemove = bestMatch.target;
-                            } else {
-                                // 3. Fallback: Check for substring inclusion (Aggressive)
-                                const subMatch = candidates.find(c => c.includes(resolved) || resolved.includes(c));
-                                if (subMatch) {
-                                    console.log(`[Injury] Substring Resolved: "${resolved}" -> "${subMatch}"`);
-                                    targetToRemove = subMatch;
-                                }
-                            }
-                        }
-
-                        if (targetToRemove) {
-                            // Remove specific instance
-                            updatedInjuries = updatedInjuries.filter(i => i !== targetToRemove);
-                            addToast(t.systemMessages?.statusRecovered?.replace('{0}', targetToRemove) || `상태 회복: ${targetToRemove}`, 'success');
-                        } else {
-                            // [Fix] Silent Failure
-                            // If AI tries to heal something clearly not there, just log it. Do NOT annoy user.
-                            if (updatedInjuries.length === 0) {
-                                console.log(`[Injury] AI tried to heal '${resolved}' but character has no injuries. (Ignored)`);
-                            } else {
-                                console.log(`[Injury] AI tried to heal '${resolved}' but no match found in:`, updatedInjuries);
-                            }
-                        }
-                    });
-                }
-
-                // 2. Add New Injuries (Mutation/New)
-                if (postLogic.new_injuries && postLogic.new_injuries.length > 0) {
-                    postLogic.new_injuries.forEach((newInjury: string) => {
-                        if (!updatedInjuries.includes(newInjury)) {
-                            updatedInjuries.push(newInjury);
-                            addToast(t.systemMessages?.injuryOccurred?.replace('{0}', newInjury) || `부상 발생/악화: ${newInjury}`, 'warning');
-                        }
-                    });
-                }
-
-                return {
-                    playerStats: {
-                        ...state.playerStats,
-                        active_injuries: updatedInjuries
-                    }
-                };
-            });
-        }
+        // [Fix] REMOVED: Duplicate Injury processing from post_logic
+        // Injuries are already handled via logicResult.injuriesUpdate (lines 368-440)
+        // which contains the same data (postLogicOut.new_injuries/resolved_injuries)
+        // mapped by VisualNovelUI.tsx combinedLogic assembly.
+        // Processing them again here caused duplicate injury toasts and double-application.
 
         // [Dead Stats Removed] Personality processing removed. Core stats only.
+        // [Fix] stat_updates: Only process fame/neigong here.
+        // hp, mp, gold are already handled at top-level (lines 205-210)
+        // via logicResult.hpChange, mpChange, goldChange.
+        // Processing them here again from post_logic caused double-counting.
         if (postLogic.stat_updates) {
             const currentStats = useGameStore.getState().playerStats;
 
             Object.entries(postLogic.stat_updates).forEach(([key, val]) => {
-                if (['hp', 'mp', 'gold', 'fame', 'neigong'].includes(key)) {
+                if (['fame', 'neigong'].includes(key)) {
                     const currentVal = (currentStats as any)[key] || 0;
                     const newVal = Math.max(0, currentVal + (val as number));
                     const updatePayload: any = {};
@@ -895,7 +824,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                 ma.stat_updates.active_injuries.forEach((inj: string) => {
                     if (!currentInj.includes(inj)) {
                         currentInj.push(inj);
-                        addToast(t.systemMessages?.internalInjury?.replace('{0}', inj) || `내상(Internal Injury): ${inj}`, 'warning');
+                        essentialToast(t.systemMessages?.internalInjury?.replace('{0}', inj) || `내상(Internal Injury): ${inj}`, 'warning');
                         hasUpdates = true;
                     }
                 });
@@ -911,7 +840,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                 if (newSkills.length > 0) {
                     currentStats.skills = [...currentSkills, ...newSkills];
                     hasUpdates = true;
-                    newSkills.forEach((skill: any) => addToast(t.systemMessages?.newArt?.replace('{0}', skill.name) || `신규 스킬 습득: ${skill.name}`, 'success'));
+                    newSkills.forEach((skill: any) => essentialToast(t.systemMessages?.newArt?.replace('{0}', skill.name) || `신규 스킬 습득: ${skill.name}`, 'success'));
                 }
             }
 

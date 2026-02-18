@@ -731,7 +731,8 @@ export default function VisualNovelUI() {
         hp: number;
         mp: number;
         relationships: Record<string, number>;
-    }>({ hp: 0, mp: 0, relationships: {} });
+        injuries: string[]; // [New] Track inline-applied injuries for dedup
+    }>({ hp: 0, mp: 0, relationships: {}, injuries: [] });
 
 
     // [New] Shared Helper for Visual Damage
@@ -1884,6 +1885,27 @@ export default function VisualNovelUI() {
                                                         addToast(`${normalizedId} 호감도 ${val > 0 ? '+' : ''}${val}`, 'info');
                                                     }
                                                 } catch (e) { }
+                                            } else if (seg.commandType === 'add_injury') {
+                                                // [New] Inline Injury Application (Position-Aware)
+                                                // Apply injury immediately when user reaches this point in the text.
+                                                try {
+                                                    const d = JSON.parse(seg.content || '{}');
+                                                    if (d.name) {
+                                                        const injuryName = d.name;
+                                                        // Apply to store immediately
+                                                        const currentInjuries = useGameStore.getState().playerStats.active_injuries || [];
+                                                        if (!currentInjuries.includes(injuryName)) {
+                                                            useGameStore.getState().setPlayerStats({
+                                                                ...useGameStore.getState().playerStats,
+                                                                active_injuries: [...currentInjuries, injuryName]
+                                                            });
+                                                            addToast(`부상 발생(Injury): ${injuryName}`, 'warning');
+                                                        }
+                                                        // Track for dedup in onComplete
+                                                        inlineAccumulatorRef.current.injuries.push(injuryName);
+                                                        console.log(`[Inline] Injury Applied: ${injuryName}`);
+                                                    }
+                                                } catch (e) { console.error('[Inline] Injury parse error:', e); }
                                             } else if (seg.commandType === 'set_time') {
                                                 // Handle Time
                                                 useGameStore.getState().setTime(seg.content);
@@ -2549,7 +2571,17 @@ export default function VisualNovelUI() {
                                         : [],
                                     activeCharacters: postLogicOut?.activeCharacters,
                                     injuriesUpdate: {
-                                        add: postLogicOut?.new_injuries,
+                                        // [Fix] Exclude injuries already applied via inline tags
+                                        add: (() => {
+                                            const allNew = postLogicOut?.new_injuries;
+                                            if (!allNew) return undefined;
+                                            const inlineApplied = inlineAccumulatorRef.current.injuries;
+                                            if (inlineApplied.length === 0) return allNew;
+                                            const list = Array.isArray(allNew) ? allNew : [allNew];
+                                            const filtered = list.filter((inj: string) => !inlineApplied.includes(inj));
+                                            console.log(`[Dedup] Injuries: total=${list.length}, inline=${inlineApplied.length}, deferred=${filtered.length}`);
+                                            return filtered.length > 0 ? filtered : undefined;
+                                        })(),
                                         remove: postLogicOut?.resolved_injuries
                                     },
                                     stat_updates: postLogicOut?.stat_updates,
@@ -2581,7 +2613,7 @@ export default function VisualNovelUI() {
                                 if (deferredLogic.mpChange !== undefined) deferredLogic.mpChange -= acc.mp;
                                 // [Dead Stats Removed] personalityChange deduction removed
                                 // Reset Inline Accumulator
-                                inlineAccumulatorRef.current = { hp: 0, mp: 0, relationships: {} };
+                                inlineAccumulatorRef.current = { hp: 0, mp: 0, relationships: {}, injuries: [] };
 
                                 // [NEW] Handle NPC-to-NPC Relationships Directly (Bypass applyGameLogic if needed)
                                 if (deferredLogic.character_relationships) {
