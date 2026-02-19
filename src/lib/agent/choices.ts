@@ -63,43 +63,43 @@ export class AgentChoices {
         // [3] Genre/World Rule Extraction (Dynamic from Lorebook)
         const worldRules = gameState.lore?.worldRules || gameState.constants?.CORE_RULES || "";
         const choiceRules = gameState.lore?.choiceRules || gameState.constants?.CHOICE_RULES || gameState.constants?.choiceRules ||
-            "- Option 1: Bold/Active (Progress the plot)\n- Option 2: Cautious/Observant (Gather info)\n- Option 3: Creative/Roleplay (Character specific)";
+            "- (1번) 적극적/주도적 (상황을 진전시킴)\n- (2번) 신중한/관찰 (정보를 모음)\n- (3번) 창의적/유머 (캐릭터 개성 반영)";
 
         // System Prompt: Generic Choice Specialist
         const systemPrompt = `
-You are the [Choice Generator] for a text-based RPG.
-Your ONLY role is to read the provided story segment and generate 3 branching options for the player.
+당신은 텍스트 RPG의 [선택지 생성기]입니다.
+유일한 역할: 제공된 스토리의 **마지막 문장을 읽고**, 그 직후에 플레이어가 할 수 있는 3가지 행동을 생성하는 것입니다.
 
-[Choice Generation Rules]
+[선택지 생성 규칙]
 ${choiceRules}
 
-[CRITICAL INSTRUCTION - TIMING & LOCATION]
-- **The [Current Story Segment] is the ABSOLUTE TRUTH.**
-- Focus strictly on the **LAST PARAGRAPH** of the narrative.
-- **IF THE PLAYER LEAVES A LOCATION:** (e.g., "leaves the room", "steps outside"):
-  - You MUST ABANDON all interactions with characters effectively left behind.
-  - DO NOT generate choices to talk to someone who is no longer in the same space.
-  - Choices must reflect the NEW environment/goal.
-- **IF A CONVERSATION ENDED:** Do not continue the topic unless the player explicitly chooses to.
+[⭐ 핵심 원칙 - 연속성 (CONTINUATION)]
+- **선택지는 스토리의 마지막 문장에서 바로 이어지는 '다음 행동'이어야 합니다.**
+- 마지막 문장이 "~했다."로 끝나면, 선택지는 그 직후 0.1초 뒤의 행동이어야 합니다.
+- 마지막 문장이 누군가의 대사/질문으로 끝나면, 선택지는 그에 대한 반응이어야 합니다.
+- **금지**: 이미 완료된 행동을 반복하거나, 갑자기 맥락 없는 새 행동을 제시하는 것.
 
-[CRITICAL INSTRUCTION - PLAYER ONLY]
-- You must ONLY generate choices for the protagonist (${gameState.playerName || 'Protagonist'}).
-- NEVER generate choices that describe an NPC's action, dialogue, or reaction.
-- BAD: "The merchant gets angry." (NPC action)
-- BAD: "Cheon Se-yun nods." (NPC action)
-- GOOD: "Glare at the merchant." (Player action)
-- GOOD: "Nod to Cheon Se-yun." (Player action)
-- The choices should be ACTIONS or DIALOGUE that the PLAYER can choose to do.
+[핵심 원칙 - 시간과 장소]
+- **[Current Story Segment]가 절대적 진실입니다.**
+- **마지막 문단**에 집중하십시오.
+- **플레이어가 장소를 떠났다면**: 남겨진 캐릭터와의 상호작용은 즉시 버리십시오.
+- **대화가 끝났다면**: 같은 주제를 계속하지 마십시오.
 
-[CRITICAL INSTRUCTION - CONTEXT AWARENESS]
-- **Active Characters Only**: check [Active Characters] but ignore them if the narrative says the player moved away.
-- **Location Awareness**: Use [Location Context]. If in a "Cave", do not "Walk into the busy street".
+[핵심 원칙 - 플레이어 행동만]
+- 오직 주인공(${gameState.playerName || '주인공'})의 행동만 생성하십시오.
+- NPC의 행동/반응/대사를 선택지에 넣지 마십시오.
+- 나쁜 예: "상인이 화를 낸다." (NPC 행동)
+- 좋은 예: "상인에게 따진다." (플레이어 행동)
 
-[Output Requirements]
-- Output ONLY the 3 lines of choices.
-- Do NOT output any conversational text or JSON.
-- Strictly follow the tag format: <선택지N> 내용
-- **[LENGTH LIMIT]**: Each choice MUST NOT exceed 64 bytes (approx. 32 Korean characters). Keep it concise.
+[핵심 원칙 - 맥락 인식]
+- **[Active Characters]**에 있는 인물만 대화 대상으로 사용하십시오.
+- **[Location Context]**를 확인하십시오. 실내에 있으면서 "거리를 걷는다"는 선택지를 내지 마십시오.
+
+[출력 규칙]
+- 오직 3줄의 선택지만 출력하십시오.
+- 대화, 설명, JSON 출력 금지.
+- 태그 형식 준수: <선택지N> 내용
+- **[길이 제한]**: 각 선택지는 64바이트(한글 약 32자) 이내로 간결하게.
 `;
 
         const model = genAI.getGenerativeModel({
@@ -162,34 +162,34 @@ ${userInput}
 ${storyText}
 
 [Task]
-Generate 3 distinct choices based on the **IMMEDIATE END STATE** of the [Current Story Segment] for [${gameState.playerName}].
+[Current Story Segment]의 **마지막 문장을 읽고**, 그 바로 다음에 [${gameState.playerName}]이(가) 할 수 있는 3가지 행동을 생성하십시오.
 
-**[CRITICAL INSTRUCTION - FORWARD MOMENTUM]**
-- **Do NOT just repeat what happened.** (e.g., If the text says "I sat down", do NOT offer "Sit down".)
-- **Do NOT just think about what happened.** (e.g., If the text says "I wondered why", do NOT offer "Wonder why".)
-- **OFFER THE NEXT ACTION.** (e.g., "Ask him about it", "Look around for clues", "Stand up and leave".)
-- Choices must drive the plot *forward* from the current moment.
-- **If Director Plot Direction exists, at least 1 choice MUST align with that direction.**
-- **If Active Goals exist, at least 1 choice SHOULD relate to progressing a goal.**
+**[⭐ 핵심 - 마지막 문장에서 이어지는 선택지]**
+- 마지막 문장을 인용하며 자문하십시오: "이 문장 직후, 주인공이 할 수 있는 자연스러운 행동은?"
+- **이미 일어난 일을 반복하지 마십시오.** (텍스트에 "앉았다"가 있으면 "앉는다"는 금지)
+- **생각만 하는 선택지 금지.** ("왜 그런지 생각해 본다"는 금지)
+- **다음 행동을 제시하십시오.** ("물어본다", "자리를 뜬다", "핸드폰을 꺼낸다")
+- Director Plot Direction이 있으면, 최소 1개는 그 방향에 맞추십시오.
+- Active Goals가 있으면, 최소 1개는 목표 진행과 관련되어야 합니다.
 
-- Choice 1: Active/Aggressive/Bold (Align with [Director Plot Direction] or [Active Goals]).
-- Choice 2: Cautious/Observant/Pragmatic.
-- Choice 3: Creative/Social/Humorous (Reflecting the specific [Personality]).
+- 선택지 1: 적극적/주도적 ([Director Plot Direction] 또는 [Active Goals] 방향).
+- 선택지 2: 신중한/관찰/실리적.
+- 선택지 3: 창의적/사교적/유머 ([Personality] 반영).
 
-[GENRE/SITUATION BIAS]
-- Check the LAST sentence. Where is the player? Who is with them?
-- If the player just LEFT, focus on the destination or the journey.
-- If [Active Injuries] is present, prioritize recovery options if applicable.
-- If situation is peaceful, allow training or character interaction.
-- If situation is combat, offer combat options using [Known Skills].
+[상황별 가이드]
+- 마지막 문장을 확인하십시오. 플레이어는 어디에, 누구와 있습니까?
+- 플레이어가 방금 이동했다면: 도착지에서 할 행동에 집중.
+- [Active Injuries]가 있다면: 회복 관련 선택을 고려.
+- 평화로운 상황이라면: 일상/대화/관계 진전 선택.
+- 전투 상황이라면: [Known Skills]를 활용한 전투 선택.
 
-[Constraint Check]
-- Does the choice describe *someone else's* action? -> REJECT.
-- Is it the Player's action? -> ACCEPT.
-- Is the target character present in [Active Characters]? -> If NO, REJECT.
-- **[ANTI-REPETITION]**: Does the choice repeat an action/thought ALREADY completed in the [Current Story Segment]? -> REJECT.
-- **[FORWARD-LOOKING]**: Does the choice move the plot forward? -> PREFER.
-- **[Clear Intent]**: The choice must imply a clear *next step*, not just a thought loop.
+[검증 체크리스트]
+- 다른 사람의 행동을 묘사하고 있는가? → 거부.
+- 플레이어의 행동인가? → 허용.
+- 대화 대상이 [Active Characters]에 있는가? → 없으면 거부.
+- **[반복 방지]**: [Current Story Segment]에서 이미 완료된 행동/생각을 반복하는가? → 거부.
+- **[전진]**: 이야기를 앞으로 진전시키는가? → 우선.
+- **[명확한 의도]**: 선택지가 구체적인 '다음 행동'을 암시하는가? → 필수.
 `;
         try {
             const result = await model.generateContent(dynamicPrompt);

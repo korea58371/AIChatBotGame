@@ -940,6 +940,7 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
 2. [Character Reaction]: 위 상황(1번)에 대해, 등장인물들이 보일 **가장 자연스럽고 개연성 있는 반응**을 스스로 판단하여 결정하시오. (특정 분위기를 강제하지 말 것)
 3. [Tone Planning]: 캐릭터 설정(말투, 어미)을 참고하여, 이번 턴에 사용할 **핵심 대사 키워드**를 미리 2개씩 선정하시오.
 4. [Narrative Focus]: 현재 분위기(Mood)가 평화롭다면, 감정선과 분위기 묘사에 집중하시오. 유저가 원하지 않는 한 억지 갈등(Conflict)이나 반전(Twist)을 생성하지 마시오.
+5. [Open Ending Check]: 마지막 문단을 점검하시오 — 에필로그/회고/다짐형 마무리가 아니라, 플레이어가 즉시 반응해야 하는 '진행 중인 상황'(대사, 질문, 사건 발생)으로 끝나는가? 웹소설처럼 "다음이 궁금해지는" 결말인가?
 
 **[중요] 답변은 반드시 <Thinking> 태그로 시작해야 합니다.**
 그 후, <Output> 태그 안에 본문을 작성하세요.`
@@ -949,6 +950,7 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
 2. 등장인물의 말투(Speech Pattern)는 설정과 일치하는가?
 3. 이번 턴의 주요 사건(Key Events)은 무엇인가?
 4. 캐릭터들의 기억 정보와 현재 네러티브의 개연성/핍진성이 유지되는가?
+5. [Open Ending Check]: 마지막 문단이 에필로그/회고/다짐형 마무리가 아니라, 플레이어가 즉시 반응해야 하는 '진행 중인 상황'(대사, 질문, 사건 발생)으로 끝나는가?
 
 그 후, <Output> 태그 안에 본문을 작성하세요.`;
 

@@ -174,6 +174,9 @@ You will receive the game's [Tone & World Guide] in the user prompt. Follow it s
    - ✅ Sister at home, coworker at the office, shopkeeper at the market
    - ❌ The same friend "coincidentally" appears at every unrelated location the player visits
    - Use [Recent Decisions] to check if a character has been appearing too frequently across UNRELATED locations. Repeated encounters are fine if the setting justifies it.
+9. **OPEN ENDING**: The LAST plot beat MUST be an UNRESOLVED situation that demands the player's response. Like a well-written web novel chapter ending, the reader must feel "what happens next?".
+   - ✅ "NPC asks the player a direct question" / "A new character bursts in" / "Phone rings with urgent news" / "Player faces a decision"
+   - ❌ "Everyone feels satisfied" / "The day ends peacefully" / "Player reflects on the journey" / "A fulfilling day closes"
 
 [Context Requirements Guide]
 - combat_characters: Characters who will FIGHT this turn → inject full skill data

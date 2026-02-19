@@ -1138,18 +1138,18 @@ ${spawnCandidates || "None"}
                         pVal = char.personality;
                     } else {
                         // [PRIVACY FILTER] Filter Inner/Affection traits
-                        // Replicated logic from character.ts for consistency in Core Engine
+                        // Inner personality unlocks at Lvl 7 (은애/썸, 70+)
                         const charName = char.name || char.이름 || 'Unknown';
                         const charId = char.id || char.englishName || charName;
-                        // State is available in scope
                         const relScore = state?.playerStats?.relationships?.[charName] ||
                             state?.playerStats?.relationships?.[charId] || 0;
 
+                        const INNER_UNLOCK_THRESHOLD = 70; // Lvl 7 (은애)
                         const filtered: any = {};
                         Object.entries(char.personality).forEach(([k, v]) => {
                             const isSecretTrait = k.includes('내면') || k.includes('애정') || k.includes('Inner') || k.includes('Affection');
                             if (isSecretTrait) {
-                                if (relScore >= 40) {
+                                if (relScore >= INNER_UNLOCK_THRESHOLD) {
                                     filtered[k] = v;
                                 }
                                 // Else: Omit completely.
@@ -1443,7 +1443,12 @@ ${spawnCandidates || "None"}
                 }
             }
 
-            // [EMOTIONAL FOCUS] Memories + inner personality
+            // [EMOTIONAL FOCUS] Memories + inner personality (gated by affection)
+            const INNER_UNLOCK_THRESHOLD = 70; // Lvl 7 (은애)
+            const charRelScore = state.playerStats.relationships?.[charId] ||
+                state.playerStats.relationships?.[char.name] ||
+                (char.이름 ? state.playerStats.relationships?.[char.이름] : 0) || 0;
+
             if (isEmotional) {
                 if (char.memories && char.memories.length > 0) {
                     charInfo += `\n\n[IMPORTANT MEMORIES]`;
@@ -1462,8 +1467,20 @@ ${spawnCandidates || "None"}
                         }
                     });
                 }
+                // [FIX] Even in emotional_focus, gate inner personality by affection score
                 if (char.personality && typeof char.personality === 'object') {
-                    charInfo += `\n- Personality(Full): ${JSON.stringify(char.personality)}`;
+                    if (charRelScore >= INNER_UNLOCK_THRESHOLD) {
+                        charInfo += `\n- Personality(Full): ${JSON.stringify(char.personality)}`;
+                    } else {
+                        // Filter out inner/affection traits
+                        const surface: any = {};
+                        Object.entries(char.personality).forEach(([k, v]) => {
+                            if (!k.includes('내면') && !k.includes('애정') && !k.includes('Inner') && !k.includes('Affection')) {
+                                surface[k] = v;
+                            }
+                        });
+                        charInfo += `\n- Personality: ${JSON.stringify(surface)}`;
+                    }
                 }
             } else {
                 if (char.memories && char.memories.length > 0) {
@@ -1481,7 +1498,7 @@ ${spawnCandidates || "None"}
                     } else {
                         const surface: any = {};
                         Object.entries(char.personality).forEach(([k, v]) => {
-                            if (!k.includes('내면') && !k.includes('애정') && !k.includes('Inner')) {
+                            if (!k.includes('내면') && !k.includes('애정') && !k.includes('Inner') && !k.includes('Affection')) {
                                 surface[k] = v;
                             }
                         });
