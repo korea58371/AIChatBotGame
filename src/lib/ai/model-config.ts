@@ -5,7 +5,8 @@ export const MODEL_CONFIG = {
     SUMMARY: 'gemini-2.5-flash',      // Summarization (Cheap)
     ROUTER: 'gemini-2.5-flash-lite',       // Intent Classification
     PRE_LOGIC: 'gemini-3-flash-preview',     // Adjudication & Dice Rolls — Quality-critical (location/mood)
-    CHOICES: 'gemini-2.5-flash'   // Choice Generation (Parallel)
+    CHOICES: 'gemini-2.5-flash',   // Choice Generation (Parallel)
+    MEMORY: 'gemini-3-flash-preview',     // Memory Agent (Profile Updates + Fact Extraction)
 };
 
 export const KRW_PER_USD = 1450; // Exchange Rate

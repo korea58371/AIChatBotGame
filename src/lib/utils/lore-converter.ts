@@ -476,7 +476,11 @@ export class LoreConverter {
                 if (typeof relationships === 'object') {
                     const rels = Object.entries(relationships)
                         .sort((a, b) => a[0].localeCompare(b[0]))
-                        .map(([k, v]) => `${k}: ${v}`).join(' / ');
+                        .map(([k, v]) => {
+                            // Support [weight, "description"] tuple format
+                            const desc = Array.isArray(v) && v.length >= 2 ? v[1] : v;
+                            return `${k}: ${desc}`;
+                        }).join(' / ');
                     output += `- **Relations**: ${rels.slice(0, 150)}${rels.length > 150 ? '...' : ''}\n`;
                 }
             }

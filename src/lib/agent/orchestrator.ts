@@ -12,7 +12,7 @@ import { getDirectorLocationContext, getStoryLocationContext } from './location-
 import { generateResponse, generateResponseStream } from '../ai/gemini'; // Moved to ai/gemini
 import { Message } from '../store';
 import { calculateCost, MODEL_CONFIG } from '../ai/model-config'; // Moved to ai/model-config
-import { PromptManager } from '../engine/prompt-manager'; // Moved to engine/prompt-manager
+import { PromptManager, filterMemories, formatMemoryLine } from '../engine/prompt-manager'; // Moved to engine/prompt-manager
 import { EventManager } from '../engine/event-manager'; // Moved to engine/event-manager
 
 
@@ -880,7 +880,25 @@ ${thinkingInstruction}
                     const rank = cd['강함']?.['등급'] || cd.profile?.['등급'] || 'Unknown';
                     const faction = cd.faction || cd.profile?.['소속'] || '무소속';
                     const role = cd.title || cd.role || '';
-                    return `- ${c.name} [${rank}] ${faction}${role ? ' / ' + role : ''} (추천사유: ${c.reasons.slice(0, 2).join(', ')})`;
+                    // [IMPROVED] Director에 연관 기억 전달 (현재 상황 키워드 기반 필터링)
+                    const dynamicChar = effectiveGameState.characterData?.[c.id];
+                    const rawMem = dynamicChar?.memories || cd.memories || [];
+                    let memLine = '';
+                    if (rawMem.length > 0) {
+                        const memKeywords = `${userInput} ${lastTurnSummary}`
+                            .split(/[\s,→·/()[\]]+/)
+                            .filter((w: string) => w.length >= 2)
+                            .slice(0, 10);
+                        const filtered = filterMemories(rawMem, {
+                            maxCount: 3,
+                            currentTurn: effectiveGameState.turnCount || 0,
+                            keywords: memKeywords,
+                        });
+                        if (filtered.length > 0) {
+                            memLine = `\n    최근기억: ${filtered.map(formatMemoryLine).join(' / ')}`;
+                        }
+                    }
+                    return `- ${c.name} [${rank}] ${faction}${role ? ' / ' + role : ''}${memLine}\n    (추천사유: ${c.reasons.slice(0, 2).join(', ')})`;
                 }).join('\n'),
                 gameGuide: currentGameConfig?.getDirectorGuide?.() || '',
                 directorExamples: currentGameConfig?.getDirectorExamples?.(),
@@ -964,45 +982,75 @@ ${thinkingInstruction}
 
         const tStoryStart = Date.now();
         console.log(`[Pipeline] ④ Story Stream: Requesting...`);
-        console.time("Stream - Time To First Token");
-        const streamGen = generateResponseStream(
-            apiKey,
-            cleanHistory,
-            compositeInput,
-            effectiveGameState,
-            language,
-            modelName
-        );
 
+        // [FIX] Empty Response Auto-Retry Wrapper
+        // Gemini 3 intermittently returns empty responses (SAFETY filter, empty output, etc.)
+        // We retry once before falling back to " ... "
+        const MAX_STORY_ATTEMPTS = 2;
         let fullRawText = "";
         let storyMetadata: any = null;
 
-        let firstChunkReceived = false;
-        // Yield chunks
-        for await (const chunk of streamGen) {
-            if (!firstChunkReceived) {
-                console.timeEnd("Stream - Time To First Token");
-                console.log(`[Pipeline] ④ Story TTFT: ${Date.now() - tStoryStart}ms (Phase1+Story TTFT: ${Date.now() - startTime}ms)`);
-                firstChunkReceived = true;
-            }
+        for (let storyAttempt = 1; storyAttempt <= MAX_STORY_ATTEMPTS; storyAttempt++) {
+            fullRawText = "";
+            storyMetadata = null;
+            let firstChunkReceived = false;
 
-            if (typeof chunk === 'string') {
-                fullRawText += chunk;
-                // [Fix] Real-time Scrubbing for Stream
-                // We must strip tags from chunks to prevent leakage during typing.
-                // Note: deeply split tags (e.g. <Sk|ill>) might still leak briefly, but this covers 99%.
-                const cleanChunk = chunk
-                    .replace(/<Skill[^>]*>/gi, '')
-                    .replace(/\[Skill[^\]]*\]/gi, '')
-                    .replace(/<Stat[^>]*>/gi, '') // Add other critical tags if needed
-                    .replace(/\[Stat[^\]]*\]/gi, '')
-                    .replace(/<Rel[^>]*>/gi, '')
-                    .replace(/\[Rel[^\]]*\]/gi, '')
-                    .replace(/<선택지[^>]*>.*?(\n|$)/g, ''); // [FIX] Strip choices leaked by Story Model
+            try {
+                if (storyAttempt > 1) {
+                    console.warn(`[Pipeline] ④ Story Stream: RETRY attempt ${storyAttempt}/${MAX_STORY_ATTEMPTS}...`);
+                    yield { type: 'progress', stage: 'story_retry', duration: 0, input: { attempt: storyAttempt }, output: {} };
+                }
+                console.time("Stream - Time To First Token");
+                const streamGen = generateResponseStream(
+                    apiKey,
+                    cleanHistory,
+                    compositeInput,
+                    effectiveGameState,
+                    language,
+                    modelName
+                );
 
-                yield { type: 'text', content: cleanChunk };
-            } else {
-                storyMetadata = chunk;
+                // Yield chunks
+                for await (const chunk of streamGen) {
+                    if (!firstChunkReceived) {
+                        console.timeEnd("Stream - Time To First Token");
+                        console.log(`[Pipeline] ④ Story TTFT: ${Date.now() - tStoryStart}ms (Phase1+Story TTFT: ${Date.now() - startTime}ms)`);
+                        firstChunkReceived = true;
+                    }
+
+                    if (typeof chunk === 'string') {
+                        fullRawText += chunk;
+                        // [Fix] Real-time Scrubbing for Stream
+                        const cleanChunk = chunk
+                            .replace(/<Skill[^>]*>/gi, '')
+                            .replace(/\[Skill[^\]]*\]/gi, '')
+                            .replace(/<Stat[^>]*>/gi, '')
+                            .replace(/\[Stat[^\]]*\]/gi, '')
+                            .replace(/<Rel[^>]*>/gi, '')
+                            .replace(/\[Rel[^\]]*\]/gi, '')
+                            .replace(/<선택지[^>]*>.*?(\n|$)/g, '');
+
+                        yield { type: 'text', content: cleanChunk };
+                    } else {
+                        storyMetadata = chunk;
+                    }
+                }
+
+                // If we got text, break out of retry loop
+                if (fullRawText.trim().length > 0) {
+                    console.log(`[Pipeline] ④ Story Stream: Success on attempt ${storyAttempt} (${fullRawText.length} chars)`);
+                    break;
+                }
+
+                // Empty text — generateResponseStream should have thrown, but just in case
+                console.warn(`[Pipeline] ④ Story Stream: Empty text on attempt ${storyAttempt}. Will ${storyAttempt < MAX_STORY_ATTEMPTS ? 'retry' : 'fallback'}.`);
+
+            } catch (storyError: any) {
+                console.error(`[Pipeline] ④ Story Stream failed (attempt ${storyAttempt}): ${storyError.message}`);
+                if (storyAttempt >= MAX_STORY_ATTEMPTS) {
+                    console.error(`[Pipeline] ④ All story attempts exhausted. Using fallback.`);
+                }
+                // Continue to next attempt
             }
         }
 
@@ -1027,8 +1075,6 @@ ${thinkingInstruction}
             thinkingContent = thinkingMatches.map(m => m[1]).join(' ').trim();
             console.log(`[Orchestrator] Extracted Thinking Content (${thinkingContent.length} chars)`);
         } else {
-            // Fallback: If no tags, but we have text and use thinking model? 
-            // Unlikely to recover native thoughts if tags missing.
             console.warn(`[Orchestrator] Failed to Extract Thinking. Raw Preview: ${fullRawText.substring(0, 200)}...`);
         }
 
@@ -1063,7 +1109,7 @@ ${thinkingInstruction}
             .replace(/<ResolvedInjury[^>]*>/gi, '')
             .replace(/\[ResolvedInjury[^\]]*\]/gi, '');
 
-        if (!cleanStoryText || !cleanStoryText.trim()) cleanStoryText = " ... "; // Fallback
+        if (!cleanStoryText || !cleanStoryText.trim()) cleanStoryText = " ... "; // Fallback after all retries
 
         // Execute Phase 2
         const p1Costs = { total: calculateCost((storyMetadata as any)?.usedModel || MODEL_CONFIG.STORY, storyMetadata?.usageMetadata?.promptTokenCount || 0, storyMetadata?.usageMetadata?.candidatesTokenCount || 0, storyMetadata?.usageMetadata?.cachedContentTokenCount || 0) };

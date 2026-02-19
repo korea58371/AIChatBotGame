@@ -11,6 +11,7 @@ import { EventManager } from '@/lib/engine/event-manager';
 import { GameRegistry } from '@/lib/registry/GameRegistry';
 import { checkUniversalProgression } from '@/lib/engine/progression-types';
 import { serverGenerateCharacterMemorySummary } from '@/app/actions/game';
+import { normalizeWuxiaInjury } from '@/lib/utils/injury-cleaner';
 import React from 'react';
 
 // Dependency injection interface for local state/callbacks
@@ -392,13 +393,21 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
                 ? logicResult.injuriesUpdate.add
                 : [logicResult.injuriesUpdate.add];
 
-            addList.forEach((injury: string) => {
-                if (!currentInjuries.includes(injury)) {
-                    currentInjuries.push(injury);
-                    essentialToast(`부상 발생(Injury): ${injury}`, 'warning');
-                    changed = true;
-                }
-            });
+            // [Hard Cap] Max 3 active injuries
+            if (currentInjuries.length >= 3) {
+                console.warn(`[applyGameLogic] Injury Hard Cap: Blocked ${addList.length} new injuries. Active: ${currentInjuries.length}/3`);
+            } else {
+                addList.forEach((injury: string) => {
+                    // [Fix] Normalize to prevent duplicate with different wording
+                    const normalized = normalizeWuxiaInjury(injury);
+                    const isDuplicate = currentInjuries.some(existing => normalizeWuxiaInjury(existing) === normalized);
+                    if (!isDuplicate && currentInjuries.length < 3) {
+                        currentInjuries.push(normalized);
+                        essentialToast(`부상 발생(Injury): ${normalized}`, 'warning');
+                        changed = true;
+                    }
+                });
+            }
         }
 
         // Remove

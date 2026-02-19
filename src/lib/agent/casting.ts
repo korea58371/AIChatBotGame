@@ -105,7 +105,8 @@ export class AgentCasting {
     private static readonly REGION_MISMATCH_PENALTY = 0.2; // [NEW] Soft Filter
     private static readonly LIFECYCLE_PENALTY = 0.1; // [NEW] Soft Filter for Phase
     private static readonly TAG_BONUS = 0.5;
-    private static readonly RELATIONSHIP_BONUS = 2.0; // [Modified] Reduced from 4.0 to 2.0
+    private static readonly RELATIONSHIP_BONUS = 2.0; // [Modified] Base multiplier (actual weight comes from data)
+    private static readonly RELATIONSHIP_DEFAULT_WEIGHT = 1.0; // [NEW] Default weight when 인간관계 has no explicit weight
     private static readonly USER_MENTION_BONUS = 10.0; // [CRITICAL] Force include if mentioned
     private static readonly CONTEXT_MENTION_BONUS = 5.0; // [NEW] Narrative consistency
     private static readonly LOCATION_TAG_BONUS = 2.0; // [NEW] Bonus if tag matches location
@@ -131,17 +132,29 @@ export class AgentCasting {
         const allCandidates: { id: string, name: string, data: any, activeScore: number, bgScore: number, activeReasons: string[], bgReasons: string[] }[] = [];
 
         // Helper: Parse Rank
+        // [FIX] Korean terms checked FIRST to prevent "일반인 (A급 잠재력)" → A-rank bug.
+        // Letter grades use '급' suffix to avoid false positives.
         const getRankFromString = (rankStr: string): number => {
-            if (!rankStr) return 1; // Default min
-            if (rankStr.includes('현경') || rankStr.includes('신화') || rankStr.includes('SS')) return 8; // Increased granularity
-            if (rankStr.includes('화경') || rankStr.includes('탈각') || rankStr.includes('S')) return 7;
-            if (rankStr.includes('초절정') || rankStr.includes('A')) return 6;
-            if (rankStr.includes('절정') || rankStr.includes('B')) return 5;
-            if (rankStr.includes('일류') || rankStr.includes('C')) return 4;
-            if (rankStr.includes('이류') || rankStr.includes('D')) return 3;
-            if (rankStr.includes('삼류') || rankStr.includes('E')) return 2;
-            if (rankStr.includes('일반') || rankStr.includes('F')) return 1;
-            return 1; // Default min
+            if (!rankStr) return 1;
+            // 1. Korean keywords (most specific, checked first)
+            if (rankStr.includes('현경') || rankStr.includes('신화')) return 8;
+            if (rankStr.includes('화경') || rankStr.includes('탈각')) return 7;
+            if (rankStr.includes('초절정')) return 6;
+            if (rankStr.includes('절정')) return 5;
+            if (rankStr.includes('일류')) return 4;
+            if (rankStr.includes('이류')) return 3;
+            if (rankStr.includes('삼류')) return 2;
+            if (rankStr.includes('일반')) return 1;
+            // 2. Letter grades (with '급' suffix for precision)
+            if (rankStr.includes('SS')) return 8;
+            if (rankStr.includes('S급') || rankStr === 'S') return 7;
+            if (rankStr.includes('A급') || rankStr === 'A') return 6;
+            if (rankStr.includes('B급') || rankStr === 'B') return 5;
+            if (rankStr.includes('C급') || rankStr === 'C') return 4;
+            if (rankStr.includes('D급') || rankStr === 'D') return 3;
+            if (rankStr.includes('E급') || rankStr === 'E') return 2;
+            if (rankStr.includes('F급') || rankStr === 'F') return 1;
+            return 1;
         };
 
         // Helper: Get Rank from Level (Aligned with getRankFromString)
@@ -161,10 +174,28 @@ export class AgentCasting {
         const allCharacters = gameState.characterData || {};
         const mainCharacterIds = new Set(Object.keys(allCharacters)); // For now treat all loaded as potential candidates
 
+        // [DEBUG] Casting pool size check
+        console.log(`[Casting] Character pool: ${mainCharacterIds.size} total, includes 박봄: ${'박봄' in allCharacters}, includes 김채은: ${'김채은' in allCharacters}`);
+
         // [FIX] Extract regions ONCE outside loop (performance optimization)
         // [FIX] Use gameState.worldData (hydrated by route.ts) — gameState.gameData does NOT exist
         const worldData = gameState.worldData || {};
         const gameRegions: Record<string, any> = worldData.regions || gameState.lore?.locations?.regions || {};
+
+        // [NEW] Helper: Extract Relationship Weight from 인간관계 value
+        // Supports: [weight, "description"] tuple OR legacy "description" string
+        const getRelationWeight = (relValue: any): { weight: number, desc: string } => {
+            if (Array.isArray(relValue) && relValue.length >= 2) {
+                return { weight: Number(relValue[0]) || AgentCasting.RELATIONSHIP_DEFAULT_WEIGHT, desc: String(relValue[1]) };
+            }
+            if (typeof relValue === 'string') {
+                return { weight: AgentCasting.RELATIONSHIP_DEFAULT_WEIGHT, desc: relValue };
+            }
+            return { weight: AgentCasting.RELATIONSHIP_DEFAULT_WEIGHT, desc: String(relValue || '') };
+        };
+
+        // [NEW] Player Relationships (for intimacy multiplier)
+        const playerRelationships = gameState.playerStats?.relationships || {};
 
         for (const [id, char] of Object.entries(allCharacters)) {
             const cAny = char as any;
@@ -206,6 +237,7 @@ export class AgentCasting {
 
             // --- Active Scoring (For Scene Participation) ---
             let actScore = baseScore;
+            let relBonus = 0; // [NEW] Relationship bonus tracked separately (immune to rank penalty)
             const actReasons: string[] = [...baseReasons];
 
             // 1. User Input Resonance (Top Priority)
@@ -315,12 +347,13 @@ export class AgentCasting {
             // 5. Existing Relationship Bonus (Critical for Early Game Friends)
             const relationships = cAny.인간관계 || cAny.relationships || {};
             // Check for explicit "주인공" or "Player" key in relationships
-            // Or look for keywords in values if needed, but Key is safest.
-            const hasDirectRelation = relationships['주인공'] || relationships['Player'] || relationships['player'];
+            const playerRelKey = relationships['주인공'] || relationships['Player'] || relationships['player'];
 
-            if (hasDirectRelation) {
-                actScore += AgentCasting.RELATIONSHIP_BONUS;
-                actReasons.push(`Existing Relationship (+${AgentCasting.RELATIONSHIP_BONUS})`);
+            if (playerRelKey) {
+                const { weight, desc } = getRelationWeight(playerRelKey);
+                const bonus = AgentCasting.RELATIONSHIP_BONUS * weight;
+                relBonus += bonus; // [FIX] Track separately — immune to rank penalty
+                actReasons.push(`Player Relationship [${desc}] (${AgentCasting.RELATIONSHIP_BONUS}×${weight.toFixed(1)}=+${bonus.toFixed(1)}) [Rank-Immune]`);
             }
 
 
@@ -410,34 +443,24 @@ export class AgentCasting {
             const isUserInvoked = actReasons.some(r => r.includes('User Mentioned'));
             const isCrisis = actReasons.some(r => r.includes('Crisis'));
 
+            // [REVISED] Rank Penalty capped at x0.5 max — prevents score annihilation
+            // [FIX] Relationship bonus is IMMUNE to rank penalty — separated before penalty, added back after
             if (!isUserInvoked && !isCrisis && rankGap >= 2) {
-                // Too Strong (Anti-Bullying/Gating)
-
-                if (isEnemy) {
-                    // [Enemy] Keep strict disqualification
-                    // "적군의 경우 현재 보정치(0.01) 유지"
-                    actScore = 0.01;
-                    actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Enemy Disqualified`);
-                } else if (rankGap >= 3) {
-                    // [Gatekeeper Protocol] Huge Gap (>= 3) for Allies/Neutrals
-                    // Even if Ally, if the gap is too huge (e.g. Level 1 vs Level 99), they shouldn't just hang out.
-                    // Force heavy penalty unless User Mentioned.
-                    actScore *= 0.1;
-                    actReasons.push(`Rank Gap(${rankGap}) [Gatekeeper] Too High (x0.1)`);
-                } else {
-                    // [Ally/Neutral] Moderate Gap (2) -> Relaxed Penalty (50%)
-                    // "아군일 경우, 0.01이 아닌 50% 정도로"
-                    actScore *= 0.5;
-                    actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Ally Soft Penalty (x0.5)`);
-                }
+                // Too Strong (Anti-Bullying/Gating) — capped at x0.5, relationship bonus preserved
+                actScore *= 0.5;
+                const label = isEnemy ? 'Enemy' : 'Ally';
+                actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) ${label} Penalty (x0.5)`);
 
             } else if (!isUserInvoked && rankGap <= -3) {
-                // Too Weak (Fodder) - Only separate if gap is huge
-                // Gap -3 (e.g. Player A vs F)
-                const absGap = Math.abs(rankGap);
-                const penaltyMp = 1.0 / (absGap * 1.5);
-                actScore *= penaltyMp;
-                actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Penalty [Weak] (x${penaltyMp.toFixed(2)})`);
+                // Too Weak (Fodder) — also capped at x0.5
+                actScore *= 0.5;
+                actReasons.push(`Rank Gap(${rankGap}: L${charLevel}-P${pRankVal}) Weak Penalty (x0.5)`);
+            }
+
+            // [FIX] Add relationship bonus AFTER rank penalty (immune to penalty)
+            if (relBonus > 0) {
+                actScore += relBonus;
+                actReasons.push(`Relationship Bonus (Rank-Immune) (+${relBonus.toFixed(1)})`);
             }
 
 
@@ -454,24 +477,36 @@ export class AgentCasting {
                 bgReasons.push("Home Ground Bonus (+15.0)");
             }
 
-            // 3. Active Relation Bonus for Background too
             // 3. Active Relation Bonus (Applied to BOTH Active and Background)
+            // [REVAMPED] Uses explicit weight from 인간관계 data + player intimacy multiplier
             for (const activeId of activeCharIds) {
-                if (relationships[activeId]) {
-                    // [FIX] Nerfed from 4.0 to 2.5
-                    bgScore += 2.5;
-                    bgReasons.push(`Related to Active(${activeId})`);
+                const relVal = relationships[activeId];
+                if (relVal) {
+                    const { weight, desc } = getRelationWeight(relVal);
 
-                    // [Modified] Also apply to Active Score
-                    actScore += 4.0;
-                    actReasons.push(`Related to Active(${activeId})`);
+                    // [Intimacy Multiplier] Player's closeness with the active character
+                    // Higher intimacy → more likely to pull in related chars
+                    const activeCharData = allCharacters[activeId] as any;
+                    const activeCharName = activeCharData?.name || activeCharData?.이름 || activeId;
+                    const intimacyScore = playerRelationships[activeCharName] || playerRelationships[activeId] || 0;
+                    const intimacyMultiplier = 1.0 + Math.min(intimacyScore, 100) / 100; // 1.0 ~ 2.0
+
+                    const bgBonus = weight * intimacyMultiplier;
+                    bgScore += bgBonus;
+                    bgReasons.push(`Related(${activeId}) [${desc}] (${weight.toFixed(1)}×${intimacyMultiplier.toFixed(1)}=+${bgBonus.toFixed(1)})`);
+
+                    const actBonus = weight * intimacyMultiplier * 1.5; // Active gets 1.5x premium
+                    relBonus += actBonus; // [FIX] Track in relBonus — immune to rank penalty
+                    actReasons.push(`Related(${activeId}) [${desc}] (${weight.toFixed(1)}×${intimacyMultiplier.toFixed(1)}×1.5=+${actBonus.toFixed(1)}) [Rank-Immune]`);
                 }
             }
 
-            // 4. Background specific Relationship Bonus
-            if (hasDirectRelation) {
-                bgScore += AgentCasting.RELATIONSHIP_BONUS;
-                bgReasons.push(`Existing Relationship (+${AgentCasting.RELATIONSHIP_BONUS})`);
+            // 4. Background specific Relationship Bonus (Player relationship)
+            if (playerRelKey) {
+                const { weight } = getRelationWeight(playerRelKey);
+                const bgRelBonus = AgentCasting.RELATIONSHIP_BONUS * weight;
+                bgScore += bgRelBonus;
+                bgReasons.push(`Player Relationship (+${bgRelBonus.toFixed(1)})`);
             }
 
             // [NEW] Randomness (Noise) to break deterministic sorting

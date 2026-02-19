@@ -447,6 +447,28 @@ export async function* generateResponseStream(
 
             const response = await result.response; // Wait for full completion to get metadata
 
+            // [DEBUG] Log finishReason and safety diagnostics for empty responses
+            const finishReason = response.candidates?.[0]?.finishReason;
+            const safetyRatings = response.candidates?.[0]?.safetyRatings;
+            console.log(`[GeminiStream] Stream Complete. Chunks: ${chunkCount}, AccumulatedText: ${accumulatedText.length} chars, FinishReason: ${finishReason || 'UNKNOWN'}`);
+
+            if (finishReason === 'SAFETY') {
+                console.error(`[GeminiStream] ❌ SAFETY FILTER BLOCKED. Ratings:`, JSON.stringify(safetyRatings));
+                throw new Error(`Story blocked by safety filter (finishReason=SAFETY). Model: ${currentModel}`);
+            }
+
+            if (finishReason === 'RECITATION') {
+                console.error(`[GeminiStream] ❌ RECITATION BLOCK.`);
+                throw new Error(`Story blocked by recitation filter (finishReason=RECITATION). Model: ${currentModel}`);
+            }
+
+            // [FIX] Empty Response Detection & Retry Trigger
+            if (!accumulatedText || accumulatedText.trim().length === 0) {
+                console.error(`[GeminiStream] ❌ EMPTY RESPONSE. FinishReason: ${finishReason}, Chunks: ${chunkCount}, CandidatesTokenCount: ${response.usageMetadata?.candidatesTokenCount || 0}`);
+                // Instead of silently returning empty, throw to trigger fallback model or retry
+                throw new Error(`Story generation returned empty text. FinishReason: ${finishReason}, Model: ${currentModel}`);
+            }
+
             // Yield Final Metadata Object as the last item
             yield {
                 usageMetadata: response.usageMetadata,

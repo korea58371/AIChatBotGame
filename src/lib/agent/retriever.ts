@@ -1,6 +1,4 @@
-// import { MODEL_CONFIG } from '../ai/model-config'; 
-// import { PromptManager } from '../prompt-manager';
-// import { RouterOutput } from './router'; // [REMOVED]
+import { filterMemories, formatMemoryLine } from '../engine/prompt-manager';
 
 export class AgentRetriever {
 
@@ -27,6 +25,13 @@ export class AgentRetriever {
         console.log(`[Retriever] 컨텍스트 검색 중... Input Length: ${userInput.length}`);
         let context = "";
 
+        // [IMPROVED] 키워드 추출: userInput + lastTurnSummary에서 연관성 검색용 키워드 생성
+        const contextText = `${userInput} ${state.lastTurnSummary || ''}`;
+        const contextKeywords = contextText
+            .split(/[\s,→·/()[\]]+/)
+            .filter((w: string) => w.length >= 2)
+            .slice(0, 15);
+
         // 1. Casting Suggestions (Active - Full Details)
         if (suggestedCharacters.length > 0) {
             context += `[Casting Suggestions] (Available for Narrative - You may introduce these characters if relevant)\n`;
@@ -52,15 +57,18 @@ export class AgentRetriever {
                     context += `  >> INSTRUCTION: This character has a high relevance score (${candidate.score}). Consider introducing them if it advances the plot. Avoid repetitive entry/exit patterns.\n`;
                 }
 
-                // [NEW] Memory Injection (Top 3) - Dynamic State Lookup
+                // [IMPROVED] Memory Injection — 연관성 기반 필터링 (키워드 매칭 + 중요도 + 최근성)
                 const dynamicChar = state.characterData?.[candidate.id] || state.characterData?.[charData?.id];
                 const memories = dynamicChar?.memories || charData.memories || [];
 
                 if (memories && memories.length > 0) {
-                    const recentMemories = memories.slice(0, 3).map((m: any) =>
-                        typeof m === 'string' ? m : (m.text || '')
-                    );
-                    context += `  Memories: ${recentMemories.join(" / ")}\n`;
+                    const filtered = filterMemories(memories, {
+                        maxCount: 5,
+                        currentTurn: state.turnCount || 0,
+                        keywords: contextKeywords,
+                    });
+                    const memTexts = filtered.map(formatMemoryLine);
+                    context += `  Memories: ${memTexts.join(" / ")}\n`;
                 }
             });
             context += "\n";

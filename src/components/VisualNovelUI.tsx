@@ -2037,6 +2037,47 @@ export default function VisualNovelUI() {
                                             }
                                         });
                                     }
+
+                                    // [NEW] Apply Profile Updates (Dynamic Character Enrichment)
+                                    if (memoryOut.profile_updates && typeof memoryOut.profile_updates === 'object') {
+                                        const ARRAY_FIELDS = ['hobbies', 'specialties', 'combat_style', 'core_values', 'fears'];
+
+                                        Object.entries(memoryOut.profile_updates).forEach(([charId, updates]: [string, any]) => {
+                                            if (!updates || typeof updates !== 'object') return;
+
+                                            // Resolve charId (exact match first, then fuzzy)
+                                            const dataKeys = Object.keys(store.characterData);
+                                            let targetId = dataKeys.find(k => k === charId)
+                                                || dataKeys.find(k => k.toLowerCase() === charId.toLowerCase())
+                                                || charId;
+
+                                            const existingChar = store.characterData[targetId];
+                                            if (!existingChar) {
+                                                console.warn(`[ProfileUpdate] Character '${charId}' not found in store. Skipping.`);
+                                                return;
+                                            }
+
+                                            // Merge logic: arrays append (deduplicated), strings replace
+                                            const mergedUpdates: Record<string, any> = {};
+                                            Object.entries(updates).forEach(([field, value]) => {
+                                                if (ARRAY_FIELDS.includes(field) && Array.isArray(value)) {
+                                                    // Append to existing array, deduplicate
+                                                    const existing = Array.isArray(existingChar[field]) ? existingChar[field] : [];
+                                                    const merged = [...existing];
+                                                    (value as string[]).forEach(item => {
+                                                        if (!merged.includes(item)) merged.push(item);
+                                                    });
+                                                    mergedUpdates[field] = merged;
+                                                } else {
+                                                    // String/other: replace
+                                                    mergedUpdates[field] = value;
+                                                }
+                                            });
+
+                                            store.updateCharacterData(targetId, mergedUpdates);
+                                            console.log(`[ProfileUpdate] ${targetId}: updated fields [${Object.keys(mergedUpdates).join(', ')}]`);
+                                        });
+                                    }
                                 }
 
                                 // [NEW] Apply DirectorState Update to Store
@@ -2172,6 +2213,7 @@ export default function VisualNovelUI() {
                                         console.log("%c[Input Prompt]", subLogStyle, memoryOut._debug_prompt || "N/A");
                                         console.log("%c[Character Memories]", subLogStyle, memoryOut.character_memories);
                                         console.log("%c[World Events]", subLogStyle, memoryOut.world_events);
+                                        console.log("%c[Profile Updates]", subLogStyle, memoryOut.profile_updates);
                                         console.log("%c[Usage]", subLogStyle, memoryOut.usageMetadata);
                                     } else {
                                         console.log("Memory Agent: No output (skipped or failed)");

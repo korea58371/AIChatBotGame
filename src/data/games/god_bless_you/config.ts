@@ -26,11 +26,8 @@ export const GodBlessYouConfig: GameConfig = {
     getStaticLogicPrompt: (id, rank, rom, com) => getStaticLogicPrompt(rank, rom, com),
     getDynamicLogicPrompt: getDynamicLogicPrompt,
     getRankInfo: (input: string | number) => {
-        // [Fix] playerRank(string) 또는 fame(number)를 동적으로 전달
-        if (typeof input === 'string') {
-            return getRankInfo(0, input); // playerRank 직접 전달
-        }
-        return getRankInfo(input); // fame 기반 fallback
+        const fame = typeof input === 'number' ? input : 0;
+        return getRankInfo(fame);
     },
 
     // [Refactor] UI moved to god_bless_you/ui.ts

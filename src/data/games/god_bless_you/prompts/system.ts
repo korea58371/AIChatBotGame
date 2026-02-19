@@ -1,134 +1,16 @@
 import { GBY_SPECIAL_FORMATS } from '../constants';
 import { getDynamicSkillPrompt } from '../skills';
 
-// Phase Data Map — playerRank 기반 동적 Phase 매핑
-const PHASE_DATA: Record<string, {
-   phase: string;
-   rankLogline: string;
-   rankKeywords: string;
-   rankGiftDesc: string;
-   rankConflict: string;
-}> = {
-   '일반인': {
-      phase: 'Phase 0: 미각성',
-      rankLogline: "평범하지만 행복한 일반인. 블레서들과 얽히며 벌어지는 유쾌하고 설레는 일상 드라마.",
-      rankKeywords: "#일상물 #힐링 #러브코미디 #소확행",
-      rankGiftDesc: "기프트 없음 (일반인). 하지만 요리와 청소에는 재능이 있을지도?",
-      rankConflict: `
-    - 오늘 저녁 메뉴 결정하기.
-    - 여동생의 잔소리 피하기.
-    - 알바비로 사고 싶은 피규어 사기.`,
-   },
-   'F급': {
-      phase: 'Phase 1: 갓생 사는 프리터',
-      rankLogline: "미약하지만 마나를 느끼기 시작한 신참 각성자. 소시민적 일상과 능력 사이에서 갈팡질팡.",
-      rankKeywords: "#각성초기 #소시민 #힘숨찐 #러브코미디",
-      rankGiftDesc: "생활형 능력 (F급). 전투력은 미미하지만, 일상에 도움이 되는 소소한 능력.",
-      rankConflict: `
-    - 능력을 남에게 들키지 않기.
-    - 알바와 수련 병행의 고달픔.
-    - 블레서들의 관심을 은근히 즐기면서도 부담스러움.`,
-   },
-   'E급': {
-      phase: 'Phase 1: 갓생 사는 프리터',
-      rankLogline: "기초적인 이능력을 사용할 수 있게 된 성장기. 작은 성취가 쌓이는 시기.",
-      rankKeywords: "#성장 #수련 #소시민 #힘숨찐",
-      rankGiftDesc: "기초적인 이능력 사용 가능. 일반인보다는 강하지만 아직 프로 헌터와는 거리가 멀다.",
-      rankConflict: `
-    - 능력 제어의 불안정함.
-    - 수련과 일상의 양립.
-    - 자신의 정체를 아는 사람이 조금씩 늘어남.`,
-   },
-   'D급': {
-      phase: 'Phase 2: 유쾌한 해결사',
-      rankLogline: "공인 헌터 자격을 획득한 해결사. 주변에서 작은 사건들을 해결하며 이름을 알린다.",
-      rankKeywords: "#헌터 #성장 #사건해결 #러브코미디",
-      rankGiftDesc: "공인 헌터 (D급). 소규모 균열과 하급 이계종 처리 가능. 길드 취업 자격 획득.",
-      rankConflict: `
-    - 위험한 의뢰와 안전한 일상 사이의 선택.
-    - 주변 사람들의 걱정과 기대.
-    - 길드 가입 또는 프리랜서 고민.`,
-   },
-   'C급': {
-      phase: 'Phase 2: 유쾌한 해결사',
-      rankLogline: "중급 헌터로 인정받으며 활동 범위가 넓어진 시기. 길드와의 협업도 활발해진다.",
-      rankKeywords: "#중급헌터 #길드협업 #성장 #러브코미디",
-      rankGiftDesc: "엘리트 헌터 (C급). 중형 건물 파괴급 전투력. 팀 단위 균열 공략 참여 가능.",
-      rankConflict: `
-    - 길드 정치와 인간관계.
-    - 상위 랭커와의 실력 차이 실감.
-    - 강해질수록 늘어나는 책임감.`,
-   },
-   'B급': {
-      phase: 'Phase 2: 유쾌한 해결사',
-      rankLogline: "상급 헌터의 영역에 진입한 실력자. 미사일 요격이 가능한 전투력이지만 여전히 소시민 마인드.",
-      rankKeywords: "#상급헌터 #힘숨찐 #갭모에 #성장 #러브코미디",
-      rankGiftDesc: "하이 랭커 (B급). 도시 블록 단위 파괴가 가능한 전투력. 하지만 본인은 아직 평범하게 살고 싶다.",
-      rankConflict: `
-    - 숨기기 어려워지는 실력.
-    - 다양한 길드와 조직의 스카우트 제의.
-    - 강한 적들과의 조우 빈도 증가.
-    - 소중한 사람들을 지키기 위한 선택.`,
-   },
-   'A급': {
-      phase: 'Phase 3: 영웅',
-      rankLogline: "국가급 전력으로 분류되는 영웅. 길드 임원급 대우와 사회적 영향력.",
-      rankKeywords: "#영웅 #국가급 #로맨스 #갈등 #성장",
-      rankGiftDesc: "영웅 (A급). 전술핵 병기급 전투력. 국가적 사건에 참여하게 된다.",
-      rankConflict: `
-    - 국가와 조직 사이의 정치적 갈등.
-    - S급 블레서들과의 본격적 교류.
-    - 세계적 위협에 대한 대응.`,
-   },
-   'S급': {
-      phase: 'Phase 4: 재앙',
-      rankLogline: "인류 최강의 영역. 걸어다니는 대기업이자 전설적인 존재.",
-      rankKeywords: "#전설 #최강 #세계구 #로맨스",
-      rankGiftDesc: "재앙 (S급). 국가 전복이 가능한 전투력. 존재 자체가 전략 자산.",
-      rankConflict: `
-    - 인류의 존망이 걸린 결정.
-    - 절대자로서의 고독.
-    - 평범한 일상으로 돌아갈 수 있을까.`,
-   },
-   'SS급': {
-      phase: 'Phase 5: 초월',
-      rankLogline: "인류의 한계를 초월한 존재. 측정 불가의 영역.",
-      rankKeywords: "#초월 #측정불가 #전설",
-      rankGiftDesc: "초월자 (SS급). 측정 불가. 인류의 한계를 넘어선 존재.",
-      rankConflict: `
-    - 인간으로서의 정체성.
-    - 차원을 넘나드는 위협.`,
-   },
-};
+// Helper to get Phase Info (Exported for Static Context)
+export const getRankInfo = (fame: number) => {
+   let phase = 'Phase 0: 미각성';
 
-// Helper to get Rank Info (Exported for Static Context)
-// [Fix] playerRank 기반 동적 Phase 매핑. 기존 fame 파라미터는 하위 호환 유지.
-export const getRankInfo = (fame: number, playerRank?: string) => {
-   // playerRank가 주어지면 직접 매핑, 아니면 fame 기반 fallback
-   let resolvedRank = '일반인';
+   // Phase는 fame 기반으로 자동 결정 (능력/특전은 IDENTITY_MAP에서 별도 처리)
+   if (fame >= 10000) phase = 'Phase 3: 최강';
+   else if (fame >= 1000) phase = 'Phase 2: 해결사';
+   else if (fame >= 50) phase = 'Phase 1: 성장';
 
-   if (playerRank && PHASE_DATA[playerRank]) {
-      resolvedRank = playerRank;
-   } else if (!playerRank) {
-      // Legacy fallback: fame 기반 (하위 호환)
-      if (fame >= 50000) resolvedRank = 'S급';
-      else if (fame >= 10000) resolvedRank = 'A급';
-      else if (fame >= 1000) resolvedRank = 'B급';
-      else if (fame >= 500) resolvedRank = 'C급';
-      else if (fame >= 200) resolvedRank = 'D급';
-      else if (fame >= 50) resolvedRank = 'E급';
-      else if (fame >= 10) resolvedRank = 'F급';
-   }
-
-   const data = PHASE_DATA[resolvedRank] || PHASE_DATA['일반인'];
-   return {
-      playerRank: resolvedRank + (resolvedRank === '일반인' ? ' (미각성)' : ''),
-      rankLogline: data.rankLogline,
-      rankKeywords: data.rankKeywords,
-      rankGiftDesc: data.rankGiftDesc,
-      rankConflict: data.rankConflict,
-      phase: data.phase,
-   };
+   return { playerRank: '', rankLogline: '', rankKeywords: '', rankGiftDesc: '', rankConflict: '', phase };
 };
 
 export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja' | null = 'ko') => {
@@ -136,9 +18,8 @@ export const getSystemPromptTemplate = (state: any, language: 'ko' | 'en' | 'ja'
    const inventory = state.inventory || [];
    const fame = stats.fame ?? 0;
 
-   // [Fix] playerRank를 직접 전달하여 동적 Phase 결정
-   const currentRank = stats.playerRank || undefined;
-   const { playerRank, rankGiftDesc, rankConflict, phase } = getRankInfo(fame, currentRank);
+   // Use Helper — phase만 사용 (능력/특전은 IDENTITY_MAP이 처리)
+   const { phase } = getRankInfo(fame);
 
    const statusDescription = state.statusDescription || "건강함 (정보 없음)";
    const personalityDescription = state.personalityDescription || "평범함 (정보 없음)";
@@ -311,7 +192,7 @@ ${directInputConstraints}
 - **현재 시간**: ${state.day || 1}일차 ${(state.time || '14:00').replace(/(\d+)(일차|Day)\s*/gi, '').trim()}
 - **현재 위치**: ${state.currentLocation}
   - **설명**: ${locationDesc}${locationSecrets}
-- **주인공 상태 (유저에게 비공개)**: [HP: ${stats.hp || 100}], [MP: ${stats.mp || 100}], [등급: ${playerRank}]
+- **주인공 상태 (유저에게 비공개)**: [HP: ${stats.hp || 100}], [MP: ${stats.mp || 100}]
   - **소지금**: ${stats.gold}${currencySymbol} (부족함)
   - **상세**: ${statusDescription}
   - **마음가짐**: ${personalityDescription}
@@ -340,8 +221,6 @@ ${directInputConstraints}
 
 **[행동/전투 가이드라인]**:
 주인공은 현재 **'${phase}'** 단계에 있습니다.
-- **능력의 한계**: ${rankGiftDesc}
-- **갈등 요소**: ${rankConflict}
 - 상위 등급의 블레서나 몬스터와의 싸움은 매우 위험하며, 현실적인 결과(부상, 사망)를 따른다.
 
 # [SCENARIO & EVENTS]

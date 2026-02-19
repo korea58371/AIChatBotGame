@@ -95,133 +95,69 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
 
 
 [Health & Status Logic] (TOP PRIORITY)
-- **GLOBAL TARGETING RULE (CRITICAL)**: 
-  - All 'stat_updates' (HP, MP, active_injuries) MUST apply **ONLY** to the **Protagonist ({playerName})**.
-  - **COMPANION PROTECTION**: If a companion (e.g., Soso, Namgung) gets hurt, coughs blood, or dies, **DO NOT** reduce the Player's HP. **DO NOT** add injuries to the Player.
-  - **Reasoning**: The Player is the User. The UI HUD tracks the USER'S status.
+- **Target Rule**: All stat changes apply ONLY to the Protagonist ({playerName}).
+  Companions' injuries and pain belong to THEM, not the Player's HUD.
 
-- **Status Quo Check (CRITICAL)**:
-  - If the narrative describes pain, symptoms, or effects of an injury that is ALREADY in 'active_injuries':
-  - **ACTION**: IGNORE IT. Do not output anything. 
-  - **Reasoning**: This is a *description* of current state, not a *change* in state.
-  - **Exception**: Only record if the text EXPLICITLY says the injury "worsened", "tore open", "deepened", or a "new" injury occurred.
-  - **NO DOT RULE**: Do NOT deduct HP for "pain", "bleeding", or "throbbing" of existing injuries. Current HP represents the state *with* the injury. Only new hits reduce HP.
+- **[① Injury Recording] — Record ONLY confirmed, significant physical harm to the Player.**
+  - **Record when ALL of these are true**:
+    1. The Player ({playerName}) is the direct victim.
+    2. The cause is physical: combat hit, poison, burn, weapon wound, fall with structural damage.
+    3. The damage is significant and lasting (beyond the current scene).
+  - **Worsening**: Record only when the narrative explicitly says an existing injury "악화", "찢어짐", "벌어짐", or a direct hit strikes the wound.
+    - In this case, move the OLD injury to 'resolved_injuries' and add the worsened version to 'new_injuries'.
+  - **Ignore these (they are NOT injuries)**:
+    - Comedy/slapstick (falls, bonks, thrown around for laughs)
+    - Figures of speech, exaggeration, sarcasm ("머리가 터질 것 같아!", "척추가 우득!")
+    - Pain from existing injuries (this is a description, not a new event)
+    - Scratches, bruises, muscle aches, fatigue, stiffness, numbness
+    - Psychological states (fear, tension, shock → use 'mood' instead)
+    - NPC injuries
+  - **When unsure → do NOT record.** The player's experience improves by having FEWER false injuries.
+  - **Language**: Korean only. No English in parentheses.
+    - ✅ "골절", "내상", "화상"  ✗ "골절 (Fracture)"
+  - **Correct Example**:
+    - Narrative: "도적의 칼이 왼팔을 베었고, 진한 핏줄기가 흘렀다."
+    - ✅ Output: "new_injuries": ["좌완부 열상"]
+    - Narrative: "넘어지면서 엉덩방아를 크게 찧었다. '앗, 아야아!' 눈에서 별이 번쩍했다."
+    - ✅ Output: "new_injuries": []  (comedy/slapstick — no lasting damage)
 
-- **Injury Consolidation (NO STACKING)**:
-  - **Rule**: You MUST NOT have multiple injuries of the same type at different severities (e.g., both "Internal Injury" and "Severe Internal Injury").
-  - **Action**: If a new injury is a *worsened* version of an existing one, you **MUST** add the OLD injury to 'resolved_injuries'.
-  - **Specific Case [Internal Injury (내상)]**:
-    - If Player has "Internal Injury" and gets "Internal Energy Backlash" -> **Result**: Remove "Internal Injury", Add "Severe Internal Injury (Dantian Damage)".
-    - **NEVER** keep both. Consolidate them into the single most severe description.
+- **[② Injury Resolution] — Actively look for reasons to HEAL.**
+  - **Bias: Heal aggressively.** It is better to remove a debuff than to keep a stale one.
+  - **Auto-Resolve**: For each injury in 'active_injuries':
+    - If the narrative shows the player moving, fighting, or acting WITHOUT mention of that injury → **RESOLVE IT**.
+    - If the text says "완치", "다 나았다", "통증이 사라졌다" → resolve ALL active injuries.
+  - **50% Rule**: If you are even 50% sure it might have healed → resolve it.
+  - **Trust the narrative over the list.** 'active_injuries' is the PAST. The current story text is the PRESENT.
+  - **Exceptions (keep)**: Permanent injuries ("영구", "절단", "불구") and story-arc-central injuries.
+  - **Output**: Use the EXACT Korean string from 'active_injuries'.
 
-- [HYPERBOLE & AMBIGUITY FILTER] (STRICT):
-  - **Ignore Exaggeration**: Do NOT record injuries from figures of speech, sarcasm, or humor.
-    - Example: "I'm so hungry my internal energy is flowing backwards!" -> **IGNORE** (Joke).
-    - Example: "My head is going to explode!" -> **IGNORE** (Stress).
-  - **Ignore Ambiguous Pain**: If the text says "It hurts" or "I feel pain" WITHOUT a specific physical cause (cut, blow, poison), it is likely just fatigue or status. **DO NOT** record it as an injury.
-  - **Literal Only**: Only record injuries if they are **PHYSICALLY DESCRIBED** as happening to the **Player ({playerName})**.
-    - Valid: "Blood trickled down your arm", "You felt a rib crack", "The poison entered your veins".
-    - Invalid: "You felt tired", "Your pride was hurt", "You felt a phantom pain".
-
-- **Healing (Auto-Resolve Protocol)**: 
-  - **Principle**: "No news is good news." If the narrative **DOES NOT mention** an active injury, assume it has healed or become negligible.
-  - **Action**: actively check 'active_injuries'.
-  - **Auto-Resolve Rule**: 
-    - For every injury in 'active_injuries':
-    - If the text implies the player is moving fine, fighting well, or simply **does not mention pain/handicap** -> **RESOLVE IT**.
-    - **EXCEPTION (Permanent/Major)**: Do NOT auto-resolve "Permanent Injuries" (e.g., "Severed Arm", "Blindness", "Dantian Destroyed", "영구", "절단", "불구"). These require explicit miraculous events to heal.
-    - **EXCEPTION (Major Story Arc)**: If the injury is the *central theme* of the current arc (e.g., "Poisoned by the Sect Leader"), do not resolve until explicitly cured.
-  - **Validation**: If you are 50% sure it might be healed, **HEAL IT**. It is better to remove a debuff than to annoy the player with a stuck status.
-  - OUTPUT: "resolved_injuries": ["Bruise", "Internal Injury"]
-  - **STRICT RULE**: If the text says "The pain is gone" or "I feel better", verify strictly that you output the **EXACT KOREAN STRING** from 'active_injuries' to 'resolved_injuries'.
-
-- **Narrative Truth > Context Inertia (CRITICAL)**:
-  - **Problem**: You see "Internal Injury" in the Context, so you write "My chest still hurts" even if the story implies recovery.
-  - **Correction**: **TRUST THE NARRATIVE.** If the logic/story implication is "He is better", you MUST removing the injury from the list.
-  - **Do NOT** maintain an injury just because it is in the list. The list is the PAST. The story is the PRESENT.
-
-- **Worsening/Mutation**: 
-  - **Restrictive Rule**: Only worsen an injury if the narrative describes a **CRITICAL FAILURE** or a **DIRECT HIT** to the wound.
-  - **Do NOT** worsen injuries for standard combat or movement (Exertion is just pain).
-  - Example (Fracture -> Disabled): 
-    - "resolved_injuries": ["Right Arm Fracture"]
-    - "new_injuries": [${t.치명적_부상_예시}]
-
-- **Narrative Healing Override (HIGHEST PRIORITY)**:
-  - **Thinking Process**: Before generating JSON, ask yourself: 
-    1. "Does the text say 'Complete Recovery' (완치), 'All better' (다 나았다), 'Pain is gone' (통증이 사라졌다), or 'Washed away' (씻은 듯이)?"
-    2. "Are there any active injuries in the context?"
-  - **ACTION**: If BOTH are true, you **MUST** output all 'active_injuries' into 'resolved_injuries'.
-  - **Strict Mapping**: 
-    - Text: "몸이 씻은 듯이 나았다." -> JSON: "resolved_injuries": ["Internal Injury", "Fracture"] (ALL of them).
-  - **HP Safeguard**: In a healing/recovery scene, **NEVER** set 'hp' to 0 unless the narrative explicitly describes death.
-  - **Training Safety**: Training can reduce HP/MP, but **NEVER** below 1.
-
-- **Death Safeguard (HP = 0)**:
-  - **Rule**: You are FORBIDDEN from outputting 'hp: 0' or reducing HP to 0 UNLESS the narrative explicitly describes "Death", "Mortal Wound", or "Collapse with no pulse".
-  - If the player is just "fainting" or "exhausted", set HP to 1.
-
-- **New Injury Logic (STRICT)**:
-  - **Target**: **ONLY** record injuries for the **Player ({playerName})**. Do not record injuries for NPCs here.
-  - **Threshold**: Only record **SIGNIFICANT** physical damage. 
-    - **INCLUDE**: Cuts, Fractures, Internal Injuries, Poison, Burns, Deep Wounds, "Backlash" (Ju-hwa-ip-ma).
-    - **EXCLUDE**: Scratches, Bruises, Muscle Aches, Fatigue, "Feeling weak", "Stiffness", "Numbness".
-    - **FORBIDDEN (Mental)**: Do NOT record psychological states as injuries. (e.g., "Psychological Atrophy", "Mental Shock", "Fear", "Tension"). These belong in 'mood' or 'personality', NOT 'active_injuries'.
-  - **Format**: Be descriptive but concise. ${t.부상_설명_예시}.
-  - **Ambiguity Rule**: If you are not 100% sure it is a lasting injury, **IGNORE IT**.
-  - **Language Rule**: Output **ONLY** in the target language (Korean). **absolutley DO NOT** include the English name in parentheses.
-    - Bad: "골절 (Fracture)", "화상 (Burn)"
-    - Good: "골절", "화상", "내상 (경미)"
+- **[③ Consolidation & Dedup]**
+  - Same injury at different severities → keep only the most severe.
+    - Example: "내상" + "중증 내상" → resolve "내상", keep "중증 내상".
+  - Duplicate languages → keep the Korean version, resolve the English version.
+  
+- **[④ HP/MP/Death Rules]**
+  - Existing injury pain → HP unchanged (current HP already reflects the injury).
+  - HP = 0 only when narrative explicitly describes death or mortal wound. Fainting/exhaustion → HP = 1.
+  - Training can reduce HP/MP but never below 1.
 
 - **Recovery Logic (HP & MP)**:
-  - **1. Natural Recovery (Passing Time / Travel)**: 
-     - If describing travel or idle time: **MP +5~10**, **HP +5**.
-  - **2. Rest (Sleep / Inn / Camp)**:
-     - If describing a good night's sleep or rest: **MP +20~30**, **HP +20~30**.
-     - **Action**: Auto-Resolve "Minor Injuries" (Bruise, Scratch, Muscle Pain).
-  - **3. Meditation (Un-gi-jo-sik / 찜질 / Breathing)**:
-     - **MAJOR RECOVERY EVENT**.
-     - If player explicitly meditates or circulates Qi:
-     - **MP**: **+80 ~ +100** (Recover to near Max).
-     - **HP**: **+50 ~ +80** (Significantly heal wounds).
-     - **Action**: Often resolves mild internal injuries or fatigue.
-  - **Constraint**: Do NOT naturally heal severe physical trauma (Fractures, Severed Limbs) without medical treatment.
+  - Travel/idle: MP +5~10, HP +5.
+  - Rest/sleep: MP +20~30, HP +20~30. Auto-resolve minor injuries.
+  - Meditation/Qi circulation: MP +80~100, HP +50~80. Resolves mild internal injuries.
+  - Severe trauma (fractures, severed limbs) requires medical treatment.
 
 [Cultivation (Neigong) Logic] (STRICT GROWTH PACING)
-- **MP vs Neigong (CRITICAL DISTINCTION)**:
-  - **MP (Internal Energy Pool)**: Expendable energy used for skills. Recovers via rest/meditation.
-  - **Neigong (Years of Cultivation)**: The *capital*, *capacity*, and *depth* of power (1 Year, 10 Years, 60 Years).
-- **Rules for Neigong Gain (VERY SLOW)**:
-  - **Routine Training**: Meditation, walking, sword practice, or breathing exercises do **NOT** increase Neigong Years. (They only restore MP).
-  - **Combat**: Winning a fight grants *Experience* or *Skill Proficiency*, but **NEVER** increases Neigong Years.
-  - **Time Skip (REQUIRED)**: Generates +1 Year only if the narrative says "Several months passed" or "Secluded training for a year".
-  - **Elixirs/Epiphanies**: Only grant major Neigong Years (+5, +10) for *Rare Elixirs* (consumed) or *Heaven-shaking Epiphanies*.
-- **FORBIDDEN (Consumption)**: 
-  - **NEVER** decrease 'neigong' (Years) for using skills or fighting. Skill usage ONLY consumes 'mp'.
-  - **EXCEPTION**: Neigong (Years) is ONLY lost via "Crippling Injury", "Dantian Destruction", or "Transferring Power to another".
-- **FORBIDDEN (Gain)**: Do NOT grant 'neigong' (Years) for simple rest, travel, or winning a duel. Only grant 'mp' recovery and 'exp'.
+- **MP**: Expendable energy for skills. Recovers via rest/meditation.
+- **Neigong (Years)**: Cultivation capital. Changes are RARE.
+  - Gains: Time-skip ("수개월이 지나고") or rare elixirs/epiphanies only.
+  - Losses: Only via crippling injury, dantian destruction, or power transfer.
+  - Routine training, combat, rest → MP recovery only. Never changes Neigong Years.
 
 [Anti-Double Count Rule (CRITICAL for Rank Ups)]
-- **Scenario**: The system forces a "Rank Up" event, and the narrative describes it ("You feel a surge of power as you break through to the next realm!").
-- **Constraint**: This narrative is a *result* of a stat change, not a *cause*.
-- **ACTION**: If the text describes a breakthrough/rank-up:
-  - **DO NOT** output 'playerRank' update (It's already done).
-  - **DO NOT** award extra 'neigong' or 'level' (The surge is visual/textual only).
-  - **Exception**: Only award stats if an *external* item was consumed *during* the breakthrough (e.g., "You ate a pill while breaking through").
-
-[State Cleanup & Deduplication] (MANDATORY HOUSEKEEPING)
-- **Problem**: The 'active_injuries' list may contain DUPLICATES or DIFFERENT LANGUAGES for the same injury.
-  - Example: ["Chronic Hunger", "만성적인 허기", "Acute Hunger"] -> These are the SAME thing.
-- **Deduplication Rule**:
-  - If you see synonyms or translated duplicates in 'active_injuries', you MUST RESOLVE the "redundant" ones immediately.
-  - **Target**: Keep the MOST DESCRIPTIVE Korean version. Remove English or vague versions.
-  - **Action**: Add the redundant strings to 'resolved_injuries'.
-  - **Example**:
-    - Input: ["Broken Leg", "다리 골절"]
-    - Output: "resolved_injuries": ["Broken Leg"] (Keep "다리 골절")
-- **Semantic Consolidation**:
-  - If a new injury covers an old one (e.g. "Internal Injury" -> "Severe Internal Injury"), REMOVE the old one.
-  - Output: "resolved_injuries": ["Internal Injury"]
+- If the narrative describes a breakthrough/rank-up, this is a *result* of an existing stat change.
+  - Do not output 'playerRank', 'neigong', or 'level' updates (already applied by the system).
+  - Exception: Only award stats if an external item was consumed during the breakthrough.
 
 
 
@@ -537,10 +473,7 @@ ${aiResponse}
 
 [Instruction]
 1. Analyze the [Input Story Turn].
-2. **[Healing Check]**: Does the text say "완치", "다 나았다", "통증이 사라졌다"? 
-   - IF YES -> You MUST output 'resolved_injuries': [ALL Active Injuries].
-   - **Do NOT** let the "Active Injuries" list bias you. Trust the Text.
-3. Generate the JSON output.
+2. Generate the JSON output.
 `;
 
     try {
@@ -560,6 +493,23 @@ ${aiResponse}
         }
         if (json.resolved_injuries && Array.isArray(json.resolved_injuries)) {
           json.resolved_injuries = Array.from(new Set(json.resolved_injuries.map(normalizeWuxiaInjury)));
+        }
+
+        // [Hard Cap] Block new injuries if already at max (3)
+        const currentInjuryCount = (currentStats.active_injuries || []).length;
+        if (json.new_injuries && json.new_injuries.length > 0 && currentInjuryCount >= 3) {
+          console.warn(`[AgentPostLogic] Injury Hard Cap: Blocked ${json.new_injuries.length} new injuries. Active: ${currentInjuryCount}/3`);
+          json.new_injuries = [];
+        }
+
+        // [Dedup] Remove new_injuries that already exist in active_injuries
+        if (json.new_injuries && json.new_injuries.length > 0) {
+          const activeSet = new Set((currentStats.active_injuries || []).map(normalizeWuxiaInjury));
+          const before = json.new_injuries.length;
+          json.new_injuries = json.new_injuries.filter((inj: string) => !activeSet.has(inj));
+          if (json.new_injuries.length !== before) {
+            console.log(`[AgentPostLogic] Dedup: Removed ${before - json.new_injuries.length} injuries already in active list`);
+          }
         }
 
         // [Validation] Ensure inline_triggers exist

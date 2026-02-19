@@ -10,6 +10,7 @@ import { resolveBackground } from '@/lib/engine/background-manager';
 import { findBestMatch, findBestMatchDetail } from '@/lib/utils/name-utils';
 import { normalizeCharacterId } from '@/lib/utils/character-id';
 import { parseScript } from '@/lib/utils/script-parser';
+import { normalizeWuxiaInjury } from '@/lib/utils/injury-cleaner';
 import React from 'react';
 
 // Dependency injection interface
@@ -313,16 +314,23 @@ export function advanceScript(deps: AdvanceScriptDeps) {
                 try {
                     const data = JSON.parse(nextSegment.content);
                     if (data.name) {
-                        console.log(`[Command] Inline Injury: ${data.name}`);
+                        // [Fix] Normalize injury name to prevent duplicates with post-logic path
+                        const normalizedName = normalizeWuxiaInjury(data.name);
+                        console.log(`[Command] Inline Injury: ${data.name} → ${normalizedName}`);
                         const state = useGameStore.getState();
                         const currentInjuries = state.playerStats.active_injuries || [];
 
-                        if (!currentInjuries.includes(data.name)) {
+                        // [Hard Cap] Max 3 active injuries
+                        if (currentInjuries.length >= 3) {
+                            console.warn(`[Command] Injury Hard Cap: Blocked "${normalizedName}". Active: ${currentInjuries.length}/3`);
+                        } else if (!currentInjuries.some(inj => normalizeWuxiaInjury(inj) === normalizedName)) {
                             state.setPlayerStats({
-                                active_injuries: [...currentInjuries, data.name]
+                                active_injuries: [...currentInjuries, normalizedName]
                             });
-                            addToast(`부상 발생: ${data.name}`, 'warning');
+                            addToast(`부상 발생: ${normalizedName}`, 'warning');
                             handleVisualDamage(-10, state.playerStats.hp, state.playerStats.maxHp);
+                        } else {
+                            console.log(`[Command] Inline Injury Dedup: "${normalizedName}" already active`);
                         }
                     }
                 } catch (e) {

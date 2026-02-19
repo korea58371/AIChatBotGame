@@ -13,7 +13,7 @@ import { translations } from '../../data/translations';
  * @param opts.recentWindow - "최근" 기준 턴 수 (기본 5)
  * @param opts.keywords - 관련성 매칭용 키워드 (Director plot_beats 등)
  */
-function filterMemories(
+export function filterMemories(
     memories: any[],
     opts: { maxCount: number; currentTurn: number; recentWindow?: number; keywords?: string[] }
 ): any[] {
@@ -60,7 +60,7 @@ function filterMemories(
 }
 
 /** 기억을 한 줄 텍스트로 포맷 */
-function formatMemoryLine(m: any): string {
+export function formatMemoryLine(m: any): string {
     if (typeof m === 'string') return m;
     const parts: string[] = [];
     if (m.tag && m.tag !== 'general') parts.push(`[${m.tag}]`);
@@ -1163,6 +1163,34 @@ ${spawnCandidates || "None"}
                 }
             }
 
+            // [NEW] Dynamic Profile Injection (Discovered via AgentMemory)
+            // These fields are populated at runtime by profile_updates from AgentMemory
+            const DYNAMIC_PROFILE_FIELDS: { key: string; label: string }[] = [
+                { key: 'residence', label: '거주지' },
+                { key: 'occupation', label: '직업/역할' },
+                { key: 'hobbies', label: '취미' },
+                { key: 'specialties', label: '특기' },
+                { key: 'trauma', label: '트라우마' },
+                { key: 'combat_style', label: '전투 스타일' },
+                { key: 'core_values', label: '핵심 가치관' },
+                { key: 'fears', label: '두려움' },
+            ];
+
+            const dynamicParts: string[] = [];
+            DYNAMIC_PROFILE_FIELDS.forEach(({ key, label }) => {
+                const val = char[key];
+                if (!val) return;
+                if (Array.isArray(val) && val.length > 0) {
+                    dynamicParts.push(`${label}: ${val.join(', ')}`);
+                } else if (typeof val === 'string' && val.trim()) {
+                    dynamicParts.push(`${label}: ${val}`);
+                }
+            });
+
+            if (dynamicParts.length > 0) {
+                charInfo += `\n- [Discovered Profile]: ${dynamicParts.join(' / ')}`;
+            }
+
             return charInfo;
         }).filter(Boolean).join('\n\n');
 
@@ -1440,7 +1468,7 @@ ${spawnCandidates || "None"}
             } else {
                 if (char.memories && char.memories.length > 0) {
                     const filtered = filterMemories(char.memories, {
-                        maxCount: 5,
+                        maxCount: 8,
                         currentTurn: state.turnCount || 0,
                         keywords: directorKeywords,
                     });
