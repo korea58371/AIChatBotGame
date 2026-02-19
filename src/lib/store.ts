@@ -260,6 +260,10 @@ export interface GameState {
   directorState: DirectorState;
   updateDirectorState: (updates: Partial<DirectorState>) => void;
   addDirectorLog: (entry: DirectorLogEntry) => void;
+
+  // [NEW] Turn Debug Logs (Session-Only, Not Persisted)
+  turnDebugLogs: TurnDebugLog[];
+  addTurnDebugLog: (log: TurnDebugLog) => void;
 }
 
 export interface ScenarioState {
@@ -331,6 +335,7 @@ export interface PlayerStats {
   fatigue: number; // [New] 0-100
   narrative_perspective?: string; // [New] '1인칭' or '3인칭'
   gender: 'male' | 'female'; // [New] Player Gender
+  age: number; // [New] Player Age (default: 21)
 
   // [Universal] Genre-Specific Custom Stats (내공, 마나, 오러 등)
   customStats: Record<string, number>;
@@ -354,6 +359,8 @@ export interface Skill {
 export interface RelationshipInfo {
   status: string | null;      // e.g. "Friend", "Lover", "Enemy"
   speechStyle: string | null; // e.g. "Polite", "Casual", "Archaic"
+  callSign?: string;          // [New] How this NPC addresses the player (e.g. "야, 수호", "수호 오빠")
+  endingStyle?: string;       // [New] Sentence ending style (e.g. "~해요", "~이다")
 }
 
 export interface StoryLogEntry {
@@ -458,6 +465,47 @@ const INITIAL_DIRECTOR_STATE: DirectorState = {
   }
 };
 
+// [NEW] Turn Debug Log (Session-Only, Not Persisted)
+export interface TurnDebugLog {
+  turn: number;
+  timestamp: number;
+  userInput: string;
+  preLogic: {
+    score: number;
+    analysis: string;
+    narrativeGuide: string;
+    mood: string | null;
+    combat: string | null;
+    locationInference: string | null;
+    newCharacters: string[];
+    characterSuggestion: string[];
+  } | null;
+  casting: {
+    id: string;
+    name: string;
+    score: number;
+    reasons: string[];
+  }[] | null;
+  director: {
+    plotBeats: string[];
+    tone: string;
+    emotionalDirection: string;
+    subtleHooks: any[];
+  } | null;
+  story: {
+    model: string;
+    rawLength: number;
+    thinking: string;
+  } | null;
+  postLogic: {
+    hpChange: number;
+    activeCharacters: string[];
+    endingTrigger: string | null;
+  } | null;
+  latencies: Record<string, number> | null;
+  cost: number | null;
+}
+
 export interface SaveSlotMetadata {
   id: number;
   gameId: string;
@@ -509,6 +557,7 @@ const INITIAL_STATS: PlayerStats = {
   fatigue: 0,
   narrative_perspective: '3인칭', // Default
   gender: 'male', // Default Gender
+  age: 21, // Default Age
   customStats: {}, // [Universal] Genre-specific stats populated by ProgressionConfig
   growthStagnation: 0,
   fameTitleIndex: 0
@@ -537,6 +586,13 @@ export const useGameStore = create<GameState>()(
           recentLog: [...state.directorState.recentLog.slice(-4), entry] // Keep last 5
         }
       })),
+
+      // [NEW] Turn Debug Logs (Session diagnostics, not persisted)
+      turnDebugLogs: [],
+      addTurnDebugLog: (log) => set((state) => ({
+        turnDebugLogs: [...state.turnDebugLogs.slice(-49), log] // FIFO, max 50
+      })),
+
       storyModel: MODEL_CONFIG.STORY, // Default to Configured Model
       isDataLoaded: false,
       isHydrated: false, // Start false
@@ -1798,6 +1854,9 @@ export const useGameStore = create<GameState>()(
           // currentSegment, // [Persisted]
           // choices, // [Persisted]
           isDataLoaded, // [Fix] Exclude from persistence to force re-init (and static asset reload) on boot
+
+          // [NEW] Debug data (Session-only, never persisted)
+          turnDebugLogs,
 
           // The State itself to process
           chatHistory,

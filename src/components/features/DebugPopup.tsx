@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useGameStore } from '@/lib/store';
+import { useGameStore, TurnDebugLog } from '@/lib/store';
 import { parseScript } from '@/lib/utils/script-parser';
 import { X, Play, Database, BookOpen, Terminal, FileJson, Copy, Check } from 'lucide-react';
 
@@ -19,6 +19,7 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
     const scenarioMemory = useGameStore(state => state.scenarioMemory);
     const userCoins = useGameStore(state => state.userCoins);
     const gameId = useGameStore(state => state.activeGameId);
+    const turnDebugLogs = useGameStore(state => state.turnDebugLogs);
 
 
     const [activeTab, setActiveTab] = useState<'script' | 'memory' | 'story' | 'transcript'>('script');
@@ -53,7 +54,8 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
         const data = {
             gameId,
             timestamp: new Date().toISOString(),
-            history: chatHistory
+            history: chatHistory,
+            debugLogs: turnDebugLogs
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -396,7 +398,7 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                         <div className="flex flex-col h-full gap-4">
                             <div className="flex justify-between items-center pb-2 border-b border-gray-800">
                                 <div className="text-gray-400 text-sm">
-                                    Full Session History ({chatHistory.length} turns)
+                                    Pipeline Debug ({turnDebugLogs.length} turns logged)
                                 </div>
                                 <div className="flex gap-2">
                                     <button
@@ -415,21 +417,214 @@ export default function DebugPopup({ isOpen, onClose }: DebugPopupProps) {
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-950 p-4 rounded-lg font-mono text-sm border border-gray-800">
-                                {chatHistory.length === 0 ? (
-                                    <div className="text-gray-600 italic text-center mt-10">No history available yet.</div>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-3">
+                                {turnDebugLogs.length === 0 ? (
+                                    <div className="text-gray-600 italic text-center mt-10">
+                                        아직 디버그 로그가 없습니다. 턴을 진행하면 파이프라인 데이터가 여기에 기록됩니다.
+                                    </div>
                                 ) : (
-                                    chatHistory.map((msg, idx) => (
-                                        <div key={idx} className="mb-6 border-b border-gray-900 pb-4 last:border-0">
-                                            <div className={`text-xs font-bold mb-1 ${msg.role === 'user' ? 'text-blue-400' : 'text-purple-400'}`}>
-                                                [{msg.role.toUpperCase()}]
+                                    [...turnDebugLogs].reverse().map((log, idx) => (
+                                        <details key={`turn-${log.turn}-${idx}`} className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden" open={idx === 0}>
+                                            <summary className="px-4 py-3 cursor-pointer select-none hover:bg-gray-800/50 transition-colors flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-yellow-500 font-bold font-mono text-sm">T{log.turn}</span>
+                                                    <span className="text-gray-300 text-sm truncate max-w-[300px]">{log.userInput}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    {log.preLogic && (
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.preLogic.score >= 8 ? 'bg-green-900/50 text-green-300' :
+                                                                log.preLogic.score >= 5 ? 'bg-yellow-900/50 text-yellow-300' :
+                                                                    'bg-red-900/50 text-red-300'
+                                                            }`}>
+                                                            Score: {log.preLogic.score}
+                                                        </span>
+                                                    )}
+                                                    {log.cost != null && (
+                                                        <span className="text-gray-500 text-[10px]">${log.cost.toFixed(4)}</span>
+                                                    )}
+                                                    <span className="text-gray-600 text-[10px]">
+                                                        {new Date(log.timestamp).toLocaleTimeString()}
+                                                    </span>
+                                                </div>
+                                            </summary>
+                                            <div className="px-4 pb-4 space-y-3 border-t border-gray-800 pt-3">
+                                                {/* 1. User Input */}
+                                                <div>
+                                                    <div className="text-blue-400 text-xs font-bold mb-1">🎯 유저 입력</div>
+                                                    <div className="bg-blue-950/30 border border-blue-500/20 rounded p-2 text-sm text-blue-200">{log.userInput}</div>
+                                                </div>
+
+                                                {/* 2. PreLogic */}
+                                                {log.preLogic && (
+                                                    <details className="group">
+                                                        <summary className="text-cyan-400 text-xs font-bold cursor-pointer select-none flex items-center gap-2">
+                                                            🧠 PreLogic
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${log.preLogic.score >= 8 ? 'bg-green-900/40 text-green-300' :
+                                                                    log.preLogic.score >= 5 ? 'bg-yellow-900/40 text-yellow-300' :
+                                                                        'bg-red-900/40 text-red-300'
+                                                                }`}>
+                                                                {log.preLogic.score}/10
+                                                            </span>
+                                                            {log.preLogic.mood && <span className="px-1.5 py-0.5 bg-purple-900/40 text-purple-300 rounded text-[10px]">🎭 {log.preLogic.mood}</span>}
+                                                            {log.preLogic.combat && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 rounded text-[10px]">⚔️ Combat</span>}
+                                                        </summary>
+                                                        <div className="mt-1 space-y-1 text-xs pl-4">
+                                                            {log.preLogic.analysis && (
+                                                                <div><span className="text-gray-500">판정:</span> <span className="text-gray-300">{log.preLogic.analysis}</span></div>
+                                                            )}
+                                                            {log.preLogic.narrativeGuide && (
+                                                                <div><span className="text-gray-500">가이드:</span> <span className="text-cyan-300">{log.preLogic.narrativeGuide}</span></div>
+                                                            )}
+                                                            {log.preLogic.locationInference && (
+                                                                <div><span className="text-gray-500">장소:</span> <span className="text-gray-300">{log.preLogic.locationInference}</span></div>
+                                                            )}
+                                                            {log.preLogic.newCharacters.length > 0 && (
+                                                                <div><span className="text-gray-500">새 캐릭터:</span> <span className="text-green-300">{log.preLogic.newCharacters.join(', ')}</span></div>
+                                                            )}
+                                                            {log.preLogic.characterSuggestion.length > 0 && (
+                                                                <div><span className="text-gray-500">캐릭터 제안:</span> <span className="text-purple-300">{log.preLogic.characterSuggestion.join(', ')}</span></div>
+                                                            )}
+                                                        </div>
+                                                    </details>
+                                                )}
+
+                                                {/* 3. Casting */}
+                                                {log.casting && log.casting.length > 0 && (
+                                                    <details className="group">
+                                                        <summary className="text-green-400 text-xs font-bold cursor-pointer select-none">
+                                                            🎭 캐스팅 ({log.casting.length}명)
+                                                        </summary>
+                                                        <div className="mt-1 overflow-x-auto">
+                                                            <table className="w-full text-xs">
+                                                                <thead>
+                                                                    <tr className="text-gray-500 border-b border-gray-800">
+                                                                        <th className="text-left py-1 px-2">이름</th>
+                                                                        <th className="text-right py-1 px-2">점수</th>
+                                                                        <th className="text-left py-1 px-2">사유</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {log.casting.map((c, ci) => (
+                                                                        <tr key={ci} className="border-b border-gray-800/50">
+                                                                            <td className="py-1 px-2 text-green-300 font-medium">{c.name || c.id}</td>
+                                                                            <td className="py-1 px-2 text-right text-yellow-400">{c.score}</td>
+                                                                            <td className="py-1 px-2 text-gray-400">{c.reasons.join(', ') || '-'}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </details>
+                                                )}
+
+                                                {/* 4. Director */}
+                                                {log.director && (
+                                                    <details className="group">
+                                                        <summary className="text-pink-400 text-xs font-bold cursor-pointer select-none flex items-center gap-2">
+                                                            🎬 디렉터
+                                                            {log.director.tone && <span className="px-1.5 py-0.5 bg-pink-900/40 text-pink-300 rounded text-[10px]">{log.director.tone}</span>}
+                                                        </summary>
+                                                        <div className="mt-1 space-y-1 text-xs pl-4">
+                                                            {log.director.plotBeats.length > 0 && (
+                                                                <div><span className="text-gray-500">Plot Beats:</span> <span className="text-pink-300">{log.director.plotBeats.join(' → ')}</span></div>
+                                                            )}
+                                                            {log.director.emotionalDirection && (
+                                                                <div><span className="text-gray-500">감정 방향:</span> <span className="text-gray-300">{log.director.emotionalDirection}</span></div>
+                                                            )}
+                                                            {log.director.subtleHooks.length > 0 && (
+                                                                <div>
+                                                                    <span className="text-gray-500">떡밥(Hooks):</span>
+                                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                                        {log.director.subtleHooks.map((hook: any, hi: number) => (
+                                                                            <span key={hi} className="px-1.5 py-0.5 bg-amber-900/30 text-amber-300 rounded text-[10px]">
+                                                                                {typeof hook === 'string' ? hook : JSON.stringify(hook)}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </details>
+                                                )}
+
+                                                {/* 5. Story */}
+                                                {log.story && (
+                                                    <details className="group">
+                                                        <summary className="text-orange-400 text-xs font-bold cursor-pointer select-none flex items-center gap-2">
+                                                            📝 스토리
+                                                            <span className="px-1.5 py-0.5 bg-gray-800 text-gray-400 rounded text-[10px]">{log.story.model}</span>
+                                                            <span className="text-gray-500 text-[10px]">{log.story.rawLength.toLocaleString()} chars</span>
+                                                        </summary>
+                                                        {log.story.thinking && (
+                                                            <div className="mt-1 pl-4">
+                                                                <div className="text-gray-500 text-[10px] mb-0.5">Thinking:</div>
+                                                                <div className="bg-gray-950 border border-gray-800 rounded p-2 text-[11px] text-amber-200/70 whitespace-pre-wrap max-h-40 overflow-y-auto font-mono">
+                                                                    {log.story.thinking}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </details>
+                                                )}
+
+                                                {/* 6. PostLogic & Performance */}
+                                                <details className="group">
+                                                    <summary className="text-gray-400 text-xs font-bold cursor-pointer select-none">
+                                                        ⚙️ PostLogic & 성능
+                                                    </summary>
+                                                    <div className="mt-1 text-xs pl-4 space-y-1">
+                                                        {log.postLogic && (
+                                                            <>
+                                                                {log.postLogic.hpChange !== 0 && (
+                                                                    <div>
+                                                                        <span className="text-gray-500">HP 변화:</span>
+                                                                        <span className={log.postLogic.hpChange > 0 ? 'text-green-400' : 'text-red-400'}> {log.postLogic.hpChange > 0 ? '+' : ''}{log.postLogic.hpChange}</span>
+                                                                    </div>
+                                                                )}
+                                                                {log.postLogic.activeCharacters.length > 0 && (
+                                                                    <div><span className="text-gray-500">활성 캐릭터:</span> <span className="text-gray-300">{log.postLogic.activeCharacters.join(', ')}</span></div>
+                                                                )}
+                                                                {log.postLogic.endingTrigger && (
+                                                                    <div><span className="text-gray-500">엔딩:</span> <span className="text-red-400 font-bold">{log.postLogic.endingTrigger}</span></div>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                        {log.latencies && (
+                                                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                                                                {Object.entries(log.latencies).map(([key, val]) => (
+                                                                    <span key={key} className="text-gray-500">
+                                                                        {key}: <span className="text-gray-300">{typeof val === 'number' ? `${val}ms` : String(val)}</span>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {log.cost != null && (
+                                                            <div><span className="text-gray-500">비용:</span> <span className="text-yellow-400">${log.cost.toFixed(4)}</span></div>
+                                                        )}
+                                                    </div>
+                                                </details>
                                             </div>
-                                            <div className="text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                                {msg.text}
-                                            </div>
-                                        </div>
+                                        </details>
                                     ))
                                 )}
+
+                                {/* Raw Messages */}
+                                <details className="bg-gray-900 rounded-lg border border-gray-800 mt-4">
+                                    <summary className="px-4 py-3 cursor-pointer select-none text-gray-500 text-xs font-bold hover:text-gray-300 transition-colors">
+                                        📄 Raw Messages ({chatHistory.length} entries)
+                                    </summary>
+                                    <div className="px-4 pb-4 space-y-3 border-t border-gray-800 pt-3">
+                                        {chatHistory.map((msg, idx) => (
+                                            <div key={idx} className="border-b border-gray-900 pb-3 last:border-0">
+                                                <div className={`text-xs font-bold mb-1 ${msg.role === 'user' ? 'text-blue-400' : 'text-purple-400'}`}>
+                                                    [{msg.role.toUpperCase()}]
+                                                </div>
+                                                <div className="text-gray-300 whitespace-pre-wrap leading-relaxed text-xs">
+                                                    {msg.text}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </details>
                             </div>
                         </div>
                     )}

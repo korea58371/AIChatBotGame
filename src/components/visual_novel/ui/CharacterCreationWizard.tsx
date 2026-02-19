@@ -117,6 +117,22 @@ function CharacterCreationWizardInner({
                     </div>
                 </div>
 
+                {/* Age Input */}
+                <div className="flex flex-col gap-2 w-full max-w-xs">
+                    <label className="text-yellow-500 text-sm font-bold text-left">Age</label>
+                    <input
+                        type="number"
+                        min={15}
+                        max={50}
+                        defaultValue={playerStats.age || 21}
+                        onChange={(e) => {
+                            const val = Math.min(50, Math.max(15, parseInt(e.target.value) || 21));
+                            setPlayerStats({ age: val });
+                        }}
+                        className="bg-gray-800 border border-yellow-600 text-white px-4 py-2 rounded focus:outline-none focus:border-yellow-400 text-center"
+                    />
+                </div>
+
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
@@ -222,6 +238,8 @@ function CharacterCreationWizardInner({
         }
 
         profileText += `이름: ${finalName || playerName || '성현우'}\n`;
+        const playerAge = useGameStore.getState().playerStats.age || 21;
+        profileText += `나이: ${playerAge}세\n`;
 
         let prompt = `
                                 [SYSTEM: Game Start Protocol]
@@ -547,6 +565,21 @@ function CharacterCreationWizardInner({
                                             );
                                         })}
                                     </div>
+                                </div>
+                                {/* Age Input */}
+                                <div className="flex flex-col gap-2 w-full">
+                                    <label className="text-[#888] text-xs font-bold text-left uppercase tracking-wider ml-1">Age</label>
+                                    <input
+                                        type="number"
+                                        min={15}
+                                        max={50}
+                                        defaultValue={playerStats.age || 21}
+                                        onChange={(e) => {
+                                            const val = Math.min(50, Math.max(15, parseInt(e.target.value) || 21));
+                                            setPlayerStats({ age: val });
+                                        }}
+                                        className="bg-[#252525] border border-[#333] focus:border-[#D4AF37] text-[#eee] px-4 py-3 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/30 text-center text-lg font-bold placeholder-[#555] transition-all font-serif tracking-widest w-full"
+                                    />
                                 </div>
                             </div>
 
