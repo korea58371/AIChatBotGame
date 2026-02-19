@@ -17,13 +17,13 @@ export interface CharacterData {
     강함?: any;
     외형?: any;
     secret?: any;
-    인간관계?: Record<string, string>;
+    인간관계?: Record<string, (string | number)[]>;
     preferences?: any;
     활동지역?: string;
 }
 
-export const characters_main_typed = characters_main as Record<string, CharacterData>;
-export const characters_supporting_typed = characters_supporting as Record<string, CharacterData>;
+export const characters_main_typed = characters_main as unknown as Record<string, CharacterData>;
+export const characters_supporting_typed = characters_supporting as unknown as Record<string, CharacterData>;
 export const characters_enemy_typed = characters_enemy as unknown as Record<string, CharacterData>;
 
 export {
