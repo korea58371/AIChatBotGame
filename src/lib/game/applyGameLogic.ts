@@ -752,8 +752,7 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
         // mapped by VisualNovelUI.tsx combinedLogic assembly.
         // Processing them again here caused duplicate injury toasts and double-application.
 
-        // [Dead Stats Removed] Personality processing removed. Core stats only.
-        // [Fix] stat_updates: Only process fame/neigong here.
+        // [Universal] stat_updates: Process fame + genre-specific custom stats from PostLogic.
         // hp, mp, gold are already handled at top-level (lines 205-210)
         // via logicResult.hpChange, mpChange, goldChange.
         // Processing them here again from post_logic caused double-counting.
@@ -761,13 +760,73 @@ export function applyGameLogic(logicResult: any, deps: ApplyGameLogicDeps) {
             const currentStats = useGameStore.getState().playerStats;
 
             Object.entries(postLogic.stat_updates).forEach(([key, val]) => {
-                if (['fame', 'neigong'].includes(key)) {
-                    const currentVal = (currentStats as any)[key] || 0;
-                    const newVal = Math.max(0, currentVal + (val as number));
-                    const updatePayload: any = {};
-                    updatePayload[key] = newVal;
+                const delta = val as number;
+                if (delta === 0) return;
+
+                // 1. Fame (universal, not a customStat)
+                if (key === 'fame') {
+                    const currentVal = currentStats.fame || 0;
+                    const newVal = Math.max(0, currentVal + delta);
+                    const freshStats = useGameStore.getState().playerStats;
+                    useGameStore.getState().setPlayerStats({ ...freshStats, fame: newVal });
+                    addToast(`${t.fame || '명성'} ${delta > 0 ? '+' : ''}${delta}`, delta > 0 ? 'success' : 'warning');
+                    return;
+                }
+
+                // 2. Genre-specific custom stats (neigong, mana_affinity, etc.)
+                if (customStatIds.has(key) && progressionConfig) {
+                    const statDef = progressionConfig.stats.find(s => s.id === key);
+                    if (!statDef || statDef.isFixed) return; // Fixed stats cannot be changed
+
+                    const currentCustomStats = currentStats.customStats || {};
+                    const currentVal = currentCustomStats[key] || statDef.defaultValue;
+                    const newVal = statDef.max > 0
+                        ? Math.min(Math.max(statDef.min, currentVal + delta), statDef.max)
+                        : Math.max(statDef.min, currentVal + delta);
+
+                    const updatePayload: any = {
+                        customStats: {
+                            ...currentCustomStats,
+                            [key]: newVal
+                        }
+                    };
+
+                    // [Compat] Sync to legacy top-level field if it exists (e.g., playerStats.neigong)
+                    if (key in currentStats) {
+                        updatePayload[key] = newVal;
+                    }
+
+                    // Toast using toastTemplate from statDef
+                    const template = statDef.toastTemplate || '{displayName} {delta}';
+                    const toastMsg = template
+                        .replace('{displayName}', statDef.displayName)
+                        .replace('{delta}', `${delta > 0 ? '+' : ''}${delta}`);
+                    if (delta > 0) {
+                        essentialToast(toastMsg, 'success');
+                    } else {
+                        essentialToast(toastMsg, 'error');
+                    }
+                    console.log(`[PostLogic] Custom Stat Update (${statDef.displayName}): ${currentVal} → ${newVal} (Δ${delta > 0 ? '+' : ''}${delta})`);
+
                     const freshStats = useGameStore.getState().playerStats;
                     useGameStore.getState().setPlayerStats({ ...freshStats, ...updatePayload });
+
+                    // [Universal] Trigger realm progression check after custom stat change
+                    const latestStats = useGameStore.getState().playerStats;
+                    const result = checkUniversalProgression(
+                        progressionConfig,
+                        latestStats.level || 1,
+                        latestStats.customStats || {},
+                        latestStats.playerRank
+                    );
+                    if (result) {
+                        useGameStore.getState().setPlayerStats({
+                            ...useGameStore.getState().playerStats,
+                            playerRank: result.newTier.title
+                        });
+                        essentialToast(`[${progressionConfig.tierDisplayName}] ${result.newTier.title}!`, 'success');
+                        console.log(`[PostLogic→Progression] Rank Up: ${latestStats.playerRank} → ${result.newTier.title}`);
+                    }
                 }
             });
         }

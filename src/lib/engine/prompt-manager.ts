@@ -1097,8 +1097,19 @@ ${spawnCandidates || "None"}
             // [SPEECH STYLE INJECTION]
             // Priority 1: New 'speech' object (High Fidelity)
             if (char.speech) {
-                if (char.speech.style) charInfo += `\n- Speech Style: ${char.speech.style}`;
-                if (char.speech.ending) charInfo += `\n- Tone Reference (Examples): ${char.speech.ending}`;
+                // [GENDER-AWARE CALL SIGN]
+                const playerGender = state?.playerStats?.gender || 'male';
+                let resolvedCallSign = '';
+                if (char.speech.callSign) {
+                    resolvedCallSign = typeof char.speech.callSign === 'string'
+                        ? char.speech.callSign
+                        : (char.speech.callSign[playerGender] || char.speech.callSign['male'] || '');
+                    charInfo += `\n- ⭐ Call Sign (to Player): "${resolvedCallSign}"`;
+                }
+                const replaceCallSign = (text: string) => resolvedCallSign ? text.replace(/\{callSign\}/g, resolvedCallSign) : text;
+
+                if (char.speech.style) charInfo += `\n- Speech Style: ${replaceCallSign(char.speech.style)}`;
+                if (char.speech.ending) charInfo += `\n- Tone Reference (Examples): ${replaceCallSign(char.speech.ending)}`;
                 if (char.speech.habits) charInfo += `\n- Speech Habits: ${char.speech.habits}`;
             }
             // Priority 2: Legacy Helper (Fallback)
@@ -1394,8 +1405,19 @@ ${spawnCandidates || "None"}
             charInfo += `\n- Relation: ${relInstructions.replace(/\n/g, ' ')}`;
 
             if (char.speech) {
-                if (char.speech.style) charInfo += `\n- Speech Style: ${char.speech.style}`;
-                if (char.speech.ending) charInfo += `\n- Tone Reference: ${char.speech.ending}`;
+                // [GENDER-AWARE CALL SIGN]
+                const playerGender = state?.playerStats?.gender || 'male';
+                let resolvedCallSign = '';
+                if (char.speech.callSign) {
+                    resolvedCallSign = typeof char.speech.callSign === 'string'
+                        ? char.speech.callSign
+                        : (char.speech.callSign[playerGender] || char.speech.callSign['male'] || '');
+                    charInfo += `\n- ⭐ Call Sign (to Player): "${resolvedCallSign}"`;
+                }
+                const replaceCallSign = (text: string) => resolvedCallSign ? text.replace(/\{callSign\}/g, resolvedCallSign) : text;
+
+                if (char.speech.style) charInfo += `\n- Speech Style: ${replaceCallSign(char.speech.style)}`;
+                if (char.speech.ending) charInfo += `\n- Tone Reference: ${replaceCallSign(char.speech.ending)}`;
                 if (char.speech.habits) charInfo += `\n- Speech Habits: ${char.speech.habits}`;
             } else {
                 const speechInfo = PromptManager.getSpeechStyle(char);

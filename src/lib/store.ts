@@ -439,6 +439,13 @@ export interface DirectorLogEntry {
   mentioned_characters?: string[]; // 이번 턴에 등장/언급된 캐릭터
 }
 
+export interface Companion {
+  name: string;                    // 한글 이름
+  reason: string;                  // 동행 사유 (예: "사건 조사", "메인 히로인", "의뢰 동행")
+  since_turn: number;              // 동행 시작 턴
+  type: 'mission' | 'bond' | 'escort'; // mission=임무 동행, bond=관계 동행(히로인), escort=호위/안내
+}
+
 export interface DirectorState {
   foreshadowing: ForeshadowingSeed[];
   activeThreads: NarrativeThread[];
@@ -450,6 +457,7 @@ export interface DirectorState {
     lastMajorEvent: string;
     lastMajorEventTurn: number;
   };
+  companions: Companion[];         // [NEW] 현재 동행 중인 캐릭터 목록
 }
 
 const INITIAL_DIRECTOR_STATE: DirectorState = {
@@ -462,7 +470,8 @@ const INITIAL_DIRECTOR_STATE: DirectorState = {
     focusDuration: 0,
     lastMajorEvent: '',
     lastMajorEventTurn: 0
-  }
+  },
+  companions: []
 };
 
 // [NEW] Turn Debug Log (Session-Only, Not Persisted)

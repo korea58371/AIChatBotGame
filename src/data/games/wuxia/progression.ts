@@ -13,7 +13,10 @@ export const wuxiaProgression: ProgressionConfig = {
             defaultValue: 0,
             min: 0,
             max: -1,
-            toastTemplate: '{displayName} {delta}년'
+            toastTemplate: '{displayName} {delta}년',
+            gainConditions: '시간경과 묘사(수개월~수년 → +1~5/년), 영약/선단/천재지보 복용(+5~30), 기연(내공 전수, 고대 비급 깨달음, 영기 흡수, 환골탈태 → +10~60)',
+            lossConditions: '치명적 부상, 단전 파괴, 내공 전수(타인에게 넘김)',
+            noChangeConditions: '일반 수련, 전투, 휴식, 운기조식 → MP 회복만. 내공 연수 변화 없음'
         }
     ],
     tiers: [

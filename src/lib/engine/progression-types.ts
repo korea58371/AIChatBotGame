@@ -15,6 +15,12 @@ export interface GenreStat {
     max: number;          // Maximum bound (-1 = unbounded)
     isFixed?: boolean;    // If true, AI cannot change this (e.g., mana affinity)
     toastTemplate?: string; // e.g., "{displayName} {delta}년", defaults to "{displayName} {delta}"
+    /** PostLogic에 주입할 상승 조건 설명 (한국어). 예: '기연, 영약 복용 시 +10~60' */
+    gainConditions?: string;
+    /** PostLogic에 주입할 하락 조건 설명 (한국어). 예: '단전 파괴, 내공 전수' */
+    lossConditions?: string;
+    /** PostLogic에 주입할 변화 불가 조건 (한국어). 예: '일반 수련, 전투 → MP만 회복' */
+    noChangeConditions?: string;
 }
 
 /** A single tier/rank in the progression table */
@@ -145,4 +151,48 @@ export function generateProgressionContextPrompt(
     }
 
     return lines.join('\n');
+}
+
+/**
+ * Generate a dynamic prompt section for PostLogic explaining custom stat update rules.
+ * Read from ProgressionConfig data so each game mode's rules are self-contained.
+ * If all stats are fixed (e.g., GBY mana_affinity), returns empty string.
+ */
+export function generatePostLogicCustomStatsPrompt(config: ProgressionConfig | undefined): string {
+    if (!config || !config.stats || config.stats.length === 0) return '';
+
+    const mutableStats = config.stats.filter(s => !s.isFixed);
+    if (mutableStats.length === 0) return ''; // All stats are fixed (e.g., GBY) — nothing for PostLogic to manage
+
+    const sections: string[] = [];
+    sections.push('[Genre Custom Stats Update Rules] (Data-Driven)');
+    sections.push('The following genre-specific stats can be updated via stat_updates output.');
+    sections.push('');
+
+    for (const stat of mutableStats) {
+        sections.push(`- **${stat.displayName} (${stat.id})**: ${stat.description}`);
+        if (stat.gainConditions) {
+            sections.push(`  - **MUST output ${stat.id} in stat_updates when**: ${stat.gainConditions}`);
+        }
+        if (stat.lossConditions) {
+            sections.push(`  - **NEGATIVE ${stat.id} change when**: ${stat.lossConditions}`);
+        }
+        if (stat.noChangeConditions) {
+            sections.push(`  - **DO NOT change ${stat.id} when**: ${stat.noChangeConditions}`);
+        }
+        sections.push(`  - **CRITICAL**: If the narrative describes a significant event related to ${stat.displayName}, you MUST output the corresponding change. Failing to do so breaks the progression system.`);
+        sections.push('');
+    }
+
+    // Fixed stats notice
+    const fixedStats = config.stats.filter(s => s.isFixed);
+    if (fixedStats.length > 0) {
+        sections.push('[Fixed Stats (DO NOT CHANGE)]');
+        for (const stat of fixedStats) {
+            sections.push(`- **${stat.displayName} (${stat.id})**: ${stat.description} (시스템 고정값 — AI가 변경할 수 없음)`);
+        }
+        sections.push('');
+    }
+
+    return sections.join('\n');
 }

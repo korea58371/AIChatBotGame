@@ -92,6 +92,9 @@ export interface GameConfig {
 
     // [12] Director Examples (게임별 Director 예시 문구 — NO SPOILERS 등)
     getDirectorExamples?: () => { good: string; bad: string };
+
+    // [13] Director Pacing Guide (pacing.ts에서 현재 턴에 맞는 phase별 연출 노트 + 성장 가이드를 Director에 주입)
+    getDirectorPacingGuide?: (turnCount: number) => string | null;
 }
 
 class GameRegistryImpl {

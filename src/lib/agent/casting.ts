@@ -380,43 +380,9 @@ export class AgentCasting {
             */
 
 
-            // 7.5. [NEW] Progressive Fatigue (Cooldown) System
-            // Prevents characters from "flickering" (Exit -> Immediate Re-entry)
-            const lastActive = gameState.characterData?.[id]?.lastActiveTurn;
-            // Only apply if they are NOT currently active (we don't penalize staying in scene)
-            if (lastActive !== undefined && !activeCharIds.has(id.toLowerCase())) {
-                const turnsSinceExit = turnCount - lastActive;
-
-                // Exceptions: 
-                // 1. User explicitly mentioned them (Strong Narrative Demand)
-                // 2. We are at their "Home" (e.g. Store Clerk at Store)
-                const isUserDemand = userInput.includes(kName) || userInput.includes(id);
-                // \"isHomeGround\": any of the character's activity regions matches current location
-                const isHome = locScore >= 20; // Zone match or better = home ground
-
-                if (!isUserDemand) {
-                    if (turnsSinceExit <= 1) {
-                        // Just left 1 turn ago. Heavy Penalty.
-                        // Unless it's their Home, then slight penalty (maybe they just went to back room)
-                        if (isHome) {
-                            actScore *= 0.5;
-                            actReasons.push(`Fatigue (Home, 1T) (x0.5)`);
-                        } else {
-                            actScore *= 0.1;
-                            actReasons.push(`Fatigue (Exit 1T ago) (x0.1)`);
-                        }
-                    } else if (turnsSinceExit === 2) {
-                        // Left 2 turns ago. Moderate Penalty.
-                        actScore *= 0.5;
-                        actReasons.push(`Fatigue (Exit 2T ago) (x0.5)`);
-                    } else {
-                        // 3+ turns: Recovered. No Penalty.
-                        // actReasons.push(`Fatigue Recovered (3T+)`);
-                    }
-                } else {
-                    actReasons.push(`Fatigue Bypassed (User Demand)`);
-                }
-            }
+            // 7.5. [MOVED] Fatigue system relocated AFTER relBonus (see below line ~470)
+            // Reason: Fatigue must apply to FINAL score including relationship bonus,
+            // otherwise relBonus completely negates the cooldown penalty.
 
             // 7.7. [NEW] Enemy Global Penalty (60% Efficiency)
             // [FIX] Game-agnostic enemy detection: system_logic flag OR universal villain tags
@@ -461,6 +427,35 @@ export class AgentCasting {
             if (relBonus > 0) {
                 actScore += relBonus;
                 actReasons.push(`Relationship Bonus (Rank-Immune) (+${relBonus.toFixed(1)})`);
+            }
+
+            // 9. [RELOCATED] Progressive Fatigue (Cooldown) System
+            // MUST be applied AFTER all bonuses (including relBonus) to prevent score recovery.
+            // Prevents characters from "flickering" (Exit -> Immediate Re-entry)
+            const lastActive = gameState.characterData?.[id]?.lastActiveTurn;
+            if (lastActive !== undefined && !activeCharIds.has(id.toLowerCase())) {
+                const turnsSinceExit = turnCount - lastActive;
+
+                const isUserDemand = userInput.includes(kName) || userInput.includes(id);
+                const isHome = locScore >= 20; // Zone match or better = home ground
+
+                if (!isUserDemand) {
+                    if (turnsSinceExit <= 1) {
+                        if (isHome) {
+                            actScore *= 0.5;
+                            actReasons.push(`Fatigue (Home, 1T) (x0.5)`);
+                        } else {
+                            actScore *= 0.1;
+                            actReasons.push(`Fatigue (Exit 1T ago) (x0.1)`);
+                        }
+                    } else if (turnsSinceExit === 2) {
+                        actScore *= 0.5;
+                        actReasons.push(`Fatigue (Exit 2T ago) (x0.5)`);
+                    }
+                    // 3+ turns: Recovered. No Penalty.
+                } else {
+                    actReasons.push(`Fatigue Bypassed (User Demand)`);
+                }
             }
 
 

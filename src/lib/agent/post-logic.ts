@@ -4,6 +4,8 @@ import { MODEL_CONFIG } from '../ai/model-config';
 import { RelationshipManager } from '../engine/relationship-manager';
 import { normalizeWuxiaInjury } from '@/lib/utils/injury-cleaner';
 import { translations } from '../../data/translations';
+import { GameRegistry } from '../registry/GameRegistry';
+import { generatePostLogicCustomStatsPrompt } from '../engine/progression-types';
 
 // [Helper] JSON 정제 함수 (Markdown 제거)
 function cleanJsonText(text: string): string {
@@ -147,23 +149,16 @@ Focus on: Emotion (Mood), Relationships, Long-term Memories, PERSONALITY SHIFTS,
   - Meditation/Qi circulation: MP +80~100, HP +50~80. Resolves mild internal injuries.
   - Severe trauma (fractures, severed limbs) requires medical treatment.
 
-[Cultivation (Neigong) Logic] (STRICT GROWTH PACING)
-- **MP**: Expendable energy for skills. Recovers via rest/meditation.
-- **Neigong (Years)**: Cultivation capital. Changes are RARE.
-  - Gains: Time-skip ("수개월이 지나고") or rare elixirs/epiphanies only.
-  - Losses: Only via crippling injury, dantian destruction, or power transfer.
-  - Routine training, combat, rest → MP recovery only. Never changes Neigong Years.
-
 [Anti-Double Count Rule (CRITICAL for Rank Ups)]
 - If the narrative describes a breakthrough/rank-up, this is a *result* of an existing stat change.
-  - Do not output 'playerRank', 'neigong', or 'level' updates (already applied by the system).
-  - Exception: Only award stats if an external item was consumed during the breakthrough.
+  - Do not output 'playerRank' or 'level' updates (already applied by the system).
+  - **Genre Custom Stats are the EXCEPTION**: Always output genre custom stat changes in stat_updates when the narrative justifies it.
 
-
+{{GENRE_CUSTOM_STATS_RULES}}
 
 [Physical/Resource Stats] (VALID KEYS ONLY)
-- hp, mp, gold, fame.
-- **CRITICAL**: Do NOT invent other stats (e.g. "stamina", "karma", "stress", "str", "agi"). Use ONLY the keys defined above.
+- hp, mp, gold, fame, and any genre-specific custom stats defined above.
+- **CRITICAL**: Do NOT invent stats not listed here or in the genre rules above.
 
 [Reputation (Fame) Logic]
 - **Concept**: How widely known the player is in Jianghu. 
@@ -323,10 +318,13 @@ You must identify the EXACT sentence segment (quote) where a change happens and 
 - **Internal Analysis (CoT)**: Before generating the JSON, briefly analyze the situation in the "_analysis" field to ensure all constraints (Health, Relationship caps) are met. Use English for analysis.
 - **LANGUAGE**: All output strings (especially 'location_update', 'new_goals' description, 'factionChange', 'playerRank') MUST be in KOREAN (한국어). Only JSON keys must remain in English.
 - **⚠️ CHARACTER IDs**: ALL character identifiers (in 'relationship_updates', 'activeCharacters', 'dead_character_ids', 'character_relationships', inline_triggers char attr) MUST use the character's KOREAN NAME (한글 이름). NEVER use English IDs like "soso" or "han_seol".
-- **Active Characters Rules**:
-  1. List EVERY character name (한글) that is **CURRENTLY PRESENT** at the **END** of the turn.
-  2. **Leaving**: If a character explicitly LEAVES, EXITS, or DISAPPEARS, **DO NOT** include them.
-  3. **Dead**: If a character is listed in 'dead_character_ids', they **MUST NOT** appear in 'activeCharacters'.
+- **Active Characters Rules** (CRITICAL — Use [Current Active Characters] from Context):
+  1. **Start from Context**: Begin with the [Current Active Characters] list provided in the Context Data.
+  2. **Action-Based Persistence**: A character should remain active ONLY if they DIRECTLY participate in this turn — by speaking dialogue, performing actions, or being physically interacted with. Simply being "mentioned" or "referenced" is NOT enough to keep them active.
+  3. **Additions**: Add any NEW characters who appear, speak, or are introduced in the text.
+  4. **Natural Removal**: Remove characters whose purpose in the scene was completed, who would logically have left, or who had no direct involvement this turn.
+  5. **Dead**: Characters listed in 'dead_character_ids' **MUST NOT** appear in 'activeCharacters'.
+  6. **Scene Change**: If the player moved to a NEW location, ONLY include characters who traveled WITH the player or are already at the new location.
 - **Dead Characters**: List names (한글) of ANY character who died or was permanently incapacitated/killed in this turn.
 - 'quote' in 'inline_triggers' MUST be an EXACT substring of the 'AI' text.
 
@@ -364,6 +362,12 @@ ${RelationshipManager.getPromptContext()}
     // [Context Caching]
     // Split Static (System Instruction) and Dynamic (User Message)
     let staticSystemPrompt = this.getSystemPrompt(language || 'ko');
+
+    // [Universal] Inject genre-specific custom stats rules from ProgressionConfig
+    const gameConfig = GameRegistry.get(gameState.activeGameId);
+    const progressionConfig = gameConfig?.progressionConfig;
+    const customStatsPrompt = generatePostLogicCustomStatsPrompt(progressionConfig);
+    staticSystemPrompt = staticSystemPrompt.replace('{{GENRE_CUSTOM_STATS_RULES}}', customStatsPrompt);
 
     // [God Mode Protocol]
     const isGodMode = gameState.isGodMode || gameState.playerName === "김현준갓모드";
@@ -458,6 +462,7 @@ Active Injuries (CRITICAL): ${JSON.stringify(currentStats.active_injuries || [])
 Current Relationships: ${JSON.stringify(activeRelationships)}
 
 Active Goals: ${JSON.stringify(gameState.goals ? gameState.goals.filter((g: any) => g.status === 'ACTIVE') : [])}
+Current Active Characters (Previous Turn): ${JSON.stringify(gameState.activeCharacters || [])}
 ${locationContext}
 
 [Relationship Tiers Guide]
@@ -535,11 +540,18 @@ ${aiResponse}
         if (json.stat_updates) {
           const ALLOWED_STATS = new Set([
             // Core
-            'hp', 'mp', 'gold', 'str', 'agi', 'int', 'vit', 'luk', 'fame', 'neigong', 'exp', 'level',
+            'hp', 'mp', 'gold', 'str', 'agi', 'int', 'vit', 'luk', 'fame', 'exp', 'level',
             // Personality
             'morality', 'courage', 'energy', 'decision', 'lifestyle',
             'openness', 'warmth', 'eloquence', 'leadership', 'humor', 'lust'
           ]);
+
+          // [Universal] Dynamically add genre-specific custom stat IDs
+          if (progressionConfig?.stats) {
+            for (const stat of progressionConfig.stats) {
+              if (!stat.isFixed) ALLOWED_STATS.add(stat.id);
+            }
+          }
 
           const filteredStats: Record<string, number> = {};
           for (const key in json.stat_updates) {
@@ -641,13 +653,15 @@ ${aiResponse}
           }
         }
 
-        // [Persistence Guard] Character Keep-Alive
-        // If a character was active in the previous turn and is mentioned in the current text,
-        // FORCE them to stay active (Prevents AI accidental drop).
-        if (gameState && gameState.activeCharacters) {
+        // [Soft Guard] Character Presence Check
+        // Previously: Force-added any mentioned character back to active (caused stalking).
+        // Now: Trust AI's activeCharacters judgment. Only log warnings for debugging.
+        // Exception: During scene changes, AI's list is fully authoritative.
+        const hasSceneChange = !!json.location_update;
+
+        if (gameState && gameState.activeCharacters && !hasSceneChange) {
           const verifyActive = new Set(json.activeCharacters || []);
           const prevActive = gameState.activeCharacters;
-          const storyText = aiResponse;
           const deadIds = new Set(json.dead_character_ids || []);
 
           prevActive.forEach((charId: string) => {
@@ -656,16 +670,44 @@ ${aiResponse}
             const charData = gameState.characterData?.[charId];
             if (charData) {
               const namesToCheck = [charData.name, charData.이름, ...(charData.aliases || [])].filter(Boolean);
-              // 이름이나 별호 중 하나라도 포함되면 유지
-              const isMentioned = namesToCheck.some((n: string) => storyText.includes(n));
+              const isMentioned = namesToCheck.some((n: string) => aiResponse.includes(n));
 
               if (isMentioned) {
-                verifyActive.add(charId);
-                console.log(`[AgentPostLogic] Persistence Guard: Forced '${namesToCheck[0]}' (${charId}) to stay active.`);
+                // [Soft Guard] AI excluded this character despite being mentioned.
+                // Trust AI's judgment — they may have written a departure scene.
+                console.log(`[AgentPostLogic] Soft Guard: '${namesToCheck[0]}' (${charId}) mentioned in text but AI excluded from activeCharacters. Trusting AI judgment.`);
               }
             }
           });
           json.activeCharacters = Array.from(verifyActive);
+        } else if (hasSceneChange) {
+          console.log(`[AgentPostLogic] Scene Change detected (${json.location_update}). Persistence Guard SKIPPED — trusting AI's activeCharacters list.`);
+        }
+
+        // [NEW] 동행자(Companions) 보호 — Director가 관리하는 동행자는 PostLogic에서 절대 제거 불가
+        const companionsList = gameState?.directorState?.companions || [];
+        if (companionsList.length > 0 && json.activeCharacters) {
+          const activeSet = new Set(json.activeCharacters as string[]);
+          const charDataEntries = Object.entries(gameState?.characterData || {});
+          let restored = 0;
+
+          for (const comp of companionsList) {
+            const match = charDataEntries.find(([_, data]: [string, any]) => {
+              return data.name === (comp as any).name || data.이름 === (comp as any).name;
+            });
+            if (match) {
+              const [charId] = match;
+              if (!activeSet.has(charId)) {
+                activeSet.add(charId);
+                restored++;
+                console.log(`[AgentPostLogic] Companion Guard: Restored '${(comp as any).name}' (${charId}) — companions cannot be removed by PostLogic.`);
+              }
+            }
+          }
+
+          if (restored > 0) {
+            json.activeCharacters = Array.from(activeSet);
+          }
         }
 
         return {

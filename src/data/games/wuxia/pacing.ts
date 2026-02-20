@@ -55,7 +55,15 @@ export const PACING_RULES = {
     growth: {
         geniusMultiplier: 12, // 일반인보다 12배 빠른 성장 (10일에 1년)
         timeSkipStyle: "Describe the changing of seasons or the accumulation of dust/cobwebs. Focus on the internal flow of Qi.",
-        mandate: "주인공이 수련에 집중할 때 AI는 과감하게 시간을 스킵하고 경지를 끌어올리세요. '열흘이 흘렀다'와 같은 서술을 권장합니다."
+        mandate: "주인공이 수련에 집중할 때 AI는 과감하게 시간을 스킵하고 경지를 끌어올리세요. '열흘이 흘렀다'와 같은 서술을 권장합니다.",
+        directorNote: `
+[Director's Growth Note: Wuxia]
+- **성장 기회 적극 제공**: 초반(~30턴)에는 plot_beats에 성장 계기를 2턴에 1번 이상 설계하라.
+  - 예: 사부가 수련을 제안, 비무 도전이 들어옴, 고수의 대련 장면을 목격, 내공 순환의 실마리를 깨달음
+- **수련 유도**: 유저가 명시적으로 수련을 요청하지 않아도, NPC가 수련을 제안하거나 깨달음의 계기를 설계하라.
+- **성장 서사**: 단순 "경지 상승"이 아닌 깨달음, 돌파, 시련 극복의 서사적 성장을 만들어라.
+- **기연은 자연스럽게**: 길가다 S급 비급 줍기 금지. 대신 사부의 시험, 위기 속 각성, 폐관 수련 후 돌파 등 서사적 성장만 허용.
+`
     },
     // [시스템 규칙] 전역 분위기 및 연출 (Global Atmosphere)
     global: {

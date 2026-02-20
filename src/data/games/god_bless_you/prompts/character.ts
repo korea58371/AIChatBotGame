@@ -22,7 +22,19 @@ export function formatCharacter(c: any, mode: string, state?: any): string {
 
         // Critical: Speech Style (Must be reinforced)
         const speech = getSpeechStyle(c);
-        if (speech) lines.push(`- Tone: ${speech.style} | Ending: ${speech.ending}`);
+        if (speech) {
+            // [GENDER-AWARE CALL SIGN]
+            const playerGender = state?.playerStats?.gender || 'male';
+            let resolvedCS = '';
+            if (c.speech?.callSign) {
+                resolvedCS = typeof c.speech.callSign === 'string'
+                    ? c.speech.callSign
+                    : (c.speech.callSign[playerGender] || c.speech.callSign['male'] || '');
+                lines.push(`- ⭐ Call Sign: "${resolvedCS}"`);
+            }
+            const rCS = (t: string) => resolvedCS ? t.replace(/\{callSign\}/g, resolvedCS) : t;
+            lines.push(`- Tone: ${rCS(speech.style)} | Ending: ${rCS(speech.ending)}`);
+        }
 
         // Phase/Condition (Already added at top)
 
@@ -74,9 +86,18 @@ export function formatCharacter(c: any, mode: string, state?: any): string {
         // [SPEECH STYLE]
         const speechInfoComb = getSpeechStyle(c);
         if (speechInfoComb) {
-            if (speechInfoComb.style) lines.push(`- Speech Style: ${speechInfoComb.style}`);
-            if (speechInfoComb.ending !== 'Unknown') lines.push(`- Ending Style: ${speechInfoComb.ending}`);
-            if (speechInfoComb.callSign) lines.push(`- Call Sign: ${speechInfoComb.callSign}`);
+            // [GENDER-AWARE CALL SIGN]
+            const playerGender = state?.playerStats?.gender || 'male';
+            let resolvedCS = '';
+            if (c.speech?.callSign) {
+                resolvedCS = typeof c.speech.callSign === 'string'
+                    ? c.speech.callSign
+                    : (c.speech.callSign[playerGender] || c.speech.callSign['male'] || '');
+                lines.push(`- Call Sign: "${resolvedCS}"`);
+            }
+            const rCS = (t: string) => resolvedCS ? t.replace(/\{callSign\}/g, resolvedCS) : t;
+            if (speechInfoComb.style) lines.push(`- Speech Style: ${rCS(speechInfoComb.style)}`);
+            if (speechInfoComb.ending !== 'Unknown') lines.push(`- Ending Style: ${rCS(speechInfoComb.ending)}`);
         }
 
         // Job/Class
@@ -177,9 +198,18 @@ export function formatCharacter(c: any, mode: string, state?: any): string {
     // [SPEECH STYLE]
     const speechInfoDef = getSpeechStyle(c);
     if (speechInfoDef) {
-        if (speechInfoDef.style) lines.push(`- Speech Style: ${speechInfoDef.style}`);
-        if (speechInfoDef.ending !== 'Unknown') lines.push(`- Ending Style: ${speechInfoDef.ending}`);
-        if (speechInfoDef.callSign) lines.push(`- Call Sign: ${speechInfoDef.callSign}`);
+        // [GENDER-AWARE CALL SIGN]
+        const playerGender = state?.playerStats?.gender || 'male';
+        let resolvedCS = '';
+        if (c.speech?.callSign) {
+            resolvedCS = typeof c.speech.callSign === 'string'
+                ? c.speech.callSign
+                : (c.speech.callSign[playerGender] || c.speech.callSign['male'] || '');
+            lines.push(`- ⭐ Call Sign: "${resolvedCS}"`);
+        }
+        const rCS = (t: string) => resolvedCS ? t.replace(/\{callSign\}/g, resolvedCS) : t;
+        if (speechInfoDef.style) lines.push(`- Speech Style: ${rCS(speechInfoDef.style)}`);
+        if (speechInfoDef.ending !== 'Unknown') lines.push(`- Ending Style: ${rCS(speechInfoDef.ending)}`);
     }
 
     // 5. Personality

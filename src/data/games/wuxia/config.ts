@@ -9,6 +9,7 @@ import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from './p
 
 import { getWuxiaStaticContext } from './prompts/staticContext';
 import { loadWuxiaData } from './loader';
+import { PACING_RULES } from './pacing';
 import wuxiaLocations from './jsons/locations.json';
 import wuxiaFactions from './jsons/factions.json';
 
@@ -81,6 +82,36 @@ export const WuxiaConfig: GameConfig = {
         good: '왕노야가 주인공의 검을 유심히 관찰한다',
         bad: '왕노야가 검이 마교 비급과 관련됨을 알아차린다',
     }),
+
+    // [13] Director Pacing Guide — 현재 턴에 맞는 phase별 연출 노트 + 성장 가이드를 Director에 주입
+    getDirectorPacingGuide: (turnCount: number) => {
+        const parts: string[] = [];
+
+        // Phase별 Director's Note (턴 기반)
+        if (turnCount <= (PACING_RULES.adaptation?.maxTurn || 20)) {
+            if (PACING_RULES.adaptation?.directorNote) parts.push(PACING_RULES.adaptation.directorNote.trim());
+        } else if (turnCount <= (PACING_RULES.introduction?.maxTurn || 50)) {
+            if (PACING_RULES.introduction?.directorNote) parts.push(PACING_RULES.introduction.directorNote.trim());
+        } else if (turnCount <= (PACING_RULES.risingAction?.maxTurn || 60)) {
+            if (PACING_RULES.risingAction?.directorNote) parts.push(PACING_RULES.risingAction.directorNote.trim());
+        }
+
+        // Global Director's Note (항상 적용)
+        if ((PACING_RULES as any).global?.directorNote) {
+            parts.push((PACING_RULES as any).global.directorNote.trim());
+        }
+
+        // Growth Guide
+        const g = PACING_RULES.growth as any;
+        if (g) {
+            if (g.directorNote) parts.push(g.directorNote.trim());
+            if (g.mandate) parts.push(`- Growth Mandate: ${g.mandate}`);
+            if (g.timeSkipStyle) parts.push(`- Time Skip Style: ${g.timeSkipStyle}`);
+            if (g.geniusMultiplier) parts.push(`- Growth Speed: ${g.geniusMultiplier}x faster than normal`);
+        }
+
+        return parts.length > 0 ? parts.join('\n\n') : null;
+    },
 
     // [10] Regional Context — Director에게 전달할 지역/세력 정보 (기존 regional-context.ts에서 이전)
     getRegionalContext: (location: string): string => {

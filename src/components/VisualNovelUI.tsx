@@ -2878,11 +2878,37 @@ export default function VisualNovelUI() {
                 return;
             }
 
-            // Deduct immediately
+            // Deduct immediately (Optimistic Client Update)
             const newFate = currentFate - fateCost;
             useGameStore.getState().setPlayerStats({ ...state.playerStats, fate: newFate });
             addToast(`운명 ${fateCost} 포인트 사용`, "info");
             console.log(`[Fate] Client-side deduction: -${fateCost} (New Balance: ${newFate})`);
+
+            // [Fix] Server DB Sync — mirrors the deductCoins pattern in handleSend
+            if (session?.user) {
+                import('@/app/actions/economy').then(({ deductFatePoints }) => {
+                    deductFatePoints(fateCost).then((result) => {
+                        if (result.success) {
+                            console.log("[Fate] Server deduction confirmed:", result.newBalance);
+                        } else {
+                            console.error("[Fate] Server deduction failed:", result.error);
+                            // Revert optimistic update on failure
+                            useGameStore.getState().setPlayerStats({
+                                ...useGameStore.getState().playerStats,
+                                fate: currentFate
+                            });
+                            addToast(`운명 포인트 차감 실패: ${result.error}`, "warning");
+                        }
+                    }).catch(err => {
+                        console.error("[Fate] Server deduction error:", err);
+                        useGameStore.getState().setPlayerStats({
+                            ...useGameStore.getState().playerStats,
+                            fate: currentFate
+                        });
+                        addToast("운명 포인트 서버 동기화 오류", "warning");
+                    });
+                });
+            }
         }
 
         if (history.length > 0 && queue.length > 0) {
@@ -4664,8 +4690,8 @@ export default function VisualNovelUI() {
                                                                     <div className="flex items-center gap-2 shrink-0">
                                                                         {log.preLogic && (
                                                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.preLogic.score >= 8 ? 'bg-green-900/50 text-green-300' :
-                                                                                    log.preLogic.score >= 5 ? 'bg-yellow-900/50 text-yellow-300' :
-                                                                                        'bg-red-900/50 text-red-300'
+                                                                                log.preLogic.score >= 5 ? 'bg-yellow-900/50 text-yellow-300' :
+                                                                                    'bg-red-900/50 text-red-300'
                                                                                 }`}>
                                                                                 Score: {log.preLogic.score}
                                                                             </span>
@@ -4691,8 +4717,8 @@ export default function VisualNovelUI() {
                                                                             <summary className="text-cyan-400 text-xs font-bold cursor-pointer select-none flex items-center gap-2">
                                                                                 🧠 PreLogic
                                                                                 <span className={`px-1.5 py-0.5 rounded text-[10px] ${log.preLogic.score >= 8 ? 'bg-green-900/40 text-green-300' :
-                                                                                        log.preLogic.score >= 5 ? 'bg-yellow-900/40 text-yellow-300' :
-                                                                                            'bg-red-900/40 text-red-300'
+                                                                                    log.preLogic.score >= 5 ? 'bg-yellow-900/40 text-yellow-300' :
+                                                                                        'bg-red-900/40 text-red-300'
                                                                                     }`}>
                                                                                     {log.preLogic.score}/10
                                                                                 </span>

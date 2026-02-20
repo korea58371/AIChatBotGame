@@ -9,6 +9,7 @@ import { getSystemPromptTemplate, getRankInfo } from './prompts/system';
 import { MOOD_PROMPTS } from './prompts/moods';
 import { getLogicPrompt, getStaticLogicPrompt, getDynamicLogicPrompt } from './prompts/logic';
 import { getGBYStaticContext } from './prompts/staticContext';
+import { PACING_RULES } from './pacing';
 import { loadGodBlessYouData } from './loader';
 import { formatCharacter } from './prompts/character';
 
@@ -56,28 +57,38 @@ export const GodBlessYouConfig: GameConfig = {
 
 [핵심 톤 & 테마]
 - 장르: 현대 어반 판타지 러브코미디 + 일상물. #힘숨찐 #개그 #러브코메디
-- 어조: 위트 있고 장난스러운 톤이 **기본(70%)**. 몬스터보다 '쪽팔림'이 더 무서운 주인공의 좌충우돌 일상.
-- 톤 가이드: 유머와 개그가 기본이되, 진짜 중요한 순간(성장/고백/위기)에는 자연스럽게 진지한 톤으로 전환.
+- ⭐ **힘숨찐 공식 (MUST FOLLOW)**:
+  1단계: 주인공이 능력을 발휘한다 → **이 장면은 반드시 멋지고 카타르시스 있게 연출**
+  2단계: 목격자의 시점에서는 이상하게 보인다 → **이 갭(gap)이 코미디**
+  ❌ 금지: 주인공이 능력을 쓰려다 실패/넘어짐/쥐남 (카타르시스 없는 개그)
+  ✅ 정석: 주인공이 완벽히 성공 → 그런데 목격자 눈에는 "미친놈이 허공을 벰" (카타르시스 + 개그)
+- 어조: 위트 있고 장난스러운 톤이 기본이되, **주인공의 능력 발현 장면에서는 진지하고 압도적인 톤 필수**.
+- 톤 밸런스: 코미디는 **리액션과 상황극**에서 발생. 주인공의 행동 자체를 무력화하는 개그는 금지.
 - 코미디: 슬랩스틱(허당미) + 츳코미(태클) + 주인공 흑역사. 단, 매 장면 똑같은 유형의 개그 반복 금지. 유머 형태를 다양화할 것.
 - 로맨스: 현대적 하렘(SNS 신경전, 귀여운 질투) + 갭 모에(사회적 지위 vs 사적 모습).
 
 [Mood별 톤 가이드라인 (⭐ CRITICAL)]
 - daily/comic: 유머, 슬랩스틱, 일상 개그 자유롭게 활용 (코미디 70~80%).
-- romance: 설렘과 유머가 공존 (코미디 50%). 플러팅 개그, 부끄러운 리액션 등.
-- tension/combat: 긴장감 우선이되 완전히 무거워지지 말 것 (코미디 20~30%). 가벼운 허세/태클 허용.
-- growth: 카타르시스 우선이되 성장 후 리액션에 유머 허용 (코미디 20~30%).
+- romance: 설렘과 유머가 공존 (코미디 40~50%). 플러팅 개그, 부끄러운 리액션 등.
+- tension/combat: **카타르시스 우선 (코미디 10~20%)**. 주인공의 능력은 **반드시 성공**시킨 후, 주변 반응에서만 개그. 전투 자체를 희화화 금지.
+- growth: **카타르시스 우선 (코미디 10~20%)**. 성장의 감동을 먼저, 리액션 개그는 그 이후.
 - cruelty/event: 상황의 무게감 존중 (코미디 10% 이하).
 
 [줄거리 설계 원칙 (⭐ CRITICAL)]
 1. **비극 금지**: 죽음, 불구, 절망적 상황 전개 시스템적 차단.
 2. **소소한 행복**: 거창한 목표보다 오늘 저녁 메뉴, 주말 데이트, 새로 산 게임기 같은 일상의 즐거움.
-3. **생명 위협 금지**: 몬스터 습격, 납치, 살해 협박 같은 느와르적 전개 금지. 개그성 위기(쪽팔림, 망신)는 환영. 비-폭력 긴장감(협상, 심리전)도 허용.
+3. **소규모 위협 허용**: Phase 0~1에서도 기생체, 저급 이계종, 소규모 균열 등 **주인공이 해결할 수 있는 위기**는 허용. 이것이 힘숨찐의 카타르시스 기회. 단, 대규모 몬스터 습격/납치/암살 같은 느와르적 전개는 금지.
 4. **비살상 전투**: Hostile Faction 아닌 상대와의 전투는 전부 '대련/해프닝'. 기절/무장해제/항복으로 종료.
-5. **성공은 성공으로**: PreLogic Score 높은 행동은 실제로 성공해야 함. 단, 성공 직후 리액션에 유머를 넣는 것은 OK.
+5. **⭐ 카타르시스 순서 (MUST FOLLOW)**: 주인공이 능력을 사용하면:
+   ① 능력이 **실제로 성공** (멋진 장면)
+   ② 성공의 결과를 **독자/플레이어가 체감** (위기 해소, 적 격퇴)
+   ③ 그 **이후** 주변 인물의 오해/리액션이 코미디로 전개
+   ❌ ①을 스킵하고 바로 코미디로 가는 것은 **절대 금지**
 6. **따뜻한 인간관계**: 상호 존중. 초기 호감도 0~10(팬 수준). 현실적 디테일(요리, 청소, 계절감).
+7. **오해 코미디 상한**: 같은 유형의 "오해→망신" 패턴은 **최대 2턴 연속**까지만 허용. 3턴째에는 반드시 다른 톤(성장/로맨스/일상)으로 전환.
 
 [Phase별 캐릭터 해금 (⭐ CRITICAL)]
-- Phase 0 (일반인, Fame<10): 한가을(여동생), 은하율(소꿉친구), 정한수(친구). 몬스터 위협 없음.
+- Phase 0 (일반인, Fame<10): 한가을(여동생), 은하율(소꿉친구), 정한수(친구). 소규모 이계종 조우 가능.
 - Phase 1 (Hidden F, Fame<1000): 동네 주민, 편의점 알바생. 심각한 빌런/전쟁급 위기 잠금.
 - Phase 2 (D~B, Fame>=1000): 소소한 사건 해결, 중소 길드 협업.
 - ⚠️ S급 블레서(천서윤, 성시아, 한여름 등)는 Phase 3 전까지 뉴스/TV로만 등장. 직접 만남 금지.
@@ -91,9 +102,33 @@ export const GodBlessYouConfig: GameConfig = {
 
     // [12] Director Examples — GBY 전용 NO SPOILERS 예시
     getDirectorExamples: () => ({
-        good: '한가을이 오빠의 반지하 냉장고를 열며 한숨을 쉰다',
-        bad: '한가을이 오빠의 숨겨진 S급 각성 잠재력을 눈치챈다',
+        good: '한가을이 주인공의 반지하 냉장고를 열며 한숨을 쉰다',
+        bad: '한가을이 주인공의 숨겨진 S급 각성 잠재력을 눈치챈다',
     }),
+
+    // [13] Director Pacing Guide — 현재 턴에 맞는 phase별 연출 노트 + 성장 가이드를 Director에 주입
+    getDirectorPacingGuide: (turnCount: number) => {
+        const parts: string[] = [];
+
+        // Phase별 Director's Note (턴 기반) — GBY는 adaptation이 없음
+        if (turnCount <= (PACING_RULES.introduction?.maxTurn || 30)) {
+            const intro = PACING_RULES.introduction;
+            if (intro?.focus) parts.push(`[Pacing Phase: Introduction (Turn ${turnCount}/${intro.maxTurn})]\n- Focus: ${intro.focus}\n- Guidance: ${intro.guidance || ''}`);
+        } else if (turnCount <= (PACING_RULES.risingAction?.maxTurn || 60)) {
+            const rising = PACING_RULES.risingAction;
+            if (rising?.focus) parts.push(`[Pacing Phase: Rising Action (Turn ${turnCount}/${rising.maxTurn})]\n- Focus: ${rising.focus}\n- Guidance: ${rising.guidance || ''}`);
+        }
+
+        // Growth Guide
+        const g = PACING_RULES.growth as any;
+        if (g) {
+            if (g.directorNote) parts.push(g.directorNote.trim());
+            if (g.mandate) parts.push(`- Growth Mandate: ${g.mandate}`);
+            if (g.trainingStyle) parts.push(`- Training Style: ${g.trainingStyle}`);
+        }
+
+        return parts.length > 0 ? parts.join('\n\n') : null;
+    },
 
     // [10] Regional Context — Director에게 전달할 GBY 지역/세력 정보 (factions.json 기반 동적 생성)
     getRegionalContext: (location: string): string => {

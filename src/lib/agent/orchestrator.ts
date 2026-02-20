@@ -610,6 +610,7 @@ ${thinkingInstruction}
 
         const martialCost = calculateCost(MODEL_CONFIG.LOGIC, martialArtsOut.usageMetadata?.promptTokenCount || 0, martialArtsOut.usageMetadata?.candidatesTokenCount || 0, martialArtsOut.usageMetadata?.cachedContentTokenCount || 0);
         const choiceCost = calculateCost(MODEL_CONFIG.CHOICES || 'gemini-2.5-flash-lite', choicesOut.usageMetadata?.promptTokenCount || 0, choicesOut.usageMetadata?.candidatesTokenCount || 0, choicesOut.usageMetadata?.cachedContentTokenCount || 0);
+        const memoryCost = calculateCost(MODEL_CONFIG.MEMORY, memoryOut?.usageMetadata?.promptTokenCount || 0, memoryOut?.usageMetadata?.candidatesTokenCount || 0, memoryOut?.usageMetadata?.cachedContentTokenCount || 0);
 
         return {
             finalStoryText,
@@ -624,13 +625,13 @@ ${thinkingInstruction}
                 total: (t6 - startTime)
             },
             costs: {
-                total: postLogicCost + martialCost + choiceCost
+                total: postLogicCost + martialCost + choiceCost + memoryCost
             },
             usage: {
                 postLogic: this.normalizeUsage(postLogicOut.usageMetadata, postLogicCost),
                 martialArts: this.normalizeUsage(martialArtsOut.usageMetadata, martialCost),
                 choices: this.normalizeUsage(choicesOut.usageMetadata, choiceCost),
-                memory: this.normalizeUsage(memoryOut?.usageMetadata, 0) // [NEW] Memory cost tracked separately
+                memory: this.normalizeUsage(memoryOut?.usageMetadata, memoryCost)
             },
             memoryOut, // [NEW] Memory Agent Output
         };
@@ -815,16 +816,21 @@ ${thinkingInstruction}
                         rank: '엑스트라',
                         title: '(이전 턴 등장 인물)',
                         faction: '무소속',
+                        identity: '',
                         relationship: 0,
                         tags: ['extra', 'continuity'],
                     };
                 }
+                const socialKeys = charData.social ? Object.keys(charData.social).slice(0, 2).join(', ') : '';
+                const profileIdentity = charData.profile?.['신분'] || '';
+                const identityStr = profileIdentity || socialKeys || '';
                 return {
                     id: charId,
                     name: charData.name || charId,
                     rank: charData['강함']?.['등급'] || charData.profile?.['등급'] || 'Unknown',
                     title: charData.title || charData.role || '',
                     faction: charData.faction || charData.profile?.['소속'] || '무소속',
+                    identity: identityStr,
                     relationship: effectiveGameState.playerStats?.relationships?.[charId] ||
                         effectiveGameState.playerStats?.relationships?.[charData.name] || 0,
                     tags: charData.system_logic?.tags || [],
@@ -880,13 +886,14 @@ ${thinkingInstruction}
                     const rank = cd['강함']?.['등급'] || cd.profile?.['등급'] || 'Unknown';
                     const faction = cd.faction || cd.profile?.['소속'] || '무소속';
                     const role = cd.title || cd.role || '';
+                    const identity = cd.profile?.['신분'] || (cd.social ? Object.keys(cd.social).slice(0, 2).join(', ') : '') || '';
                     // [IMPROVED] Director에 연관 기억 전달 (현재 상황 키워드 기반 필터링)
                     const dynamicChar = effectiveGameState.characterData?.[c.id];
                     const rawMem = dynamicChar?.memories || cd.memories || [];
                     let memLine = '';
                     if (rawMem.length > 0) {
                         const memKeywords = `${userInput} ${lastTurnSummary}`
-                            .split(/[\s,→·/()[\]]+/)
+                            .split(/[\s,→·/()\[\]]+/)
                             .filter((w: string) => w.length >= 2)
                             .slice(0, 10);
                         const filtered = filterMemories(rawMem, {
@@ -898,10 +905,11 @@ ${thinkingInstruction}
                             memLine = `\n    최근기억: ${filtered.map(formatMemoryLine).join(' / ')}`;
                         }
                     }
-                    return `- ${c.name} [${rank}] ${faction}${role ? ' / ' + role : ''}${memLine}\n    (추천사유: ${c.reasons.slice(0, 2).join(', ')})`;
+                    return `- ${c.name} [${rank}] ${faction}${role ? ' / ' + role : ''}${identity ? ` | 신분: ${identity}` : ''}${memLine}\n    (추천사유: ${c.reasons.slice(0, 2).join(', ')})`;
                 }).join('\n'),
                 gameGuide: currentGameConfig?.getDirectorGuide?.() || '',
                 directorExamples: currentGameConfig?.getDirectorExamples?.(),
+                growthGuide: currentGameConfig?.getDirectorPacingGuide?.(effectiveGameState.turnCount || 0) || undefined,
             });
         } catch (e) {
             console.error("[Director] Failed, using fallback:", e);
@@ -916,18 +924,68 @@ ${thinkingInstruction}
         console.log(`[Pipeline] ④ Director: ${tDirEnd - tDirStart}ms (beats: ${directorOut.plot_beats?.length || 0})`);
         yield { type: 'progress', stage: 'director', duration: tDirEnd - tDirStart, input: { mood: preLogicOut.mood_override, activeChars: (effectiveGameState.activeCharacters || []).length }, output: { beats: directorOut.plot_beats || [], tone: directorOut.tone || '', hooks: (directorOut.subtle_hooks || []).length } };
 
-        // ⑤ Context Composer (Director-guided data selection)
+        // [NEW] Director 씬 캐스팅 반영 — departing_characters를 활성 캐릭터에서 제거
+        if (directorOut.scene_direction?.departing_characters && directorOut.scene_direction.departing_characters.length > 0) {
+            const departingNames = new Set(directorOut.scene_direction.departing_characters.map((d: any) => d.name));
+            const beforeCount = (effectiveGameState.activeCharacters || []).length;
+            effectiveGameState.activeCharacters = (effectiveGameState.activeCharacters || []).filter((id: string) => {
+                const charData = effectiveGameState.characterData?.[id];
+                const name = charData?.name || charData?.이름 || id;
+                return !departingNames.has(name);
+            });
+            const removedCount = beforeCount - (effectiveGameState.activeCharacters || []).length;
+            if (removedCount > 0) {
+                console.log(`[Pipeline] Director Departure: Removed ${removedCount} characters (${Array.from(departingNames).join(', ')})`);
+            }
+        }
+
+        // [NEW] 동행자(Companions) → activeCharacters 자동 포함
+        // 동행자는 매턴 대화하지 않아도 잠재적으로 함께 있는 상태이므로 항상 활성 유지
+        const companions = effectiveGameState.directorState?.companions || [];
+        if (companions.length > 0) {
+            const currentActive = new Set(effectiveGameState.activeCharacters || []);
+            const charDataEntries = Object.entries(effectiveGameState.characterData || {});
+            let addedCount = 0;
+
+            for (const comp of companions) {
+                // Find character ID by name match
+                const match = charDataEntries.find(([_, data]: [string, any]) => {
+                    return data.name === comp.name || data.이름 === comp.name;
+                });
+                if (match) {
+                    const [charId] = match;
+                    if (!currentActive.has(charId)) {
+                        currentActive.add(charId);
+                        addedCount++;
+                    }
+                }
+            }
+
+            if (addedCount > 0) {
+                effectiveGameState.activeCharacters = Array.from(currentActive);
+                console.log(`[Pipeline] Companion Guard: Ensured ${addedCount} companions in activeCharacters (${companions.map((c: any) => c.name).join(', ')})`);
+            }
+        }
         let contextPlayer = PromptManager.getPlayerContext(effectiveGameState, language);
         const contextCharacters = PromptManager.composeCharacterContext(effectiveGameState, directorOut, language);
         const contextRetrieved = retrievedContext || "";
 
         // Director's narrative guide (replaces old PreLogic narrative_guide)
+        // [NEW] scene_direction을 포함하여 Story Model이 Director의 씬 캐스팅을 준수하도록 함
+        const sceneDirectionGuide = directorOut.scene_direction ? `
+[Scene Direction (MUST FOLLOW)]
+${directorOut.scene_direction.time_of_day ? `Time of Day: ${directorOut.scene_direction.time_of_day}` : ''}
+${directorOut.scene_direction.scene_characters?.length ? `Characters in this scene: ${directorOut.scene_direction.scene_characters.join(', ')}\n⚠️ ONLY these characters should appear, speak, or act in this turn. Do NOT introduce other characters unless absolutely necessary.` : ''}
+${directorOut.scene_direction.departing_characters?.length ? `Departing: ${directorOut.scene_direction.departing_characters.map((d: any) => `${d.name}(${d.reason})`).join(', ')}\n⚠️ Write a natural departure scene for these characters.` : ''}
+`.trim() : '';
+
         const narrativeGuide = `[Narrative Direction]
 [Plot Beats]: ${(directorOut.plot_beats || []).join(' → ')}
 [Tone]: ${directorOut.tone || 'natural'}
 [Emotional Direction]: ${directorOut.emotional_direction || ''}
 ${preLogicOut.combat_analysis ? `[Combat Analysis]: ${preLogicOut.combat_analysis}` : ""}
 ${preLogicOut.location_inference ? `[Location Guidance]: ${preLogicOut.location_inference}` : ""}
+${sceneDirectionGuide ? `\n${sceneDirectionGuide}` : ''}
 ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${gameState.activeEvent.id}]\n${gameState.activeEvent.prompt}\n(Use this as background context. Do not disrupt combat/high-tension flows unless necessary.)\n` : ""}`;
 
 
@@ -940,7 +998,10 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
 2. [Character Reaction]: 위 상황(1번)에 대해, 등장인물들이 보일 **가장 자연스럽고 개연성 있는 반응**을 스스로 판단하여 결정하시오. (특정 분위기를 강제하지 말 것)
 3. [Tone Planning]: 캐릭터 설정(말투, 어미)을 참고하여, 이번 턴에 사용할 **핵심 대사 키워드**를 미리 2개씩 선정하시오.
 4. [Narrative Focus]: 현재 분위기(Mood)가 평화롭다면, 감정선과 분위기 묘사에 집중하시오. 유저가 원하지 않는 한 억지 갈등(Conflict)이나 반전(Twist)을 생성하지 마시오.
-5. [Open Ending Check]: 마지막 문단을 점검하시오 — 에필로그/회고/다짐형 마무리가 아니라, 플레이어가 즉시 반응해야 하는 '진행 중인 상황'(대사, 질문, 사건 발생)으로 끝나는가? 웹소설처럼 "다음이 궁금해지는" 결말인가?
+5. [Open Ending Check (Mood-Dependent)]:
+   - Mood가 tension/combat/event일 때: 마지막 문단이 '진행 중인 위기/대결/결정'으로 끝나는가?
+   - Mood가 daily/romance/social/comic일 때: 마지막 문단이 '진행 중인 대화/감정선/관계의 깊어짐'으로 끝나는가?
+   - ⚠️ romance/daily mood에서 전화벨, 누군가 난입, 사건 발생 같은 **방해 이벤트로 끝내는 것은 금지**. 대화나 감정이 자연스럽게 이어지는 상태 자체가 훌륭한 열린 결말이다.
 
 **[중요] 답변은 반드시 <Thinking> 태그로 시작해야 합니다.**
 그 후, <Output> 태그 안에 본문을 작성하세요.`
@@ -950,7 +1011,9 @@ ${gameState.activeEvent ? `\n[Active Event Context (Background)]\n[EVENT: ${game
 2. 등장인물의 말투(Speech Pattern)는 설정과 일치하는가?
 3. 이번 턴의 주요 사건(Key Events)은 무엇인가?
 4. 캐릭터들의 기억 정보와 현재 네러티브의 개연성/핍진성이 유지되는가?
-5. [Open Ending Check]: 마지막 문단이 에필로그/회고/다짐형 마무리가 아니라, 플레이어가 즉시 반응해야 하는 '진행 중인 상황'(대사, 질문, 사건 발생)으로 끝나는가?
+5. [Open Ending Check (Mood-Dependent)]:
+   - tension/combat: 위기/대결이 진행 중인 상태로 끝나는가?
+   - daily/romance/social: 대화/감정선이 자연스럽게 이어지는 상태로 끝나는가? (방해 이벤트 삽입 금지)
 
 그 후, <Output> 태그 안에 본문을 작성하세요.`;
 
@@ -1114,8 +1177,10 @@ ${thinkingInstruction}
         if (!cleanStoryText || !cleanStoryText.trim()) cleanStoryText = " ... "; // Fallback after all retries
 
         // Execute Phase 2
-        const p1Costs = { total: calculateCost((storyMetadata as any)?.usedModel || MODEL_CONFIG.STORY, storyMetadata?.usageMetadata?.promptTokenCount || 0, storyMetadata?.usageMetadata?.candidatesTokenCount || 0, storyMetadata?.usageMetadata?.cachedContentTokenCount || 0) };
-        const p1Usage = { preLogic: this.normalizeUsage(preLogicOut.usageMetadata, 0), story: this.normalizeUsage(storyMetadata?.usageMetadata, p1Costs.total) };
+        const preLogicCost = calculateCost(MODEL_CONFIG.PRE_LOGIC, preLogicOut.usageMetadata?.promptTokenCount || 0, preLogicOut.usageMetadata?.candidatesTokenCount || 0, preLogicOut.usageMetadata?.cachedContentTokenCount || 0);
+        const storyCost = calculateCost((storyMetadata as any)?.usedModel || MODEL_CONFIG.STORY, storyMetadata?.usageMetadata?.promptTokenCount || 0, storyMetadata?.usageMetadata?.candidatesTokenCount || 0, storyMetadata?.usageMetadata?.cachedContentTokenCount || 0);
+        const p1Costs = { total: preLogicCost + storyCost };
+        const p1Usage = { preLogic: this.normalizeUsage(preLogicOut.usageMetadata, preLogicCost), story: this.normalizeUsage(storyMetadata?.usageMetadata, storyCost) };
 
         const usedModel = (storyMetadata as any)?.usedModel || modelName;
         // Inject System/Final prompt for debug if available in storyMetadata (it is)
@@ -1208,7 +1273,7 @@ ${thinkingInstruction}
         try {
             const { AgentDirector } = await import('./agent-director');
             const updatedDirectorState = AgentDirector.updateState(
-                effectiveGameState.directorState || { foreshadowing: [], activeThreads: [], characterArcs: {}, recentLog: [], momentum: { currentFocus: '일상', focusDuration: 0, lastMajorEvent: '', lastMajorEventTurn: 0 } },
+                effectiveGameState.directorState || { foreshadowing: [], activeThreads: [], characterArcs: {}, recentLog: [], momentum: { currentFocus: '일상', focusDuration: 0, lastMajorEvent: '', lastMajorEventTurn: 0 }, companions: [] },
                 directorOut,
                 effectiveGameState.turnCount || 0
             );
