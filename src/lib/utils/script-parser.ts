@@ -39,7 +39,7 @@ export function parseScript(text: string): ScriptSegment[] {
     // [Fix] Enforce Newline before ALL block tags to prevent swallowing/attachment issues
     // If AI writes "Text.<Tag> Title", we convert it to "Text.\n<Tag> Title"
     // Also explicitly handle \r for Windows consistency
-    text = text.replace(/([^\n\r])<(BGM|CG|배경|Sound|Effect|시간|시간경과|나레이션|대사|선택지|시스템|떠남)>/gi, '$1\n<$2>');
+    text = text.replace(/([^\n\r])<(BGM|CG|배경|Sound|Effect|시간|시간경과|나레이션|대사|선택지|시스템팝업|시스템|떠남)>/gi, '$1\n<$2>');
 
     // Regex to match tags like <TagName>Content or <TagName>Content...
     // We split by newlines first to handle line-based parsing safely, 
@@ -220,9 +220,41 @@ export function parseScript(text: string): ScriptSegment[] {
             });
 
         } else if (tagName === '시스템팝업' || tagName === '시스템') {
-            // [Refactor] Use parseInlineContent to handle inline tags like <Stat>
-            const inlineSegments = parseInlineContent(content, { type: 'system_popup' });
-            segments.push(...inlineSegments);
+            // [Fix] System popup is single-paragraph. If content has newlines,
+            // the first paragraph is the popup; the rest is narration/dialogue.
+            const lines = content.split('\n');
+            // Collect popup lines until the first blank line or until a line
+            // that looks like dialogue (starts with ") / another tag.
+            let popupLines: string[] = [];
+            let remainingStartIdx = lines.length;
+            for (let li = 0; li < lines.length; li++) {
+                const trimmed = lines[li].trim();
+                // Blank line = boundary between popup and following content
+                if (trimmed === '' && popupLines.length > 0) {
+                    remainingStartIdx = li + 1;
+                    break;
+                }
+                // If this line starts with a quote or looks like dialogue, it's not popup
+                if (popupLines.length > 0 && (trimmed.startsWith('"') || trimmed.startsWith('\u201c') || trimmed.startsWith('\u300c'))) {
+                    remainingStartIdx = li;
+                    break;
+                }
+                if (trimmed) popupLines.push(trimmed);
+            }
+
+            const popupContent = popupLines.join(' ');
+            if (popupContent) {
+                const inlineSegments = parseInlineContent(popupContent, { type: 'system_popup' });
+                segments.push(...inlineSegments);
+            }
+
+            // Push remaining lines as separate segments via recursion
+            if (remainingStartIdx < lines.length) {
+                const remaining = lines.slice(remainingStartIdx).join('\n').trim();
+                if (remaining) {
+                    segments.push(...parseScript(remaining));
+                }
+            }
 
         } else if (tagName === '나레이션') {
             // Clean Markdown (Bold)
@@ -303,7 +335,10 @@ export function parseScript(text: string): ScriptSegment[] {
                 }
 
                 // Heuristic: Check if content has narration attached after the dialogue
+                // Pattern 1: Quoted dialogue followed by narration
                 const splitMatch = dialogue.match(/^"([^"]+)"\s*\n+([\s\S]+)$/);
+                // Pattern 2: Curly-quoted dialogue followed by narration
+                const splitMatchCurly = !splitMatch ? dialogue.match(/^\u201c([^\u201d]+)\u201d\s*\n+([\s\S]+)$/) : null;
 
                 let dialogueContent = dialogue;
                 let narrationContent = null;
@@ -311,6 +346,16 @@ export function parseScript(text: string): ScriptSegment[] {
                 if (splitMatch) {
                     dialogueContent = splitMatch[1]; // [Fix] Do not re-add quotes
                     narrationContent = splitMatch[2].trim();
+                } else if (splitMatchCurly) {
+                    dialogueContent = splitMatchCurly[1];
+                    narrationContent = splitMatchCurly[2].trim();
+                } else if (dialogue.includes('\n')) {
+                    // [Fix] Fallback: If dialogue has newlines but no quote pattern,
+                    // treat only the first line as dialogue and the rest as narration.
+                    // This prevents narration from being displayed with the character name.
+                    const firstNewline = dialogue.indexOf('\n');
+                    dialogueContent = dialogue.substring(0, firstNewline).trim();
+                    narrationContent = dialogue.substring(firstNewline + 1).trim();
                 }
 
                 // Process Dialogue Content with Inline Parsing support
@@ -323,8 +368,9 @@ export function parseScript(text: string): ScriptSegment[] {
                 segments.push(...inlineSegments);
 
                 if (narrationContent) {
-                    const nSegments = parseInlineContent(narrationContent, { type: 'narration' });
-                    segments.push(...nSegments);
+                    // [Fix] Use parseScript for full recursive parsing — remaining content
+                    // may contain block tags like <나레이션>, <대사>, <시스템팝업> etc.
+                    segments.push(...parseScript(narrationContent));
                 }
 
             } else {

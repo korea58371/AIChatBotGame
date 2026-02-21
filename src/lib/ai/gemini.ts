@@ -334,9 +334,12 @@ export async function* generateResponseStream(
     const cacheDisplayName = `CACHE_${gameState.activeGameId}_STORY_v2_0_${sanitizedModelName}${overrideKey}`;
 
     // [DEBUG: CACHE DISABLED] Threshold raised to 35000 to force NO CACHE (Reverting to "Yesterday" state)
+    const cacheStartTime = Date.now();
     if (systemInstruction.length > 25000) {
         cachedContentName = await getOrUpdateCache(apiKey, cacheDisplayName, systemInstruction, targetModel);
     }
+    const cacheDuration = Date.now() - cacheStartTime;
+    console.log(`[GeminiStream⏱️] Cache lookup: ${cacheDuration}ms (result: ${cachedContentName ? 'HIT' : 'MISS/SKIP'})`);
 
     const modelsToTry = [targetModel, MODEL_CONFIG.LOGIC];
     let lastError;
@@ -386,13 +389,15 @@ export async function* generateResponseStream(
                 processedHistory = [{ role: 'user', parts: [{ text: "(Context Continuation)" }] }, ...processedHistory];
             }
 
-            console.log(`[GeminiStream] Final Logic/Model Config:`, JSON.stringify(modelConfig, null, 2));
+            // [PERF] Log prompt sizes for diagnosis
+            const historyChars = processedHistory.reduce((sum, m) => sum + (m.parts[0]?.text?.length || 0), 0);
+            console.log(`[GeminiStream⏱️] Prompt sizes — System: ${systemInstruction.length} chars, History: ${historyChars} chars (${processedHistory.length} msgs), ThinkingConfig: ${JSON.stringify(modelConfig.thinkingConfig || 'NONE')}, Cache: ${cachedContentName ? 'YES' : 'NO'}`);
 
             const chatSession = model.startChat({ history: processedHistory });
             const finalUserMessage = `${dynamicPrompt}\n\n${userMessage}`;
 
             // STREAMING CALL (with retry for transient API failures)
-            console.log(`[GeminiStream] Sending message to API... (User Msg: ${finalUserMessage.length} chars)`);
+            console.log(`[GeminiStream⏱️] Sending message to API... (Dynamic+User Msg: ${finalUserMessage.length} chars)`);
             const streamStartTime = Date.now();
             const result = await retryWithBackoff(
                 () => chatSession.sendMessageStream(finalUserMessage),
@@ -400,38 +405,43 @@ export async function* generateResponseStream(
                 2000,    // Initial delay 2s
                 `Stream Story Generation (${currentModel})`
             );
-            console.log(`[GeminiStream] Stream object received. Waiting for first chunk...`);
+            const streamObjTime = Date.now() - streamStartTime;
+            console.log(`[GeminiStream⏱️] Stream object received in ${streamObjTime}ms. Iterating chunks...`);
 
             let accumulatedText = "";
+            let accumulatedThinkingChars = 0;
             let firstChunkReceived = false;
+            let firstTextChunkTime = 0;
+            let thinkingEndTime = 0;
+            let lastThinkingChunkTime = 0;
             let chunkCount = 0;
+            let thinkingChunkCount = 0;
+            let textChunkCount = 0;
 
             for await (const chunk of result.stream) {
                 chunkCount++;
                 const now = Date.now();
                 if (!firstChunkReceived) {
                     const ttft = now - streamStartTime;
-                    console.log(`[GeminiStream] 🚀 FIRST CHUNK returned from iterator after ${ttft}ms (TTFT)`);
+                    console.log(`[GeminiStream⏱️] 🚀 FIRST CHUNK after ${ttft}ms (TTFT). Type: ${chunk.candidates?.[0]?.content?.parts?.[0]?.thought ? 'THINKING' : 'TEXT'}`);
                     firstChunkReceived = true;
                 }
-
-                // [Debug] Chunk inspection
-                // console.log(`[GeminiStream] Chunk #${chunkCount}: Candidates=${chunk.candidates?.length}`);
 
                 let chunkText = '';
                 try {
                     chunkText = chunk.text();
                 } catch (e) {
-                    // console.log(`[GeminiStream] Chunk #${chunkCount} has no text:`, e);
+                    // No text in this chunk (likely a thinking chunk)
                 }
 
                 // Handle thoughts if present but no text
                 if (chunk.candidates && chunk.candidates.length > 0) {
                     const parts = chunk.candidates[0].content?.parts || [];
                     for (const p of parts as any[]) {
-                        // Relaxed check and debug logging
                         if (p.thought && p.text) {
-                            // console.log(`[GeminiStream] Native Thought Chunk: ${p.text.length} chars`);
+                            thinkingChunkCount++;
+                            accumulatedThinkingChars += p.text.length;
+                            lastThinkingChunkTime = now;
                             yield `<Thinking>${p.text}</Thinking>`;
                         } else if (p.thought) {
                             console.log(`[GeminiStream] Found thought part with no text:`, JSON.stringify(p));
@@ -440,12 +450,51 @@ export async function* generateResponseStream(
                 }
 
                 if (chunkText) {
+                    textChunkCount++;
+                    if (textChunkCount === 1) {
+                        firstTextChunkTime = now;
+                        // If there was thinking, log the transition
+                        if (thinkingChunkCount > 0) {
+                            thinkingEndTime = lastThinkingChunkTime;
+                            const thinkingDuration = thinkingEndTime - streamStartTime;
+                            console.log(`[GeminiStream⏱️] 🧠 THINKING phase ended. Duration: ${thinkingDuration}ms, Chunks: ${thinkingChunkCount}, Chars: ${accumulatedThinkingChars}`);
+                        }
+                        const ttFirstText = now - streamStartTime;
+                        console.log(`[GeminiStream⏱️] ✍️ FIRST TEXT CHUNK after ${ttFirstText}ms (Time-to-First-Text)`);
+                    }
                     accumulatedText += chunkText;
                     yield chunkText; // Yield partial text
                 }
             }
 
+            const streamEndTime = Date.now();
             const response = await result.response; // Wait for full completion to get metadata
+
+            // ===== [PERF SUMMARY] =====
+            const totalStreamDuration = streamEndTime - streamStartTime;
+            const textGenerationDuration = firstTextChunkTime > 0 ? (streamEndTime - firstTextChunkTime) : 0;
+            const thinkingDuration = thinkingEndTime > 0 ? (thinkingEndTime - streamStartTime) : 0;
+            const usage = response.usageMetadata;
+            const promptTokens = usage?.promptTokenCount || 0;
+            const candidateTokens = usage?.candidatesTokenCount || 0;
+            const cachedTokens = usage?.cachedContentTokenCount || 0;
+            const thinkingTokens = (usage as any)?.thoughtsTokenCount || 0;
+
+            console.log(`\n[GeminiStream⏱️] ====== PERFORMANCE REPORT ======`);
+            console.log(`  Model: ${currentModel}`);
+            console.log(`  Cache: ${cachedContentName ? 'HIT' : 'MISS'} (lookup: ${cacheDuration}ms)`);
+            console.log(`  Prompt Tokens: ${promptTokens} (cached: ${cachedTokens}, fresh: ${promptTokens - cachedTokens})`);
+            console.log(`  Output Tokens: ${candidateTokens} (thinking: ${thinkingTokens}, text: ${candidateTokens - thinkingTokens})`);
+            console.log(`  ---`);
+            console.log(`  Stream Object: ${streamObjTime}ms`);
+            console.log(`  Thinking Phase: ${thinkingDuration}ms (${thinkingChunkCount} chunks, ${accumulatedThinkingChars} chars)`);
+            console.log(`  Text Generation: ${textGenerationDuration}ms (${textChunkCount} chunks, ${accumulatedText.length} chars)`);
+            console.log(`  Total Stream: ${totalStreamDuration}ms`);
+            if (candidateTokens > 0 && totalStreamDuration > 0) {
+                const tokensPerSec = (candidateTokens / (totalStreamDuration / 1000)).toFixed(1);
+                console.log(`  Throughput: ${tokensPerSec} tokens/sec`);
+            }
+            console.log(`  ================================\n`);
 
             // [DEBUG] Log finishReason and safety diagnostics for empty responses
             const finishReason = response.candidates?.[0]?.finishReason;
@@ -475,7 +524,7 @@ export async function* generateResponseStream(
                 systemPrompt: systemInstruction,
                 finalUserMessage: finalUserMessage,
                 usedModel: currentModel,
-                totalTokenCount: (response.usageMetadata?.promptTokenCount || 0) + (response.usageMetadata?.candidatesTokenCount || 0)
+                totalTokenCount: (promptTokens || 0) + (candidateTokens || 0)
             };
 
             return; // Success, exit loop
