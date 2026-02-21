@@ -859,6 +859,8 @@ ${thinkingInstruction}
                 userInput,
                 location: effectiveGameState.currentLocation || '',
                 turnCount: effectiveGameState.turnCount || 0,
+                currentDay: effectiveGameState.day || 1,
+                currentTimePhase: effectiveGameState.time || 'Morning',
                 activeGoals: (effectiveGameState.goals || []).filter((g: any) => g.status === 'ACTIVE').map((g: any) => g.description),
                 lastTurnSummary: gameState.lastTurnSummary || '',
                 regionalContext: (currentGameConfig?.getRegionalContext?.(effectiveGameState.currentLocation || '') || '') + '\n\n' + locationMapContext,
@@ -1038,7 +1040,7 @@ ${contextRetrieved}
 [Player Action]
 ${userInput}
 
-나레이션 가이드와 기존 설정 및 규칙을 참고하여 한글 기준 약 5,000자 분량의 내용을 작성하세요.
+나레이션 가이드와 기존 설정 및 규칙을 참고하여 한글 기준 약 4,000자 분량의 내용을 작성하세요.
 
 ${thinkingInstruction}
 `;

@@ -58,6 +58,8 @@ export interface DirectorInput {
     gameGuide: string; // [NEW] 게임별 톤/세계관/행동규범 (GameConfig에서 동적 주입)
     directorExamples?: { good: string; bad: string };
     growthGuide?: string; // [NEW] pacing.ts growth 섹션에서 주입되는 성장 가이드
+    currentDay: number;         // 현재 게임 일차 (1부터 시작)
+    currentTimePhase: string;   // 현재 시간대 (Morning/Afternoon/Evening/Night)
 }
 
 export interface DirectorOutput {
@@ -174,6 +176,10 @@ You will receive the game's [Tone & World Guide] in the user prompt. Follow it s
 4. **Tone Setting**: Set the emotional tone for the turn.
 5. **Regional Awareness**: Use the Regional Landscape data to make geopolitically coherent decisions.
 6. **Growth Encouragement**: If [Growth Guide] is provided AND the mood is "growth" or "tension", design plot beats with training opportunities. But if the mood is "daily"/"social"/"romance", do NOT force growth triggers — let the player enjoy the moment.
+7. **Time Skip Instruction (CRITICAL)**: When designing a plot beat that involves a passage of time (training, travel, recovery), you MUST include an explicit **system tag directive** inside that plot beat for the Story Model.
+   - Format: "(스토리 모델 지시: 서술 중간에 반드시 <시간경과> 태그를 사용하고, 그 직후 <시간>N일차 HH:MM(오전/오후)</시간> 으로 시점을 업데이트할 것)"
+   - Example plot beat: "보름간의 집중 수련으로 기초 내공 형성. (스토리 모델 지시: 서술 중간에 반드시 <시간경과> 태그를 사용하고, 그 직후 <시간>17일차 15:00(오후)</시간> 으로 시점을 업데이트할 것)"
+   - ❌ 금지: 시간이 흐르는 전개를 서술로만 처리하고 태그를 생략
 
 [ABSOLUTE RULES]
 1. **NO SPOILERS**: Never reveal the "truth" behind foreshadowing in your output.
@@ -228,8 +234,18 @@ You will receive the game's [Tone & World Guide] in the user prompt. Follow it s
     - **1턴 = 소설 0.5~1화 분량**. 하나의 에피소드에 집중하라.
     - **사건 과잉 금지**: plot_beats에 2~3개의 관련된 비트만 설계. 서로 다른 사건을 한 턴에 몰아넣지 말 것.
     - **장면 몰입 우선**: 유저가 현재 상황을 충분히 경험하고 반응할 시간을 확보. "빠르게 다음 사건으로 넘어가기" 금지.
-    - **시간대 명시**: \`scene_direction.time_of_day\`에 현재 시간대(아침/오후/저녁/심야)를 설정.
+    - **시간대 명시**: \`scene_direction.time_of_day\`에 **행동 종료 후의 시간대**(아침/오후/저녁/심야)를 설정.
     - 같은 시간대에서 여러 사건이 벌어지면 안 됨. 사건 하나 → 시간 경과 → 다음 사건.
+    - **TIME AWARENESS (시간대 인지 — ⭐ CRITICAL)**:
+      - [Situation]에 표시된 **Day/Time 정보를 반드시 참고**하여, 해당 시간대에 자연스러운 활동을 기획하라.
+      - **Morning (아침)**: 기상, 아침 식사, 수련/훈련 시작, 이동 준비
+      - **Afternoon (오후)**: 탐색, 임무 수행, 점심 식사 후 활동, 만남
+      - **Evening (저녁)**: 귀환, 저녁 식사, 대화/관계 빌드, 하루 마무리
+      - **Night (심야)**: 취침 준비, 야간 습격/기습 이벤트, 야간 수련, 밤샘 대화
+      - ❌ **하루 과다 사건 금지**: Morning에 시작된 행동이 같은 턴 안에서 Night까지 도달하면 안 됨. 한 턴은 보통 **1개 시간대**를 커버.
+      - ❌ **시간 역행 금지**: 현재 time이 Evening인데 plot_beats에서 아침 활동을 기획하지 말 것.
+      - **수면/휴식 유도**: Night에 특별한 상황(야간 습격, 긴급 사건)이 아니면 취침이나 야경/숙영 등 자연스러운 마무리를 기획. 밤새 활동을 강제하지 말 것.
+      - **경과 일수 인지**: Day 숫자가 크면 스토리 초반이 아니므로 세계에 더 익숙한 주인공을 묘사. Day 1~3은 정착/적응기.
 13. **TONE VARIETY (패턴 반복 금지)**:
     - [Recent Decisions]에서 직전 2턴과 같은 톤/패턴의 비트를 설계하지 말 것.
     - 특히 "주인공이 망신당하는" 비트가 2턴 연속이면, 이번 턴에는 **반드시 카타르시스/성공/성장 비트**를 설계.
@@ -330,7 +346,7 @@ ${preLogic.location_inference ? `Location: ${preLogic.location_inference}` : ''}
 ${playerProfile}
 
 [Situation]
-Turn: ${turnCount} | Location: ${location}
+Turn: ${turnCount} | Location: ${location} | Day ${input.currentDay} | Time: ${input.currentTimePhase}
 Player Action: "${userInput}"
 Last Turn: ${lastTurnSummary || 'N/A'}
 Active Goals: ${activeGoals.length > 0 ? activeGoals.join(', ') : 'None'}
@@ -370,7 +386,7 @@ ${input.growthGuide ? `${input.growthGuide}\n` : ''}[INSTRUCTION]
 Design this turn's plot. Be concise. Maximum 2-3 beats.
 ⚠️ YOU MUST follow the [Tone & World Guide] above — it defines the game's genre, world, and rules. Do NOT invent content from other genres.
 ${turnCount <= 1 ? '⚠️ This is the FIRST TURN. Introduce the world gently per the game guide. Do not assume any prior story context.' : ''}
-⚠️ **CATHARSIS CHECK**: If the player is using abilities, the plot beats MUST show SUCCESS first, comedy AFTER.
+⚠️ **CATHARSIS CHECK**: If the player is using abilities or training, the plot beats MUST show clear SUCCESS/GROWTH first (e.g. Dantian forming, enlightenment, skill breakthrough), comedy/banter AFTER. Do not interrupt the player's moment of achievement with immediate gags.
 ⚠️ **PATTERN CHECK**: Review [Recent Decisions] — if last 2 turns had same tone/pattern, SWITCH tone this turn.
 Respect the mood, pacing, and regional context.
 You may incorporate Casting Candidates into plot_beats if they fit the situation naturally.
@@ -383,8 +399,8 @@ You may incorporate Casting Candidates into plot_beats if they fit the situation
   - 이전에 만났지만 각자 행동 중인 인물 → scene_characters에서 **제외**
 - **2단계: 퇴장 설계** — 용건이 끝난 캐릭터는 departing_characters에 사유와 함께 명시
   - 퇴장 사유 예: "업무 복귀", "다른 약속", "각자 귀가", "상황 종료"
-- **3단계: 신규 등장** — Casting Candidates에서 이 장소+시간+맥락에 자연스럽게 있을 인물만 선택
-  - ❌ 금지: 다른 장소에 있던 캐릭터가 아무 이유 없이 현 장소에 등장 (텔레포트)
+- **3단계: 신규 등장** — [Characters Present]에 이미 있는 캐릭터는 '현재 장소에 함께 있는 것'이므로 새롭게 등장(Arrival)시킬 필요가 없습니다. [Casting Candidates]에서는 현 장소에 없던 '새로운 인물'을 합류시킬 때만 선택하십시오.
+   - ❌ 금지: 다른 장소에 있던 캐릭터가 아무 이유 없이 현 장소에 등장 (텔레포트)
 - **4단계: 동행자 관리** — 새 에피소드/임무를 함께하기로 한 캐릭터는 companion_updates.add로 등록.
   - mission: 사건/임무 동행 (해당 사건 해결 시 companion_updates.remove)
   - bond: 관계 기반 동행 (메인 히로인, 장기 동행)
@@ -404,7 +420,16 @@ You may incorporate Casting Candidates into plot_beats if they fit the situation
 - context_requirements, plot_beats, subtle_hooks, scene_direction 등 **모든 출력에서 반드시 한글 이름** 사용.
 - [Characters Present]와 [Casting Candidates]에 표시된 한글 이름을 그대로 사용.
 - ❌ 금지: 영문 ID, 괄호 부연, 축약, 별명
-- ✅ 정확한 예: "연화린", "남궁세아", "왕노야", "도예린"`;
+- ✅ 정확한 예: "연화린", "남궁세아", "왕노야", "도예린"
+
+⚠️ [OUTPUT FORMAT REMINDER]
+Your response MUST be valid JSON matching the [Output Schema] in the system prompt.
+Before generating, mentally organize your output as:
+1. [Context Requirements]: 스토리 모델이 참고해야 할 캐릭터 데이터 이름 나열
+2. [Plot Beats]: 도입 → 전개/시간경과 → 마무리/전환 (시간경과 비트에는 반드시 스토리 모델 태그 지시 포함)
+3. [Tone]: 예: 성취감 → 평화로운 일상
+4. [Emotional Direction]: 예: 왕초: 대견함 / 소칠: 장난기
+5. [Scene Direction]: time_of_day, scene_characters, departing_characters, companion_updates 모두 반드시 출력`;
     }
 
     // ===== Fallback =====

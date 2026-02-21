@@ -423,7 +423,7 @@ export async function* generateResponseStream(
                 const now = Date.now();
                 if (!firstChunkReceived) {
                     const ttft = now - streamStartTime;
-                    console.log(`[GeminiStream⏱️] 🚀 FIRST CHUNK after ${ttft}ms (TTFT). Type: ${chunk.candidates?.[0]?.content?.parts?.[0]?.thought ? 'THINKING' : 'TEXT'}`);
+                    console.log(`[GeminiStream⏱️] 🚀 FIRST CHUNK after ${ttft}ms (TTFT). Type: ${(chunk.candidates?.[0]?.content?.parts?.[0] as any)?.thought ? 'THINKING' : 'TEXT'}`);
                     firstChunkReceived = true;
                 }
 
