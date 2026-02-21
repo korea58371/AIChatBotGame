@@ -62,7 +62,7 @@ export default function StoreModal({ isOpen, onClose }: StoreModalProps) {
                 merchant_uid: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 name: product.name,
                 amount: product.price,
-                m_redirect_url: typeof window !== 'undefined' ? window.location.href : undefined, // Mobile Redirect URL
+                m_redirect_url: typeof window !== 'undefined' ? `${window.location.origin}/game` : undefined, // [Fix] Always redirect to /game where payment callback handler lives
             });
 
             // Clean up if returned immediately (PC/Non-redirect)

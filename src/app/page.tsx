@@ -11,6 +11,14 @@ export default function Home() {
         const checkAuthCode = async () => {
             // Check if there is an auth code in the URL (Supabase sometimes redirects to root)
             const params = new URLSearchParams(window.location.search);
+
+            // [Fix] 결제 결과 redirect가 루트로 온 경우, /game으로 포워딩
+            const impSuccess = params.get('imp_success');
+            if (impSuccess !== null) {
+                window.location.href = `/game?${params.toString()}`;
+                return;
+            }
+
             const code = params.get('code');
             if (code) {
                 // Use window.location.href for a hard redirect to the route handler

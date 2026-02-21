@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useState, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { useGameStore, Skill } from '@/lib/store';
 import { checkNameValidity, getHiddenSettings, selectProtagonistImage } from '@/data/games/wuxia/character_creation';
 import { WUXIA_IM_SEONG_JUN_SCENARIO, WUXIA_NAM_GANG_HYEOK_SCENARIO } from '@/data/games/wuxia/constants';
@@ -8,6 +6,10 @@ import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import EventCGLayer from '@/components/visual_novel/ui/EventCGLayer';
 import CharacterLayer from '@/components/visual_novel/ui/CharacterLayer';
+
+// [Fix] localStorage keys for wizard state persistence across payment redirects
+const WIZARD_STEP_KEY = 'vn_creation_step';
+const WIZARD_DATA_KEY = 'vn_creation_data';
 
 interface CharacterCreationWizardProps {
     handleSend: (text: string, isDirectInput?: boolean, isHidden?: boolean) => void;
@@ -35,8 +37,32 @@ function CharacterCreationWizardInner({
     setPlayerStats,
 }: CharacterCreationWizardProps) {
     // [Perf] Local state — changes here only re-render THIS component, not the parent
-    const [creationStep, setCreationStep] = useState(0);
-    const [creationData, setCreationData] = useState<Record<string, string | string[]>>({});
+    // [Fix] Restore wizard progress from localStorage (survives payment redirect reloads)
+    const [creationStep, setCreationStep] = useState(() => {
+        try {
+            const saved = localStorage.getItem(WIZARD_STEP_KEY);
+            return saved ? parseInt(saved, 10) : 0;
+        } catch { return 0; }
+    });
+    const [creationData, setCreationData] = useState<Record<string, string | string[]>>(() => {
+        try {
+            const saved = localStorage.getItem(WIZARD_DATA_KEY);
+            return saved ? JSON.parse(saved) : {};
+        } catch { return {}; }
+    });
+
+    // [Fix] Auto-save wizard state to localStorage on every change
+    useEffect(() => {
+        try {
+            localStorage.setItem(WIZARD_STEP_KEY, String(creationStep));
+        } catch { /* ignore quota errors */ }
+    }, [creationStep]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(WIZARD_DATA_KEY, JSON.stringify(creationData));
+        } catch { /* ignore quota errors */ }
+    }, [creationData]);
 
     const creationQuestions = useGameStore(state => state.characterCreationQuestions);
     const isDataLoaded = !!creationQuestions && creationQuestions.length > 0;
@@ -198,6 +224,12 @@ function CharacterCreationWizardInner({
     };
 
     const finalizeCreation = (updatedData: Record<string, string | string[]>) => {
+        // [Fix] Clear wizard persistence — game is starting, no need to remember progress
+        try {
+            localStorage.removeItem(WIZARD_STEP_KEY);
+            localStorage.removeItem(WIZARD_DATA_KEY);
+        } catch { /* ignore */ }
+
         // Construct Prompt
         let profileText = "사용자 캐릭터 프로필:\n";
         Object.entries(updatedData).forEach(([key, val]) => {
