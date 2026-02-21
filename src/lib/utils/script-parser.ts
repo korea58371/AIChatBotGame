@@ -22,6 +22,17 @@ function formatForReadability(text: string): string {
     return text.replace(/(.{20,}?[.?!])\s+/g, "$1\n");
 }
 
+// [Perf] Pre-compiled regex constants — avoid re-creating on every parseScript call
+const _BLOCK_TAGS = [
+    '배경', 'BGM', 'CG', '시스템팝업', '시스템', '나레이션',
+    '선택지.*?', '대사', '문자', '답장', '전화', 'TV뉴스', '기사', '떠남', '시간', '시간경과'
+].join('|');
+const _TAG_PATTERN = `(?:\\s*(?:${_BLOCK_TAGS})(?:\\s+[^>]*)?|[^>]*:[^>]*)`;
+// [Perf] Store only the SOURCE string — each parseScript call creates its own RegExp
+// to avoid lastIndex corruption during recursive calls (parseScript calls itself)
+const _BLOCK_TAG_SOURCE = `<(${_TAG_PATTERN})>([\\s\\S]*?)(?=$|<(?:${_TAG_PATTERN})>)`;
+const ENFORCE_NEWLINE_REGEX = new RegExp('([^\\n\\r])<(BGM|CG|배경|Sound|Effect|시간|시간경과|나레이션|대사|선택지|시스템팝업|시스템|떠남)>', 'gi');
+
 export function parseScript(text: string): ScriptSegment[] {
     const segments: ScriptSegment[] = [];
 
@@ -36,29 +47,13 @@ export function parseScript(text: string): ScriptSegment[] {
     // [Fix] Strip all closing tags </...> (e.g., </나레이션>) as they are not used in this syntax and pollute valid content
     text = text.replace(/<\/[^>]+>/g, '');
 
-    // [Fix] Enforce Newline before ALL block tags to prevent swallowing/attachment issues
-    // If AI writes "Text.<Tag> Title", we convert it to "Text.\n<Tag> Title"
-    // Also explicitly handle \r for Windows consistency
-    text = text.replace(/([^\n\r])<(BGM|CG|배경|Sound|Effect|시간|시간경과|나레이션|대사|선택지|시스템팝업|시스템|떠남)>/gi, '$1\n<$2>');
+    // [Fix] Enforce Newline before ALL block tags
+    text = text.replace(ENFORCE_NEWLINE_REGEX, '$1\n<$2>');
 
-    // Regex to match tags like <TagName>Content or <TagName>Content...
-    // We split by newlines first to handle line-based parsing safely, 
-    // but since the AI might output multiple tags, we should look for the tag pattern.
-
-    // [Refactor] Differentiate Block Tags vs Inline Tags
-    // Block Tags: Start a new segment type (e.g. Dialogue, Choice, BGM)
-    const blockTags = [
-        '배경', 'BGM', 'CG', '시스템팝업', '시스템', '나레이션',
-        '선택지.*?', '대사', '문자', '답장', '전화', 'TV뉴스', '기사', '떠남', '시간', '시간경과'
-    ].join('|');
-
-    // Pattern: < ( (Keyword)(Spaces...)? | (Any:Any) ) >
-    // We use a strict pattern for the tag name to ensure we don't pick up random <Text>.
-    // [Fix] Robustness: Allow leading whitespace in tag name (e.g. < 나레이션>)
-    const tagPattern = `(?:\\s*(?:${blockTags})(?:\\s+[^>]*)?|[^>]*:[^>]*)`;
-
-    // Regex: <(TagPattern)> (Content) (?= End | <(TagPattern)>)
-    const regex = new RegExp(`<(${tagPattern})>([\\s\\S]*?)(?=$|<(?:${tagPattern})>)`, 'gi');
+    // [Perf] Create fresh regex per call — MUST NOT share a global RegExp because
+    // parseScript calls itself recursively (배경, BGM, 시간경과 etc.) and recursive
+    // calls would corrupt the shared lastIndex, causing infinite loops.
+    const regex = new RegExp(_BLOCK_TAG_SOURCE, 'gi');
 
     let match;
     let lastIndex = 0;
@@ -523,8 +518,6 @@ export function parseScript(text: string): ScriptSegment[] {
             let skipText = lines[0].trim(); // Primary text
             // [Fix] Strip closing tag if present
             skipText = skipText.replace(/<\/시간경과>/gi, '').trim();
-
-            console.log(`[Parser:시간경과] rawContent="${content.substring(0, 50)}", skipText="${skipText}"`);
 
             segments.push({
                 type: 'time_skip',

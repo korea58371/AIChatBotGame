@@ -209,6 +209,8 @@ export default function VisualNovelUI() {
     }, []);
     const activeSegmentIndexRef = useRef(0);
     const lastHistoryUpdateRef = useRef<number>(0); // [Fix] Throttle for streaming history sync
+    const streamThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null); // [Perf] Throttle for onToken processing
+    const streamPendingRef = useRef(false); // [Perf] Flag: pending throttled flush
 
 
 
@@ -1622,373 +1624,292 @@ export default function VisualNovelUI() {
                                     setIsLogicPending(true); // Lock heavy interactions until Logic finishes
 
                                     // [Metrics] Update Average Response Time (TTFT)
-                                    // User Request: Progress bar should track "Time to Start", not "Time to Finish".
                                     const ttft = Date.now() - startTime;
                                     console.log(`[Metrics] TTFT: ${ttft}ms`);
                                     setAvgResponseTime(prev => Math.round((prev * 0.7) + (ttft * 0.3)));
                                 }
 
+                                // [Perf] THROTTLED PROCESSING — Accumulate tokens, flush every 80ms
+                                // Previously, every single token triggered: 30+ regex filters, full parseScript (795 lines),
+                                // and multiple React state updates. This blocked the main thread and prevented click events.
                                 accumulatedText += token;
 
-                                // [Filter] Client-side visibility filter for Thinking/Output tags
-                                // We keep accumulatedText as the RAW buffer.
-                                // We derive 'visText' for the parser and UI.
-                                // [Fix] History Leaking / Text Flashing Bug
-                                // We must strictly isolate the LAST <Output> block if multiple exist.
-                                let visText = accumulatedText;
-
-                                // 1. Remove closed Thinking blocks first (High Priority)
-                                visText = visText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '');
-
-                                // 2. Hide partial Thinking blocks (prevent flash)
-                                const openThink = visText.indexOf('<Thinking');
-                                if (openThink !== -1) {
-                                    visText = visText.substring(0, openThink);
+                                // Schedule throttled flush if not already pending
+                                if (!streamPendingRef.current) {
+                                    streamPendingRef.current = true;
+                                    streamThrottleRef.current = setTimeout(() => {
+                                        streamPendingRef.current = false;
+                                        flushStreamBuffer();
+                                    }, 150);
                                 }
 
-                                // 3. [Fix] Relaxed Output Handling
-                                // Instead of discarding everything before <Output>, we just extract the content inside it IF it exists.
-                                // BUT, if <배경> exists *before* <Output>, we want to keep it.
-                                // So we simply remove the <Output> tags themselves, relying on the fact that we already removed Thinking.
-                                // Exception: If there are multiple Output blocks (leaking history), we SHOULD take the last one.
-                                const outputMatches = [...visText.matchAll(/<Output>([\s\S]*?)<\/Output>/gi)];
-                                if (outputMatches.length > 0) {
-                                    // Take the content of the LAST complete block
-                                    // AND also prepend any tags that appeared *before* the first Output? 
-                                    // No, simple models might output "<Tags> <Output>Content</Output>".
-                                    // Let's iterate and concat all non-thinking content?
-                                    // Risk: Repeating history.
+                                // --- Extracted Processing Function (called at 80ms intervals) ---
+                                function flushStreamBuffer() {
 
-                                    // Safer Strategy:
-                                    // If <Output> exists, use the LAST block's content.
-                                    // BUT checking if the Background tag is missing in it?
+                                    // [Filter] Client-side visibility filter for Thinking/Output tags
+                                    let visText = accumulatedText;
 
-                                    // Let's try the simple approach first that the User suggested implicitly (Timing/Parsing).
-                                    // Be permissive: Just remove the tags.
-                                    visText = visText.replace(/<Output[^>]*>/gi, '').replace(/<\/Output>/gi, '');
+                                    // 1. Remove closed Thinking blocks first (High Priority)
+                                    visText = visText.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '');
 
-                                    // If we have "History <Output> New", replacing tags leaves "History New".
-                                    // This is bad.
-                                    // We MUST use substring if we suspect history leak.
-                                    // Let's trust the LAST <Output> start index.
-                                    const lastOpenIdx = accumulatedText.lastIndexOf('<Output>');
-                                    if (lastOpenIdx !== -1) {
-                                        // Check if <배경> is explicitly *before* this index in the scratch buffer?
-                                        // This is getting complex.
+                                    // 2. Hide partial Thinking blocks (prevent flash)
+                                    const openThink = visText.indexOf('<Thinking');
+                                    if (openThink !== -1) {
+                                        visText = visText.substring(0, openThink);
+                                    }
 
-                                        // Logic: If we found <Output>, valid content starts there.
-                                        // IF the AI puts <배경> before it, the AI is malformed.
-                                        // But I will allow a "Grace Zone" of 50 chars before Output?
-                                        visText = accumulatedText.substring(lastOpenIdx);
+                                    // 3. [Fix] Relaxed Output Handling
+                                    const outputMatches = [...visText.matchAll(/<Output>([\s\S]*?)<\/Output>/gi)];
+                                    if (outputMatches.length > 0) {
                                         visText = visText.replace(/<Output[^>]*>/gi, '').replace(/<\/Output>/gi, '');
+
+                                        const lastOpenIdx = accumulatedText.lastIndexOf('<Output>');
+                                        if (lastOpenIdx !== -1) {
+                                            visText = accumulatedText.substring(lastOpenIdx);
+                                            visText = visText.replace(/<Output[^>]*>/gi, '').replace(/<\/Output>/gi, '');
+                                        }
                                     } else {
-                                        // No Output tag yet? Show everything (cleaned).
-                                    }
-                                } else {
-                                    // No complete Output block logic or streaming incomplete.
-                                    // If we have an OPEN tag but no close?
-                                    const lastOpenIdx = visText.lastIndexOf('<Output>');
-                                    if (lastOpenIdx !== -1) {
-                                        visText = visText.substring(lastOpenIdx).replace(/<Output[^>]*>/gi, '');
-                                    }
-                                }
-
-                                // [Fix] Scrub Logic Tags (Sync with Orchestrator)
-                                // If we don't scrub these, the Client Parser might create 'Command' segments that the Server Parser (on clean text) doesn't.
-                                // This causes 'activeSegmentIndexRef' to Desync (Client has more segments than Server).
-                                // When onComplete swaps the text, the index points to the wrong place (or past end), causing "Reversion" or "Jump".
-                                visText = visText
-                                    .replace(/\[Stat[^\]]*\]/gi, '')
-                                    .replace(/<Stat[^>]*>/gi, '')
-                                    .replace(/\[Rel[^\]]*\]/gi, '')
-                                    .replace(/<Rel[^>]*>/gi, '')
-                                    .replace(/\[Relationship[^\]]*\]/gi, '')
-                                    .replace(/<Relationship[^>]*>/gi, '')
-                                    .replace(/\[Tension[^\]]*\]/gi, '')
-                                    .replace(/<Tension[^>]*>/gi, '')
-                                    .replace(/<NewInjury[^>]*>/gi, '')
-                                    .replace(/<Injury[^>]*>/gi, '')
-                                    .replace(/<Dead[^>]*>/gi, '')
-                                    .replace(/\[Dead[^\]]*\]/gi, '')
-                                    .replace(/<Location[^>]*>/gi, '')
-                                    .replace(/<Faction[^>]*>/gi, '')
-                                    .replace(/<Rank[^>]*>/gi, '')
-                                    .replace(/<PlayerRank[^>]*>/gi, '')
-                                    .replace(/\[PlayerRank[^\]]*\]/gi, '')
-                                    .replace(/<EventProgress[^>]*>/gi, '')
-                                    .replace(/\[EventProgress[^\]]*\]/gi, '')
-                                    .replace(/<ResolvedInjury[^>]*>/gi, '')
-                                    .replace(/\[ResolvedInjury[^\]]*\]/gi, '')
-                                    // [Fix] Robustly remove Narration/Dialogue CLOSING tags (Parser only uses Open tags)
-                                    .replace(/<\/\s*(나레이션|대사|이름|지문)[^>]*>/gi, '')
-                                    // [Fix] Remove Ending Key Block entirely (System Data)
-                                    .replace(/<ENDING KEY>[\s\S]*?<\/ENDING KEY>/gi, '')
-                                    .replace(/<ENDING KEY>[^>]*>/gi, '')
-                                    .replace(/<\/ENDING KEY>/gi, '')
-                                    // [Fix] Do NOT remove Open Narration tag, as it acts as a delimiter for the parser.
-                                    // Removing it causes the previous <대사> tag to greedily consume the narration text.
-                                    // .replace(/<나레이션[^>]*>/gi, '') 
-                                    .replace(/\[나레이션[^\]]*\]/gi, '');
-
-                                // [Fix] Partial Tag Hiding (Prevent Flashing)
-                                // If the text ends with a partial tag (e.g. "</나레"), hide it until it's complete and scrubbed.
-                                // Logic: If there is a '<' that is NOT followed by a '>' anywhere after it.
-                                // If the text ends with a partial tag (e.g. "</나레"), hide it until it's complete and scrubbed.
-                                // Logic: If there is a '<' that is NOT followed by a '>' anywhere after it.
-                                const lastLessThan = visText.lastIndexOf('<');
-                                const lastGreaterThan = visText.lastIndexOf('>');
-                                if (lastLessThan > lastGreaterThan) {
-                                    // [Fix] Robustness: Only hide if it actually looks like a tag (starts with letter, /, !, ?)
-                                    // This prevents hiding text like "Health < 50" or "Love <3"
-                                    const nextChar = visText[lastLessThan + 1];
-                                    if (nextChar && /[a-zA-Z가-힣!/?]/.test(nextChar)) {
-                                        visText = visText.substring(0, lastLessThan);
-                                    }
-                                }
-
-                                // [Removed] Aggressive Thinking Leak Scrubbing
-                                // This logic was causing valid narrative text (appearing before the first tag) to be deleted.
-                                // We now rely on the 'Thinking' tag removal above (lines 1849-1855).
-
-                                // [Fix] Sync streaming text to chatHistory for HistoryModal visibility (Throttled 500ms)
-                                const now = Date.now();
-                                if (now - lastHistoryUpdateRef.current > 500) {
-                                    useGameStore.getState().updateLastMessage(visText);
-                                    lastHistoryUpdateRef.current = now;
-                                }
-
-                                const allSegments = parseScript(visText);
-
-                                // [Fix] Aggressive Index Reset for Empty/Garbage Phase
-                                // If we parsed 0 segments, we're in a "garbage" or "waiting for content" phase.
-                                // The index should ALWAYS be 0 in this state to prevent stale index values
-                                // from causing segment skips when real content arrives.
-                                if (allSegments.length === 0) {
-                                    activeSegmentIndexRef.current = 0;
-                                }
-
-                                // [DEBUG] Log segment count for each stream update
-
-                                if (allSegments.length > 0) {
-
-                                }
-
-                                // [Stream] Auto-Advance Logic
-                                // We track 'activeSegmentIndexRef' as the index of the segment currently being shown (or just finished).
-                                // Logic: Scan from current index. If command/bg/bgm, execute & increment. If content, set & break.
-
-                                let currentIndex = activeSegmentIndexRef.current;
-
-                                // Safety check
-                                if (currentIndex == null) currentIndex = 0;
-
-                                // [Fix] Background Hoisting (Stream Start)
-                                // If the stream starts with some garbage text followed by a Background tag,
-                                // the standard loop stops at the text, preventing the BG from updating.
-                                // We scan ahead in the first few segments to apply the BG immediately.
-                                if (currentIndex === 0 && allSegments.length > 0) {
-                                    for (let i = 0; i < Math.min(5, allSegments.length); i++) {
-                                        const s = allSegments[i];
-                                        if (s.type === 'background') {
-                                            try {
-                                                const resolvedBg = resolveBackground(s.content);
-                                                // Direct store access to avoid closure staleness, though setBackground is likely stable
-                                                const currentBg = useGameStore.getState().currentBackground;
-                                                if (currentBg !== resolvedBg) {
-                                                    console.log(`[Stream] Hoisted Background Update: ${resolvedBg}`);
-                                                    queueMicrotask(() => setBackground(resolvedBg));
-                                                }
-                                            } catch (e) { }
+                                        const lastOpenIdx = visText.lastIndexOf('<Output>');
+                                        if (lastOpenIdx !== -1) {
+                                            visText = visText.substring(lastOpenIdx).replace(/<Output[^>]*>/gi, '');
                                         }
                                     }
-                                }
 
-                                while (currentIndex < allSegments.length) {
-                                    const seg = allSegments[currentIndex];
+                                    // [Fix] Scrub Logic Tags (Sync with Orchestrator)
+                                    visText = visText
+                                        .replace(/\[Stat[^\]]*\]/gi, '')
+                                        .replace(/<Stat[^>]*>/gi, '')
+                                        .replace(/\[Rel[^\]]*\]/gi, '')
+                                        .replace(/<Rel[^>]*>/gi, '')
+                                        .replace(/\[Relationship[^\]]*\]/gi, '')
+                                        .replace(/<Relationship[^>]*>/gi, '')
+                                        .replace(/\[Tension[^\]]*\]/gi, '')
+                                        .replace(/<Tension[^>]*>/gi, '')
+                                        .replace(/<NewInjury[^>]*>/gi, '')
+                                        .replace(/<Injury[^>]*>/gi, '')
+                                        .replace(/<Dead[^>]*>/gi, '')
+                                        .replace(/\[Dead[^\]]*\]/gi, '')
+                                        .replace(/<Location[^>]*>/gi, '')
+                                        .replace(/<Faction[^>]*>/gi, '')
+                                        .replace(/<Rank[^>]*>/gi, '')
+                                        .replace(/<PlayerRank[^>]*>/gi, '')
+                                        .replace(/\[PlayerRank[^\]]*\]/gi, '')
+                                        .replace(/<EventProgress[^>]*>/gi, '')
+                                        .replace(/\[EventProgress[^\]]*\]/gi, '')
+                                        .replace(/<ResolvedInjury[^>]*>/gi, '')
+                                        .replace(/\[ResolvedInjury[^\]]*\]/gi, '')
+                                        .replace(/<\/\s*(나레이션|대사|이름|지문)[^>]*>/gi, '')
+                                        .replace(/<ENDING KEY>[\s\S]*?<\/ENDING KEY>/gi, '')
+                                        .replace(/<ENDING KEY>[^>]*>/gi, '')
+                                        .replace(/<\/ENDING KEY>/gi, '')
+                                        .replace(/\[나레이션[^\]]*\]/gi, '');
 
-                                    const isIdempotent = ['background', 'bgm', 'event_cg'].includes(seg.type);
-
-                                    // [Fix] Stream Sync Hazard - "The Partial Tag Trap" & 404 Prevention
-                                    // If a metadata segment (BG/BGM) is the LAST segment, it might be incomplete (growing).
-                                    // We must NOT execute it yet to avoid 404s (partial paths) or flickering.
-                                    // We wait until it is no longer the last segment (or stream ends, effectively).
-                                    // Commands are non-idempotent (stat adds), but we assume they are atomic or parsed safely.
-
-                                    const isLastSegment = currentIndex === allSegments.length - 1;
-
-                                    if (isIdempotent && isLastSegment) {
-                                        // Do NOT execute. Do NOT increment. Let loop break.
-                                        // Next onToken will re-process this index with fuller content.
-                                        break;
+                                    // [Fix] Partial Tag Hiding (Prevent Flashing)
+                                    const lastLessThan = visText.lastIndexOf('<');
+                                    const lastGreaterThan = visText.lastIndexOf('>');
+                                    if (lastLessThan > lastGreaterThan) {
+                                        const nextChar = visText[lastLessThan + 1];
+                                        if (nextChar && /[a-zA-Z가-힣!/?]/.test(nextChar)) {
+                                            visText = visText.substring(0, lastLessThan);
+                                        }
                                     }
 
-                                    if (seg.type === 'background' || seg.type === 'bgm' || seg.type === 'event_cg' || seg.type === 'command') {
-                                        // Execute Command
-                                        if (seg.type === 'background') {
-                                            try {
+                                    // [Fix] Sync streaming text to chatHistory for HistoryModal visibility (Throttled 500ms)
+                                    const now = Date.now();
+                                    if (now - lastHistoryUpdateRef.current > 500) {
+                                        useGameStore.getState().updateLastMessage(visText);
+                                        lastHistoryUpdateRef.current = now;
+                                    }
 
-                                                const resolvedBg = resolveBackground(seg.content);
+                                    const allSegments = parseScript(visText);
 
-                                                // [Fix] Force Update on Start
-                                                // If this is the very first segment (index 0), we force setBackground
-                                                // to ensure the UI is in sync, even if the store thinks it's already set (e.g. from hydration).
-                                                // This fixes "Missing Background on First Stream".
-                                                const currentBg = useGameStore.getState().currentBackground;
-                                                const shouldUpdate = currentBg !== resolvedBg || currentIndex === 0;
+                                    // [Fix] Aggressive Index Reset for Empty/Garbage Phase
+                                    if (allSegments.length === 0) {
+                                        activeSegmentIndexRef.current = 0;
+                                    }
 
-                                                if (shouldUpdate) {
+                                    // [Stream] Auto-Advance Logic
+                                    let currentIndex = activeSegmentIndexRef.current;
 
-                                                    queueMicrotask(() => {
-                                                        setBackground(resolvedBg);
-                                                        setCharacterExpression('');
-                                                    });
-                                                }
-                                            } catch (e) { console.error("[Stream] BG Update Error:", e); }
-                                        } else if (seg.type === 'bgm') {
-                                            playBgm(seg.content);
-                                        } else if (seg.type === 'event_cg') {
-                                            // [New] Stream Event CG
-                                            try {
-                                                const clean = seg.content.replace(/<\/[^>]+>/g, '').trim();
-                                                if (clean) {
-                                                    useGameStore.getState().setEventCG(clean); // Assume store handles resolution or component does
-                                                }
-                                            } catch (e) { }
-                                        } else if (seg.type === 'command') {
-                                            // Minimal Stat Parsing (Sync with onComplete logic accumulator)
-                                            if (seg.commandType === 'update_stat') {
+                                    // Safety check
+                                    if (currentIndex == null) currentIndex = 0;
+
+                                    // [Fix] Background Hoisting (Stream Start)
+                                    if (currentIndex === 0 && allSegments.length > 0) {
+                                        for (let i = 0; i < Math.min(5, allSegments.length); i++) {
+                                            const s = allSegments[i];
+                                            if (s.type === 'background') {
                                                 try {
-                                                    const stats = JSON.parse(seg.content || '{}');
-                                                    Object.entries(stats).forEach(([k, v]) => {
-                                                        const val = Number(v);
-                                                        if (isNaN(val)) return;
-                                                        const key = k.toLowerCase();
+                                                    const resolvedBg = resolveBackground(s.content);
+                                                    const currentBg = useGameStore.getState().currentBackground;
+                                                    if (currentBg !== resolvedBg) {
+                                                        console.log(`[Stream] Hoisted Background Update: ${resolvedBg}`);
+                                                        queueMicrotask(() => setBackground(resolvedBg));
+                                                    }
+                                                } catch (e) { }
+                                            }
+                                        }
+                                    }
 
-                                                        // Accumulate
-                                                        if (key === 'hp') inlineAccumulatorRef.current.hp += val;
-                                                        else if (key === 'mp') inlineAccumulatorRef.current.mp += val;
-                                                        // [Dead Stats Removed] No personality accumulation
+                                    while (currentIndex < allSegments.length) {
+                                        const seg = allSegments[currentIndex];
 
-                                                        // Visual Update
-                                                        // [Safety] Ignore 0-value HP updates from inline tags to preventing confusion
-                                                        // (AI sometimes writes <Stat hp='0'> meaning 'no pain', but it looks buggy)
-                                                        if (key === 'hp' && val === 0) return;
+                                        const isIdempotent = ['background', 'bgm', 'event_cg'].includes(seg.type);
 
-                                                        applyGameLogic({
-                                                            hpChange: key === 'hp' ? val : 0,
-                                                            mpChange: key === 'mp' ? val : 0,
+                                        const isLastSegment = currentIndex === allSegments.length - 1;
+
+                                        if (isIdempotent && isLastSegment) {
+                                            break;
+                                        }
+
+                                        if (seg.type === 'background' || seg.type === 'bgm' || seg.type === 'event_cg' || seg.type === 'command') {
+                                            // Execute Command
+                                            if (seg.type === 'background') {
+                                                try {
+
+                                                    const resolvedBg = resolveBackground(seg.content);
+
+                                                    const currentBg = useGameStore.getState().currentBackground;
+                                                    const shouldUpdate = currentBg !== resolvedBg || currentIndex === 0;
+
+                                                    if (shouldUpdate) {
+
+                                                        queueMicrotask(() => {
+                                                            setBackground(resolvedBg);
+                                                            setCharacterExpression('');
                                                         });
-                                                    });
-                                                } catch (e) { }
-                                            } else if (seg.commandType === 'update_relationship') {
+                                                    }
+                                                } catch (e) { console.error("[Stream] BG Update Error:", e); }
+                                            } else if (seg.type === 'bgm') {
+                                                playBgm(seg.content);
+                                            } else if (seg.type === 'event_cg') {
                                                 try {
-                                                    const d = JSON.parse(seg.content || '{}');
-                                                    if (d.charId && d.value) {
-                                                        const val = Number(d.value);
-                                                        const normalizedId = normalizeCharacterId(d.charId);
-                                                        inlineAccumulatorRef.current.relationships[normalizedId] = (inlineAccumulatorRef.current.relationships[normalizedId] || 0) + val;
-                                                        // Visual
-                                                        useGameStore.getState().updateCharacterRelationship(normalizedId, val);
-                                                        addToast(`${normalizedId} 호감도 ${val > 0 ? '+' : ''}${val}`, 'info');
+                                                    const clean = seg.content.replace(/<\/[^>]+>/g, '').trim();
+                                                    if (clean) {
+                                                        useGameStore.getState().setEventCG(clean);
                                                     }
                                                 } catch (e) { }
-                                            } else if (seg.commandType === 'add_injury') {
-                                                // [New] Inline Injury Application (Position-Aware)
-                                                // Apply injury immediately when user reaches this point in the text.
-                                                try {
-                                                    const d = JSON.parse(seg.content || '{}');
-                                                    if (d.name) {
-                                                        const injuryName = d.name;
-                                                        // Apply to store immediately
-                                                        const currentInjuries = useGameStore.getState().playerStats.active_injuries || [];
-                                                        if (!currentInjuries.includes(injuryName)) {
-                                                            useGameStore.getState().setPlayerStats({
-                                                                ...useGameStore.getState().playerStats,
-                                                                active_injuries: [...currentInjuries, injuryName]
+                                            } else if (seg.type === 'command') {
+                                                if (seg.commandType === 'update_stat') {
+                                                    try {
+                                                        const stats = JSON.parse(seg.content || '{}');
+                                                        Object.entries(stats).forEach(([k, v]) => {
+                                                            const val = Number(v);
+                                                            if (isNaN(val)) return;
+                                                            const key = k.toLowerCase();
+
+                                                            if (key === 'hp') inlineAccumulatorRef.current.hp += val;
+                                                            else if (key === 'mp') inlineAccumulatorRef.current.mp += val;
+
+                                                            if (key === 'hp' && val === 0) return;
+
+                                                            applyGameLogic({
+                                                                hpChange: key === 'hp' ? val : 0,
+                                                                mpChange: key === 'mp' ? val : 0,
                                                             });
-                                                            addToast(`부상 발생(Injury): ${injuryName}`, 'warning');
+                                                        });
+                                                    } catch (e) { }
+                                                } else if (seg.commandType === 'update_relationship') {
+                                                    try {
+                                                        const d = JSON.parse(seg.content || '{}');
+                                                        if (d.charId && d.value) {
+                                                            const val = Number(d.value);
+                                                            const normalizedId = normalizeCharacterId(d.charId);
+                                                            inlineAccumulatorRef.current.relationships[normalizedId] = (inlineAccumulatorRef.current.relationships[normalizedId] || 0) + val;
+                                                            useGameStore.getState().updateCharacterRelationship(normalizedId, val);
+                                                            addToast(`${normalizedId} 호감도 ${val > 0 ? '+' : ''}${val}`, 'info');
                                                         }
-                                                        // Track for dedup in onComplete
-                                                        inlineAccumulatorRef.current.injuries.push(injuryName);
-                                                        console.log(`[Inline] Injury Applied: ${injuryName}`);
+                                                    } catch (e) { }
+                                                } else if (seg.commandType === 'add_injury') {
+                                                    try {
+                                                        const d = JSON.parse(seg.content || '{}');
+                                                        if (d.name) {
+                                                            const injuryName = d.name;
+                                                            const currentInjuries = useGameStore.getState().playerStats.active_injuries || [];
+                                                            if (!currentInjuries.includes(injuryName)) {
+                                                                useGameStore.getState().setPlayerStats({
+                                                                    ...useGameStore.getState().playerStats,
+                                                                    active_injuries: [...currentInjuries, injuryName]
+                                                                });
+                                                                addToast(`부상 발생(Injury): ${injuryName}`, 'warning');
+                                                            }
+                                                            inlineAccumulatorRef.current.injuries.push(injuryName);
+                                                            console.log(`[Inline] Injury Applied: ${injuryName}`);
+                                                        }
+                                                    } catch (e) { console.error('[Inline] Injury parse error:', e); }
+                                                } else if (seg.commandType === 'set_time') {
+                                                    const rawTime = seg.content;
+                                                    const dayMatch = rawTime.match(/(\d+)(일차|Day)/i);
+                                                    if (dayMatch) {
+                                                        const newDay = parseInt(dayMatch[1], 10);
+                                                        if (!isNaN(newDay)) useGameStore.getState().setDay(newDay);
                                                     }
-                                                } catch (e) { console.error('[Inline] Injury parse error:', e); }
-                                            } else if (seg.commandType === 'set_time') {
-                                                // Handle Time — [FIX] Parse Day + Clean Time (was passing raw "11일차 08:00")
-                                                const rawTime = seg.content;
-                                                const dayMatch = rawTime.match(/(\d+)(일차|Day)/i);
-                                                if (dayMatch) {
-                                                    const newDay = parseInt(dayMatch[1], 10);
-                                                    if (!isNaN(newDay)) useGameStore.getState().setDay(newDay);
+                                                    const cleanTime = rawTime.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
+                                                    if (cleanTime) useGameStore.getState().setTime(cleanTime);
                                                 }
-                                                const cleanTime = rawTime.replace(/(\d+)(일차|Day)\s*/gi, '').trim();
-                                                if (cleanTime) useGameStore.getState().setTime(cleanTime);
                                             }
+
+                                            // Advance
+                                            currentIndex++;
+                                            activeSegmentIndexRef.current = currentIndex;
+                                        } else {
+                                            // Content (Dialogue/Narration/Choice)
+                                            if (allSegments[currentIndex]) {
+                                                const seg = allSegments[currentIndex];
+                                                const isLastSeg = currentIndex === allSegments.length - 1;
+
+                                                // [Fix] Defer incomplete special segments during streaming
+                                                if (isLastSeg && (seg.type === 'tv_news' || seg.type === 'time_skip') && !seg.content) {
+                                                    break;
+                                                }
+
+
+                                                // [Perf] Only trigger React re-render if segment content actually changed
+                                                const prevSeg = currentSegmentRef.current;
+                                                if (!prevSeg || prevSeg.type !== seg.type || prevSeg.content !== seg.content || prevSeg.character !== seg.character) {
+                                                    currentSegmentRef.current = seg;
+                                                    queueMicrotask(() => setCurrentSegment(seg));
+                                                }
+                                            }
+
+                                            // Handle Choices Lookahead
+                                            if (seg.type === 'choice') {
+                                                const newChoices: any[] = [];
+                                                let tempIdx = currentIndex;
+                                                while (tempIdx < allSegments.length && allSegments[tempIdx].type === 'choice') {
+                                                    newChoices.push(allSegments[tempIdx]);
+                                                    tempIdx++;
+                                                }
+                                                queueMicrotask(() => {
+                                                    setChoices(newChoices);
+                                                    setCurrentSegment(null);
+                                                    setCharacterExpression('');
+                                                });
+                                            }
+
+                                            let queueStart = currentIndex + 1;
+                                            if (seg.type === 'choice' && allSegments.length > 0) {
+                                                while (queueStart < allSegments.length && allSegments[queueStart].type === 'choice') {
+                                                    queueStart++;
+                                                }
+                                            }
+
+                                            scriptQueueRef.current = allSegments.slice(queueStart);
+                                            // [Perf] During streaming, only update ref — skip setScriptQueue to avoid
+                                            // triggering 6+ useEffects that depend on scriptQueueLength.
+                                            // setScriptQueue is called once in onComplete when stream finishes.
+                                            break; // Stop auto-advance
                                         }
-
-                                        // Advance
-                                        currentIndex++;
-                                        activeSegmentIndexRef.current = currentIndex;
-                                    } else {
-                                        // Content (Dialogue/Narration/Choice)
-                                        if (allSegments[currentIndex]) {
-                                            const seg = allSegments[currentIndex];
-                                            const isLastSeg = currentIndex === allSegments.length - 1;
-
-                                            // [Fix] Defer incomplete special segments during streaming
-                                            // tv_news and time_skip segments at the END of the stream
-                                            // may have incomplete content (metadata arrived, content not yet).
-                                            // Treat them like idempotent segments: don't display until finalized.
-                                            if (isLastSeg && (seg.type === 'tv_news' || seg.type === 'time_skip') && !seg.content) {
-                                                break;
-                                            }
-
-
-                                            currentSegmentRef.current = seg;
-                                            queueMicrotask(() => setCurrentSegment(seg));
-                                            // [Fix] Ensure Typewriter receives the update
-                                            if (currentSegmentRef.current?.content !== seg.content) {
-                                                currentSegmentRef.current = seg;
-                                            }
-                                        }
-
-                                        // Handle Choices Lookahead
-                                        if (seg.type === 'choice') {
-                                            const newChoices: any[] = [];
-                                            let tempIdx = currentIndex;
-                                            while (tempIdx < allSegments.length && allSegments[tempIdx].type === 'choice') {
-                                                newChoices.push(allSegments[tempIdx]);
-                                                tempIdx++;
-                                            }
-                                            queueMicrotask(() => {
-                                                setChoices(newChoices);
-                                                setCurrentSegment(null);
-                                                setCharacterExpression('');
-                                            });
-                                        }
-
-                                        // Update Queue for Next Click
-                                        // If choice, we don't queue choices again? 
-                                        // Standard logic: choices are handled by clicks.
-                                        // But if "next" is clicked, we need queue?
-                                        // Actually, if choice is displayed, script stops.
-                                        // We should setQueue to remainder AFTER choices.
-
-                                        let queueStart = currentIndex + 1;
-                                        if (seg.type === 'choice' && allSegments.length > 0) {
-                                            // Skip all choice segments in queue
-                                            while (queueStart < allSegments.length && allSegments[queueStart].type === 'choice') {
-                                                queueStart++;
-                                            }
-                                        }
-
-                                        scriptQueueRef.current = allSegments.slice(queueStart);
-                                        queueMicrotask(() => setScriptQueue(scriptQueueRef.current));
-                                        break; // Stop auto-advance
                                     }
-                                }
+                                } // end flushStreamBuffer
                             },
                             onComplete: (data) => {
+                                // [Perf] Clear pending throttle timer — stream is done, no more tokens coming
+                                if (streamThrottleRef.current) {
+                                    clearTimeout(streamThrottleRef.current);
+                                    streamThrottleRef.current = null;
+                                }
+                                streamPendingRef.current = false;
 
                                 const p2Duration = Date.now() - p1Start;
 
@@ -2982,7 +2903,7 @@ export default function VisualNovelUI() {
         if (choices.length > 0) return;
 
         const now = Date.now();
-        if (now - lastClickTime.current < 100) return; // 500ms Debounce
+        if (now - lastClickTime.current < 250) return; // 250ms Debounce (Fixed from 100ms)
         lastClickTime.current = now;
 
         advanceScript();
